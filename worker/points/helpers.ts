@@ -1,5 +1,5 @@
 import { eq, gt, sql } from "drizzle-orm";
-import { getDB, tokenHolders, tokens, users } from "../db";
+import { getDB, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
 
 import { Env } from "../env";
@@ -134,11 +134,11 @@ export async function awardGraduationPoints(
   mint: string,
 ): Promise<void> {
   const db = getDB(env);
+  const redisCache = createRedisCache(env);
 
   // Last swap user
   let lastSwapUser: string | null = null;
   try {
-    const redisCache = createRedisCache(env);
     const listKey = redisCache.getKey(`swapsList:${mint}`);
     const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
 
@@ -177,11 +177,25 @@ export async function awardGraduationPoints(
   }
 
   // Holding through graduation
-  const holders = await db
-    .select()
-    .from(tokenHolders)
-    .where(eq(tokenHolders.mint, mint))
-    .execute();
+  let holders: any[] = [];
+  const holdersListKey = redisCache.getKey(`holders:${mint}`);
+  try {
+    const holdersString = await redisCache.get(holdersListKey);
+    if (holdersString) {
+      holders = JSON.parse(holdersString);
+    } else {
+      // Use logger if available
+      console.log(
+        `No holders found in Redis for ${mint} during graduation point calculation.`,
+      );
+    }
+  } catch (redisError) {
+    console.error(
+      `Failed to get holders from Redis for graduation points (${mint}):`,
+      redisError,
+    );
+    // Continue without awarding holder points if Redis fails
+  }
 
   const [priceRow] = await db
     .select({ tokenPriceUSD: tokens.tokenPriceUSD })

@@ -1,10 +1,16 @@
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, ParsedAccountData } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
 import { createRedisCache } from "../redis/redisCacheService";
 import { retryOperation } from "../raydium/utils";
-import { calculateFeaturedScore, getFeaturedMaxValues, logger } from "../util";
+import {
+  calculateFeaturedScore,
+  getFeaturedMaxValues,
+  logger,
+  getRpcUrl,
+  updateHoldersCache as utilUpdateHoldersCache,
+} from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
 // Define max swaps to keep in Redis list (consistent with other files)
@@ -346,7 +352,11 @@ export async function processLastValidSwap(
       : env.MAINNET_SOLANA_RPC_URL;
 
   const connection = new Connection(rpcUrl, "confirmed");
-  const mint = token.address;
+  const mint = token.mint;
+  if (!mint) {
+    logger.error("processLastValidSwap: Token object missing mint property.");
+    return;
+  }
 
   // Fetch the last `limit` signatures
   const sigs = await connection.getSignaturesForAddress(new PublicKey(mint), {

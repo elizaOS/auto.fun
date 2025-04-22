@@ -7,7 +7,7 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
-import { getDB, TokenHolderInsert, tokenHolders, tokens } from "./db";
+import { getDB, tokens } from "./db";
 import { Env } from "./env";
 import { getSOLPrice } from "./mcap";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
@@ -175,47 +175,37 @@ export class ExternalToken {
     const now = new Date();
 
     const allHolders = tokenSupply
-      ? codexHolders.items.map(
-          (holder): TokenHolderInsert => ({
-            id: crypto.randomUUID(),
-            mint: this.mint,
-            address: holder.address,
-            amount: holder.shiftedBalance,
-            percentage: (holder.shiftedBalance / tokenSupply) * 100,
-            lastUpdated: now,
-          }),
-        )
+      ? codexHolders.items.map((holder): any => ({
+          mint: this.mint,
+          address: holder.address,
+          amount: holder.shiftedBalance,
+          percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
+        }))
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const MAXIMUM_HOLDERS_STORED = 50;
-    const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
-
-    if (holders.length > 0) {
-      const MAX_SQLITE_PARAMETERS = 100;
-      const parametersPerHolder = Object.keys(holders[0]).length;
-      const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
-
-      for (let i = 0; i < holders.length; i += batchSize) {
-        const batch = holders.slice(i, i + batchSize);
-        await this.db
-          .insert(tokenHolders)
-          .values(batch)
-          .onConflictDoUpdate({
-            target: [tokenHolders.address],
-            set: {
-              amount: batch[0].amount,
-              percentage: batch[0].percentage,
-              lastUpdated: now,
-            },
-          });
-      }
+    const redisCache = createRedisCache(this.env);
+    const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+    try {
+      await redisCache.set(holdersListKey, JSON.stringify(allHolders));
+      logger.log(
+        `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`,
+      );
+    } catch (redisError) {
+      logger.error(
+        `ExternalToken: Failed to store holders in Redis for ${this.mint}:`,
+        redisError,
+      );
     }
 
-    await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
+    const top50Holders = allHolders.slice(0, 50);
+    await this.wsClient
+      .to(`token-${this.mint}`)
+      .emit("newHolder", top50Holders);
 
-    return holders;
+    return top50Holders;
   }
   // fetch and update swap data
   public async updateLatestSwapData(

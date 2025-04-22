@@ -1,15 +1,14 @@
-import { logger } from "./logger";
-import { Env } from "./env";
-import { initSolanaConfig, getProgram } from "./solana";
-import { Autofun } from "./target/types/autofun";
-import { Wallet } from "./tokenSupplyHelpers/customWallet";
-import { PublicKey } from "@solana/web3.js";
-import { getDB, Token, tokenHolders, tokens } from "./db";
-import { CacheService } from "./cache";
 import { fetchDigitalAsset } from "@metaplex-foundation/mpl-token-metadata";
+import { PublicKey } from "@solana/web3.js";
+import { CacheService } from "./cache";
+import { Token } from "./db";
+import { Env } from "./env";
+import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
+import { getProgram, initSolanaConfig } from "./solana";
+import { Wallet } from "./tokenSupplyHelpers/customWallet";
 
-import { Umi, publicKey } from "@metaplex-foundation/umi";
+import { publicKey, Umi } from "@metaplex-foundation/umi";
 
 export const SEED_CONFIG = "config";
 export const SEED_BONDING_CURVE = "bonding_curve";

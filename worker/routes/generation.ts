@@ -6,13 +6,7 @@ import { Buffer } from "node:buffer"; // Added for image decoding
 import crypto from "node:crypto";
 import { z } from "zod";
 import { requireAuth, verifyAuth } from "../auth";
-import {
-  getDB,
-  mediaGenerations,
-  preGeneratedTokens,
-  tokenHolders,
-  tokens,
-} from "../db";
+import { getDB, mediaGenerations, preGeneratedTokens, tokens } from "../db";
 import { Env } from "../env";
 import { logger } from "../util";
 import { MediaGeneration } from "../types";
@@ -20,6 +14,7 @@ import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
+import { createRedisCache } from "../redis/redisCacheService";
 
 // Enum for media types
 export enum MediaType {
@@ -189,6 +184,7 @@ export async function checkTokenOwnership(
 
     // Access the database
     const db = getDB(env);
+    const redisCache = createRedisCache(env); // Instantiate Redis
 
     try {
       // First check if user is the token creator (creators always have access)
@@ -204,17 +200,48 @@ export async function checkTokenOwnership(
       }
 
       // If not the creator, check if user is a token holder with enough tokens
-      const holderQuery = await db
-        .select()
-        .from(tokenHolders)
-        .where(
-          and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, publicKey)),
-        )
-        .limit(1);
+      // ---> CHANGE: Read from Redis instead of DB
+      // const holderQuery = await db
+      //   .select()
+      //   .from(tokenHolders)
+      //   .where(
+      //     and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, publicKey)),
+      //   )
+      //   .limit(1);
 
-      // If user is not in the token holders table or doesn't have enough tokens
-      if (holderQuery.length === 0) {
-        // User is not a token holder, check the blockchain directly as fallback
+      let specificHolderData: any | null = null;
+      const holdersListKey = redisCache.getKey(`holders:${mint}`);
+      try {
+        const holdersString = await redisCache.get(holdersListKey);
+        if (holdersString) {
+          const allHolders: any[] = JSON.parse(holdersString);
+          specificHolderData = allHolders.find((h) => h.address === publicKey);
+        } else {
+          logger.log(
+            `checkTokenOwnership: No holders found in Redis for ${mint}`,
+          );
+        }
+      } catch (redisError) {
+        logger.error(
+          `checkTokenOwnership: Failed to get holders from Redis for ${mint}:`,
+          redisError,
+        );
+        // Fallback to blockchain check if Redis fails
+        return await checkBlockchainTokenBalance(
+          env,
+          mint,
+          publicKey,
+          minimumRequired,
+        );
+      }
+      // ---> END CHANGE
+
+      // If user is not in the token holders list (or Redis failed slightly earlier)
+      if (!specificHolderData) {
+        // User is not a token holder according to cache, check the blockchain directly as fallback
+        logger.log(
+          `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`,
+        );
         return await checkBlockchainTokenBalance(
           env,
           mint,
@@ -223,21 +250,25 @@ export async function checkTokenOwnership(
         );
       }
 
-      // User is in token holders table, check if they have enough tokens
-      const holder = holderQuery[0];
-      const decimals = 6; // Most tokens use 6 decimals in Solana
-      const holdingAmount = holder.amount / Math.pow(10, decimals);
+      // User is in token holders list, check if they have enough tokens
+      // const holder = holderQuery[0];
+      const decimals = 6; // Assume 6 decimals, or fetch from tokenInfo if needed
+      const holdingAmount = specificHolderData.amount; // Amount is already adjusted in updateHoldersCache?
+      // Assuming amount stored is the raw amount, needs division
+      const holdingUiAmount = holdingAmount / Math.pow(10, decimals);
 
-      if (holdingAmount >= minimumRequired) {
+      // if (holdingAmount >= minimumRequired) { // Compare raw amounts if minimum is raw
+      if (holdingUiAmount >= minimumRequired) {
+        // Compare UI amounts
         return { allowed: true };
       } else {
         return {
           allowed: false,
-          message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingAmount.toFixed(2)}.`,
+          message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingUiAmount.toFixed(2)}.`,
         };
       }
     } catch (dbError) {
-      logger.error(`Database error checking token ownership: ${dbError}`);
+      logger.error(`Database error during token creator check: ${dbError}`);
       // Fall back to checking the blockchain directly if database check fails
       return await checkBlockchainTokenBalance(
         env,

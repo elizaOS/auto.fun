@@ -94,21 +94,6 @@ CREATE TABLE "pre_generated_tokens" (
 	"used" integer DEFAULT 0 NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "swaps" (
-	"id" text PRIMARY KEY NOT NULL,
-	"token_mint" text NOT NULL,
-	"user" text NOT NULL,
-	"type" text NOT NULL,
-	"direction" integer NOT NULL,
-	"amount_in" real,
-	"amount_out" real,
-	"price_impact" real,
-	"price" real NOT NULL,
-	"tx_id" text NOT NULL,
-	"timestamp" timestamp NOT NULL,
-	CONSTRAINT "swaps_tx_id_unique" UNIQUE("tx_id")
-);
---> statement-breakpoint
 CREATE TABLE "token_agents" (
 	"id" text PRIMARY KEY NOT NULL,
 	"token_mint" text NOT NULL,
@@ -118,16 +103,6 @@ CREATE TABLE "token_agents" (
 	"twitter_image_url" text NOT NULL,
 	"official" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "token_holders" (
-	"id" text PRIMARY KEY NOT NULL,
-	"mint" text NOT NULL,
-	"address" text NOT NULL,
-	"amount" real NOT NULL,
-	"percentage" real NOT NULL,
-	"last_updated" timestamp NOT NULL,
-	CONSTRAINT "token_holders_address_unique" UNIQUE("address")
 );
 --> statement-breakpoint
 CREATE TABLE "tokens" (

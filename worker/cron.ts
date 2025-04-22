@@ -22,11 +22,11 @@ import {
   calculateFeaturedScore,
   createNewTokenData,
   getFeaturedMaxValues,
-  updateHoldersCache,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
 import { generateAdditionalTokenImages } from "./routes/generation";
 import { createRedisCache } from "./redis/redisCacheService";
+import { updateHoldersCache } from "./routes/token";
 
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;

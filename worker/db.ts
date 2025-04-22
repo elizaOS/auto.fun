@@ -96,22 +96,6 @@ export const fees = pgTable("fees", {
   expiresAt: timestamp("expires_at").notNull(),
 });
 
-// TokenHolder schema
-export const tokenHolders = pgTable(
-  "token_holders",
-  {
-    id: text("id").primaryKey(),
-    mint: text("mint").notNull(),
-    address: text("address").notNull(),
-    amount: real("amount").notNull(),
-    percentage: real("percentage").notNull(),
-    lastUpdated: timestamp("last_updated").notNull(),
-  },
-  (table) => ({
-    mintAddressUnique: unique().on(table.mint, table.address),
-  }),
-);
-
 // Messages schema
 export const messages = pgTable("messages", {
   id: text("id").primaryKey(),
@@ -280,9 +264,6 @@ export type TokenInsert = typeof schema.tokens.$inferInsert;
 export type Fee = typeof schema.fees.$inferSelect;
 export type FeeInsert = typeof schema.fees.$inferInsert;
 
-export type TokenHolder = typeof schema.tokenHolders.$inferSelect;
-export type TokenHolderInsert = typeof schema.tokenHolders.$inferInsert;
-
 export type Message = typeof schema.messages.$inferSelect;
 export type MessageInsert = typeof schema.messages.$inferInsert;
 
@@ -318,7 +299,6 @@ export type MetadataInsert = typeof metadata.$inferInsert;
 const schema = {
   tokens,
   fees,
-  tokenHolders,
   messages,
   messageLikes,
   users,

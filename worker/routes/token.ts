@@ -11,15 +11,7 @@ import { createRedisCache } from "../redis/redisCacheService";
 
 import { PgSelect } from "drizzle-orm/pg-core";
 import { updateTokens } from "../cron";
-import {
-  getDB,
-  Token,
-  tokenAgents,
-  TokenHolder,
-  tokenHolders,
-  tokens,
-  vanityKeypairs,
-} from "../db";
+import { getDB, Token, tokenAgents, tokens, vanityKeypairs } from "../db";
 import { Env } from "../env";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
@@ -1021,6 +1013,7 @@ export async function updateHoldersCache(
     // Use the utility function to get the RPC URL with proper API key
     const connection = new Connection(getRpcUrl(env, imported));
     const db = getDB(env);
+    const redisCache = createRedisCache(env); // Instantiate Redis cache
 
     // Get all token accounts for this mint using getParsedProgramAccounts
     // This method is more reliable for finding all holders
@@ -1050,7 +1043,8 @@ export async function updateHoldersCache(
 
     // Process accounts to extract holder information
     let totalTokens = 0;
-    const holders: TokenHolder[] = [];
+    // Change type from TokenHolder to any or a new local type if needed
+    const holders: any[] = [];
 
     // Process each account to get holder details
     for (const account of accounts) {
@@ -1070,13 +1064,14 @@ export async function updateHoldersCache(
         // Add to total tokens for percentage calculation
         totalTokens += tokenBalance;
 
+        // Use a consistent structure, maybe matching old DB schema if needed
         holders.push({
-          id: crypto.randomUUID(),
-          mint,
+          // id: crypto.randomUUID(), // No longer needed for DB
+          mint, // Keep for context within the stored object
           address: ownerAddress,
           amount: tokenBalance,
           percentage: 0, // Will calculate after we have the total
-          lastUpdated: new Date(),
+          lastUpdated: new Date(), // Keep track of update time
         });
       } catch (error: any) {
         logger.error(`Error processing account for ${mint}:`, error);
@@ -1095,79 +1090,70 @@ export async function updateHoldersCache(
     // Sort holders by amount (descending)
     holders.sort((a, b) => b.amount - a.amount);
 
-    // logger.log(`Processing ${holders.length} holders for token ${mint}`);
-
+    // ---> CHANGE: Store full list in Redis instead of DB
     // Clear existing holders and insert new ones
-    // logger.log(`Clearing existing holders for token ${mint}`);
-    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+    // await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    try {
+      // Store the entire list, stringified. No TTL.
+      await redisCache.set(holdersListKey, JSON.stringify(holders));
+      logger.log(
+        `Stored ${holders.length} holders in Redis list ${holdersListKey}`,
+      );
+    } catch (redisError) {
+      logger.error(`Failed to store holders in Redis for ${mint}:`, redisError);
+      // Decide if we should proceed without saving holders (e.g., update token count anyway?)
+    }
+    // ---> END CHANGE
 
-    // For large number of holders, we need to limit what we insert
-    // to avoid overwhelming the database
-    const MAX_HOLDERS_TO_SAVE = 500; // Reasonable limit for most UI needs
-    const holdersToSave =
-      holders.length > MAX_HOLDERS_TO_SAVE
-        ? holders.slice(0, MAX_HOLDERS_TO_SAVE)
-        : holders;
+    // Limit what we save/emit for performance (optional, depends on need)
+    // const MAX_HOLDERS_TO_SAVE = 500;
+    // const holdersToSave = holders.length > MAX_HOLDERS_TO_SAVE ? holders.slice(0, MAX_HOLDERS_TO_SAVE) : holders;
 
-    // logger.log(`Will insert ${holdersToSave.length} holders (from ${holders.length} total) for token ${mint}`);
+    // ---> CHANGE: Remove DB insert logic
+    // if (holdersToSave.length > 0) {
+    //   const BATCH_SIZE = 10;
+    //   for (let i = 0; i < holdersToSave.length; i += BATCH_SIZE) {
+    //     try {
+    //       const batch = holdersToSave.slice(i, i + BATCH_SIZE);
+    //       await db
+    //         .insert(tokenHolders)
+    //         .values(batch)
+    //         .onConflictDoUpdate({
+    //           target: [tokenHolders.mint, tokenHolders.address],
+    //           set: {
+    //             amount: sql`excluded.amount`,
+    //             percentage: sql`excluded.percentage`,
+    //             lastUpdated: new Date(),
+    //           },
+    //         });
+    //     } catch (insertError) {
+    //       logger.error(`Error inserting batch for token ${mint}:`, insertError);
+    //     }
+    //   }
+    // }
+    // ---> END CHANGE
 
-    if (holdersToSave.length > 0) {
-      // Use a very small batch size to avoid SQLite parameter limits
-      const BATCH_SIZE = 10;
-
-      // Insert in batches to avoid overwhelming the database
-      for (let i = 0; i < holdersToSave.length; i += BATCH_SIZE) {
-        try {
-          const batch = holdersToSave.slice(i, i + BATCH_SIZE);
-          const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-          const totalBatches = Math.ceil(holdersToSave.length / BATCH_SIZE);
-
-          // logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
-
-          await db
-            .insert(tokenHolders)
-            .values(batch)
-            .onConflictDoUpdate({
-              target: [tokenHolders.mint, tokenHolders.address],
-              set: {
-                amount: sql`excluded.amount`, // Use excluded value
-                percentage: sql`excluded.percentage`, // Use excluded value
-                lastUpdated: new Date(),
-              },
-            });
-
-          // logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
-        } catch (insertError) {
-          logger.error(`Error inserting batch for token ${mint}:`, insertError);
-          // Continue with next batch even if this one fails
-        }
-      }
-
-      try {
-        const wsClient = getWebSocketClient(env);
-        // Only emit a limited set of holders to avoid overwhelming WebSockets
-        const limitedHolders = holdersToSave.slice(0, 50);
-        wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
-        // logger.log(`Emitted WebSocket update with ${limitedHolders.length} holders`);
-      } catch (wsError) {
-        logger.error(`WebSocket error when emitting holder update:`, wsError);
-        // Don't fail if WebSocket fails
-      }
+    // Emit limited set of holders via WebSocket
+    try {
+      const wsClient = getWebSocketClient(env);
+      const limitedHolders = holders.slice(0, 50); // Emit only top 50
+      wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
+    } catch (wsError) {
+      logger.error(`WebSocket error when emitting holder update:`, wsError);
     }
 
     // Update token holder count with the ACTUAL total count
-    // even if we've only stored a subset
     await db
       .update(tokens)
       .set({
-        holderCount: holders.length, // Use full count, not just what we saved
+        holderCount: holders.length, // Use full count
         lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
-    // Emit WebSocket event to notify of holder update
+    // Emit WebSocket event to notify of token update (with new holder count)
     try {
-      // Get updated token data
       const tokenData = await db
         .select()
         .from(tokens)
@@ -1175,25 +1161,21 @@ export async function updateHoldersCache(
         .limit(1);
 
       if (tokenData && tokenData.length > 0) {
-        // Emit event with updated holder count
         await processTokenUpdateEvent(env, {
           ...tokenData[0],
           event: "holdersUpdated",
           holderCount: holders.length, // Use full count here too
           timestamp: new Date().toISOString(),
         });
-
-        // logger.log(`Emitted holder update event for token ${mint} with ${holders.length} holders count`);
       }
     } catch (wsError) {
-      // Don't fail if WebSocket fails
       logger.error(`WebSocket error when emitting holder update: ${wsError}`);
     }
 
-    return holders.length; // Return full count, not just what we saved
+    return holders.length; // Return full count
   } catch (error) {
     logger.error(`Error updating holders for token ${mint}:`, error);
-    return 0; // Return 0 instead of throwing to avoid crashing the endpoint
+    return 0;
   }
 }
 
@@ -1479,59 +1461,56 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    // --- BEGIN REDIS CACHE CHECK ---
-    const cacheKey = `tokenHolders:${mint}:${limit}:${page}`;
-    const redisCache = createRedisCache(c.env as Env);
+    // --- REMOVE REDIS CACHE CHECK for paginated result ---
+    // const cacheKey = `tokenHolders:${mint}:${limit}:${page}`;
+    // ... (old cache check logic removed) ...
+    // --- END REMOVE REDIS CACHE CHECK ---
 
-    if (redisCache) {
-      try {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          logger.log(`[Cache Hit] ${cacheKey}`);
-          const parsedData = JSON.parse(cachedData);
-          // Basic validation
-          if (parsedData && Array.isArray(parsedData.holders)) {
-            return c.json(parsedData);
-          } else {
-            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-          }
-        } else {
-          logger.log(`[Cache Miss] ${cacheKey}`);
-        }
-      } catch (cacheError) {
-        logger.error(`Redis cache GET error for holders:`, cacheError);
+    // ---> CHANGE: Read full list from Redis instead of DB
+    // const db = getDB(c.env);
+    // const allHolders = await db
+    //   .select()
+    //   .from(tokenHolders)
+    //   .where(eq(tokenHolders.mint, mint))
+    //   .orderBy(desc(tokenHolders.amount));
+
+    let allHolders: any[] = [];
+    const redisCache = createRedisCache(c.env);
+    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    try {
+      const holdersString = await redisCache.get(holdersListKey);
+      if (holdersString) {
+        allHolders = JSON.parse(holdersString);
+        logger.log(
+          `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`,
+        );
+      } else {
+        logger.log(`No holders found in Redis for key ${holdersListKey}`);
+        // Return empty if not found in cache (as updateHoldersCache should populate it)
+        return c.json({
+          holders: [],
+          page: 1,
+          totalPages: 0,
+          total: 0,
+        });
       }
+    } catch (redisError) {
+      logger.error(`Failed to get holders from Redis for ${mint}:`, redisError);
+      return c.json({ error: "Failed to retrieve holder data" }, 500);
     }
-    // --- END REDIS CACHE CHECK ---
-
-    const db = getDB(c.env);
-
-    // Fetch all holders first to get total count, then paginate in code
-    // This is less efficient for DB but simpler for caching the paginated result
-    const allHolders = await db
-      .select()
-      .from(tokenHolders)
-      .where(eq(tokenHolders.mint, mint))
-      .orderBy(desc(tokenHolders.amount)); // Sort before pagination
+    // ---> END CHANGE
 
     const totalHolders = allHolders.length;
 
     if (totalHolders === 0) {
+      // This case is handled above if Redis returns null/empty
+      // Kept for safety, but should be unreachable if Redis logic is correct
       const responseData = {
         holders: [],
         page: 1,
         totalPages: 0,
         total: 0,
       };
-      // Cache empty result
-      if (redisCache) {
-        try {
-          await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
-          logger.log(`Cached empty holders for ${cacheKey} with 15s TTL`);
-        } catch (cacheError) {
-          logger.error(`Redis cache SET error for empty holders:`, cacheError);
-        }
-      }
       return c.json(responseData);
     }
 
@@ -1546,20 +1525,15 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
       total: totalHolders,
     };
 
-    // --- BEGIN REDIS CACHE SET ---
-    if (redisCache) {
-      try {
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
-        logger.log(`Cached holders for ${cacheKey} with 15s TTL`);
-      } catch (cacheError) {
-        logger.error(`Redis cache SET error for holders:`, cacheError);
-      }
-    }
-    // --- END REDIS CACHE SET ---
+    // --- REMOVE REDIS CACHE SET for paginated result ---
+    // if (redisCache) {
+    // ... (old cache set logic removed) ...
+    // }
+    // --- END REMOVE REDIS CACHE SET ---
 
     return c.json(responseData);
   } catch (error) {
-    logger.error(`Database error in token holders route: ${error}`);
+    logger.error(`Error in token holders route: ${error}`);
     return c.json(
       {
         holders: [],
@@ -2448,39 +2422,59 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network
     }
 
+    // ---> CHANGE: Read holder info from full Redis list
     // Check token holders table in DB
-    const holderQuery = await db
-      .select({
-        amount: tokenHolders.amount,
-        percentage: tokenHolders.percentage,
-        lastUpdated: tokenHolders.lastUpdated,
-      }) // Select only needed
-      .from(tokenHolders)
-      .where(
-        and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address)),
-      )
-      .limit(1);
+    // const holderQuery = await db
+    //   .select({ amount: tokenHolders.amount, percentage: tokenHolders.percentage, lastUpdated: tokenHolders.lastUpdated })
+    //   .from(tokenHolders)
+    //   .where(
+    //     and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address)),
+    //   )
+    //   .limit(1);
+
+    let specificHolderData: any | null = null;
+    let lastUpdated: Date | null = null;
+    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    try {
+      const holdersString = await redisCache.get(holdersListKey);
+      if (holdersString) {
+        const allHolders: any[] = JSON.parse(holdersString);
+        specificHolderData = allHolders.find((h) => h.address === address);
+        // Extract lastUpdated if available (assuming it's stored)
+        lastUpdated = specificHolderData?.lastUpdated
+          ? new Date(specificHolderData.lastUpdated)
+          : null;
+      }
+    } catch (redisError) {
+      logger.error(
+        `CheckBalance: Failed to get holders from Redis for ${mint}:`,
+        redisError,
+      );
+      // Continue, will likely result in 0 balance if not creator
+    }
+    // ---> END CHANGE
 
     let responseData;
 
-    if (holderQuery.length > 0) {
-      // User is in the token holders table
-      const holder = holderQuery[0];
-      const balance = holder.amount; // Keep as precise number, format on frontend
+    // if (holderQuery.length > 0) {
+    if (specificHolderData) {
+      // User is in the token holders list from Redis
+      // const holder = holderQuery[0];
+      const balance = specificHolderData.amount; // Keep as precise number
 
       responseData = {
         balance,
-        percentage: holder.percentage,
+        percentage: specificHolderData.percentage,
         isCreator,
         mint,
         address,
-        lastUpdated: holder.lastUpdated,
-        network: c.env.NETWORK || "unknown", // Add network info from env
-        onChain: false, // Indicate data is from DB cache
+        lastUpdated: lastUpdated, // Use timestamp from Redis data
+        network: c.env.NETWORK || "unknown",
+        onChain: false, // Indicate data is from cache
       };
     } else if (isCreator) {
       logger.log(
-        `Creator ${address} not found in DB holders for ${mint}, checking on-chain.`,
+        `Creator ${address} not found in Redis holders for ${mint}, checking on-chain.`,
       );
       // User is the creator but not in holders table, might have balance on-chain
       // Pass c context to the helper function

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { Env } from "../env";
-import { getDB, tokens, swaps, users } from "../db";
+import { getDB, tokens, users } from "../db";
 import { desc, eq, sql } from "drizzle-orm";
 import { logger } from "../util";
 
@@ -35,12 +35,7 @@ app.get("/:address", async (c) => {
     }
 
     // Get the 20 latest transactions for this user
-    const transactions = await db
-      .select()
-      .from(swaps)
-      .where(eq(swaps.user, address))
-      .orderBy(desc(swaps.timestamp))
-      .limit(20);
+    const transactions: any[] = []; // Return empty array for now
 
     // Get tokens created by this user
     const tokensCreated = await db
@@ -50,7 +45,7 @@ app.get("/:address", async (c) => {
 
     return c.json({
       user,
-      transactions,
+      transactions, // Now always empty
       tokensCreated,
     });
   } catch (error) {

@@ -17,7 +17,7 @@ import {
 } from "@solana/web3.js";
 import { desc, eq, sql } from "drizzle-orm";
 import { CacheService } from "./cache";
-import { getDB, Token, tokenHolders, tokens } from "./db";
+import { getDB, Token, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig, getProgram } from "./solana";
@@ -814,101 +814,6 @@ export function splitIntoLines(text?: string): string[] | undefined {
     .split("\n")
     .map((line) => line.trim().replace("\n", ""))
     .filter((line) => line.length > 0);
-}
-
-export async function updateHoldersCache(env: Env, mint: string) {
-  try {
-    const db = getDB(env);
-    const connection = new Connection(getRpcUrl(env));
-
-    // Get token holders from Solana
-    const accounts = await connection.getParsedProgramAccounts(
-      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
-      {
-        filters: [
-          {
-            dataSize: 165, // Size of token account
-          },
-          {
-            memcmp: {
-              offset: 0,
-              bytes: mint, // Mint address
-            },
-          },
-        ],
-      },
-    );
-
-    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
-
-    // Process accounts
-    let totalTokens = 0;
-    const holders: any[] = [];
-
-    for (const account of accounts) {
-      const parsedAccountInfo = account.account.data as ParsedAccountData;
-      const tokenBalance =
-        parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
-
-      if (tokenBalance > 0) {
-        totalTokens += tokenBalance;
-        holders.push({
-          address: parsedAccountInfo.parsed?.info?.owner,
-          amount: tokenBalance,
-        });
-      }
-    }
-
-    // Calculate percentages and prepare for database
-    const holderRecords = holders.map((holder) => ({
-      id: crypto.randomUUID(),
-      mint,
-      address: holder.address,
-      amount: holder.amount,
-      percentage: (holder.amount / totalTokens) * 100,
-      lastUpdated: new Date(),
-    }));
-
-    // Remove old holders data
-    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
-
-    // Insert new holders data in batches of 100 to avoid SQLite parameter limits
-    if (holderRecords.length > 0) {
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < holderRecords.length; i += BATCH_SIZE) {
-        const batch = holderRecords.slice(i, i + BATCH_SIZE);
-        await db.insert(tokenHolders).values(batch).onConflictDoNothing();
-      }
-    }
-
-    // Update the token with holder count
-    await db
-      .update(tokens)
-      .set({
-        holderCount: holderRecords.length,
-        lastUpdated: new Date(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    // Try to emit websocket update for holders
-    try {
-      // Get the WebSocket client
-      const wsClient = getWebSocketClient(env);
-
-      // Emit event to notify of holder update
-      await wsClient.emit(`token-${mint}`, "newHolder", holderRecords);
-
-      logger.log(`Emitted holders update for token ${mint}`);
-    } catch (wsError) {
-      // Don't fail if WebSocket fails
-      logger.error(`Error emitting WebSocket event: ${wsError}`);
-    }
-
-    return holderRecords.length;
-  } catch (error) {
-    logger.error(`Error updating holders for ${mint}:`, error);
-    throw error;
-  }
 }
 
 /**
