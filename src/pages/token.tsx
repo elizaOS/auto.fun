@@ -333,7 +333,7 @@ export default function Page() {
 
               {/* Contract address */}
               <div className="flex flex-col gap-2">
-                <div className="flex">
+                <div className="flex relative">
                   <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
                     <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
                       CA
@@ -343,9 +343,9 @@ export default function Page() {
                     <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
                       <MiddleEllipsis text={token?.mint} />
                     </span>
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <CopyButton text={token?.mint} />
-                    </div>
+                  </div>
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-autofun-background-input">
+                    <CopyButton text={token?.mint} />
                   </div>
                 </div>
                 {token?.creator === normalizedWallet && !token?.imported && (
