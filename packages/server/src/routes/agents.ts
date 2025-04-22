@@ -1,16 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { getDB, tokenAgents, tokens } from "../db";
-import { Env } from "../env";
-import { logger } from "../util";
+import { logger } from "../logger";
+// import { TwitterAgent } from "../agents/twitter/twitterAgent";
+import { uploadToCloudflare } from "../uploader";
+import { Buffer } from "node:buffer";
 
 // Define the router with environment typing
-const agentRouter = new Hono<{
-  Bindings: Env;
-  Variables: {
-    user?: { publicKey: string } | null;
-  };
-}>();
+const agentRouter = new Hono<{ Bindings: {} }>();
 
 agentRouter.get("/token/:mint/agents", async (c) => {
   try {
@@ -139,6 +136,7 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
     let twitterUserId = userId;
     let twitterUserName = `user_${userId.substring(0, 5)}`;
     let twitterImageUrl = "/default-avatar.png";
+    let fetchedOriginalUrl = ""; // Store the original URL temporarily
 
     try {
       // Try to fetch user profile
@@ -158,79 +156,53 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
 
         if (profileData.data && profileData.data.id) {
           twitterUserId = profileData.data.id;
-          // If username is available, use it
           if (profileData.data.username) {
             twitterUserName = `@${profileData.data.username}`;
           }
-
-          // Handle profile image if available
           if (profileData.data.profile_image_url) {
-            // Store original Twitter URL temporarily
-            const originalImageUrl = profileData.data.profile_image_url;
-
-            // Replace '_normal' with '_400x400' to get a larger image
-            const largeImageUrl = originalImageUrl.replace(
-              "_normal",
-              "_400x400",
-            );
-
-            try {
-              // Fetch the image
-              const imageResponse = await fetch(largeImageUrl);
-              if (imageResponse.ok) {
-                // Generate a unique filename
-                const imageId = crypto.randomUUID();
-                const imageKey = `twitter-images/${imageId}.jpg`;
-
-                // Get the image as arrayBuffer
-                const imageBuffer = await imageResponse.arrayBuffer();
-
-                // Store in R2 if available
-                if (R2) {
-                  await R2.put(imageKey, imageBuffer, {
-                    httpMetadata: {
-                      contentType: "image/jpeg",
-                      cacheControl: "public, max-age=31536000", // Cache for 1 year
-                    },
-                  });
-
-                  // Set the URL to our cached version
-                  twitterImageUrl = `${process.env.API_URL}/api/twitter-image/${imageId}`;
-                  logger.log(
-                    `Cached Twitter profile image at: ${twitterImageUrl}`,
-                  );
-                } else {
-                  // If R2 is not available, use the original URL
-                  twitterImageUrl = largeImageUrl;
-                  logger.log("R2 not available, using original Twitter URL");
-                }
-              } else {
-                logger.warn(
-                  `Failed to fetch Twitter profile image: ${imageResponse.status}`,
-                );
-                // Fall back to the original URL
-                twitterImageUrl = originalImageUrl;
-              }
-            } catch (imageError) {
-              logger.error("Error caching Twitter profile image:", imageError);
-              // Fall back to the original URL
-              twitterImageUrl = originalImageUrl;
-            }
+            fetchedOriginalUrl = profileData.data.profile_image_url.replace("_normal", "_400x400");
+            twitterImageUrl = fetchedOriginalUrl; // Use larger image URL by default
           }
         }
       } else {
         logger.warn(
           `Twitter profile fetch failed with status: ${profileResponse.status}`,
         );
-        // Continue with default values - we don't want to fail the agent creation
-        // just because we couldn't get user details
       }
     } catch (profileError) {
       logger.error("Error fetching Twitter profile:", profileError);
-      // Continue with default values
     }
 
-    // Step 2: Check if this Twitter user is already connected to this token
+    // Step 2: Upload profile image if a valid URL was fetched
+    let finalImageUrl = twitterImageUrl; // Initialize with fetched or default URL
+    if (fetchedOriginalUrl) { // Only attempt upload if we got a URL from Twitter
+        try {
+            logger.log("Fetching Twitter profile image from URL:", fetchedOriginalUrl);
+            const imageResponse = await fetch(fetchedOriginalUrl);
+            if (imageResponse.ok) {
+                const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+                const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+                const fileExtension = contentType.split("/")[1] || "jpg";
+                // Use twitterUserId which should be unique
+                const filename = `agent-profiles/${twitterUserId}-${Date.now()}.${fileExtension}`;
+
+                // Use uploadToCloudflare (which uses S3)
+                finalImageUrl = await uploadToCloudflare(
+                    imageBuffer,
+                    { filename, contentType, basePath: 'agent-profiles' }
+                );
+                logger.log("Uploaded Twitter profile image via S3:", finalImageUrl);
+            } else {
+                logger.warn(`Failed to fetch Twitter profile image: ${imageResponse.status}, using original URL: ${fetchedOriginalUrl}`);
+                finalImageUrl = fetchedOriginalUrl; // Keep original URL if fetch fails
+            }
+        } catch (imageError) {
+            logger.error("Error fetching/uploading Twitter profile image:", imageError);
+            finalImageUrl = fetchedOriginalUrl; // Keep original URL on error
+        }
+    }
+
+    // Step 3: Check if this Twitter user is already connected to this token
     const db = getDB();
     const existingAgent = await db
       .select()
@@ -256,7 +228,7 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
       );
     }
 
-    // Step 3: Check if the owner is the token creator to mark as official
+    // Step 4: Check if the owner is the token creator to mark as official
     const tokenData = await db
       .select({ creator: tokens.creator })
       .from(tokens)
@@ -268,14 +240,14 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
       tokenData.length > 0 &&
       tokenData[0].creator === user.publicKey;
 
-    // Step 4: Create new agent
-    const newAgentData = {
+    // Step 5: Create new agent
+    const newAgentData: any = {
       id: crypto.randomUUID(),
       tokenMint: mint,
       ownerAddress: user.publicKey,
       twitterUserId: twitterUserId,
       twitterUserName: twitterUserName,
-      twitterImageUrl: twitterImageUrl,
+      twitterImageUrl: finalImageUrl, // Use the potentially uploaded S3 URL
       official: isOfficial ? 1 : 0,
       createdAt: new Date(),
     };
@@ -296,6 +268,21 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
 
     // TODO: Emit WebSocket event for new agent?
 
+    // Step 6: Initialize the Twitter Agent class (Commented out)
+    /*
+    try {
+      const twitterAgentInstance = new TwitterAgent(newAgent);
+      logger.log(`Initialized TwitterAgent class for agent ${newAgent.id}`);
+      // Example: Start monitoring or perform initial setup
+      (async () => await twitterAgentInstance.startMonitoring())(); // Simple async call
+    } catch (agentInitError) {
+      logger.error(
+        `Failed to initialize TwitterAgent class for ${newAgent.id}:`,
+        agentInitError,
+      );
+    }
+    */
+
     return c.json(newAgent, 201);
   } catch (error) {
     logger.error("Error connecting Twitter agent:", error);
@@ -309,6 +296,66 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
       500,
     );
   }
+});
+
+// ===== Placeholder for other Agent routes (Update, Delete) =====
+// GET /agents/:id - Fetch specific agent details
+// PUT /agents/:id - Update agent settings (e.g., status)
+// DELETE /agents/:id - Remove an agent link
+
+// Example PUT route structure (needs logic for auth, validation, cleanup)
+agentRouter.put("/:id", async (c) => {
+    // ... (Authentication & Authorization logic as before) ...
+    // ... (Fetch agent & check ownership) ...
+    // ... (Parse body for allowed update fields like status) ...
+    // ... (Update DB) ...
+    // ... (Perform actions based on update, e.g., stop/start monitoring - commented out) ...
+    /*
+    if (updatedAgent.length > 0 && updatedAgent[0].provider === "twitter") {
+      try {
+        const twitterAgentInstance = new TwitterAgent(updatedAgent[0]);
+        if (status === "inactive" || status === "paused") {
+          // await twitterAgentInstance.stopMonitoring();
+          logger.log(`Stopped monitoring for agent ${id} due to status change.`);
+        } else if (status === "active") {
+          // await twitterAgentInstance.startMonitoring();
+          logger.log(`Resumed monitoring for agent ${id} due to status change.`);
+        }
+      } catch (agentActionError) {
+        logger.error(
+          `Error performing action for agent ${id} after status update:`,
+          agentActionError,
+        );
+      }
+    }
+    */
+    return c.json({ message: "Agent update placeholder" }); // Placeholder
+});
+
+// Example DELETE route structure (needs logic for auth, validation, cleanup)
+agentRouter.delete("/:id", async (c) => {
+    // ... (Authentication & Authorization logic as before) ...
+    // ... (Fetch agent & check ownership) ...
+    // ... (Perform cleanup actions - commented out) ...
+     /*
+    if (agentToDelete.provider === "twitter") {
+      try {
+        // Need full agent data to instantiate class
+        const fullAgent = await db.select().from(agents).where(eq(agents.id, id)).limit(1);
+        if(fullAgent.length > 0) {
+           const twitterAgentInstance = new TwitterAgent(fullAgent[0]);
+          // await twitterAgentInstance.stopMonitoring(); // Ensure monitoring stops
+          // await twitterAgentInstance.cleanup(); // Perform any provider-specific cleanup
+          logger.log(`Performed cleanup for Twitter agent ${id}`);
+        }
+      } catch (cleanupError) {
+        logger.error(`Error during cleanup for agent ${id}:`, cleanupError);
+        // Decide whether to proceed with deletion despite cleanup error
+      }
+    }
+    */
+    // ... (Delete from DB) ...
+    return c.json({ success: true, message: "Agent delete placeholder" }); // Placeholder
 });
 
 export default agentRouter;

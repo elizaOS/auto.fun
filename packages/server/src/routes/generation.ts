@@ -5,9 +5,8 @@ import { Hono } from "hono";
 import { Buffer } from "node:buffer"; // Added for image decoding
 import crypto from "node:crypto";
 import { z } from "zod";
-import { requireAuth, verifyAuth } from "../auth";
+import { verifyAuth } from "../auth";
 import { getDB, mediaGenerations, preGeneratedTokens, tokens } from "../db";
-import { Env } from "../env";
 import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
@@ -362,18 +361,15 @@ export async function generateMedia(
   // Set default timeout - shorter for tests
   const timeout = 300000;
 
-  // Initialize fal.ai client dynamically if needed for video/audio or pro image
-  if (
-    data.type !== MediaType.IMAGE || data.mode === "pro" // Fal needed for Video, Audio, or Pro Image
-  ) {
-    if (!process.env.FAL_API_KEY) {
+  // Initialize fal.ai client
+  if (!process.env.FAL_API_KEY) {
       throw new Error("FAL_API_KEY environment variable not set.");
-    }
-    fal.config({
-      credentials: process.env.FAL_API_KEY,
-    });
-    logger.log("Fal AI client configured.");
   }
+  fal.config({
+    credentials: process.env.FAL_API_KEY,
+  });
+  logger.log("Fal AI client configured.");
+
 
   // Create a timeout promise
   const timeoutPromise = new Promise((_, reject) =>
@@ -385,83 +381,35 @@ export async function generateMedia(
 
   let generationPromise;
 
-  // Use Cloudflare Worker AI for image generation (fast mode)
-  if (data.type === MediaType.IMAGE && (!data.mode || data.mode === "fast")) {
-    // Use Cloudflare AI binding instead of external API
-    if (!process.env.AI) {
-      throw new Error("Cloudflare AI binding not configured");
-    }
-    logger.log("Using Cloudflare AI for fast image generation...");
+  // --- Image Generation (Fast & Pro using Fal) ---
+  if (data.type === MediaType.IMAGE) {
+      const isProMode = data.mode === "pro";
+      const model = isProMode ? "fal-ai/flux-pro/v1.1-ultra" : "fal-ai/flux/schnell";
+      const input: any = { prompt: data.prompt };
 
-    // Add retry logic for AI generation
-    const maxRetries = 3;
-    let lastError: any;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // Use the flux-1-schnell model via AI binding
-        const result = await process.env.AI.run(
-          "@cf/black-forest-labs/flux-1-schnell",
-          {
-            prompt: data.prompt,
-            steps: 4,
-          },
-        );
-
-        // Create data URL from the image buffer
-        // Assuming result is an ArrayBuffer or similar binary format
-        const imageBuffer = Buffer.from(result as ArrayBuffer); // Convert result to Buffer
-        const base64Image = imageBuffer.toString('base64');
-        const dataURI = `data:image/jpeg;base64,${base64Image}`; // Assuming JPEG, adjust if needed
-
-
-        // Return in a format compatible with our existing code
-        return {
-          data: {
-            images: [
-              {
-                url: dataURI,
-              },
-            ],
-          },
-        };
-      } catch (error) {
-        console.error(`Attempt ${attempt} failed:`, error);
-        lastError = error;
-
-        // If we haven't reached max retries, wait before trying again
-        if (attempt < maxRetries) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
+      if (isProMode) {
+          logger.log(`Using Fal AI (${model}) for pro image generation...`);
+          if (data.width) input.width = data.width;
+          if (data.height) input.height = data.height;
+          // Add any other pro-specific params here
+      } else {
+          logger.log(`Using Fal AI (${model}) for fast image generation...`);
+          input.num_inference_steps = 4; // Schnell default/equivalent
+          // Add any other schnell-specific params here
       }
-    }
 
-    // If we get here, all retries failed
-    throw new Error(
-      `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`,
-    );
-  } else if (data.type === MediaType.IMAGE && data.mode === "pro") {
-    // Use flux-pro ultra for slow high-quality image generation via Fal
-    logger.log("Using Fal AI (flux-pro) for pro image generation...");
-    generationPromise = fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
-      input: {
-        prompt: data.prompt,
-        // Optional parameters passed if available
-        ...(data.width ? { width: data.width } : {}),
-        ...(data.height ? { height: data.height } : {}),
-      },
-      logs: true,
-      onQueueUpdate: (update: any) => {
-        if (update.status === "IN_PROGRESS") {
-          console.log("Image generation progress:", update.logs);
-        }
-      },
-    });
-
-    // Race against timeout
-    return await Promise.race([generationPromise, timeoutPromise]);
-  } else if (data.type === MediaType.VIDEO && data.image_url) {
+      generationPromise = fal.subscribe(model, {
+          input,
+          logs: true,
+          onQueueUpdate: (update: any) => {
+              if (update.status === "IN_PROGRESS") {
+                  console.log("Image generation progress:", update.logs);
+              }
+          },
+      });
+  }
+  // --- Video Generation --- (Existing Fal Logic)
+  else if (data.type === MediaType.VIDEO && data.image_url) {
     // Image-to-video generation via Fal
     logger.log("Using Fal AI for image-to-video generation...");
     const model =
@@ -481,9 +429,6 @@ export async function generateMedia(
         }
       },
     });
-
-    // Race against timeout
-    return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO) {
     // Text-to-video generation via Fal
     logger.log("Using Fal AI for text-to-video generation...");
@@ -506,59 +451,14 @@ export async function generateMedia(
         }
       },
     });
-
-    // Race against timeout
-    return await Promise.race([generationPromise, timeoutPromise]);
-  } else if (data.type === MediaType.AUDIO) {
+  }
+  // --- Audio Generation --- (Existing Fal Logic)
+  else if (data.type === MediaType.AUDIO) {
     logger.log("Using Fal AI for audio generation...");
-    if (data.lyrics) {
-      // Use diffrhythm for music generation with lyrics
-      const formattedLyrics = formatLyricsForDiffrhythm(data.lyrics);
-
-      const input = {
-        lyrics: formattedLyrics,
-        reference_audio_url:
-          data.reference_audio_url ||
-          "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
-        style_prompt: data.style_prompt || "pop",
-        music_duration: data.music_duration || "95s",
-        cfg_strength: data.cfg_strength || 4,
-        scheduler: data.scheduler || "euler",
-        num_inference_steps: data.num_inference_steps || 32,
-      };
-
-      console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
-
-      generationPromise = fal.subscribe("fal-ai/diffrhythm", {
-        input,
-        logs: true,
-        onQueueUpdate: (update: any) => {
-          if (update.status === "IN_PROGRESS") {
-            console.log("Music generation progress:", update.logs);
-          }
-        },
-      });
-
-      // Return the audio URL and lyrics from the result
-      const result = await Promise.race([generationPromise, timeoutPromise]) as any;
-      console.log("DiffRhythm result:", JSON.stringify(result, null, 2));
-
-      if (!result.data?.audio?.url) {
-        throw new Error("No audio URL in response");
-      }
-
-      return {
-        data: {
-          audio: {
-            url: result.data.audio.url,
-            lyrics: data.lyrics, // Include the original lyrics
-          },
-        },
-      };
-    } else {
-      // Generate lyrics first, then use them to generate the song
+    let lyricsToUse = data.lyrics;
+    if (!lyricsToUse) {
       logger.log("Generating lyrics for audio...");
-      const lyrics = await generateLyrics(
+      lyricsToUse = await generateLyrics(
         {
           name: data.prompt.split(":")[0] || "",
           symbol: data.prompt.split(":")[1]?.trim() || "",
@@ -566,11 +466,10 @@ export async function generateMedia(
         },
         data.style_prompt,
       );
+    }
 
-      // Now use the generated lyrics to create the song
-      const formattedLyrics = formatLyricsForDiffrhythm(lyrics);
-
-      const input = {
+    const formattedLyrics = formatLyricsForDiffrhythm(lyricsToUse);
+    const input = {
         lyrics: formattedLyrics,
         reference_audio_url:
           data.reference_audio_url ||
@@ -580,11 +479,10 @@ export async function generateMedia(
         cfg_strength: data.cfg_strength || 4,
         scheduler: data.scheduler || "euler",
         num_inference_steps: data.num_inference_steps || 32,
-      };
+    };
+    console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
 
-      console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
-
-      generationPromise = fal.subscribe("fal-ai/diffrhythm", {
+    generationPromise = fal.subscribe("fal-ai/diffrhythm", {
         input,
         logs: true,
         onQueueUpdate: (update: any) => {
@@ -592,34 +490,38 @@ export async function generateMedia(
             console.log("Music generation progress:", update.logs);
           }
         },
-      });
+    });
 
-      // Return the audio URL and lyrics from the result
-      const result = await Promise.race([generationPromise, timeoutPromise]) as any;
-      console.log("DiffRhythm result:", JSON.stringify(result, null, 2));
+    // For audio, handle the result specifically to include lyrics
+    const result = await Promise.race([generationPromise, timeoutPromise]) as any;
+    console.log("Audio generation result:", JSON.stringify(result, null, 2));
 
-      if (!result.data?.audio?.url) {
-        throw new Error("No audio URL in response");
-      }
-
-      return {
-        data: {
-          audio: {
-            url: result.data.audio.url,
-            lyrics: lyrics, // Include the generated lyrics
-          },
-        },
-      };
+    const audioUrl = result.data?.audio?.url;
+    if (!audioUrl) {
+      throw new Error("No audio URL in response");
     }
+
+    return {
+      data: {
+        audio: {
+          url: audioUrl,
+          lyrics: lyricsToUse, // Include the lyrics used (original or generated)
+        },
+      },
+    };
+
   } else {
      // Should not happen given the logic, but good practice
     throw new Error(`Unsupported media type or configuration: ${data.type}, mode: ${data.mode}`);
   }
+
+  // If generationPromise was set (for Image/Video cases), await and return
+  return await Promise.race([generationPromise, timeoutPromise]);
+
 }
 
 // Create a Hono app for media generation routes
 const app = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };
@@ -907,12 +809,12 @@ app.post("/:mint/generate", async (c) => {
     // Return the media URL and remaining generation count
     clearTimeoutSafe(endpointTimeoutId);
     return c.json({
-      success: true,
-      mediaUrl,
-      remainingGenerations: rateLimit.remaining - 1,
-      resetTime: new Date(
-        Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
-      ).toISOString(),
+        success: true,
+        mediaUrl,
+        remainingGenerations: rateLimit.remaining - 1,
+        resetTime: new Date(
+            Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
+        ).toISOString(),
     });
   } catch (error) {
     clearTimeoutSafe(endpointTimeoutId);
@@ -1014,7 +916,7 @@ app.get("/:mint/history", async (c) => {
           [MediaType.AUDIO]:
             RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
             counts[MediaType.AUDIO],
-        },
+      },
       resetTime: new Date(
         Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
       ).toISOString(),
@@ -1108,7 +1010,7 @@ app.post("/generate-metadata", async (c) => {
             `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
           );
 
-          const systemPromptContent = await createTokenPrompt(validatedData);
+          const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
           const falInput = {
               model: "fal-ai/meta-llama/llama-4-scout",
               // Combine messages into prompt/system_prompt for fal
@@ -1561,8 +1463,8 @@ export async function getDailyGenerationCount(
 
 // Function to generate a token on demand
 async function generateTokenOnDemand(
-  // Add env parameter
-  ctx: { waitUntil: (promise: Promise<any>) => void },
+  // Removed env parameter
+  // Removed context dependency
 ): Promise<{
   success: boolean;
   token?: {
@@ -1594,7 +1496,7 @@ async function generateTokenOnDemand(
       `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`,
     );
 
-    // Step 2: Generate and Upload Image with Retry Logic
+    // Step 2: Generate Image URL with Retry Logic
     let finalImageUrl = "";
     const maxImageRetries = 3;
     let imageAttempt = 0;
@@ -1602,122 +1504,40 @@ async function generateTokenOnDemand(
     while (imageAttempt < maxImageRetries && !finalImageUrl) {
       imageAttempt++;
       logger.log(
-        `Generating/uploading image for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`,
+        `Generating image URL for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`,
       );
       try {
-        // Generate image using our existing function
-        // Pass env to generateMedia
+        // Generate image using generateMedia (now uses Fal)
         const imageResult = await generateMedia({
           prompt: metadata.prompt,
           type: MediaType.IMAGE,
-          // Consider setting mode: 'fast' if CF AI is preferred and available
+          mode: 'fast' // Explicitly request fast mode
         }) as any;
 
-        // Determine the source URL (could be data URI or direct URL)
-        let sourceImageUrl = "";
-        if (imageResult?.data?.images?.[0]?.url) {
-          // Common structure, potentially CF AI data URI
-          sourceImageUrl = imageResult.data.images[0].url;
-        } else if (imageResult?.image?.url) {
-          // Structure for Fal ultra
-          sourceImageUrl = imageResult.image.url;
-        } else if (typeof imageResult?.url === "string") {
-          // Other direct URL structures
-          sourceImageUrl = imageResult.url;
+        // Extract the URL (expecting direct URL from Fal)
+        let sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
+
+        if (!sourceImageUrl || !sourceImageUrl.startsWith('http')) {
+            logger.error("Fal image generation result:", JSON.stringify(imageResult));
+            throw new Error("Image generation did not return a valid HTTP(S) URL.");
         }
 
-        if (!sourceImageUrl) {
-          throw new Error(
-            "Image generation result did not contain a valid URL or data URI.",
-          );
-        }
+        logger.log(
+            `[Attempt ${imageAttempt}] Received direct URL from Fal: ${sourceImageUrl}`,
+        );
+        finalImageUrl = sourceImageUrl;
 
-        // Process based on URL type
-        if (sourceImageUrl.startsWith("data:image")) {
-          logger.log(
-            `[Attempt ${imageAttempt}] Received data URI, preparing for R2 upload...`,
-          );
-
-          // Decode and Upload Data URI (Adapted from generatePreGeneratedTokens)
-          const imageMatch = sourceImageUrl.match(
-            /^data:(image\/[a-z+]+);base64,(.*)$/,
-          );
-          if (!imageMatch) {
-            throw new Error("Invalid image data URI format for upload.");
-          }
-          const contentType = imageMatch[1];
-          const base64Data = imageMatch[2];
-          const imageBuffer = Buffer.from(base64Data, "base64");
-
-          let extension = ".jpg"; // Default extension
-          if (contentType.includes("png")) extension = ".png";
-          else if (contentType.includes("gif")) extension = ".gif";
-          else if (contentType.includes("svg")) extension = ".svg";
-          else if (contentType.includes("webp")) extension = ".webp";
-
-          const imageFilename = `${crypto.randomUUID()}${extension}`;
-          const imageKey = `token-images/${imageFilename}`; // Consistent R2 prefix
-
-          if (!R2) { // Use R2
-            throw new Error(
-              "R2 storage (R2) is not configured. Cannot upload image.",
-            );
-          }
-
-          logger.log(
-            `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`,
-          );
-          await R2.put(imageKey, imageBuffer, { // Use R2.put
-            httpMetadata: {
-              contentType,
-              cacheControl: "public, max-age=31536000", // 1 year cache
-            },
-          });
-
-          // Construct the final public URL
-          const r2PublicUrl = process.env.R2_PUBLIC_URL; // Use process.env.R2_PUBLIC_URL
-          if (!r2PublicUrl) {
-            throw new Error(
-              "R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
-            );
-          }
-          finalImageUrl =
-            process.env.API_URL?.includes("localhost") ||
-              process.env.API_URL?.includes("127.0.0.1")
-              ? `${process.env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
-              : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
-
-          logger.log(
-            `[Attempt ${imageAttempt}] R2 Upload successful. Final URL: ${finalImageUrl}`,
-          );
-        } else if (sourceImageUrl.startsWith("http")) {
-          // Assume it's a publicly accessible URL (e.g., from Fal.ai)
-          logger.log(
-            `[Attempt ${imageAttempt}] Using direct public URL from generation result: ${sourceImageUrl}`,
-          );
-          finalImageUrl = sourceImageUrl;
-        } else {
-          // Handle unexpected formats
-          throw new Error(
-            `Generated image source is not a data URI or HTTP(S) URL: ${sourceImageUrl.substring(0, 60)}...`,
-          );
-        }
       } catch (error) {
         logger.error(
-          `[Attempt ${imageAttempt}] Error during image generation/upload:`,
+          `[Attempt ${imageAttempt}] Error during image URL generation:`, // Corrected log message
           error,
         );
-        // Check if it's the last attempt
         if (imageAttempt >= maxImageRetries) {
           logger.error(
-            "Max image generation/upload retries reached. Failing token generation.",
+            "Max image URL generation retries reached. Failing token generation.",
           );
-          // finalImageUrl remains empty, loop will terminate
         } else {
-          // Wait briefly before the next retry
-          await new Promise((resolve) =>
-            setTimeout(resolve, 500 * imageAttempt),
-          ); // Exponential backoff factor
+          await new Promise((resolve) => setTimeout(resolve, 500 * imageAttempt));
         }
       }
     } // End while loop
@@ -1758,31 +1578,29 @@ async function generateTokenOnDemand(
 
     // Store in database for future use (run in background)
     const db = getDB();
-    ctx.waitUntil(
-      (async () => {
-        try {
-          await db.insert(preGeneratedTokens).values([
-            {
-              id: tokenId,
-              name: onDemandToken.name,
-              ticker: onDemandToken.ticker,
-              description: onDemandToken.description,
-              prompt: onDemandToken.prompt,
-              image: onDemandToken.image, // Ensure the final URL is saved
-              createdAt: onDemandToken.createdAt,
-              used: onDemandToken.used,
-            },
-          ]);
-          logger.log(
-            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
-          );
-        } catch (err) {
-          logger.error("Error saving on-demand token to database:", err);
-          // Note: If DB save fails, the token exists but isn't in preGeneratedTokens.
-          // Consider if additional error handling/cleanup is needed here.
-        }
-      })(),
-    );
+    (async () => {
+      try {
+        await db.insert(preGeneratedTokens).values([
+          {
+            id: tokenId,
+            name: onDemandToken.name,
+            ticker: onDemandToken.ticker,
+            description: onDemandToken.description,
+            prompt: onDemandToken.prompt,
+            image: onDemandToken.image, // Ensure the final URL is saved
+            createdAt: onDemandToken.createdAt,
+            used: onDemandToken.used,
+          },
+        ]);
+        logger.log(
+          `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
+        );
+      } catch (err) {
+        logger.error("Error saving on-demand token to database:", err);
+        // Note: If DB save fails, the token exists but isn't in preGeneratedTokens.
+        // Consider if additional error handling/cleanup is needed here.
+      }
+    })();
 
     return {
       success: true,
@@ -1908,7 +1726,7 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
         `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
       );
 
-      const systemPromptContent = await createTokenPrompt(); // Needs to be self-contained or take env if needed
+      const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
       const falInput = {
           model: "fal-ai/meta-llama/llama-4-scout",
           system_prompt: systemPromptContent,
@@ -2047,7 +1865,7 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
 }
 
 // Function to generate new pre-generated tokens
-export async function generatePreGeneratedTokens() { // Add env parameter
+export async function generatePreGeneratedTokens() { // Removed env parameter
   let metadata: Record<string, string> | null = null;
   try {
     // ----- Step 1: Generate Metadata (using Fal) -----
@@ -2067,7 +1885,7 @@ export async function generatePreGeneratedTokens() { // Add env parameter
           `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`,
         );
 
-        const systemPromptContent = await createTokenPrompt(); // Assumes this doesn't need env
+        const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
         const falInput = {
             model: "fal-ai/meta-llama/llama-4-scout",
             system_prompt: systemPromptContent,
@@ -2169,106 +1987,57 @@ export async function generatePreGeneratedTokens() { // Add env parameter
     }
     // ----- End Step 1 -----
 
-    // ----- Step 2: Generate Image (using CF AI or Fal Pro - decide which one) -----
-    // Keeping CF AI for fast image generation as per original logic
-    let imageDataUrl: string = "";
+    // ----- Step 2: Generate Image URL (using Fal via generateMedia) -----
+    let finalImageUrl: string = "";
     try {
       logger.log(
-        `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
+        `[PreGen Image] Generating image URL for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
       );
-       // Ensure generateMedia is called with env
       const imageResult = await generateMedia({
         prompt: metadata.prompt,
         type: MediaType.IMAGE,
-        // Assuming 'fast' mode uses CF AI if available, which is handled inside generateMedia
+        mode: 'fast' // Explicitly request fast mode
       }) as any;
-      if (
-        imageResult?.data?.images?.length &&
-        imageResult.data.images[0].url.startsWith("data:image")
-      ) {
-        imageDataUrl = imageResult.data.images[0].url;
-        logger.log(
-          `[PreGen Image] Successfully generated image Data URI for ${metadata.name}`,
-        );
-      } else {
-        throw new Error("generateMedia did not return a valid image data URI.");
+
+      // Extract the URL (expecting direct URL from Fal)
+      let sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
+
+      if (!sourceImageUrl || !sourceImageUrl.startsWith('http')) {
+        logger.error("Fal image generation result:", JSON.stringify(imageResult));
+        throw new Error("generateMedia did not return a valid image HTTP(S) URL.");
       }
+
+      finalImageUrl = sourceImageUrl;
+      logger.log(
+        `[PreGen Image] Successfully generated image URL for ${metadata.name}: ${finalImageUrl}`,
+      );
+
     } catch (imageError) {
       logger.error(
-        `[PreGen Image] Error generating image for ${metadata.name}:`,
+        `[PreGen Image] Error generating image URL for ${metadata.name}:`,
         imageError,
       );
       return; // Stop if image generation fails
     }
     // ----- End Step 2 -----
 
-    // ----- Step 3: Upload Image to R2 (Logic from /upload) -----
-    let finalImageUrl = ""; // This will hold the final URL
+    // ----- Step 3: Upload Image via S3 uploader (REMOVED - Using direct Fal URL) -----
+    /*
     try {
       logger.log(
         `[PreGen Upload] Preparing image for upload: ${metadata.name}`,
       );
-      const imageMatch = imageDataUrl.match(
-        /^data:(image\/[a-z+]+);base64,(.*)$/,
+      // ... (Decoding logic removed)
+
+      logger.log(`[PreGen Upload] Uploading image via uploader function...`);
+      finalImageUrl = await uploadToCloudflare(
+         imageBuffer,
+         { filename: imageFilename, contentType: contentType, basePath: 'token-images' }
       );
-      if (!imageMatch) {
-        throw new Error("Invalid image data URI format for upload.");
-      }
-      const contentType = imageMatch[1];
-      const base64Data = imageMatch[2];
-      const imageBuffer = Buffer.from(base64Data, "base64");
       logger.log(
-        `[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
+        `[PreGen Upload] S3 Upload successful via uploader. Final URL: ${finalImageUrl}`,
       );
 
-      let extension = ".jpg";
-      if (contentType.includes("png")) extension = ".png";
-      else if (contentType.includes("gif")) extension = ".gif";
-      else if (contentType.includes("svg")) extension = ".svg";
-      else if (contentType.includes("webp")) extension = ".webp";
-
-      // Use metadata name for filename
-      // const sanitizedName = metadata.name.toLowerCase().replace(/[^a-z0-9\._-]/g, '_'); // Allow . _ -
-      // const imageFilename = `${sanitizedName}${extension}`;
-      // const imageFilename = `${crypto.randomUUID()}${extension}`; // Alternative: Use UUID
-      const imageFilename = `${crypto.randomUUID()}${extension}`; // Use UUID for unique filename
-
-      const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
-      logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
-
-      if (!R2) { // Use R2
-        throw new Error("[PreGen Upload] R2 binding (R2) is not available.");
-      }
-
-      logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
-      const res = await R2.put(imageKey, imageBuffer, { // Use R2.put
-        httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
-      });
-      // log the public url from the respnse
-      console.log("****** R2 Put Result:", res); // Log R2 response object
-      logger.log(
-        `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`,
-      );
-
-      // Construct URL based on environment (like /upload does)
-      const r2PublicUrl = process.env.R2_PUBLIC_URL; // Use process.env.R2_PUBLIC_URL
-      if (!r2PublicUrl) {
-        logger.error(
-          "[PreGen Upload] R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
-        );
-        // Depending on desired behavior, you might want to return or throw here
-        // For now, we'll set finalImageUrl to empty and let the DB step handle it (or fail)
-      } else {
-        // Only construct the URL if the base URL is available
-        finalImageUrl =
-          process.env.API_URL?.includes("localhost") ||
-            process.env.API_URL?.includes("127.0.0.1")
-            ? `${process.env.API_URL}/api/image/${imageFilename}`
-            : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
-        logger.log(
-          `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
-        );
-      }
     } catch (uploadError) {
       logger.error(
         `[PreGen Upload] Error during image upload for ${metadata.name}:`,
@@ -2276,35 +2045,8 @@ export async function generatePreGeneratedTokens() { // Add env parameter
       );
       return; // Stop if upload fails
     }
+    */
     // ----- End Step 3 -----
-
-    // ----- Step 4: Insert into Database ----- (Optional: Upload Metadata JSON could be added here)
-    try {
-      logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
-      const db = getDB();
-      await db.insert(preGeneratedTokens).values([
-        {
-          id: crypto.randomUUID(),
-          name: metadata.name,
-          ticker: metadata.symbol,
-          description: metadata.description,
-          prompt: metadata.prompt,
-          image: finalImageUrl, // Use the constructed URL
-          createdAt: new Date(),
-          used: 0,
-        },
-      ]);
-      logger.log(
-        `[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
-      );
-    } catch (dbError) {
-      logger.error(
-        `[PreGen DB] Error saving token ${metadata.name} to database:`,
-        dbError,
-      );
-      // Log error, but maybe don't stop the whole cron job?
-    }
-    // ----- End Step 4 -----
   } catch (error) {
     // Catch unexpected errors in the entire process for this token
     const tokenName = metadata?.name || "unknown_token_error";
@@ -2361,7 +2103,7 @@ export async function checkAndReplenishTokens(
 }
 
 // Endpoint to enhance a prompt and generate media
-app.post("/enhance-and-generate", requireAuth, async (c) => {
+app.post("/enhance-and-generate", async (c) => {
   try {
     const user = c.get("user");
     if (!user) {

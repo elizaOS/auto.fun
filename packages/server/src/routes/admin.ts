@@ -1,14 +1,12 @@
+import { desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { Env } from "../env";
+import { verifyAuth } from "../auth";
 import { getDB, tokens, users } from "../db";
 import { logger } from "../logger";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
-import { verifyAuth } from "../auth";
 import { adminAddresses } from "./adminAddresses";
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };
@@ -627,7 +625,6 @@ const requireTokenOwner = async (c: any, next: Function) => {
 };
 // Create owner router for token owner specific endpoints
 const ownerRouter = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

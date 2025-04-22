@@ -144,11 +144,7 @@ export async function calculateTokenMarketData(
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
 
-  // console.log("tokenWithMarketData", tokenWithMarketData);
 
-  // console.log("solPrice", solPrice);
-
-  try {
     // Calculate token price in USD
     if (token.currentPrice) {
       tokenWithMarketData.tokenPriceUSD = token.currentPrice * solPrice;
@@ -175,10 +171,6 @@ export async function calculateTokenMarketData(
     tokenWithMarketData.solPriceUSD = solPrice;
 
     return tokenWithMarketData;
-  } catch (error) {
-    logger.error("Error calculating market data:", error);
-    return token; // Return original token if calculation fails
-  }
 }
 
 async function calculateRaydiumTokenMarketData(token: any) {

@@ -1,3 +1,4 @@
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"; // S3 Import
 import {
   AccountInfo,
   Connection,
@@ -7,12 +8,12 @@ import {
 import { and, count, eq, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
-import { updateTokens } from "../cron";
+import { Buffer } from 'node:buffer'; // Buffer import
 import { getDB, Token, tokens } from "../db";
-import { Env } from "../env";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
 import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { uploadToCloudflare } from "../uploader"; // Import the S3 uploader
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -23,6 +24,28 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
+
+// S3 Client Helper (copied from uploader.ts, using process.env)
+let s3ClientInstance: S3Client | null = null;
+function getS3Client(): S3Client {
+    if (s3ClientInstance) return s3ClientInstance;
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+        logger.error("Missing R2 S3 API environment variables.");
+        throw new Error("Missing required R2 S3 API environment variables.");
+    }
+    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+    s3ClientInstance = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
+    logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
+    return s3ClientInstance;
+}
+
+// Define the fixed public base URL
+const PUBLIC_STORAGE_BASE_URL = "https://621d1008ef1cb024077560dcb94dd126.r2.cloudflarestorage.com/autofun-storage";
+
 
 // Basic logger implementation if not globally available
 const logger = {
@@ -103,15 +126,7 @@ function buildTokensBaseQuery(
     maxHolders?: number;
   },
 ): PgSelect {
-  const {
-    hideImported,
-    status,
-    creator,
-    search,
-    sortBy,
-    maxVolume,
-    maxHolders,
-  } = params;
+  const { hideImported, status, creator, search, sortBy, maxVolume, maxHolders } = params;
   // Select specific columns needed eventually (adjust as needed)
   // Selecting all initially, will be refined before sorting
   let query = db.select().from(tokens).$dynamic();
@@ -144,9 +159,9 @@ function buildTokensBaseQuery(
   if (search) {
     conditions.push(
       or(
-        sql`${tokens.name} ILIKE ${"%" + search + "%"}`,
-        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`,
-        sql`${tokens.mint} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.name} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
+        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
+        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
       ),
     );
     logger.log(`[Query Build] Adding condition: search LIKE ${search}`);
@@ -200,9 +215,9 @@ function buildTokensCountBaseQuery(
   if (search) {
     conditions.push(
       or(
-        sql`${tokens.name} ILIKE ${"%" + search + "%"}`,
-        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`,
-        sql`${tokens.mint} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.name} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
+        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
+        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
       ),
     );
     logger.log(`[Count Build] Adding condition: search LIKE ${search}`);
@@ -214,15 +229,10 @@ function buildTokensCountBaseQuery(
   return query;
 }
 
-// Define the router with environment typing
-const tokenRouter = new Hono<{
-  Bindings: Env;
-  Variables: {
-    user?: { publicKey: string } | null;
-  };
-}>();
+// Define the router (Env removed from Bindings)
+const tokenRouter = new Hono<{ Bindings: {} }>();
 
-// --- Endpoint to serve images from R2 (Logging Added) ---
+// --- Endpoint to serve images from storage (S3 API) ---
 tokenRouter.get("/image/:filename", async (c) => {
   const filename = c.req.param("filename");
   logger.log(`[/image/:filename] Request received for filename: ${filename}`);
@@ -232,13 +242,14 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "Filename parameter is required" }, 400);
     }
 
-    if (!R2) {
-      logger.error("[/image/:filename] R2 storage is not available");
-      return c.json({ error: "R2 storage is not available" }, 500);
+    const s3Client = getS3Client();
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!bucketName) {
+        logger.error("[/image/:filename] R2_BUCKET_NAME not configured.");
+        return c.json({ error: "Storage is not available" }, 500);
     }
 
-    // Check if this is a special generation image request
-    // Format: generation-[mint]-[number].jpg
+    // Determine potential object key (might be generation or token image)
     const generationMatch = filename.match(
       /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
     );
@@ -246,91 +257,86 @@ tokenRouter.get("/image/:filename", async (c) => {
     let imageKey;
     if (generationMatch) {
       const [_, mint, number] = generationMatch;
-      // This is a special request for a generation image
       imageKey = `generations/${mint}/gen-${number}.jpg`;
-      logger.log(
-        `[/image/:filename] Detected generation image request: ${imageKey}`,
-      );
     } else {
-      // Regular image request
       imageKey = `token-images/${filename}`;
     }
 
-    logger.log(
-      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
-    );
-    const object = await R2.get(imageKey);
+    try {
+      logger.log(
+        `[/image/:filename] Attempting to get object from S3 key: ${imageKey}`,
+      );
+      const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: imageKey });
+      const objectResponse = await s3Client.send(getCmd);
 
-    if (!object) {
-      logger.warn(
-        `[/image/:filename] Image not found in R2 for key: ${imageKey}`,
+      logger.log(
+        `[/image/:filename] Found object in S3: Size=${objectResponse.ContentLength}, Type=${objectResponse.ContentType}`,
       );
 
-      // DEBUG: List files in the token-images directory to help diagnose issues
-      try {
-        const prefix = imageKey.split("/")[0] + "/";
-        const objects = await R2.list({
-          prefix,
-          limit: 10,
-        });
-        logger.log(
-          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
-        );
-      } catch (listError) {
-        logger.error(
-          `[/image/:filename] Error listing files in directory: ${listError}`,
-        );
+      let contentType = objectResponse.ContentType || "image/jpeg";
+      if (filename.endsWith(".png")) contentType = "image/png";
+      else if (filename.endsWith(".gif")) contentType = "image/gif";
+      else if (filename.endsWith(".svg")) contentType = "image/svg+xml";
+      else if (filename.endsWith(".webp")) contentType = "image/webp";
+
+      const data = await objectResponse.Body?.transformToByteArray();
+      if (!data) {
+         logger.error(`[/image/:filename] Image body stream is empty for ${imageKey}`);
+         return c.json({ error: "Failed to read image content" }, 500);
       }
+      const dataBuffer = Buffer.from(data);
 
-      return c.json({ error: "Image not found" }, 404);
+      const corsHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Max-Age": "86400",
+      };
+
+      logger.log(
+        `[/image/:filename] Serving ${filename} with type ${contentType}`,
+      );
+      return new Response(dataBuffer, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Length": objectResponse.ContentLength?.toString() ?? '0',
+          "Cache-Control": "public, max-age=31536000",
+          ...corsHeaders,
+        },
+      });
+
+    } catch (error: any) {
+        if (error.name === 'NoSuchKey') {
+            logger.warn(
+                `[/image/:filename] Image not found in S3 for key: ${imageKey}`,
+            );
+            // DEBUG: List files in the directory
+            try {
+                const prefix = imageKey.substring(0, imageKey.lastIndexOf('/') + 1);
+                const listCmd = new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix, MaxKeys: 10 });
+                const listResponse = await s3Client.send(listCmd);
+                const keys = listResponse.Contents?.map((o: any) => o.Key ?? 'unknown-key') ?? [];
+                logger.log(
+                    `[/image/:filename] Files in ${prefix} directory: ${keys.join(", ")}`,
+                );
+            } catch (listError) {
+                logger.error(
+                    `[/image/:filename] Error listing files in directory: ${listError}`,
+                );
+            }
+            return c.json({ error: "Image not found" }, 404);
+        } else {
+            logger.error(`[/image/:filename] Error fetching image ${imageKey} from S3:`, error);
+            throw error;
+        }
     }
-    logger.log(
-      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`,
-    );
-
-    // Determine appropriate content type
-    let contentType = object.httpMetadata?.contentType || "image/jpeg";
-
-    // For JSON files, ensure content type is application/json
-    if (filename.endsWith(".json")) {
-      contentType = "application/json";
-    } else if (filename.endsWith(".png")) {
-      contentType = "image/png";
-    } else if (filename.endsWith(".gif")) {
-      contentType = "image/gif";
-    } else if (filename.endsWith(".svg")) {
-      contentType = "image/svg+xml";
-    } else if (filename.endsWith(".webp")) {
-      contentType = "image/webp";
-    }
-
-    const data = await object.arrayBuffer();
-
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
-    };
-
-    logger.log(
-      `[/image/:filename] Serving ${filename} with type ${contentType}`,
-    );
-    return new Response(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": object.size.toString(),
-        "Cache-Control": "public, max-age=31536000",
-        ...corsHeaders,
-      },
-    });
   } catch (error) {
     logger.error(`[/image/:filename] Error serving image ${filename}:`, error);
     return c.json({ error: "Failed to serve image" }, 500);
   }
 });
 
-// --- Endpoint to serve metadata JSON from R2 (Updated to support temporary metadata) ---
+// --- Endpoint to serve metadata JSON from storage (S3 API) ---
 tokenRouter.get("/metadata/:filename", async (c) => {
   const filename = c.req.param("filename");
   const isTemp = c.req.query("temp") === "true";
@@ -345,62 +351,68 @@ tokenRouter.get("/metadata/:filename", async (c) => {
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
 
-    if (!R2) {
-      logger.error("[/metadata/:filename] R2 storage is not configured");
-      return c.json({ error: "R2 storage is not available" }, 500);
+    const s3Client = getS3Client();
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!bucketName) {
+        logger.error("[/metadata/:filename] R2_BUCKET_NAME not configured.");
+        return c.json({ error: "Storage is not available" }, 500);
     }
 
-    // Determine which location to check first based on the temp parameter
-    const primaryKey = isTemp
-      ? `token-metadata-temp/${filename}`
-      : `token-metadata/${filename}`;
-    const fallbackKey = isTemp
-      ? `token-metadata/${filename}`
-      : `token-metadata-temp/${filename}`;
+    const primaryKey = isTemp ? `token-metadata-temp/${filename}` : `token-metadata/${filename}`;
+    const fallbackKey = isTemp ? `token-metadata/${filename}` : `token-metadata-temp/${filename}`;
+    let objectResponse;
+    let objectKey = primaryKey;
+
+    try {
+        logger.log(`[/metadata/:filename] Checking primary location: ${primaryKey}`);
+        const getPrimaryCmd = new GetObjectCommand({ Bucket: bucketName, Key: primaryKey });
+        objectResponse = await s3Client.send(getPrimaryCmd);
+    } catch (error: any) {
+        if (error.name === 'NoSuchKey') {
+            logger.log(`[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`);
+            objectKey = fallbackKey;
+            try {
+                const getFallbackCmd = new GetObjectCommand({ Bucket: bucketName, Key: fallbackKey });
+                objectResponse = await s3Client.send(getFallbackCmd);
+            } catch (fallbackError: any) {
+                if (fallbackError.name === 'NoSuchKey') {
+                    logger.error(`[/metadata/:filename] Metadata not found in either location for ${filename}`);
+                    return c.json({ error: "Metadata not found" }, 404);
+                } else {
+                     logger.error(`[/metadata/:filename] Error fetching fallback metadata ${fallbackKey}:`, fallbackError);
+                     throw fallbackError;
+                }
+            }
+        } else {
+             logger.error(`[/metadata/:filename] Error fetching primary metadata ${primaryKey}:`, error);
+            throw error;
+        }
+    }
+
+    const contentType = objectResponse.ContentType || "application/json";
+    const data = await objectResponse.Body?.transformToString();
+    if (data === undefined) {
+        logger.error(`[/metadata/:filename] Metadata body stream is empty for ${objectKey}`);
+        return c.json({ error: "Failed to read metadata content" }, 500);
+    }
 
     logger.log(
-      `[/metadata/:filename] Checking primary location: ${primaryKey}`,
-    );
-    let object = await R2.get(primaryKey);
-
-    // If not found in primary location, check fallback location
-    if (!object) {
-      logger.log(
-        `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
-      );
-      object = await R2.get(fallbackKey);
-    }
-
-    if (!object) {
-      logger.error(
-        `[/metadata/:filename] Metadata not found in either location`,
-      );
-      return c.json({ error: "Metadata not found" }, 404);
-    }
-
-    logger.log(
-      `[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`,
+      `[/metadata/:filename] Found metadata: Key=${objectKey}, Size=${objectResponse.ContentLength}, Type=${contentType}`,
     );
 
-    const contentType = object.httpMetadata?.contentType || "application/json";
-    const data = await object.text();
-
-    // Set appropriate CORS headers for public access
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": contentType,
-      "Cache-Control": isTemp ? "max-age=3600" : "max-age=86400", // Shorter cache for temp metadata
+      "Cache-Control": isTemp ? "max-age=3600" : "max-age=86400",
     };
 
     logger.log(`[/metadata/:filename] Serving metadata: ${filename}`);
     return new Response(data, { headers: corsHeaders });
+
   } catch (error) {
-    logger.error(
-      `[/metadata/:filename] Error serving metadata ${filename}:`,
-      error,
-    );
+    logger.error(`[/metadata/:filename] Error serving metadata ${filename}:`, error);
     return c.json({ error: "Failed to serve metadata JSON" }, 500);
   }
 });
@@ -1151,262 +1163,262 @@ export async function updateHoldersCache(
 
 // --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
-  // --- Parameter Reading ---
-  const queryParams = c.req.query();
-  const isSearching = !!queryParams.search;
-  const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
-  const page = parseInt(queryParams.page as string) || 1;
-  const skip = (page - 1) * limit;
-  const status = queryParams.status as string | undefined;
-  const hideImportedParam = queryParams.hideImported;
-  // Ensure hideImported is number or undefined, handle potential string '1' or '0'
-  const hideImported =
-    hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
-  const creator = queryParams.creator as string | undefined;
-  const search = queryParams.search as string | undefined;
-  const sortBy = search
-    ? "marketCapUSD"
-    : (queryParams.sortBy as string) || "createdAt";
-  const sortOrder = (queryParams.sortOrder as string) || "desc";
+    // --- Parameter Reading ---
+    const queryParams = c.req.query();
+    const isSearching = !!queryParams.search;
+    const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
+    const page = parseInt(queryParams.page as string) || 1;
+    const skip = (page - 1) * limit;
+    const status = queryParams.status as string | undefined;
+    const hideImportedParam = queryParams.hideImported;
+    // Ensure hideImported is number or undefined, handle potential string '1' or '0'
+    const hideImported =
+      hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
+    const creator = queryParams.creator as string | undefined;
+    const search = queryParams.search as string | undefined;
+    const sortBy = search
+      ? "marketCapUSD"
+      : (queryParams.sortBy as string) || "createdAt";
+    const sortOrder = (queryParams.sortOrder as string) || "desc";
 
-  logger.log(
-    `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`,
-  );
+    logger.log(
+      `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`,
+    );
 
-  // --- RE-ENABLE CACHE GET ---
-  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
-  const redisCache = getGlobalRedisCache(); // Ensure env is cast if needed
-  if (redisCache) {
-    try {
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        logger.log(`Cache hit for ${cacheKey}`);
-        const parsedData = JSON.parse(cachedData);
-        // Log retrieved cache data (optional, for debugging)
-        // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
+    // --- RE-ENABLE CACHE GET ---
+    const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
+    const redisCache = getGlobalRedisCache(); // Ensure env is cast if needed
+    if (redisCache) {
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`Cache hit for ${cacheKey}`);
+          const parsedData = JSON.parse(cachedData);
+          // Log retrieved cache data (optional, for debugging)
+          // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
 
-        // Corrected validation check
-        if (
-          parsedData &&
-          Array.isArray(parsedData.tokens)
-          // Removed length check to allow caching empty results
-          // && parsedData.tokens.length > 0
-        ) {
-          logger.log(
-            `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
-          );
-          return c.json(parsedData); // Return cached data
+          // Corrected validation check
+          if (
+            parsedData &&
+            Array.isArray(parsedData.tokens)
+            // Removed length check to allow caching empty results
+            // && parsedData.tokens.length > 0
+          ) {
+            logger.log(
+              `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
+            );
+            return c.json(parsedData); // Return cached data
+          } else {
+            logger.warn(
+              `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
+            );
+          }
         } else {
-          logger.warn(
-            `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
-          );
+          logger.log(`Cache miss for ${cacheKey}`);
         }
-      } else {
-        logger.log(`Cache miss for ${cacheKey}`);
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error:`, cacheError);
+        // Continue without cache if GET fails
       }
-    } catch (cacheError) {
-      logger.error(`Redis cache GET error:`, cacheError);
-      // Continue without cache if GET fails
     }
-  }
-  // --- END RE-ENABLE CACHE GET ---
+    // --- END RE-ENABLE CACHE GET ---
 
-  const db = getDB();
+    const db = getDB();
 
-  // Get max values needed by builder for column selection
-  const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+    // Get max values needed by builder for column selection
+    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
-  // --- Build Base Queries ---
-  // Pass sorting info needed for column selection to builder
-  const filterParams = {
-    hideImported,
-    status,
-    creator,
-    search,
-    sortBy,
-    maxVolume,
-    maxHolders,
-  };
-  let baseQuery = buildTokensBaseQuery(db, filterParams);
-  const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
-
-  // --- Apply Sorting to Main Query ---
-  // Column selection is now done inside buildTokensBaseQuery
-  const validSortColumns = {
-    createdAt: tokens.createdAt,
-    marketCapUSD: tokens.marketCapUSD,
-    volume24h: tokens.volume24h,
-    holderCount: tokens.holderCount,
-    curveProgress: tokens.curveProgress,
-    // Add other valid columns here
-  };
-
-  if (sortBy === "featured") {
-    // REMOVE baseQuery.select - done in builder
-    baseQuery = applyFeaturedSort(
-      baseQuery,
+    // --- Build Base Queries ---
+    // Pass sorting info needed for column selection to builder
+    const filterParams = {
+      hideImported,
+      status,
+      creator,
+      search,
+      sortBy,
       maxVolume,
       maxHolders,
-      sortOrder,
-    );
-    logger.log(`[Query Build] Applied sort: featured weighted`);
-  } else {
-    // REMOVE baseQuery.select - done in builder
-    const sortColumn =
-      validSortColumns[sortBy as keyof typeof validSortColumns] ||
-      tokens.createdAt;
-    if (sortOrder.toLowerCase() === "desc") {
-      baseQuery = baseQuery.orderBy(
-        sql`CASE 
+    };
+    let baseQuery = buildTokensBaseQuery(db, filterParams);
+    const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
+
+    // --- Apply Sorting to Main Query ---
+    // Column selection is now done inside buildTokensBaseQuery
+    const validSortColumns = {
+      createdAt: tokens.createdAt,
+      marketCapUSD: tokens.marketCapUSD,
+      volume24h: tokens.volume24h,
+      holderCount: tokens.holderCount,
+      curveProgress: tokens.curveProgress,
+      // Add other valid columns here
+    };
+
+    if (sortBy === "featured") {
+      // REMOVE baseQuery.select - done in builder
+      baseQuery = applyFeaturedSort(
+        baseQuery,
+        maxVolume,
+        maxHolders,
+        sortOrder,
+      );
+      logger.log(`[Query Build] Applied sort: featured weighted`);
+    } else {
+      // REMOVE baseQuery.select - done in builder
+      const sortColumn =
+        validSortColumns[sortBy as keyof typeof validSortColumns] ||
+        tokens.createdAt;
+      if (sortOrder.toLowerCase() === "desc") {
+        baseQuery = baseQuery.orderBy(
+          sql`CASE 
                   WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
                   ELSE 0 
                 END`,
-        sql`${sortColumn} DESC`,
-      );
-      logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
-    } else {
-      baseQuery = baseQuery.orderBy(sortColumn);
-      logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
+          sql`${sortColumn} DESC`,
+        );
+        logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
+      } else {
+        baseQuery = baseQuery.orderBy(sortColumn);
+        logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
+      }
     }
-  }
 
-  // --- Apply Pagination to Main Query ---
-  baseQuery = baseQuery.limit(limit).offset(skip);
-  logger.log(
-    `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
-  );
-
-  // --- Get SQL representation BEFORE execution ---
-  // Ensure baseQuery and countQuery are accessible here
-  let mainQuerySqlString = "N/A";
-  let countQuerySqlString = "N/A";
-  try {
-    mainQuerySqlString = baseQuery.toSQL().sql;
-    countQuerySqlString = countQuery.toSQL().sql;
-    logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
+    // --- Apply Pagination to Main Query ---
+    baseQuery = baseQuery.limit(limit).offset(skip);
     logger.log(
-      `[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`,
+      `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
     );
-  } catch (sqlError) {
-    logger.error("[SQL Build] Error getting SQL string:", sqlError);
-  }
-  // --- END SQL Generation ---
 
-  // --- Execute Queries (Sequentially is safer for SQLite) ---
-  // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
-  // const timeoutPromise = new Promise((_, reject) =>
-  //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
-  // );
-  // const countTimeoutPromise = new Promise<number>((_, reject) =>
-  //   setTimeout(
-  //     () => reject(new Error("Count query timed out")),
-  //     timeoutDuration, // Use same timeout for count
-  //   ),
-  // );
+    // --- Get SQL representation BEFORE execution ---
+    // Ensure baseQuery and countQuery are accessible here
+    let mainQuerySqlString = "N/A";
+    let countQuerySqlString = "N/A";
+    try {
+      mainQuerySqlString = baseQuery.toSQL().sql;
+      countQuerySqlString = countQuery.toSQL().sql;
+      logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
+      logger.log(
+        `[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`,
+      );
+    } catch (sqlError) {
+      logger.error("[SQL Build] Error getting SQL string:", sqlError);
+    }
+    // --- END SQL Generation ---
 
-  let tokensResult: Token[] | undefined;
-  let total = 0;
-  try {
-    logger.log("[Execution] Awaiting baseQuery...");
-    // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
-    // tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
-    tokensResult = await baseQuery.execute(); // Remove race for simplicity/debugging
-    logger.log(
-      `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
-    );
-    // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
-    // const countResult = await Promise.race([
-    //   countQuery.execute(),
-    //   countTimeoutPromise,
-    // ]);
-    const countResult = await countQuery.execute(); // Remove race
-    total = Number(countResult[0]?.count || 0);
-    logger.log(`[Execution] countQuery finished, total: ${total}`);
+    // --- Execute Queries (Sequentially is safer for SQLite) ---
+    // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
+    // const timeoutPromise = new Promise((_, reject) =>
+    //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
+    // );
+    // const countTimeoutPromise = new Promise<number>((_, reject) =>
+    //   setTimeout(
+    //     () => reject(new Error("Count query timed out")),
+    //     timeoutDuration, // Use same timeout for count
+    //   ),
+    // );
 
-    // --- Pass SQL to VALIDATION CALL ---
-    // Pass the generated SQL string
-    await validateQueryResults({ hideImported, status }, tokensResult, {
-      mainQuerySql: mainQuerySqlString,
-    });
-    // --- END VALIDATION CALL ---
-  } catch (error) {
-    logger.error(
-      "Token query failed, timed out, or failed validation:",
-      error,
-    );
-    tokensResult = []; // Ensure it's an empty array on error
-    total = 0;
-  }
-  // ... (Rest of handler: totalPages, responseData, logging, return) ...
+    let tokensResult: Token[] | undefined;
+    let total = 0;
+    try {
+      logger.log("[Execution] Awaiting baseQuery...");
+      // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
+      // tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
+      tokensResult = await baseQuery.execute(); // Remove race for simplicity/debugging
+      logger.log(
+        `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
+      );
+      // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
+      // const countResult = await Promise.race([
+      //   countQuery.execute(),
+      //   countTimeoutPromise,
+      // ]);
+      const countResult = await countQuery.execute(); // Remove race
+      total = Number(countResult[0]?.count || 0);
+      logger.log(`[Execution] countQuery finished, total: ${total}`);
 
-  // --- Process and Return ---
-  const totalPages = Math.ceil(total / limit);
+      // --- Pass SQL to VALIDATION CALL ---
+      // Pass the generated SQL string
+      await validateQueryResults({ hideImported, status }, tokensResult, {
+        mainQuerySql: mainQuerySqlString,
+      });
+      // --- END VALIDATION CALL ---
+    } catch (error) {
+      logger.error(
+        "Token query failed, timed out, or failed validation:",
+        error,
+      );
+      tokensResult = []; // Ensure it's an empty array on error
+      total = 0;
+    }
+    // ... (Rest of handler: totalPages, responseData, logging, return) ...
 
-  // Ensure BigInts are handled before caching/returning
-  const serializableTokensResult =
-    tokensResult?.map((token) => {
-      const serializableToken: Record<string, any> = {};
-      if (token) {
-        // Use Object.entries for potentially better type inference
-        for (const [key, value] of Object.entries(token)) {
-          if (typeof value === "bigint") {
-            // Explicitly cast value to any before calling toString()
-            serializableToken[key] = (value as any).toString();
-          } else {
-            serializableToken[key] = value;
+    // --- Process and Return ---
+    const totalPages = Math.ceil(total / limit);
+
+    // Ensure BigInts are handled before caching/returning
+    const serializableTokensResult =
+      tokensResult?.map((token) => {
+        const serializableToken: Record<string, any> = {};
+        if (token) {
+          // Use Object.entries for potentially better type inference
+          for (const [key, value] of Object.entries(token)) {
+            if (typeof value === "bigint") {
+              // Explicitly cast value to any before calling toString()
+              serializableToken[key] = (value as any).toString();
+            } else {
+              serializableToken[key] = value;
+            }
           }
         }
-      }
-      return serializableToken as Token; // Keep cast for now
-    }) || [];
+        return serializableToken as Token; // Keep cast for now
+      }) || [];
 
-  const responseData = {
-    tokens: serializableTokensResult,
-    page,
-    totalPages,
-    total,
-    hasMore: page < totalPages,
-  };
+    const responseData = {
+      tokens: serializableTokensResult,
+      page,
+      totalPages,
+      total,
+      hasMore: page < totalPages,
+    };
 
-  // Merge ephemeral stats from Redis into each token
-  if (redisCache) {
-    await Promise.all(
-      responseData.tokens.map(async (t) => {
-        const statsJson = await redisCache.get(`token:stats:${t.mint}`);
-        if (statsJson) Object.assign(t, JSON.parse(statsJson));
-      }),
-    );
-  }
-
-  // --- RE-ENABLE CACHE SET ---
-  if (
-    redisCache
-    // Cache even if results are empty to prevent re-querying immediately
-    // && serializableTokensResult &&
-    // serializableTokensResult.length > 0
-  ) {
-    // Cache only if results exist
-    try {
-      // Cache duration remains 15 seconds for the /tokens list endpoint
-      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-    } catch (cacheError) {
-      logger.error(`Redis cache SET error:`, cacheError);
+    // Merge ephemeral stats from Redis into each token
+    if (redisCache) {
+      await Promise.all(
+        responseData.tokens.map(async (t) => {
+          const statsJson = await redisCache.get(`token:stats:${t.mint}`);
+          if (statsJson) Object.assign(t, JSON.parse(statsJson));
+        }),
+      );
     }
-  }
-  // --- END RE-ENABLE CACHE SET ---
 
-  // Final log and return
-  const returnedMints =
-    serializableTokensResult
-      ?.slice(0, 5)
-      .map((t) => t.mint)
-      .join(", ") || "none";
-  logger.log(
-    `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`,
-  );
+    // --- RE-ENABLE CACHE SET ---
+    if (
+      redisCache
+      // Cache even if results are empty to prevent re-querying immediately
+      // && serializableTokensResult &&
+      // serializableTokensResult.length > 0
+    ) {
+      // Cache only if results exist
+      try {
+        // Cache duration remains 15 seconds for the /tokens list endpoint
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+        logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error:`, cacheError);
+      }
+    }
+    // --- END RE-ENABLE CACHE SET ---
 
-  return c.json(responseData);
+    // Final log and return
+    const returnedMints =
+      serializableTokensResult
+        ?.slice(0, 5)
+        .map((t) => t.mint)
+        .join(", ") || "none";
+    logger.log(
+      `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`,
+    );
+
+    return c.json(responseData);
 
 });
 
@@ -1776,24 +1788,29 @@ tokenRouter.post("/create-token", async (c) => {
       if (imageBase64) {
         try {
           // Extract the base64 data from the data URL
-          const base64Data = imageBase64.split(",")[1];
+          const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+          if (!imageMatch) {
+            throw new Error("Invalid image data URI format");
+          }
+          const contentType = imageMatch[1];
+          const base64Data = imageMatch[2];
           const imageBuffer = Buffer.from(base64Data, "base64");
 
           // Generate a unique filename
-          const filename = `${mintAddress}-${Date.now()}.png`;
+          const ext = contentType.split('/')[1] || 'png'; // Extract extension
+          const filename = `${mintAddress}-${Date.now()}.${ext}`;
 
-          // Upload to R2
-          await R2.put(filename, imageBuffer, {
-            httpMetadata: {
-              contentType: "image/png",
-            },
-          });
+          // Upload using the uploader function (which now uses S3)
+          imageUrl = await uploadToCloudflare(
+             // Pass necessary env vars if uploader expects them (it shouldn't anymore)
+             imageBuffer,
+             { filename, contentType, basePath: 'token-images' }
+          );
 
-          // Set the public URL for the image
-          imageUrl = `${process.env.R2_PUBLIC_URL}/${filename}`;
         } catch (error) {
-          logger.error("Error uploading image to R2:", error);
+          logger.error("Error uploading image via S3 uploader:", error);
           // Continue without image if upload fails
+          imageUrl = ""; // Ensure imageUrl is empty
         }
       }
 
@@ -1813,7 +1830,7 @@ tokenRouter.post("/create-token", async (c) => {
           name: name || `Token ${mintAddress.slice(0, 8)}`,
           ticker: symbol || "TOKEN",
           url: metadataUrl || "",
-          image: imageUrl || "",
+          image: imageUrl || "", // Use the URL from the uploader
           description: description || "",
           twitter: twitter || "",
           telegram: telegram || "",
@@ -1870,14 +1887,13 @@ tokenRouter.post("/create-token", async (c) => {
       logger.log(
         `Triggering immediate price and holder update for token: ${mintAddress}`,
       );
-      c.executionCtx.waitUntil(updateTokens());
 
       if (imported) {
         try {
           const importedToken = new ExternalToken(mintAddress);
           const { marketData } = await importedToken.registerWebhook();
           // Fetch historical data in the background
-          c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
+           (async () => await importedToken.fetchHistoricalSwapData())();
           // Merge any immediately available market data
           if (marketData && marketData.newTokenData) {
             Object.assign(tokenData, marketData.newTokenData);
@@ -1896,9 +1912,8 @@ tokenRouter.post("/create-token", async (c) => {
         logger.log(
           `Triggering background image generation for new token: ${mintAddress}`,
         );
-        c.executionCtx.waitUntil(
-          generateAdditionalTokenImages(mintAddress, description || ""),
-        );
+        // Use a simple async call if waitUntil is not available
+         (async () => await generateAdditionalTokenImages(mintAddress, description || ""))();
       }
 
       return c.json({ success: true, token: tokenData });
@@ -1951,8 +1966,8 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
       .limit(1);
     const imported = tokenData.length > 0 ? tokenData[0].imported === 1 : false;
 
-    // Run update in background
-    c.executionCtx.waitUntil(updateHoldersCache(mint, imported));
+    // Run update in background (simple async call)
+    (async () => await updateHoldersCache(mint, imported))();
 
     return c.json({
       success: true,
@@ -2142,7 +2157,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
       logger.log("No changes detected, skipping database update.");
     }
 
-    // Update metadata in R2 only if it's NOT an imported token
+    // Update metadata in storage (S3 API) only if it's NOT an imported token
     if (
       currentTokenData?.imported === 0 &&
       Object.keys(updateData).length > 1
@@ -2151,23 +2166,52 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         // 1) fetch the existing JSON
         const originalUrl = currentTokenData.url;
         if (originalUrl) {
-          const url = new URL(originalUrl);
-          const parts = url.pathname.split("/");
-          // grab only the filename portion
-          const filename = parts.pop();
-          if (!filename) throw new Error("Could not parse metadata filename");
-          const objectKey = `token-metadata/${filename}`;
+          // Extract the object key from the FULL URL (assuming it includes the base path)
+          let objectKey = "";
+          try {
+              const url = new URL(originalUrl);
+              // Assumes URL format like: https://..../autofun-storage/token-metadata/uuid-filename.json
+              const storageBasePath = "/autofun-storage/"; // Or dynamically get if needed
+              const basePathIndex = url.pathname.indexOf(storageBasePath);
+              if (basePathIndex !== -1) {
+                  objectKey = url.pathname.substring(basePathIndex + storageBasePath.length);
+              } else {
+                 // Fallback or different logic if URL format is different
+                 const parts = url.pathname.split("/");
+                 if (parts.length >= 2) {
+                     objectKey = `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+                 } else {
+                    throw new Error("Could not parse object key from metadata URL");
+                 }
+                 logger.warn(`Could not find expected base path in URL, using inferred key: ${objectKey}`);
+              }
+          } catch (urlParseError) {
+               logger.error(`Failed to parse original metadata URL: ${originalUrl}`, urlParseError);
+               throw new Error("Could not parse metadata URL to get object key.");
+          }
 
-          // 2) Fetch
+          if (!objectKey) {
+              throw new Error("Failed to extract object key from metadata URL.");
+          }
+
+
+          const s3Client = getS3Client();
+          const bucketName = process.env.R2_BUCKET_NAME;
+           if (!bucketName) {
+              throw new Error("R2_BUCKET_NAME not configured for metadata update.");
+          }
+
+          // 2) Fetch existing metadata content
           let json: any;
           try {
-            const res = await fetch(originalUrl);
-            if (!res.ok)
-              throw new Error(`Failed to fetch metadata: ${res.status}`);
-            json = await res.json();
+            const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
+            const response = await s3Client.send(getCmd);
+            const jsonString = await response.Body?.transformToString();
+            if (!jsonString) throw new Error("Empty metadata content retrieved.");
+            json = JSON.parse(jsonString);
           } catch (fetchErr) {
             logger.error(
-              `Failed to fetch or parse existing metadata from ${originalUrl}:`,
+              `Failed to fetch or parse existing metadata from S3 (${objectKey}):`,
               fetchErr,
             );
             throw new Error("Failed to fetch existing metadata for update."); // Rethrow to indicate failure
@@ -2186,26 +2230,29 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           if (updateData.farcaster !== undefined)
             json.properties.farcaster = updateData.farcaster;
 
-          // 3) Serialize back to an ArrayBuffer
-          const buf = new TextEncoder().encode(JSON.stringify(json))
-            .buffer as ArrayBuffer;
+          // 3) Serialize back to Buffer
+          const buf = Buffer.from(JSON.stringify(json), 'utf8');
 
-          // 4) Overwrite the same key in R2
-          await R2.put(objectKey, buf, {
-            httpMetadata: { contentType: "application/json" },
-            customMetadata: { publicAccess: "true" },
+          // 4) Overwrite the same key using S3 PutObject
+          const putCmd = new PutObjectCommand({
+              Bucket: bucketName,
+              Key: objectKey,
+              Body: buf,
+              ContentType: "application/json",
+              Metadata: { publicAccess: "true" }
           });
+          await s3Client.send(putCmd);
 
           logger.log(
-            `Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`,
+            `Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`,
           );
         } else {
           logger.warn(
-            `Token ${mint} has no metadata URL, cannot update R2 metadata.`,
+            `Token ${mint} has no metadata URL, cannot update S3 metadata.`,
           );
         }
       } catch (e) {
-        logger.error("Failed to re-upload metadata JSON:", e);
+        logger.error("Failed to re-upload metadata JSON via S3 API:", e);
         // Decide if this failure should prevent success response (maybe return partial success?)
       }
     }
@@ -2498,7 +2545,8 @@ export async function uploadImportImage(c: Context) {
     }
 
     const { imageBase64 } = await c.req.json();
-    const env = process.env;
+    // Removed env usage
+    // const env = process.env;
 
     if (!imageBase64) {
       return c.json({ error: "No image data provided" }, 400);
@@ -2523,23 +2571,15 @@ export async function uploadImportImage(c: Context) {
 
     // Generate unique filename
     const imageFilename = `${crypto.randomUUID()}${extension}`;
-    const imageKey = `token-images/${imageFilename}`;
+    // No need for imageKey construction here if using uploadToCloudflare
+    // const imageKey = `token-images/${imageFilename}`;
 
-    // Upload to R2
-    await R2.put(imageKey, imageBuffer, {
-      httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
-    });
-
-    // Construct public URL
-    const r2PublicUrl = process.env.R2_PUBLIC_URL;
-    if (!r2PublicUrl) {
-      return c.json({ error: "R2 public URL not configured" }, 500);
-    }
-
-    const imageUrl =
-      process.env.API_URL?.includes("localhost") || process.env.API_URL?.includes("127.0.0.1")
-        ? `${process.env.API_URL}/api/image/${imageFilename}`
-        : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`;
+    // Upload using the uploader function
+    const imageUrl = await uploadToCloudflare(
+        // Env no longer needed here
+        imageBuffer,
+        { filename: imageFilename, contentType, basePath: 'token-images' }
+    );
 
     return c.json({ success: true, imageUrl });
   } catch (error) {

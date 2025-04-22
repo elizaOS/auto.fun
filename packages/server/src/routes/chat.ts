@@ -124,7 +124,7 @@ function getTierThreshold(tier: string): number {
 const allowedTiers = ["1k", "100k", "1M"];
 
 // --- Hono App ---
-const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+const app = new Hono<{ Variables: Variables }>();
 
 // --- Routes (Updated GET and POST) ---
 

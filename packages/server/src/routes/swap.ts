@@ -4,12 +4,10 @@ import { cache as honoCacheMiddleware } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, tokens } from "../db";
-import { Env } from "../env";
 import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { logger } from "../util";
 
 const router = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

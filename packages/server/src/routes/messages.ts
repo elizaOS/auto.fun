@@ -1,4 +1,4 @@
-import { eq, inArray, sql, and, desc } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   getDB,
@@ -6,11 +6,9 @@ import {
   messages,
   messages as messagesTable,
 } from "../db";
-import { Env } from "../env";
 import { logger } from "../logger";
 // Create a router for admin routes
 const messagesRouter = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

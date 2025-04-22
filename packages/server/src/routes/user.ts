@@ -1,11 +1,9 @@
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { Env } from "../env";
 import { getDB, tokens, users } from "../db";
-import { desc, eq, sql } from "drizzle-orm";
 import { logger } from "../util";
 
 const app = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

@@ -1,20 +1,7 @@
-import {
-  D1Database,
-  DurableObjectNamespace,
-  R2Bucket,
-} from "@cloudflare/workers-types/experimental";
-
-// Define AI interface for Cloudflare AI
-interface Ai {
-  run: (model: string, inputs: any) => Promise<any>;
-}
-
 /**
  * Environment interface for Cloudflare Workers
  */
 export interface Env {
-  WEBSOCKET_DO: DurableObjectNamespace;
-  DB: D1Database;
   NETWORK: string;
   DECIMALS: string;
   TOKEN_SUPPLY: string;
@@ -23,17 +10,9 @@ export interface Env {
   WALLET_PRIVATE_KEY: string;
   FEE_PERCENTAGE: string;
   CODEX_API_KEY: string;
-  // Cloudflare R2 storage
-  R2: R2Bucket;
-  R2_PUBLIC_URL: string;
   API_URL: string; // URL for self, for accessing cached assets
   FAL_API_KEY: string;
   LOCAL_DEV: string;
-  // Cloudflare AI binding
-  AI: Ai;
-  // Cloudflare AI credentials (only needed for external API calls, not when using binding)
-  CLOUDFLARE_ACCOUNT_ID: string;
-  CLOUDFLARE_API_TOKEN: string;
   NODE_ENV: string;
   SWAP_FEE: string;
   // Authentication

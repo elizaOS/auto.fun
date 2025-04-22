@@ -1,21 +1,19 @@
 import * as IDL from "@autodotfun/program/idl/autofun.json";
 import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/program/types/autofun";
+import { checkBalance } from "@autodotfun/raydium/src/raydiumVault";
+import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { getDB, Token, tokens, users } from "../db";
-import { Env } from "../env";
 import { TokenMigrator } from "../migration/migrateToken";
-import { checkBalance } from "@autodotfun/raydium/src/raydiumVault";
-import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { createNewTokenData, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
 const migrationRouter = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

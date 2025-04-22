@@ -1,5 +1,6 @@
 import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
-import { ExecutionContext } from "@cloudflare/workers-types/experimental";
+// import { ExecutionContext } from "@cloudflare/workers-types/experimental"; // Removed CF dependency
+import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3"; // S3 Import
 import { eq, sql } from "drizzle-orm";
 import { getLatestCandle } from "./chart";
 import { getDB, Token, tokens } from "./db";
@@ -9,7 +10,7 @@ import { awardGraduationPoints, awardUserPoints } from "./points";
 import { getGlobalRedisCache } from "./redis/redisCacheGlobal";
 import {
   checkAndReplenishTokens,
-  generateAdditionalTokenImages,
+  generateAdditionalTokenImages, // Assumes this uses S3 uploader internally now
 } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
 import {
@@ -20,6 +21,26 @@ import {
   logger,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
+import { Buffer } from 'node:buffer'; // Buffer import
+import crypto from "node:crypto"; // Import crypto for lock value
+
+// S3 Client Helper (copied from uploader.ts, using process.env)
+let s3ClientInstance: S3Client | null = null;
+function getS3Client(): S3Client {
+    if (s3ClientInstance) return s3ClientInstance;
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+        logger.error("Missing R2 S3 API environment variables.");
+        throw new Error("Missing required R2 S3 API environment variables.");
+    }
+    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+    s3ClientInstance = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
+    logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
+    return s3ClientInstance;
+}
 
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
@@ -469,41 +490,48 @@ async function handleCurveComplete(
   }
 }
 
-export async function cron(
-  ctx: ExecutionContext | { cron: string },
-): Promise<void> {
-  console.log("Running cron job...");
+// --- Cron Execution Logic ---
+// let isCronRunning = false; // Replaced by distributed lock
+const CRON_LOCK_KEY = "cron:runCronTasks:lock";
+const CRON_LOCK_TTL_MS = 10 * 60 * 1000; // 10 minutes TTL for safety
+
+// Renamed to be the primary export for cron tasks
+export async function runCronTasks() {
+  const redisCache = getGlobalRedisCache();
+  const lockValue = crypto.randomUUID(); // Unique value for this attempt
+
+  logger.log(`Cron: Attempting to acquire lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
+
+  const lockAcquired = await redisCache.acquireLock(
+      CRON_LOCK_KEY,
+      lockValue,
+      CRON_LOCK_TTL_MS
+  );
+
+  if (!lockAcquired) {
+      logger.log("Cron: Lock not acquired (already held or error), skipping run.");
+      return; // Exit if lock couldn't be acquired
+  }
+
+  logger.log("Cron: Lock acquired. Starting scheduled tasks...");
+
   try {
-    // Check if this is a legitimate Cloudflare scheduled trigger
-    // For scheduled triggers, the ctx should have a 'cron' property
-    const _ctx = ctx as any; // Use type assertion as a workaround
-    const isScheduledEvent = typeof _ctx.cron === "string";
-
-    if (!isScheduledEvent) {
-      logger.warn(
-        "Rejected direct call to cron function - not triggered by scheduler",
-      );
-      return; // Exit early without running the scheduled tasks
-    }
-
-    // Log the cron pattern being executed
-    const cronPattern = (_ctx as { cron: string }).cron;
-    logger.log(`Running scheduled tasks for cron pattern: ${cronPattern}...`);
-
-    // IMPORTANT: Ensure the main async work is wrapped in ctx.waitUntil
-    // Assuming `ctx` is the ExecutionContext passed to the `scheduled` handler
-    if ('waitUntil' in ctx && typeof ctx.waitUntil === 'function') {
-      ctx.waitUntil(updateTokens());
-    } else {
-      // Fallback or handle case where ctx is not ExecutionContext (e.g., local testing)
-      await updateTokens();
-    }
-
+    await updateTokens();
+    // Add other cron tasks here if needed in the future
+    logger.log("Cron: Finished scheduled tasks successfully.");
   } catch (error) {
-    logger.error("Error in cron job:", error);
+    logger.error("Cron: Error during scheduled tasks execution:", error);
+    // Error is logged, lock will be released in finally
+  } finally {
+      logger.log(`Cron: Releasing lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
+      const released = await redisCache.releaseLock(CRON_LOCK_KEY, lockValue);
+      if (!released) {
+          logger.warn(`Cron: Failed to release lock '${CRON_LOCK_KEY}'. It might have expired or been taken by another process.`);
+      }
   }
 }
 
+// Main function containing the logic previously in the cron export
 export async function updateTokens() {
   const db = getDB();
   const cache = getGlobalRedisCache();
@@ -513,69 +541,76 @@ export async function updateTokens() {
   const BATCH_SIZE = 20; // Adjust as needed
 
   // Fetch active tokens with necessary fields
-  const activeTokens = await db
-    .select({
-      mint: tokens.mint,
-      imported: tokens.imported,
-      description: tokens.description,
-      id: tokens.id,
-      name: tokens.name,
-      ticker: tokens.ticker,
-      url: tokens.url,
-      image: tokens.image,
-      twitter: tokens.twitter,
-      telegram: tokens.telegram,
-      website: tokens.website,
-      discord: tokens.discord,
-      farcaster: tokens.farcaster,
-      creator: tokens.creator,
-      nftMinted: tokens.nftMinted,
-      lockId: tokens.lockId,
-      lockedAmount: tokens.lockedAmount,
-      lockedAt: tokens.lockedAt,
-      harvestedAt: tokens.harvestedAt,
-      status: tokens.status,
-      createdAt: tokens.createdAt,
-      lastUpdated: tokens.lastUpdated,
-      completedAt: tokens.completedAt,
-      withdrawnAt: tokens.withdrawnAt,
-      migratedAt: tokens.migratedAt,
-      marketId: tokens.marketId,
-      baseVault: tokens.baseVault,
-      quoteVault: tokens.quoteVault,
-      withdrawnAmount: tokens.withdrawnAmount,
-      reserveAmount: tokens.reserveAmount,
-      reserveLamport: tokens.reserveLamport,
-      virtualReserves: tokens.virtualReserves,
-      liquidity: tokens.liquidity,
-      currentPrice: tokens.currentPrice,
-      marketCapUSD: tokens.marketCapUSD,
-      tokenPriceUSD: tokens.tokenPriceUSD,
-      solPriceUSD: tokens.solPriceUSD,
-      curveProgress: tokens.curveProgress,
-      curveLimit: tokens.curveLimit,
-      priceChange24h: tokens.priceChange24h,
-      price24hAgo: tokens.price24hAgo,
-      volume24h: tokens.volume24h,
-      inferenceCount: tokens.inferenceCount,
-      lastVolumeReset: tokens.lastVolumeReset,
-      lastPriceUpdate: tokens.lastPriceUpdate,
-      holderCount: tokens.holderCount,
-      txId: tokens.txId,
-      migration: tokens.migration,
-      withdrawnAmounts: tokens.withdrawnAmounts,
-      poolInfo: tokens.poolInfo,
-      lockLpTxId: tokens.lockLpTxId,
-      featured: tokens.featured,
-      verified: tokens.verified,
-      hidden: tokens.hidden,
-      tokenSupply: tokens.tokenSupply,
-      tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
-      tokenDecimals: tokens.tokenDecimals,
-      lastSupplyUpdate: tokens.lastSupplyUpdate,
-    })
-    .from(tokens)
-    .where(eq(tokens.status, "active"));
+  let activeTokens: Token[] = [];
+  try {
+     activeTokens = await db
+      .select({
+        mint: tokens.mint,
+        imported: tokens.imported,
+        description: tokens.description,
+        id: tokens.id,
+        name: tokens.name,
+        ticker: tokens.ticker,
+        url: tokens.url,
+        image: tokens.image,
+        twitter: tokens.twitter,
+        telegram: tokens.telegram,
+        website: tokens.website,
+        discord: tokens.discord,
+        farcaster: tokens.farcaster,
+        creator: tokens.creator,
+        nftMinted: tokens.nftMinted,
+        lockId: tokens.lockId,
+        lockedAmount: tokens.lockedAmount,
+        lockedAt: tokens.lockedAt,
+        harvestedAt: tokens.harvestedAt,
+        status: tokens.status,
+        createdAt: tokens.createdAt,
+        lastUpdated: tokens.lastUpdated,
+        completedAt: tokens.completedAt,
+        withdrawnAt: tokens.withdrawnAt,
+        migratedAt: tokens.migratedAt,
+        marketId: tokens.marketId,
+        baseVault: tokens.baseVault,
+        quoteVault: tokens.quoteVault,
+        withdrawnAmount: tokens.withdrawnAmount,
+        reserveAmount: tokens.reserveAmount,
+        reserveLamport: tokens.reserveLamport,
+        virtualReserves: tokens.virtualReserves,
+        liquidity: tokens.liquidity,
+        currentPrice: tokens.currentPrice,
+        marketCapUSD: tokens.marketCapUSD,
+        tokenPriceUSD: tokens.tokenPriceUSD,
+        solPriceUSD: tokens.solPriceUSD,
+        curveProgress: tokens.curveProgress,
+        curveLimit: tokens.curveLimit,
+        priceChange24h: tokens.priceChange24h,
+        price24hAgo: tokens.price24hAgo,
+        volume24h: tokens.volume24h,
+        inferenceCount: tokens.inferenceCount,
+        lastVolumeReset: tokens.lastVolumeReset,
+        lastPriceUpdate: tokens.lastPriceUpdate,
+        holderCount: tokens.holderCount,
+        txId: tokens.txId,
+        migration: tokens.migration,
+        withdrawnAmounts: tokens.withdrawnAmounts,
+        poolInfo: tokens.poolInfo,
+        lockLpTxId: tokens.lockLpTxId,
+        featured: tokens.featured,
+        verified: tokens.verified,
+        hidden: tokens.hidden,
+        tokenSupply: tokens.tokenSupply,
+        tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
+        tokenDecimals: tokens.tokenDecimals,
+        lastSupplyUpdate: tokens.lastSupplyUpdate,
+      })
+      .from(tokens)
+      .where(eq(tokens.status, "active"));
+  } catch (dbError) {
+      logger.error("Cron: Failed to fetch active tokens from DB:", dbError);
+      return; // Stop if we cannot fetch tokens
+  }
+
 
   logger.log(`Found ${activeTokens.length} active tokens to process.`);
 
@@ -638,7 +673,7 @@ export async function updateTokens() {
     await Promise.all(batch.map(async (token) => {
       try {
         if (token.mint) {
-          await updateHoldersCache(token.mint);
+          await updateHoldersCache(token.mint, token.imported === 1);
         }
       } catch (err) {
         logger.error(
@@ -655,47 +690,56 @@ export async function updateTokens() {
 
   // --- Step 3: Sequential Batch Processing for Image Checks ---
   logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
+  const s3Client = getS3Client();
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!bucketName) {
+      logger.error("Cron: R2_BUCKET_NAME not configured. Cannot check for generated images.");
+      // Decide whether to skip this step entirely or log per token
+  }
+
   for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
       const batch = activeTokens.slice(i, i + BATCH_SIZE);
       logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
       await Promise.all(batch.map(async (token) => {
           if (token.mint && Number(token.imported) === 0) {
-              try {
-                  if (R2) {
+              // Only check S3 if bucketName is configured
+              if (bucketName) {
+                  try {
+                      // --- NEW S3 CHECK BLOCK START ---
                       const generationImagesPrefix = `generations/${token.mint}/`;
-                      const objects = await R2.list({
-                          prefix: generationImagesPrefix,
-                          limit: 1,
+                      const listCmd = new ListObjectsV2Command({
+                          Bucket: bucketName,
+                          Prefix: generationImagesPrefix,
+                          MaxKeys: 1, // We only need to know if at least one exists
                       });
-                      const hasGenerationImages = objects.objects.length > 0;
+                      const listResponse = await s3Client.send(listCmd);
+                      const hasGenerationImages = (listResponse.KeyCount ?? 0) > 0;
 
-            if (!hasGenerationImages) {
-              logger.log(
-                `Cron: Triggering image generation for: ${token.mint}`,
-              );
-              // Consider making generateAdditionalTokenImages truly async if it's long-running
-              // and doesn't need to block the next batch immediately.
-              await generateAdditionalTokenImages(
-                token.mint,
-                token.description || "",
-              );
-            }
-          } else {
-            logger.warn(
-              "Cron: R2 storage not configured, skipping image check.",
-            );
-            // No need to break the inner loop, just skip R2 check for this token
+                      if (!hasGenerationImages) {
+                          logger.log(
+                              `Cron: Triggering image generation for: ${token.mint}`,
+                          );
+                          // This function should now use S3 internally
+                          await generateAdditionalTokenImages(
+                              token.mint,
+                              token.description || "",
+                          );
+                      }
+                      // --- NEW S3 CHECK BLOCK END ---
+                  } catch (imageCheckError) {
+                      logger.error(
+                          `Cron: Error checking/generating images for ${token.mint} via S3:`, // Updated log message
+                          imageCheckError,
+                      );
+                  }
+              } else {
+                  // Log skipped check if bucket name is missing
+                  logger.warn(`Cron: Skipping image check for ${token.mint} as R2_BUCKET_NAME is not set.`);
+              }
           }
-        } catch (imageCheckError) {
-          logger.error(
-            `Cron: Error checking/generating images for ${token.mint}:`,
-            imageCheckError,
-          );
-        }
-      }
-    }));
-    // Optional: Add a small delay between batches if needed
-    // await new Promise(resolve => setTimeout(resolve, 100));
+      }));
+      // Optional: Add a small delay between batches if needed
+      // await new Promise(resolve => setTimeout(resolve, 100));
   }
   logger.log("Cron: Finished checking for missing generation images.");
 

@@ -6,7 +6,6 @@ import { z } from "zod";
 import { getLatestCandle } from "../chart";
 import { processTransactionLogs } from "../cron";
 import { getDB, tokens } from "../db";
-import type { Env } from "../env";
 import { ExternalToken } from "../externalToken";
 import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
@@ -14,7 +13,6 @@ import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
 const router = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

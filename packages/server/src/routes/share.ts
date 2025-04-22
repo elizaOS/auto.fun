@@ -1,12 +1,11 @@
 import { createHash, randomBytes } from "crypto";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { StatusCode } from "hono/utils/http-status";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { allowedOrigins } from "../allowedOrigins";
 import { accessTokens, getDB, oauthVerifiers } from "../db";
-import { Env } from "../env";
 import { logger } from "../util";
 
 /**
@@ -322,7 +321,6 @@ async function validateToken(
  * ------------------------------------------------------------------
  */
 const shareRouter = new Hono<{
-  Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
   };

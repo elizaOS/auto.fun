@@ -41,10 +41,6 @@ interface AuthTokenData {
   expiresAt?: number;
 }
 
-// Check if we're in a development environment using Miniflare
-const isLocalDev =
-  typeof process !== "undefined" && process.env.NODE_ENV === "development";
-
 /**
  * Validates a JWT token
  */
@@ -486,15 +482,4 @@ export const verifyAuth = async (
     c.set("user", null);
     await next();
   }
-};
-
-export const requireAuth = async (
-  c: Context<{ Bindings: Env }>,
-  next: Function,
-) => {
-  // const user = c.get("user");
-  // if (!user) {
-  //   return c.json({ message: "Authentication required" }, 401);
-  // }
-  await next();
 };

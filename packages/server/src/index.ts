@@ -13,6 +13,7 @@ dotenv.config({ path: "../../.env" });
 import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";
 import { Env } from "./env"; // Assuming Env type is defined and includes Redis vars
+import { runCronTasks } from "./cron"; // Import the cron task runner
 import { adminRouter, ownerRouter } from "./routes/admin";
 import agentRouter from "./routes/agents";
 import authRouter from "./routes/auth";
@@ -259,6 +260,39 @@ api.route("/owner", ownerRouter);
 
 // --- Mount the API sub-router ---
 app.route("/api", api);
+
+// --- Special Cron Trigger Route --- 
+// Use a non-standard path and require a secret header
+const CRON_SECRET = process.env.CRON_SECRET; // Get secret from environment
+
+if (!CRON_SECRET) {
+    logger.warn("CRON_SECRET environment variable not set. Cron trigger endpoint will be disabled.");
+}
+
+// Mount this route directly on the main app, outside /api if desired
+app.post("/_internal/trigger-cron", async (c) => {
+    if (!CRON_SECRET) {
+        logger.error("Cron trigger endpoint called but CRON_SECRET is not configured.");
+        return c.json({ error: "Cron trigger not configured" }, 503); // Service Unavailable
+    }
+
+    const providedSecret = c.req.header("X-Cron-Secret");
+    if (providedSecret !== CRON_SECRET) {
+        logger.warn("Unauthorized attempt to trigger cron endpoint.");
+        return c.json({ error: "Unauthorized" }, 403);
+    }
+
+    logger.log("Cron trigger endpoint called successfully. Initiating tasks asynchronously...");
+
+    // Run tasks asynchronously (fire and forget). Do NOT await here.
+    // The lock mechanism inside runCronTasks will prevent overlaps.
+    runCronTasks().catch(err => {
+        logger.error("Caught error from background cron task execution:", err);
+    });
+
+    // Return immediately to the cron runner
+    return c.json({ success: true, message: "Cron tasks initiated." });
+});
 
 // --- Root and Maintenance Routes ---
 app.get("/", (c) => c.json({ status: "ok", message: "Hono server running!" }));

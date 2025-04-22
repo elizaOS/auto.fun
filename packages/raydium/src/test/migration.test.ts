@@ -29,8 +29,6 @@
 // describe("TokenMigrator Integration Tests", () => {
 //   beforeAll(() => {
 //     env = {
-//       WEBSOCKET_DO: {} as DurableObjectNamespace,
-//       DB: {} as D1Database,
 //       NETWORK: process.env.NETWORK || "devnet",
 //       DECIMALS: process.env.DECIMALS || "9",
 //       TOKEN_SUPPLY: process.env.TOKEN_SUPPLY || "1000000000000000",
@@ -39,8 +37,6 @@
 //       WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY || "[]",
 //       FEE_PERCENTAGE: process.env.FEE_PERCENTAGE || "10",
 //       CODEX_API_KEY: process.env.CODEX_API_KEY || "",
-//       R2: {} as R2Bucket,
-//       R2_PUBLIC_URL: process.env.R2_PUBLIC_URL || "",
 //       VITE_API_URL: process.env.VITE_API_URL || "",
 //       FAL_API_KEY: process.env.FAL_API_KEY || "",
 //       AI: { run: async (model: string, inputs: any) => ({}) },
