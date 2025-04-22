@@ -588,12 +588,14 @@ export async function updateTokens(env: Env) {
     // Update Market Data
     (async () => {
       try {
-        // Pass the fetched tokens (cast needed because select specifies columns)
-        const updatedTokens = await bulkUpdatePartialTokens(
-          activeTokens as Token[],
-          env,
-        );
-        logger.log(`Cron: Updated prices for ${updatedTokens.length} tokens`);
+        const CHUNK_SIZE = 50;
+        const total = activeTokens.length;
+        for (let i = 0; i < total; i += CHUNK_SIZE) {
+          const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
+          const updatedBatch = await bulkUpdatePartialTokens(batch, env);
+          logger.log(`Cron: Updated prices for batch ${Math.floor(i/CHUNK_SIZE)+1} (${updatedBatch.length}/${batch.length}) tokens`);
+        }
+        logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
       } catch (err) {
         logger.error("Cron: Error during bulkUpdatePartialTokens:", err);
       }

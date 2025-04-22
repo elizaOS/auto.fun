@@ -1,12 +1,12 @@
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { getLatestCandle } from "../chart";
 import { processTransactionLogs } from "../cron";
 import { getDB, tokens } from "../db";
-import { Env } from "../env";
+import type { Env } from "../env";
 import { ExternalToken } from "../externalToken";
 import { createRedisCache } from "../redis/redisCacheService";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
@@ -169,8 +169,12 @@ router.post("/codex-webhook", async (c) => {
   const redisCache = createRedisCache(c.env);
   const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
   try {
-    await redisCache.lpush(listKey, JSON.stringify(swapRecord));
-    await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+    // Pipeline push + trim to reduce RTT
+    await redisCache.lpushTrim(
+      listKey,
+      JSON.stringify(swapRecord),
+      MAX_SWAPS_TO_KEEP,
+    );
     logger.log(
       `Codex: Saved swap to Redis list ${listKey} & trimmed. Type: ${isBuy ? "buy" : "sell"}`,
     );
@@ -235,7 +239,7 @@ router.get("/codex-monitor-status", async (c) => {
   const rawCursor = await kv.get("lockedCursor");
   if (!rawList) return c.json({ seeded: false });
   const mints: string[] = JSON.parse(rawList);
-  const cursor = parseInt(rawCursor || "0", 10);
+  const cursor = Number.parseInt(rawCursor || "0", 10);
   return c.json({ seeded: true, total: mints.length, processed: cursor });
 });
 
