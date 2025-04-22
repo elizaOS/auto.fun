@@ -1,5 +1,3 @@
-import { Pool } from "pg";
-import { drizzle, } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -11,8 +9,8 @@ import {
   unique
 } from "drizzle-orm/pg-core";
 import { Env } from "./env";
-
-
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 // Token schema
 export const tokens = pgTable("tokens", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -261,12 +259,10 @@ export const metadata = pgTable("metadata", {
 
 
 export function getDB(env: Env) {
-  const pool = new Pool({ connectionString: env.DATABASE_URL });
-  // pass your schema here
-  return drizzle(pool, { schema });
+  const sql = neon(env.DATABASE_URL);
+  // Instantiate Drizzle with your schema
+  return drizzle(sql, { schema });
 }
-
-
 // Type definitions for common query results
 export type Token = typeof schema.tokens.$inferSelect;
 export type TokenInsert = typeof schema.tokens.$inferInsert;

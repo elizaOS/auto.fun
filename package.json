@@ -46,6 +46,7 @@
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.1.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
+    "@neondatabase/serverless": "^1.0.0",
     "@noble/ed25519": "^2.2.3",
     "@noble/hashes": "^1.7.2",
     "@project-serum/serum": "^0.13.65",
