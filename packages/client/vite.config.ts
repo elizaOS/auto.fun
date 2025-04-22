@@ -8,7 +8,9 @@ import Sitemap from "vite-plugin-sitemap";
 
 import { config } from "dotenv";
 
-config();
+config({
+  path: "../../.env",
+});
 
 // https://vite.dev/config/
 export default defineConfig({

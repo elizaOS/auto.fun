@@ -33,7 +33,8 @@
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
     "p-queue": "^8.1.0",
-    "pg": "^8.14.1"
+    "pg": "^8.14.1",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
