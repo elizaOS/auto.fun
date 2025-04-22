@@ -18,7 +18,7 @@ export default function TosProvider() {
 
   return (
     <>
-      {!tosAccepted && !AllowedRoute && (
+      {!tosAccepted && !AllowedRoute ? (
         <div className="h-screen w-full grid place-items-center fixed z-1000 backdrop-blur-xs">
           <div className="max-w-[400px] md:max-w-[496px] w-full bg-autofun-background-card shadow-lg overflow-hidden">
             <div className="p-4 border-b border-autofun-border relative mx-auto">
@@ -63,7 +63,7 @@ export default function TosProvider() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

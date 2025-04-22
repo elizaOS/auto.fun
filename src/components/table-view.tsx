@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { IToken } from "@/types";
-import { formatNumber, fromNow, resizeImage, shortenAddress } from "@/utils";
+import { abbreviateNumber, formatNumber, fromNow, resizeImage, shortenAddress } from "@/utils";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
@@ -160,7 +160,7 @@ export function TableView({
               <TableCell className="text-left">
                 {formatNumber(token.volume24h)}
               </TableCell>
-              <TableCell className="text-left">{token.holderCount}</TableCell>
+              <TableCell className="text-left">{abbreviateNumber(token?.holderCount || 0, true)}</TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
                   {token.imported === 0 && (
