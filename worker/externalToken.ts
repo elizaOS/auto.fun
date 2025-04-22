@@ -171,15 +171,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-          (holder): TokenHolderInsert => ({
-            id: crypto.randomUUID(),
-            mint: this.mint,
-            address: holder.address,
-            amount: holder.shiftedBalance,
-            percentage: (holder.shiftedBalance / tokenSupply) * 100,
-            lastUpdated: now,
-          }),
-        )
+        (holder): TokenHolderInsert => ({
+          id: crypto.randomUUID(),
+          mint: this.mint,
+          address: holder.address,
+          amount: holder.shiftedBalance,
+          percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
+        }),
+      )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
@@ -188,7 +188,7 @@ export class ExternalToken {
     const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
 
     if (holders.length > 0) {
-      const MAX_SQLITE_PARAMETERS = 100;
+      const MAX_SQLITE_PARAMETERS = 50;
       const parametersPerHolder = Object.keys(holders[0]).length;
       const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
 

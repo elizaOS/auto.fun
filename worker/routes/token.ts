@@ -36,9 +36,9 @@ import { generateAdditionalTokenImages } from "./generation";
 
 // Basic logger implementation if not globally available
 const logger = {
-    log: (...args: any[]) => console.log('[INFO]', ...args),
-    warn: (...args: any[]) => console.warn('[WARN]', ...args),
-    error: (...args: any[]) => console.error('[ERROR]', ...args),
+  log: (...args: any[]) => console.log('[INFO]', ...args),
+  warn: (...args: any[]) => console.warn('[WARN]', ...args),
+  error: (...args: any[]) => console.error('[ERROR]', ...args),
 };
 
 // --- Validation Function ---
@@ -463,14 +463,14 @@ export async function processSwapEvent(
     // Check for process is not ideal in Cloudflare Workers, use env var instead
     const debugWs = (env as any).DEBUG_WEBSOCKET === 'true';
     if (debugWs) {
-        logger.log(`Emitted swap event for token ${swap.tokenMint}`);
+      logger.log(`Emitted swap event for token ${swap.tokenMint}`);
     }
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
       await wsClient.emit("global", "newSwap", enrichedSwap);
 
-       if (debugWs) {
+      if (debugWs) {
         logger.log("Emitted swap event to global feed");
       }
     }
@@ -606,7 +606,7 @@ async function processTokenInfo(
             );
           }
         } catch (fetchError) {
-           logger.error(`[search-token] Error fetching URI: ${fetchError}`);
+          logger.error(`[search-token] Error fetching URI: ${fetchError}`);
         }
       }
     } else {
@@ -741,7 +741,7 @@ async function processTokenInfo(
             );
           }
         } catch (fetchError) {
-           logger.error(`[search-token] Error fetching URI: ${fetchError}`);
+          logger.error(`[search-token] Error fetching URI: ${fetchError}`);
         }
       }
     }
@@ -843,15 +843,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1239,8 +1239,8 @@ tokenRouter.get("/tokens", async (c) => {
           if (
             parsedData &&
             Array.isArray(parsedData.tokens)
-             // Removed length check to allow caching empty results
-             // && parsedData.tokens.length > 0
+            // Removed length check to allow caching empty results
+            // && parsedData.tokens.length > 0
           ) {
             logger.log(
               `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
@@ -1252,7 +1252,7 @@ tokenRouter.get("/tokens", async (c) => {
             );
           }
         } else {
-             logger.log(`Cache miss for ${cacheKey}`);
+          logger.log(`Cache miss for ${cacheKey}`);
         }
       } catch (cacheError) {
         logger.error(`Redis cache GET error:`, cacheError);
@@ -1283,11 +1283,11 @@ tokenRouter.get("/tokens", async (c) => {
     // --- Apply Sorting to Main Query ---
     // Column selection is now done inside buildTokensBaseQuery
     const validSortColumns = {
-        createdAt: tokens.createdAt,
-        marketCapUSD: tokens.marketCapUSD,
-        volume24h: tokens.volume24h,
-        holders: tokens.holderCount,
-        // Add other valid columns here
+      createdAt: tokens.createdAt,
+      marketCapUSD: tokens.marketCapUSD,
+      volume24h: tokens.volume24h,
+      holders: tokens.holderCount,
+      // Add other valid columns here
     };
 
 
@@ -1481,23 +1481,23 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const redisCache = createRedisCache(c.env as Env);
 
     if (redisCache) {
-        try {
-            const cachedData = await redisCache.get(cacheKey);
-            if (cachedData) {
-                logger.log(`[Cache Hit] ${cacheKey}`);
-                const parsedData = JSON.parse(cachedData);
-                // Basic validation
-                if (parsedData && Array.isArray(parsedData.holders)) {
-                    return c.json(parsedData);
-                } else {
-                    logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-                }
-            } else {
-                logger.log(`[Cache Miss] ${cacheKey}`);
-            }
-        } catch (cacheError) {
-            logger.error(`Redis cache GET error for holders:`, cacheError);
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`[Cache Hit] ${cacheKey}`);
+          const parsedData = JSON.parse(cachedData);
+          // Basic validation
+          if (parsedData && Array.isArray(parsedData.holders)) {
+            return c.json(parsedData);
+          } else {
+            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+          }
+        } else {
+          logger.log(`[Cache Miss] ${cacheKey}`);
         }
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error for holders:`, cacheError);
+      }
     }
     // --- END REDIS CACHE CHECK ---
 
@@ -1522,16 +1522,16 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
         totalPages: 0,
         total: 0,
       };
-       // Cache empty result
-        if (redisCache) {
-            try {
-                await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
-                logger.log(`Cached empty holders for ${cacheKey} with 15s TTL`);
-            } catch (cacheError) {
-                logger.error(`Redis cache SET error for empty holders:`, cacheError);
-            }
+      // Cache empty result
+      if (redisCache) {
+        try {
+          await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
+          logger.log(`Cached empty holders for ${cacheKey} with 15s TTL`);
+        } catch (cacheError) {
+          logger.error(`Redis cache SET error for empty holders:`, cacheError);
         }
-        return c.json(responseData);
+      }
+      return c.json(responseData);
     }
 
     // Paginate results in application code
@@ -1547,12 +1547,12 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
     // --- BEGIN REDIS CACHE SET ---
     if (redisCache) {
-        try {
-            await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
-            logger.log(`Cached holders for ${cacheKey} with 15s TTL`);
-        } catch (cacheError) {
-            logger.error(`Redis cache SET error for holders:`, cacheError);
-        }
+      try {
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
+        logger.log(`Cached holders for ${cacheKey} with 15s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error for holders:`, cacheError);
+      }
     }
     // --- END REDIS CACHE SET ---
 
@@ -1582,28 +1582,28 @@ tokenRouter.get("/token/:mint/price", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-     // --- BEGIN REDIS CACHE CHECK ---
+    // --- BEGIN REDIS CACHE CHECK ---
     const cacheKey = `tokenPrice:${mint}`;
     const redisCache = createRedisCache(c.env as Env);
 
     if (redisCache) {
-        try {
-            const cachedData = await redisCache.get(cacheKey);
-            if (cachedData) {
-                logger.log(`[Cache Hit] ${cacheKey}`);
-                const parsedData = JSON.parse(cachedData);
-                // Basic validation (check for price existence)
-                if (parsedData && typeof parsedData.price !== 'undefined') {
-                    return c.json(parsedData);
-                } else {
-                    logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-                }
-            } else {
-                logger.log(`[Cache Miss] ${cacheKey}`);
-            }
-        } catch (cacheError) {
-            logger.error(`Redis cache GET error for price:`, cacheError);
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`[Cache Hit] ${cacheKey}`);
+          const parsedData = JSON.parse(cachedData);
+          // Basic validation (check for price existence)
+          if (parsedData && typeof parsedData.price !== 'undefined') {
+            return c.json(parsedData);
+          } else {
+            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+          }
+        } else {
+          logger.log(`[Cache Miss] ${cacheKey}`);
         }
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error for price:`, cacheError);
+      }
     }
     // --- END REDIS CACHE CHECK ---
 
@@ -1611,12 +1611,12 @@ tokenRouter.get("/token/:mint/price", async (c) => {
     const db = getDB(c.env);
     const tokenData = await db
       .select({ // Select only necessary fields
-            currentPrice: tokens.currentPrice,
-            tokenPriceUSD: tokens.tokenPriceUSD,
-            liquidity: tokens.liquidity,
-            marketCapUSD: tokens.marketCapUSD,
-            priceChange24h: tokens.priceChange24h,
-            volume24h: tokens.volume24h,
+        currentPrice: tokens.currentPrice,
+        tokenPriceUSD: tokens.tokenPriceUSD,
+        liquidity: tokens.liquidity,
+        marketCapUSD: tokens.marketCapUSD,
+        priceChange24h: tokens.priceChange24h,
+        volume24h: tokens.volume24h,
       })
       .from(tokens)
       .where(eq(tokens.mint, mint))
@@ -1630,25 +1630,25 @@ tokenRouter.get("/token/:mint/price", async (c) => {
     const token = tokenData[0];
 
     // Prepare response data
-     const responseData = {
-        price: token.currentPrice ?? 0, // Use nullish coalescing for defaults
-        priceUSD: token.tokenPriceUSD ?? 0,
-        marketCap: token.liquidity ?? 0, // Assuming marketCap = liquidity here? Check definition
-        marketCapUSD: token.marketCapUSD ?? 0,
-        priceChange24h: token.priceChange24h ?? 0,
-        volume24h: token.volume24h ?? 0,
-        timestamp: Date.now(), // Add timestamp for freshness context
+    const responseData = {
+      price: token.currentPrice ?? 0, // Use nullish coalescing for defaults
+      priceUSD: token.tokenPriceUSD ?? 0,
+      marketCap: token.liquidity ?? 0, // Assuming marketCap = liquidity here? Check definition
+      marketCapUSD: token.marketCapUSD ?? 0,
+      priceChange24h: token.priceChange24h ?? 0,
+      volume24h: token.volume24h ?? 0,
+      timestamp: Date.now(), // Add timestamp for freshness context
     };
 
 
     // --- BEGIN REDIS CACHE SET ---
     if (redisCache) {
-        try {
-            await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
-            logger.log(`Cached price for ${cacheKey} with 15s TTL`);
-        } catch (cacheError) {
-            logger.error(`Redis cache SET error for price:`, cacheError);
-        }
+      try {
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 15); // 30s TTL
+        logger.log(`Cached price for ${cacheKey} with 15s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error for price:`, cacheError);
+      }
     }
     // --- END REDIS CACHE SET ---
 
@@ -1682,12 +1682,12 @@ tokenRouter.get("/token/:mint", async (c) => {
         if (cachedData) {
           logger.log(`[Cache Hit] ${cacheKey}`);
           const parsedData = JSON.parse(cachedData);
-           // Basic validation
-           if (parsedData && parsedData.mint === mint) {
-                return c.json(parsedData);
-           } else {
-                logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-           }
+          // Basic validation
+          if (parsedData && parsedData.mint === mint) {
+            return c.json(parsedData);
+          } else {
+            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+          }
         } else {
           logger.log(`[Cache Miss] ${cacheKey}`);
         }
@@ -1710,7 +1710,7 @@ tokenRouter.get("/token/:mint", async (c) => {
 
 
     if (!tokenData || tokenData.length === 0) {
-       // Don't cache 404s for the main token endpoint
+      // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
     }
 
@@ -1771,11 +1771,11 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Calculate or update curveProgress using the original formula
     token.curveProgress =
-      token.status === "migrated"
+      token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Format response with additional data
     const responseData = token;
@@ -1884,21 +1884,21 @@ tokenRouter.post("/create-token", async (c) => {
           lastUpdated: now,
           txId: txId || "create-" + tokenId,
           imported: importedValue,
-           // Initialize other numeric fields explicitly to avoid DB defaults issues
-            currentPrice: 0,
-            liquidity: 0,
-            marketCapUSD: 0,
-            priceChange24h: 0,
-            volume24h: 0,
-            holderCount: 0,
-            tokenDecimals: 9, // Default or fetch dynamically if possible
-            reserveAmount: 0,
-            reserveLamport: 0,
-            virtualReserves: 0,
-            curveLimit: 0,
-            curveProgress: 0,
-            solPriceUSD: 0,
-            hidden: 0,
+          // Initialize other numeric fields explicitly to avoid DB defaults issues
+          currentPrice: 0,
+          liquidity: 0,
+          marketCapUSD: 0,
+          priceChange24h: 0,
+          volume24h: 0,
+          holderCount: 0,
+          tokenDecimals: 9, // Default or fetch dynamically if possible
+          reserveAmount: 0,
+          reserveLamport: 0,
+          virtualReserves: 0,
+          curveLimit: 0,
+          curveProgress: 0,
+          solPriceUSD: 0,
+          hidden: 0,
         },
       ]);
 
@@ -1937,29 +1937,29 @@ tokenRouter.post("/create-token", async (c) => {
           c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
           // Merge any immediately available market data
           if (marketData && marketData.newTokenData) {
-             Object.assign(tokenData, marketData.newTokenData);
+            Object.assign(tokenData, marketData.newTokenData);
           }
         } catch (webhookError) {
-            logger.error(`Failed to register webhook for imported token ${mintAddress}:`, webhookError);
-            // Continue even if webhook registration fails, especially locally
+          logger.error(`Failed to register webhook for imported token ${mintAddress}:`, webhookError);
+          // Continue even if webhook registration fails, especially locally
         }
       }
 
       // For non-imported tokens, generate additional images in the background
       if (!imported) {
-          logger.log(
-            `Triggering background image generation for new token: ${mintAddress}`,
-          );
-          c.executionCtx.waitUntil(
-            generateAdditionalTokenImages(c.env, mintAddress, description || ""),
-          );
+        logger.log(
+          `Triggering background image generation for new token: ${mintAddress}`,
+        );
+        c.executionCtx.waitUntil(
+          generateAdditionalTokenImages(c.env, mintAddress, description || ""),
+        );
       }
 
 
       return c.json({ success: true, token: tokenData });
     } catch (error) {
       logger.error("Error creating token:", error);
-       const errorMessage = error instanceof Error ? error.message : "Unknown error creating token record";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error creating token record";
       return c.json(
         { error: "Failed to create token record", details: errorMessage },
         500,
@@ -1967,7 +1967,7 @@ tokenRouter.post("/create-token", async (c) => {
     }
   } catch (error) {
     logger.error("Error in create-token endpoint:", error);
-     const errorMessage = error instanceof Error ? error.message : "Unknown internal server error";
+    const errorMessage = error instanceof Error ? error.message : "Unknown internal server error";
     return c.json({ error: "Internal server error", details: errorMessage }, 500);
   }
 });
@@ -2018,12 +2018,12 @@ tokenRouter.post("/search-token", async (c) => {
         requestor,
       );
     } else {
-        logger.error(`[search-token] Token ${mint} not found on mainnet`);
-        return c.json({ error: 'Token not found on mainnet' }, 404);
+      logger.error(`[search-token] Token ${mint} not found on mainnet`);
+      return c.json({ error: 'Token not found on mainnet' }, 404);
     }
   } catch (error) {
     logger.error(`[search-token] Error checking mainnet: ${error}`);
-     return c.json({ error: 'Error checking Solana network' }, 500);
+    return c.json({ error: 'Error checking Solana network' }, 500);
   }
 });
 
@@ -2047,7 +2047,7 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     // Update holders for this specific token
     // Determine if token is imported - fetch from DB first
     const db = getDB(c.env);
-    const tokenData = await db.select({imported: tokens.imported}).from(tokens).where(eq(tokens.mint, mint)).limit(1);
+    const tokenData = await db.select({ imported: tokens.imported }).from(tokens).where(eq(tokens.mint, mint)).limit(1);
     const imported = tokenData.length > 0 ? (tokenData[0].imported === 1) : false;
 
 
@@ -2109,7 +2109,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
       //     return c.json({ error: "Authentication required" }, 401);
       //   }
       // } else {
-        return c.json({ error: "Authentication required" }, 401);
+      return c.json({ error: "Authentication required" }, 401);
       // }
     }
 
@@ -2219,24 +2219,24 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     const allowedUpdateFields = ['website', 'twitter', 'telegram', 'discord', 'farcaster'];
     const updateData: Partial<Token> = {}; // Use Partial<Token> for type safety
 
-     for (const field of allowedUpdateFields) {
-        if (body.hasOwnProperty(field)) {
-            // @ts-ignore - Dynamically assigning properties
-            updateData[field] = body[field] ?? currentTokenData[field];
-        }
+    for (const field of allowedUpdateFields) {
+      if (body.hasOwnProperty(field)) {
+        // @ts-ignore - Dynamically assigning properties
+        updateData[field] = body[field] ?? currentTokenData[field];
+      }
     }
     updateData.lastUpdated = new Date(); // Always update lastUpdated
 
 
     // Update token with the new social links if there's anything to update
     if (Object.keys(updateData).length > 1) { // Check if more than just lastUpdated changed
-        await db
-          .update(tokens)
-          .set(updateData)
-          .where(eq(tokens.mint, mint));
-         logger.log("Token updated successfully");
+      await db
+        .update(tokens)
+        .set(updateData)
+        .where(eq(tokens.mint, mint));
+      logger.log("Token updated successfully");
     } else {
-         logger.log("No changes detected, skipping database update.");
+      logger.log("No changes detected, skipping database update.");
     }
 
 
@@ -2254,14 +2254,14 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           const objectKey = `token-metadata/${filename}`;
 
           // 2) Fetch
-           let json: any;
+          let json: any;
           try {
-             const res = await fetch(originalUrl);
-             if (!res.ok) throw new Error(`Failed to fetch metadata: ${res.status}`);
-             json = await res.json();
-          } catch(fetchErr) {
-              logger.error(`Failed to fetch or parse existing metadata from ${originalUrl}:`, fetchErr);
-              throw new Error("Failed to fetch existing metadata for update."); // Rethrow to indicate failure
+            const res = await fetch(originalUrl);
+            if (!res.ok) throw new Error(`Failed to fetch metadata: ${res.status}`);
+            json = await res.json();
+          } catch (fetchErr) {
+            logger.error(`Failed to fetch or parse existing metadata from ${originalUrl}:`, fetchErr);
+            throw new Error("Failed to fetch existing metadata for update."); // Rethrow to indicate failure
           }
 
           json.properties = json.properties || {};
@@ -2287,11 +2287,11 @@ tokenRouter.post("/token/:mint/update", async (c) => {
             `Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`,
           );
         } else {
-           logger.warn(`Token ${mint} has no metadata URL, cannot update R2 metadata.`);
+          logger.warn(`Token ${mint} has no metadata URL, cannot update R2 metadata.`);
         }
       } catch (e) {
         logger.error("Failed to re-upload metadata JSON:", e);
-         // Decide if this failure should prevent success response (maybe return partial success?)
+        // Decide if this failure should prevent success response (maybe return partial success?)
       }
     }
     // Get the updated token data
@@ -2303,28 +2303,28 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
     // Emit WebSocket event for token update if needed
     if (updatedTokenResult.length > 0) {
-        try {
-            await processTokenUpdateEvent(c.env, {
-                ...updatedTokenResult[0],
-                event: "tokenUpdated",
-                timestamp: new Date().toISOString(),
-            });
-            logger.log(`Emitted token update event for ${mint}`);
-        } catch (wsError) {
-            // Don't fail if WebSocket fails
-            logger.error(`WebSocket error when emitting token update: ${wsError}`);
-        }
-         return c.json({
-            success: true,
-            message: "Token information updated successfully",
-            token: updatedTokenResult[0],
+      try {
+        await processTokenUpdateEvent(c.env, {
+          ...updatedTokenResult[0],
+          event: "tokenUpdated",
+          timestamp: new Date().toISOString(),
         });
+        logger.log(`Emitted token update event for ${mint}`);
+      } catch (wsError) {
+        // Don't fail if WebSocket fails
+        logger.error(`WebSocket error when emitting token update: ${wsError}`);
+      }
+      return c.json({
+        success: true,
+        message: "Token information updated successfully",
+        token: updatedTokenResult[0],
+      });
     } else {
-         logger.error(`Failed to fetch updated token data for ${mint} after update.`);
-          return c.json({
-            success: false, // Indicate partial failure maybe?
-            message: "Token information updated in DB, but failed to fetch result.",
-        }, 500);
+      logger.error(`Failed to fetch updated token data for ${mint} after update.`);
+      return c.json({
+        success: false, // Indicate partial failure maybe?
+        message: "Token information updated in DB, but failed to fetch result.",
+      }, 500);
     }
   } catch (error) {
     logger.error("Error updating token:", error);
@@ -2352,7 +2352,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     // Local mode check removed - rely on LOCAL_DEV env var or specific flags if needed
     // const mode = c.req.query("mode");
     // const isLocalMode = mode === "local";
-     const checkOnChain = c.req.query("onchain") === "true";
+    const checkOnChain = c.req.query("onchain") === "true";
 
 
     logger.log(
@@ -2364,23 +2364,23 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     const redisCache = createRedisCache(c.env as Env);
 
     if (!checkOnChain && redisCache) {
-        try {
-            const cachedData = await redisCache.get(cacheKey);
-            if (cachedData) {
-                logger.log(`[Cache Hit] ${cacheKey}`);
-                const parsedData = JSON.parse(cachedData);
-                // Basic validation
-                if (parsedData && typeof parsedData.balance !== 'undefined') {
-                    return c.json(parsedData);
-                } else {
-                    logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-                }
-            } else {
-                logger.log(`[Cache Miss] ${cacheKey}`);
-            }
-        } catch (cacheError) {
-            logger.error(`Redis cache GET error for balance check:`, cacheError);
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`[Cache Hit] ${cacheKey}`);
+          const parsedData = JSON.parse(cachedData);
+          // Basic validation
+          if (parsedData && typeof parsedData.balance !== 'undefined') {
+            return c.json(parsedData);
+          } else {
+            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+          }
+        } else {
+          logger.log(`[Cache Miss] ${cacheKey}`);
         }
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error for balance check:`, cacheError);
+      }
     }
     // --- END REDIS CACHE CHECK ---
 
@@ -2401,14 +2401,14 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       logger.log(
         `Token ${mint} not found in database, but forcing on-chain check.`,
       );
-       // Pass c context to the helper function
-       return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network if token isn't known
+      // Pass c context to the helper function
+      return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network if token isn't known
     }
 
 
     // If token doesn't exist in our database and not forcing on-chain
     if (!tokenInfo) {
-       // Don't cache 404s here
+      // Don't cache 404s here
       return c.json({ error: "Token not found in DB" }, 404);
     }
 
@@ -2418,9 +2418,9 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     // If forcing on-chain check, skip DB holder lookup
     if (checkOnChain) {
-        logger.log(`Forcing on-chain balance check for ${address} on ${mint}`);
-        // Pass c context to the helper function
-        return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network
+      logger.log(`Forcing on-chain balance check for ${address} on ${mint}`);
+      // Pass c context to the helper function
+      return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network
     }
 
 
@@ -2452,10 +2452,10 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
         onChain: false, // Indicate data is from DB cache
       };
     } else if (isCreator) {
-        logger.log(`Creator ${address} not found in DB holders for ${mint}, checking on-chain.`);
-       // User is the creator but not in holders table, might have balance on-chain
-        // Pass c context to the helper function
-        return await checkBlockchainTokenBalance(c, mint, address, false); // Check on-chain
+      logger.log(`Creator ${address} not found in DB holders for ${mint}, checking on-chain.`);
+      // User is the creator but not in holders table, might have balance on-chain
+      // Pass c context to the helper function
+      return await checkBlockchainTokenBalance(c, mint, address, false); // Check on-chain
     } else {
       // User is not in holders table and is not the creator
       responseData = {
@@ -2469,15 +2469,15 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       };
     }
 
-     // --- BEGIN REDIS CACHE SET (only if not forced on-chain) ---
+    // --- BEGIN REDIS CACHE SET (only if not forced on-chain) ---
     if (!checkOnChain && redisCache) {
-        try {
-            // Cache for a moderate duration (e.g., 60 seconds) as balances don't change instantly
-            await redisCache.set(cacheKey, JSON.stringify(responseData), 60);
-            logger.log(`Cached balance check for ${cacheKey} with 60s TTL`);
-        } catch (cacheError) {
-            logger.error(`Redis cache SET error for balance check:`, cacheError);
-        }
+      try {
+        // Cache for a moderate duration (e.g., 60 seconds) as balances don't change instantly
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 60);
+        logger.log(`Cached balance check for ${cacheKey} with 60s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error for balance check:`, cacheError);
+      }
     }
     // --- END REDIS CACHE SET ---
 

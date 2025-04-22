@@ -104,52 +104,14 @@ router.post("/codex-webhook", async (c) => {
 
   const webhookBody = WebhookTokenPairEvent.parse(body);
 
-  // const hash = crypto
-  //   .createHash("sha256")
-  //   .update(c.env.CODEX_WEBHOOK_AUTH_TOKEN + webhookBody.deduplicationId)
-  //   .digest("hex");
-
-  // const isFromCodex = hash === webhookBody.hash;
-
-  // if (!isFromCodex) {
-  //   return c.json(
-  //     {
-  //       message: "Unauthorized",
-  //     },
-  //     401,
-  //   );
-  // }
 
   const swap = webhookBody.data.event;
   // const db = getDB(c.env);
   // Determine which token index (0 or 1) this event is for
   const tokenIndex = swap.eventType2.startsWith("Token1") ? 1 : 0;
 
-  // const amounts =
-  //   swap.eventDisplayType === "Buy"
-  //     ? {
-  //         amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-  //         amountOut: Number(swap.data.amount0 || 0) * 1e6,
-  //       }
-  //     : {
-  //         amountIn: -Number(swap.data.amount0 || 0) * 1e6,
-  //         amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-  //       };
+
   const tokenMint = tokenIndex === 1 ? swap.token1Address : swap.token0Address;
-  // const newSwaps = await db
-  //   .insert(swaps)
-  //   .values({
-  //     id: crypto.randomUUID(),
-  //     direction: swap.eventDisplayType === "Buy" ? 0 : 1,
-  //     price: Number(swap.token0ValueUsd),
-  //     timestamp: new Date(swap.timestamp * 1000).toISOString(),
-  //     tokenMint,
-  //     txId: swap.transactionHash,
-  //     type: swap.eventDisplayType === "Buy" ? "buy" : "sell",
-  //     user: swap.maker,
-  //     ...amounts,
-  //   })
-  //   .returning();
 
   //check if we have the token in the db
   const db = getDB(c.env);
@@ -163,13 +125,14 @@ router.post("/codex-webhook", async (c) => {
       message: "Token not in db",
     });
   }
+  const selectedToken = token[0];
 
   const wsClient = getWebSocketClient(c.env);
 
   const ext = new ExternalToken(c.env, tokenMint);
   //  we just call this to update the last 5 swaps in the db
   await ext.updateLatestSwapData(3);
-  const latestCandle = await getLatestCandle(c.env, tokenMint, swap);
+  const latestCandle = await getLatestCandle(c.env, tokenMint, swap, selectedToken);
 
   await ext.updateMarketAndHolders();
 
@@ -178,6 +141,8 @@ router.post("/codex-webhook", async (c) => {
     message: "Completed",
   });
 });
+
+
 
 // Start monitoring batch
 router.post("/codex-start-monitoring", async (c) => {
