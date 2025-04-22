@@ -199,12 +199,13 @@ router.post("/codex-webhook", async (c) => {
       .from(tokens)
       .where(eq(tokens.mint, tokenMint));
 
-    await redisCache.set(
-      `codex-webhook:${tokenMint}`,
-      JSON.stringify(dbToken[0])
-    );
-
-    token = dbToken[0];
+    if (dbToken?.[0]) {
+      await redisCache.set(
+        `codex-webhook:${tokenMint}`,
+        JSON.stringify(dbToken[0])
+      );
+      token = dbToken[0];
+    }
   }
 
   if (!token) {
