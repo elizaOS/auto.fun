@@ -109,21 +109,6 @@ router.post("/codex-webhook", async (c) => {
 
   const webhookBody = WebhookTokenPairEvent.parse(body);
 
-  // const hash = crypto
-  //   .createHash("sha256")
-  //   .update(c.env.CODEX_WEBHOOK_AUTH_TOKEN + webhookBody.deduplicationId)
-  //   .digest("hex");
-
-  // const isFromCodex = hash === webhookBody.hash;
-
-  // if (!isFromCodex) {
-  //   return c.json(
-  //     {
-  //       message: "Unauthorized",
-  //     },
-  //     401,
-  //   );
-  // }
 
   const swap = webhookBody.data.event;
   // const db = getDB(c.env);
@@ -216,7 +201,7 @@ router.post("/codex-webhook", async (c) => {
 
   const ext = new ExternalToken(c.env, tokenMint);
   //  we just call this to update the last 5 swaps in the db
-  await ext.updateLatestSwapData(3);
+  await ext.updateLatestSwapData(20);
   const latestCandle = await getLatestCandle(c.env, tokenMint, swap);
 
   await ext.updateMarketAndHolders();
