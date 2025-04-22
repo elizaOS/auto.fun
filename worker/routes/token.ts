@@ -1178,41 +1178,41 @@ tokenRouter.get("/tokens", async (c) => {
     );
 
     // --- RE-ENABLE CACHE GET ---
-    // const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
-    // const redisCache = createRedisCache(c.env as Env); // Ensure env is cast if needed
-    // if (redisCache) {
-    //   try {
-    //     const cachedData = await redisCache.get(cacheKey);
-    //     if (cachedData) {
-    //       logger.log(`Cache hit for ${cacheKey}`);
-    //       const parsedData = JSON.parse(cachedData);
-    //       // Log retrieved cache data (optional, for debugging)
-    //       // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
+    const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
+    const redisCache = createRedisCache(c.env as Env); // Ensure env is cast if needed
+    if (redisCache) {
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`Cache hit for ${cacheKey}`);
+          const parsedData = JSON.parse(cachedData);
+          // Log retrieved cache data (optional, for debugging)
+          // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
 
-    //       // Corrected validation check
-    //       if (
-    //         parsedData &&
-    //         Array.isArray(parsedData.tokens)
-    //         // Removed length check to allow caching empty results
-    //         // && parsedData.tokens.length > 0
-    //       ) {
-    //         logger.log(
-    //           `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
-    //         );
-    //         return c.json(parsedData); // Return cached data
-    //       } else {
-    //         logger.warn(
-    //           `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
-    //         );
-    //       }
-    //     } else {
-    //       logger.log(`Cache miss for ${cacheKey}`);
-    //     }
-    //   } catch (cacheError) {
-    //     logger.error(`Redis cache GET error:`, cacheError);
-    //     // Continue without cache if GET fails
-    //   }
-    // }
+          // Corrected validation check
+          if (
+            parsedData &&
+            Array.isArray(parsedData.tokens)
+            // Removed length check to allow caching empty results
+            // && parsedData.tokens.length > 0
+          ) {
+            logger.log(
+              `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
+            );
+            return c.json(parsedData); // Return cached data
+          } else {
+            logger.warn(
+              `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
+            );
+          }
+        } else {
+          logger.log(`Cache miss for ${cacheKey}`);
+        }
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error:`, cacheError);
+        // Continue without cache if GET fails
+      }
+    }
     // --- END RE-ENABLE CACHE GET ---
 
     const db = getDB(c.env as Env);
@@ -1395,21 +1395,21 @@ tokenRouter.get("/tokens", async (c) => {
     };
 
     // --- RE-ENABLE CACHE SET ---
-    // if (
-    //   redisCache
-    //   // Cache even if results are empty to prevent re-querying immediately
-    //   // && serializableTokensResult &&
-    //   // serializableTokensResult.length > 0
-    // ) {
-    //   // Cache only if results exist
-    //   try {
-    //     // Cache duration remains 15 seconds for the /tokens list endpoint
-    //     await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-    //     logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-    //   } catch (cacheError) {
-    //     logger.error(`Redis cache SET error:`, cacheError);
-    //   }
-    // }
+    if (
+      redisCache
+      // Cache even if results are empty to prevent re-querying immediately
+      // && serializableTokensResult &&
+      // serializableTokensResult.length > 0
+    ) {
+      // Cache only if results exist
+      try {
+        // Cache duration remains 15 seconds for the /tokens list endpoint
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+        logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error:`, cacheError);
+      }
+    }
     // --- END RE-ENABLE CACHE SET ---
 
     // Final log and return
