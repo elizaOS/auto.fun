@@ -22,7 +22,7 @@ export interface UseTokensParams {
   sortBy: keyof IToken | "featured";
   sortOrder: SortOrderType;
   hideImported?: number;
-  status?: "all" | "inprogress" | "bonded";
+  status?: "all" | "active" | "locked";
   pageSize?: number;
   enabled?: boolean;
 }

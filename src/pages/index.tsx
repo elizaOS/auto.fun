@@ -20,7 +20,7 @@ import { FilterIcon, X } from "lucide-react"; // Example icons
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
 type TokenSourceType = "all" | "autofun";
-type BondingStatusType = "all" | "inprogress" | "bonded";
+type BondingStatusType = "all" | "active" | "locked";
 type TableSortByType = keyof IToken | null;
 type SortOrderType = "asc" | "desc";
 
@@ -270,9 +270,9 @@ export default function Page() {
                     <Button
                       size="small"
                       variant={
-                        bondingStatus === "inprogress" ? "secondary" : "ghost"
+                        bondingStatus === "active" ? "secondary" : "ghost"
                       }
-                      onClick={() => setBondingStatus("inprogress")}
+                      onClick={() => setBondingStatus("active")}
                       className="w-full justify-start"
                     >
                       In Progress
@@ -280,9 +280,9 @@ export default function Page() {
                     <Button
                       size="small"
                       variant={
-                        bondingStatus === "bonded" ? "secondary" : "ghost"
+                        bondingStatus === "locked" ? "secondary" : "ghost"
                       }
-                      onClick={() => setBondingStatus("bonded")}
+                      onClick={() => setBondingStatus("locked")}
                       className="w-full justify-start"
                     >
                       Bonded

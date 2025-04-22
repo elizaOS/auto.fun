@@ -48,6 +48,11 @@ export class ExternalToken {
   }
 
   public async registerWebhook() {
+    const securityToken = this.env.CODEX_WEBHOOK_AUTH_TOKEN;
+    // if (!securityToken) {
+    //   throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
+    // }
+
     try {
       await this.sdk.mutations.createWebhooks({
         input: {
@@ -107,7 +112,7 @@ export class ExternalToken {
     const { filterTokens } = await this.sdk.queries.filterTokens({
       tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
     });
-    const solPrice = await getSOLPrice(this.env);
+
     const token = filterTokens?.results?.[0];
     if (!token) {
       throw new Error("failed to find token with codex");
@@ -128,9 +133,6 @@ export class ExternalToken {
         : token.marketCap
           ? Number(token.marketCap)
           : 0;
-    const currentPrice = token.priceUSD
-      ? Number(token.priceUSD) / Number(solPrice)
-      : 0;
     const newTokenData = {
       marketCapUSD: marketCap,
       volume24h: token.volume24 ? Number(token.volume24) : 0,
@@ -142,25 +144,18 @@ export class ExternalToken {
       tokenDecimals: tokenDecimals,
       // time of import
       createdAt: creationTime,
-      currentPrice: currentPrice,
 
       // time of actual token creation
       // createdAt: token.createdAt
       //   ? new Date(token.createdAt * 1000).toISOString()
       //   : new Date().toISOString(),
     };
-    // remove data that is 0 or undefined
-    const filtered = Object.fromEntries(
-      Object.entries(newTokenData).filter(
-        ([, value]) => value !== 0 && value !== undefined,
-      ),
-    );
 
     // TODO: featured score for token db and websocket
     const updatedToken = (
       await this.db
         .update(tokens)
-        .set(filtered)
+        .set(newTokenData)
         .where(eq(tokens.mint, this.mint))
         .returning()
     )[0];
@@ -208,7 +203,7 @@ export class ExternalToken {
           .insert(tokenHolders)
           .values(batch)
           .onConflictDoUpdate({
-            target: [tokenHolders.mint, tokenHolders.address],
+            target: [tokenHolders.address],
             set: {
               amount: batch[0].amount,
               percentage: batch[0].percentage,
@@ -417,9 +412,13 @@ export class ExternalToken {
     let insertedCount = 0;
     for (let i = 0; i < processedSwaps.length; i += batchSize) {
       const batch = processedSwaps.slice(i, i + batchSize);
+      const batchWithDates = batch.map((swap) => ({
+        ...swap,
+        timestamp: new Date(swap.timestamp),
+      }));
       const result = await this.db
         .insert(swaps)
-        .values(batch)
+        .values(batchWithDates)
         .onConflictDoNothing()
         .returning({ insertedId: swaps.id });
       insertedCount += result.length;

@@ -2290,7 +2290,6 @@ export async function checkAndReplenishTokens(
         .where(eq(preGeneratedTokens.used, 0));
 
       const count = Number(countResult[0].count);
-      logger.log(`Current unused pre-generated token count: ${count}`);
 
       // If below threshold, generate more
       if (count < threshold) {

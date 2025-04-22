@@ -5,12 +5,15 @@ import {
   ParsedAccountData,
   PublicKey,
 } from "@solana/web3.js";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, or, sql, SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { createRedisCache } from "../redis/redisCacheService";
 
+import { PgSelect } from "drizzle-orm/pg-core";
+import { updateTokens } from "../cron";
 import {
   getDB,
+  Token,
   tokenAgents,
   TokenHolder,
   tokenHolders,
@@ -23,17 +26,197 @@ import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
 import {
   applyFeaturedSort,
-  bulkUpdatePartialTokens,
   calculateFeaturedScore,
   getDevnetRpcUrl,
   getFeaturedMaxValues,
-  getFeaturedScoreExpression,
   getMainnetRpcUrl,
   getRpcUrl,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
-import { updateTokens } from "../cron";
+
+// --- Validation Function ---
+async function validateQueryResults(
+  params: { hideImported?: number; status?: string },
+  results: Token[] | null | undefined,
+  sqlStrings?: { mainQuerySql?: string }, // Optional parameter for SQL string
+): Promise<void> {
+  const { hideImported, status } = params;
+  const mainSql = sqlStrings?.mainQuerySql || "N/A";
+
+  if (!results || results.length === 0) {
+    /* ... */ return;
+  }
+  logger.log(`[Validation] Validating ${results.length} results...`);
+
+  if (hideImported === 1) {
+    const importedTokensFound = results.filter((token) => token.imported === 1);
+    if (importedTokensFound.length > 0) {
+      const mints = importedTokensFound.map((t) => t.mint).join(", ");
+      const errorMsg = `Integrity check failed: Filter hideImported=1 active, but found imported=1. Mints: ${mints}. SQL: ${mainSql}`;
+      logger.error(`[CRITICAL] ${errorMsg}`);
+      throw new Error(errorMsg);
+    } else {
+      logger.log(`[Validation] Passed: hideImported=1 check.`);
+    }
+  }
+  if (status === "active") {
+    const nonActiveTokensFound = results.filter(
+      (token) => token.status !== "active",
+    );
+    if (nonActiveTokensFound.length > 0) {
+      const details = nonActiveTokensFound
+        .map((t) => `${t.mint}(${t.status})`)
+        .join(", ");
+      const errorMsg = `Integrity check failed: Filter status='active' active, but found others. Mints/Statuses: ${details}. SQL: ${mainSql}`;
+      logger.error(`[CRITICAL] ${errorMsg}`);
+      throw new Error(errorMsg);
+    } else {
+      logger.log(`[Validation] Passed: status='active' check.`);
+    }
+  }
+  if (status === "locked") {
+    const nonLockedTokensFound = results.filter(
+      (token) => token.status !== "locked",
+    );
+    if (nonLockedTokensFound.length > 0) {
+      const details = nonLockedTokensFound
+        .map((t) => `${t.mint}(${t.status})`)
+        .join(", ");
+      const errorMsg = `Integrity check failed: Filter status='locked' active, but found others. Mints/Statuses: ${details}. SQL: ${mainSql}`;
+      logger.error(`[CRITICAL] ${errorMsg}`);
+      throw new Error(errorMsg);
+    } else {
+      logger.log(`[Validation] Passed: status='locked' check.`);
+    }
+  }
+  logger.log(`[Validation] All checks passed.`);
+}
+
+// --- Build Base Query (Filters) ---
+// Adjust DB type if needed
+function buildTokensBaseQuery(
+  db: any,
+  params: {
+    hideImported?: number;
+    status?: string;
+    creator?: string;
+    search?: string;
+    sortBy?: string;
+    maxVolume?: number;
+    maxHolders?: number;
+  },
+): PgSelect {
+  const {
+    hideImported,
+    status,
+    creator,
+    search,
+    sortBy,
+    maxVolume,
+    maxHolders,
+  } = params;
+  // Select specific columns needed eventually (adjust as needed)
+  // Selecting all initially, will be refined before sorting
+  let query = db.select().from(tokens).$dynamic();
+  const conditions: (SQL | undefined)[] = [];
+
+  if (hideImported === 1) {
+    conditions.push(sql`${tokens.imported} = 0`);
+    logger.log(`[Query Build] Adding condition: imported = 0`);
+  }
+  let specificStatusApplied = false;
+  if (status === "active") {
+    conditions.push(sql`${tokens.status} = 'active'`);
+    logger.log(`[Query Build] Adding condition: status = 'active'`);
+    specificStatusApplied = true;
+  } else if (status === "locked") {
+    conditions.push(sql`${tokens.status} = 'locked'`);
+    logger.log(`[Query Build] Adding condition: status = 'locked'`);
+    specificStatusApplied = true;
+  }
+  if (!specificStatusApplied) {
+    conditions.push(sql`${tokens.status} != 'pending'`);
+    logger.log(`[Query Build] Adding condition: status != 'pending'`);
+  }
+  conditions.push(sql`(${tokens.hidden} != 1 OR ${tokens.hidden} IS NULL)`);
+  logger.log(`[Query Build] Adding condition: hidden != 1 OR hidden IS NULL`);
+  if (creator) {
+    conditions.push(eq(tokens.creator, creator));
+    logger.log(`[Query Build] Adding condition: creator = ${creator}`);
+  }
+  if (search) {
+    conditions.push(
+      or(
+        sql`${tokens.name} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.mint} ILIKE ${"%" + search + "%"}`,
+      ),
+    );
+    logger.log(`[Query Build] Adding condition: search LIKE ${search}`);
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions.filter((c): c is SQL => !!c)));
+  }
+  return query;
+}
+
+// --- Build Count Query (Filters Only) ---
+// Adjust DB type if needed
+function buildTokensCountBaseQuery(
+  db: any,
+  params: {
+    hideImported?: number;
+    status?: string;
+    creator?: string;
+    search?: string;
+  },
+): PgSelect {
+  let query = db.select({ count: count() }).from(tokens).$dynamic();
+  const { hideImported, status, creator, search } = params;
+  const conditions: (SQL | undefined)[] = [];
+
+  if (hideImported === 1) {
+    conditions.push(sql`${tokens.imported} = 0`);
+    logger.log(`[Count Build] Adding condition: imported = 0`);
+  }
+  let specificStatusApplied = false;
+  if (status === "active") {
+    conditions.push(sql`${tokens.status} = 'active'`);
+    logger.log(`[Count Build] Adding condition: status = 'active'`);
+    specificStatusApplied = true;
+  } else if (status === "locked") {
+    conditions.push(sql`${tokens.status} = 'locked'`);
+    logger.log(`[Count Build] Adding condition: status = 'locked'`);
+    specificStatusApplied = true;
+  }
+  if (!specificStatusApplied) {
+    conditions.push(sql`${tokens.status} != 'pending'`);
+    logger.log(`[Count Build] Adding condition: status != 'pending'`);
+  }
+  conditions.push(sql`(${tokens.hidden} != 1 OR ${tokens.hidden} IS NULL)`);
+  logger.log(`[Count Build] Adding condition: hidden != 1 OR hidden IS NULL`);
+  if (creator) {
+    conditions.push(eq(tokens.creator, creator));
+    logger.log(`[Count Build] Adding condition: creator = ${creator}`);
+  }
+  if (search) {
+    conditions.push(
+      or(
+        sql`${tokens.name} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.mint} ILIKE ${"%" + search + "%"}`,
+      ),
+    );
+    logger.log(`[Count Build] Adding condition: search LIKE ${search}`);
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions.filter((c): c is SQL => !!c)));
+  }
+  return query;
+}
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -990,172 +1173,157 @@ export async function updateHoldersCache(
   }
 }
 
-tokenRouter.get("/image/:filename", async (c) => {
-  const filename = c.req.param("filename");
-  logger.log(`[/image/:filename] Request received for filename: ${filename}`);
-  try {
-    if (!filename) {
-      logger.warn("[/image/:filename] Filename parameter is missing");
-      return c.json({ error: "Filename parameter is required" }, 400);
-    }
+// --- END VALIDATION FUNCTION ---
 
-    if (!c.env.R2) {
-      logger.error("[/image/:filename] R2 storage is not available");
-      return c.json({ error: "R2 storage is not available" }, 500);
-    }
+// --- Build Query Functions (buildTokensBaseQuery, buildTokensCountBaseQuery) ---
+// ... (These functions should be defined here, before the route handler) ...
 
-    // Check if this is a special generation image request
-    // Format: generation-[mint]-[number].jpg
-    const generationMatch = filename.match(
-      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
-    );
-
-    let imageKey;
-    if (generationMatch) {
-      const [_, mint, number] = generationMatch;
-      // This is a special request for a generation image
-      imageKey = `generations/${mint}/gen-${number}.jpg`;
-      logger.log(
-        `[/image/:filename] Detected generation image request: ${imageKey}`,
-      );
-    } else {
-      // Regular image request
-      imageKey = `token-images/${filename}`;
-    }
-
-    logger.log(
-      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
-    );
-    const object = await c.env.R2.get(imageKey);
-
-    if (!object) {
-      logger.warn(
-        `[/image/:filename] Image not found in R2 for key: ${imageKey}`,
-      );
-
-      // DEBUG: List files in the token-images directory to help diagnose issues
-      try {
-        const prefix = imageKey.split("/")[0] + "/";
-        const objects = await c.env.R2.list({
-          prefix,
-          limit: 10,
-        });
-        logger.log(
-          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
-        );
-      } catch (listError) {
-        logger.error(
-          `[/image/:filename] Error listing files in directory: ${listError}`,
-        );
-      }
-
-      return c.json({ error: "Image not found" }, 404);
-    }
-    logger.log(
-      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`,
-    );
-
-    // Determine appropriate content type
-    let contentType = object.httpMetadata?.contentType || "image/jpeg";
-
-    // For JSON files, ensure content type is application/json
-    if (filename.endsWith(".json")) {
-      contentType = "application/json";
-    } else if (filename.endsWith(".png")) {
-      contentType = "image/png";
-    } else if (filename.endsWith(".gif")) {
-      contentType = "image/gif";
-    } else if (filename.endsWith(".svg")) {
-      contentType = "image/svg+xml";
-    } else if (filename.endsWith(".webp")) {
-      contentType = "image/webp";
-    }
-
-    const data = await object.arrayBuffer();
-
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
-    };
-
-    logger.log(
-      `[/image/:filename] Serving ${filename} with type ${contentType}`,
-    );
-    return new Response(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": object.size.toString(),
-        "Cache-Control": "public, max-age=31536000",
-        ...corsHeaders,
-      },
-    });
-  } catch (error) {
-    logger.error(`[/image/:filename] Error serving image ${filename}:`, error);
-    return c.json({ error: "Failed to serve image" }, 500);
-  }
-});
-
+// --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
   try {
+    // --- Parameter Reading ---
     const queryParams = c.req.query();
     const isSearching = !!queryParams.search;
-
     const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
     const page = parseInt(queryParams.page as string) || 1;
     const skip = (page - 1) * limit;
-
-    // Get search, status, creator params for filtering
-    const search = queryParams.search as string;
-    const status = queryParams.status as string;
-    const hideImported = queryParams.hideImported
-      ? Number(queryParams.hideImported)
-      : (0 as number);
-    const creator = queryParams.creator as string;
+    const status = queryParams.status as string | undefined;
+    const hideImportedParam = queryParams.hideImported;
+    // Ensure hideImported is number or undefined, handle potential string '1' or '0'
+    const hideImported =
+      hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
+    const creator = queryParams.creator as string | undefined;
+    const search = queryParams.search as string | undefined;
     const sortBy = search
       ? "marketCapUSD"
       : (queryParams.sortBy as string) || "createdAt";
     const sortOrder = (queryParams.sortOrder as string) || "desc";
 
-    // Create a cache key based on the query parameters
-    const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported}:${creator || ""}:${sortBy}:${sortOrder}`;
-
-    // const redisCache = createRedisCache(c.env);
-    // if (redisCache) {
-    //   try {
-    //     const cachedData = await redisCache.get(cacheKey);
-    //     if (cachedData) {
-    //       logger.log(`Cache hit for ${cacheKey}`);
-    //       // check if the chache data is valid
-    //       const parsedData = JSON.parse(cachedData);
-    //       if (parsedData && parsedData.tokens && parsedData.length > 0) {
-    //         return c.json(JSON.parse(cachedData));
-    //       } else {
-    //         logger.warn(`Cache data is empty or invalid for ${cacheKey}`);
-    //         // If the cache data is empty or invalid, remove it from Redis
-    //         console.log(`ignoring cache for ${cacheKey}`);
-    //       }
-
-    //     }
-    //     logger.log(`Cache miss for ${cacheKey}`);
-    //   } catch (cacheError) {
-    //     logger.error(`Redis cache error:`, cacheError);
-    //     // Continue without caching if there's an error
-    //   }
-    // }
-
-    // Use a shorter timeout for test environments
-    const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
-
-    // Create a timeout promise to prevent hanging
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Database query timed out")),
-        timeoutDuration,
-      ),
+    logger.log(
+      `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`,
     );
 
+    // --- RE-ENABLE CACHE GET ---
+    const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
+    const redisCache = createRedisCache(c.env as Env); // Ensure env is cast if needed
+    if (redisCache) {
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`Cache hit for ${cacheKey}`);
+          const parsedData = JSON.parse(cachedData);
+          // Log retrieved cache data (optional, for debugging)
+          // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
+
+          // Corrected validation check
+          if (
+            parsedData &&
+            Array.isArray(parsedData.tokens) &&
+            parsedData.tokens.length > 0
+          ) {
+            logger.log(
+              `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
+            );
+            return c.json(parsedData); // Return cached data
+          } else {
+            logger.warn(
+              `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
+            );
+          }
+        }
+        logger.log(`Cache miss for ${cacheKey}`);
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error:`, cacheError);
+        // Continue without cache if GET fails
+      }
+    }
+    // --- END RE-ENABLE CACHE GET ---
+
+    const db = getDB(c.env as Env);
+
+    // Get max values needed by builder for column selection
+    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
+    // --- Build Base Queries ---
+    // Pass sorting info needed for column selection to builder
+    const filterParams = {
+      hideImported,
+      status,
+      creator,
+      search,
+      sortBy,
+      maxVolume,
+      maxHolders,
+    };
+    let baseQuery = buildTokensBaseQuery(db, filterParams);
+    const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
+
+    // --- Apply Sorting to Main Query ---
+    // Column selection is now done inside buildTokensBaseQuery
+    const validSortColumns = {
+      /* ... define validSortColumns map ... */
+    };
+
+    if (sortBy === "featured") {
+      // REMOVE baseQuery.select - done in builder
+      baseQuery = applyFeaturedSort(
+        baseQuery,
+        maxVolume,
+        maxHolders,
+        sortOrder,
+      );
+      logger.log(`[Query Build] Applied sort: featured weighted`);
+    } else {
+      // REMOVE baseQuery.select - done in builder
+      const sortColumn =
+        validSortColumns[sortBy as keyof typeof validSortColumns] ||
+        tokens.createdAt;
+      if (sortOrder.toLowerCase() === "desc") {
+        if (sortColumn === tokens.marketCapUSD) {
+          baseQuery = baseQuery.orderBy(sql`${sortColumn} DESC NULLS LAST`);
+          logger.log(`[Query Build] Applied sort: ${sortBy} DESC NULLS LAST`);
+        } else {
+          baseQuery = baseQuery.orderBy(desc(sortColumn));
+          logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
+        }
+      } else {
+        if (sortColumn === tokens.marketCapUSD) {
+          baseQuery = baseQuery.orderBy(sql`${sortColumn} ASC NULLS FIRST`);
+          logger.log(`[Query Build] Applied sort: ${sortBy} ASC NULLS FIRST`);
+        } else {
+          baseQuery = baseQuery.orderBy(sortColumn);
+          logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
+        }
+      }
+    }
+
+    // --- Apply Pagination to Main Query ---
+    baseQuery = baseQuery.limit(limit).offset(skip);
+    logger.log(
+      `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
+    );
+
+    // --- Get SQL representation BEFORE execution ---
+    // Ensure baseQuery and countQuery are accessible here
+    let mainQuerySqlString = "N/A";
+    let countQuerySqlString = "N/A";
+    try {
+      mainQuerySqlString = baseQuery.toSQL().sql;
+      countQuerySqlString = countQuery.toSQL().sql;
+      logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
+      logger.log(
+        `[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`,
+      );
+    } catch (sqlError) {
+      logger.error("[SQL Build] Error getting SQL string:", sqlError);
+    }
+    // --- END SQL Generation ---
+
+    // --- Execute Queries (Sequentially) ---
+    const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
+    );
     const countTimeoutPromise = new Promise<number>((_, reject) =>
       setTimeout(
         () => reject(new Error("Count query timed out")),
@@ -1163,229 +1331,101 @@ tokenRouter.get("/tokens", async (c) => {
       ),
     );
 
-    const db = getDB(c.env);
-
-    // Get max values for normalization first - we need these for both the featuredScore and sorting
-    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-
-    // Prepare a basic query
-    const tokenQuery = async () => {
-      try {
-        // Get all columns from the tokens table programmatically
-        const allTokensColumns = Object.fromEntries(
-          Object.entries(tokens)
-            .filter(
-              ([key, value]) => typeof value === "object" && "name" in value,
-            )
-            .map(([key, value]) => [key, value]),
-        );
-
-        // Start with a basic query that includes the weighted score
-        let tokensQuery = db
-          .select({
-            // Include all columns
-            ...allTokensColumns,
-            // Add the weighted score as a column in the result
-            featuredScore: getFeaturedScoreExpression(maxVolume, maxHolders),
-          })
-          .from(tokens) as any;
-
-        // Apply filters
-        if (status) {
-          tokensQuery = tokensQuery.where(eq(tokens.status, status));
-        } else {
-          // By default, don't show pending tokens
-          tokensQuery = tokensQuery.where(sql`${tokens.status} != 'pending'`);
-        }
-
-        if (creator) {
-          tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
-        }
-
-        if (hideImported) {
-          tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
-        }
-
-        // By default, don't show hidden tokens
-        tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
-
-        const validSortColumns = {
-          marketCapUSD: tokens.marketCapUSD,
-          createdAt: tokens.createdAt,
-          holderCount: tokens.holderCount,
-          tokenPriceUSD: tokens.tokenPriceUSD,
-          name: tokens.name,
-          ticker: tokens.ticker,
-          volume24h: tokens.volume24h,
-          curveProgress: tokens.curveProgress,
-          featured: tokens.featured,
-        };
-
-        if (search) {
-          // This is a simplified implementation - in production you'd use a proper search mechanism
-          tokensQuery = tokensQuery.where(
-            sql`(${tokens.name} LIKE ${"%" + search + "%"} OR 
-                 ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
-                 ${tokens.mint} LIKE ${"%" + search + "%"})`,
-          );
-        }
-
-        // Apply sorting - map frontend sort values to actual DB columns
-        // Handle "featured" sort as a special case
-        if (sortBy === "featured") {
-          /** If tokens have featured, they should appear first */
-          tokensQuery = tokensQuery.orderBy(desc(tokens.featured));
-
-          // // Apply the weighted sort with the max values
-          tokensQuery = applyFeaturedSort(
-            tokensQuery,
-            maxVolume,
-            maxHolders,
-            sortOrder,
-          );
-        } else {
-          // Use the mapped column or default to createdAt
-          const sortColumn =
-            validSortColumns[sortBy as keyof typeof validSortColumns] ||
-            tokens.createdAt;
-
-          if (sortOrder.toLowerCase() === "desc") {
-            tokensQuery = tokensQuery.orderBy(desc(sortColumn));
-          } else {
-            tokensQuery = tokensQuery.orderBy(sortColumn);
-          }
-        }
-
-        // Apply pagination
-        tokensQuery = tokensQuery.limit(limit).offset(skip);
-
-        // Execute the query
-        return await tokensQuery;
-      } catch (error) {
-        logger.error("Error in token query:", error);
-        return [];
-      }
-    };
-
-    const countPromise = async () => {
-      const countQuery = db.select({ count: sql`count(*)` }).from(tokens);
-      let finalQuery: any;
-      if (status) {
-        finalQuery = countQuery.where(eq(tokens.status, status));
-      } else {
-        finalQuery = countQuery.where(sql`${tokens.status} != 'pending'`);
-      }
-      if (creator) {
-        finalQuery = countQuery.where(eq(tokens.creator, creator));
-      }
-      if (search) {
-        finalQuery = countQuery.where(
-          sql`(${tokens.name} LIKE ${"%" + search + "%"} OR 
-               ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
-               ${tokens.mint} LIKE ${"%" + search + "%"})`,
-        );
-      }
-
-      if (hideImported) {
-        finalQuery = countQuery.where(ne(tokens.imported, 1));
-      }
-
-      // By default, don't count hidden tokens
-      finalQuery = countQuery.where(
-        sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
-      );
-
-      const totalCountResult = await finalQuery;
-      return Number(totalCountResult[0]?.count || 0);
-    };
-
-    // Try to execute the query with a timeout
-    let tokensResult;
+    let tokensResult: Token[] | undefined;
     let total = 0;
-
     try {
-      [tokensResult, total] = await Promise.all([
-        Promise.race([tokenQuery(), timeoutPromise]),
-        Promise.race([countPromise(), countTimeoutPromise]),
+      logger.log("[Execution] Awaiting baseQuery...");
+      // @ts-ignore
+      tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
+      logger.log(
+        `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
+      );
+      // @ts-ignore
+      const countResult = await Promise.race([
+        countQuery.execute(),
+        countTimeoutPromise,
       ]);
-    } catch (error) {
-      logger.error("Token query failed or timed out:", error);
-      tokensResult = [];
-    }
+      total = Number(countResult[0]?.count || 0);
+      logger.log(`[Execution] countQuery finished, total: ${total}`);
 
+      // --- Pass SQL to VALIDATION CALL ---
+      // Pass the generated SQL string
+      await validateQueryResults({ hideImported, status }, tokensResult, {
+        mainQuerySql: mainQuerySqlString,
+      });
+      // --- END VALIDATION CALL ---
+    } catch (error) {
+      logger.error(
+        "Token query failed, timed out, or failed validation:",
+        error,
+      );
+      tokensResult = []; // Ensure it's an empty array on error
+      total = 0;
+    }
+    // ... (Rest of handler: totalPages, responseData, logging, return) ...
+
+    // --- Process and Return ---
     const totalPages = Math.ceil(total / limit);
 
+    // Ensure BigInts are handled before caching/returning
+    const serializableTokensResult =
+      tokensResult?.map((token) => {
+        const serializableToken: Record<string, any> = {};
+        if (token) {
+          // Use Object.entries for potentially better type inference
+          for (const [key, value] of Object.entries(token)) {
+            if (typeof value === "bigint") {
+              // Explicitly cast value to any before calling toString()
+              serializableToken[key] = (value as any).toString();
+            } else {
+              serializableToken[key] = value;
+            }
+          }
+        }
+        return serializableToken as Token; // Keep cast for now
+      }) || [];
+
     const responseData = {
-      tokens: tokensResult,
+      tokens: serializableTokensResult,
       page,
       totalPages,
       total,
       hasMore: page < totalPages,
     };
 
-    // if (redisCache && tokensResult.length > 0) {
-    //   try {
-    //     await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
-    //     logger.log(`Cached data for ${cacheKey} with 10s TTL`);
-    //   } catch (cacheError) {
-    //     logger.error(`Error caching token data:`, cacheError);
-    //   }
-    // }
+    // --- RE-ENABLE CACHE SET ---
+    if (
+      redisCache &&
+      serializableTokensResult &&
+      serializableTokensResult.length > 0
+    ) {
+      // Cache only if results exist
+      try {
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
+        logger.log(`Cached data for ${cacheKey} with 10s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error:`, cacheError);
+      }
+    }
+    // --- END RE-ENABLE CACHE SET ---
+
+    // Final log and return
+    const returnedMints =
+      serializableTokensResult
+        ?.slice(0, 5)
+        .map((t) => t.mint)
+        .join(", ") || "none";
+    logger.log(
+      `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`,
+    );
 
     return c.json(responseData);
   } catch (error) {
     logger.error("Error in token route:", error);
-    // Return empty results rather than error
-    return c.json({
-      tokens: [],
-      page: 1,
-      totalPages: 0,
-      total: 0,
-    });
-  }
-});
-
-/**
- * used for importing tokens
- * will only search in mainnet because it's easier to test popular solana tokens that way.
- * we don't want to accidentally import devnet tokens into our system
- */
-tokenRouter.post("/search-token", async (c) => {
-  const body = await c.req.json();
-  const { mint, requestor } = body;
-
-  if (!mint || typeof mint !== "string") {
-    return c.json({ error: "Invalid mint address" }, 400);
-  }
-
-  if (!requestor || typeof requestor !== "string") {
-    return c.json({ error: "Missing or invalid requestor" }, 400);
-  }
-
-  // Validate mint address
-  const mintPublicKey = new PublicKey(mint);
-  logger.log(`[search-token] Searching for token ${mint}`);
-
-  const connection = new Connection(c.env.MAINNET_SOLANA_RPC_URL, "confirmed");
-
-  // Try to find the token on mainnet
-  try {
-    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
-    if (tokenInfo) {
-      logger.log(
-        `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`,
-      );
-      // Continue with the token info we found
-      return await processTokenInfo(
-        c,
-        mintPublicKey,
-        tokenInfo,
-        connection,
-        requestor,
-      );
-    }
-  } catch (error) {
-    logger.error(`[search-token] Error checking primary network: ${error}`);
+    return c.json(
+      { tokens: [], page: 1, totalPages: 0, total: 0, error: error.message },
+      500,
+    );
   }
 });
 
@@ -1499,19 +1539,19 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
     const redisCache = createRedisCache(c.env);
-    // if (redisCache) {
-    //   try {
-    //     const cachedData = await redisCache.get(cacheKey);
-    //     if (cachedData) {
-    //       logger.log(`Cache hit for ${cacheKey}`);
-    //       return c.json(JSON.parse(cachedData));
-    //     }
-    //     logger.log(`Cache miss for ${cacheKey}`);
-    //   } catch (cacheError) {
-    //     logger.error(`Redis cache error:`, cacheError);
-    //     // Continue without caching if there's an error
-    //   }
-    // }
+    if (redisCache) {
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`Cache hit for ${cacheKey}`);
+          return c.json(JSON.parse(cachedData));
+        }
+        logger.log(`Cache miss for ${cacheKey}`);
+      } catch (cacheError) {
+        logger.error(`Redis cache error:`, cacheError);
+        // Continue without caching if there's an error
+      }
+    }
 
     // Get token data
     const db = getDB(c.env);
@@ -1688,15 +1728,15 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Format response with additional data
     const responseData = token;
-    // if (redisCache) {
-    //   try {
-    //     // Cache for 5 seconds
-    //     await redisCache.set(cacheKey, JSON.stringify(responseData), 5);
-    //     logger.log(`Cached data for ${cacheKey} with 5s TTL`);
-    //   } catch (cacheError) {
-    //     logger.error(`Error caching token data:`, cacheError);
-    //   }
-    // }
+    if (redisCache) {
+      try {
+        // Cache for 5 seconds
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 5);
+        logger.log(`Cached data for ${cacheKey} with 5s TTL`);
+      } catch (cacheError) {
+        logger.error(`Error caching token data:`, cacheError);
+      }
+    }
 
     return c.json(responseData);
   } catch (error) {

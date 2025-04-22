@@ -402,7 +402,7 @@ export async function processTransactionLogs(
         ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
         : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
 
-    const bondStatus = newToken?.status === "bonded" ? "postbond" : "prebond";
+    const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
     if (swapRecord.type === "buy") {
       await awardUserPoints(env, swapRecord.user, {
         type: bondStatus === "prebond" ? "prebond_buy" : "postbond_buy",
