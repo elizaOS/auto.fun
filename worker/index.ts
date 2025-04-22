@@ -271,9 +271,6 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
-    // Initialize pre-generated tokens in the background
-    ctx.waitUntil(checkAndReplenishTokens(env));
-
     const url = new URL(request.url);
 
     // Setup CORS headers for WebSocket requests
