@@ -293,7 +293,7 @@ app.post(
         parentId: parentId,
         tier: tier, // Store the tier
         replyCount: 0,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
       };
 
       // Insert the new message into the database
