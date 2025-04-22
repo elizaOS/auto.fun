@@ -8,9 +8,11 @@ CREATE TABLE IF NOT EXISTS oauth_verifiers (
 
 CREATE TABLE IF NOT EXISTS access_tokens (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   access_token TEXT NOT NULL,
   refresh_token TEXT NOT NULL,
-  expires_at TEXT NOT NULL
+  expires_at TEXT NOT NULL,
+  CONSTRAINT access_tokens_user_id_unique UNIQUE(user_id)
 );
 
 -- Add pre_generated_tokens table

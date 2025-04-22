@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { Hono } from "hono";
 import { StatusCode } from "hono/utils/http-status";
 import { nanoid } from "nanoid";
@@ -221,6 +221,7 @@ async function getOAuthState(
 
 async function storeAccessToken(
   env: Env,
+  userId: string,
   token: string,
   refresh: string,
   expiresIn: number,
@@ -229,29 +230,36 @@ async function storeAccessToken(
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
   try {
-    // First delete any existing tokens
-    await db.delete(accessTokens);
-
-    // Then insert the new token
-    await db.insert(accessTokens).values([
-      {
+    // Update or insert based on user
+    await db
+      .insert(accessTokens)
+      .values({
         id: nanoid(),
+        userId,
         accessToken: token,
         refreshToken: refresh,
-        expiresAt: expiresAt,
-      },
-    ]);
+        expiresAt,
+      })
+      .onConflictDoUpdate({
+        target: accessTokens.userId,
+        set: {
+          accessToken: token,
+          refreshToken: refresh,
+          expiresAt,
+        },
+      });
   } catch (error) {
     throw new Error(`Failed to store access token: ${error}`);
   }
 }
 
-async function getRefreshToken(env: Env): Promise<string | null> {
+async function getRefreshToken(env: Env, userId: string): Promise<string | null> {
   try {
     const db = getDB(env);
     const result = await db
       .select({ refresh_token: accessTokens.refreshToken })
       .from(accessTokens)
+      .where(eq(accessTokens.userId, userId))
       .limit(1);
 
     if (!result.length) return null;
@@ -264,6 +272,7 @@ async function getRefreshToken(env: Env): Promise<string | null> {
 
 async function updateAccessToken(
   env: Env,
+  userId: string,
   token: string,
   refresh: string,
   expiresIn: number,
@@ -272,20 +281,35 @@ async function updateAccessToken(
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
   try {
-    // Delete existing tokens
-    await db.delete(accessTokens);
-
-    // Insert the new token
-    await db.insert(accessTokens).values([
-      {
-        id: nanoid(),
+    // Update only the token for this user
+    await db
+      .update(accessTokens)
+      .set({
         accessToken: token,
         refreshToken: refresh,
-        expiresAt: expiresAt,
-      },
-    ]);
+        expiresAt,
+      })
+      .where(eq(accessTokens.userId, userId));
   } catch (error) {
     throw new Error(`Failed to update access token: ${error}`);
+  }
+}
+
+async function validateToken(env: Env, token: string, userId: string): Promise<boolean> {
+  try {
+    const db = getDB(env);
+    const result = await db
+      .select()
+      .from(accessTokens)
+      .where(and(
+        eq(accessTokens.accessToken, token),
+        eq(accessTokens.userId, userId)
+      ))
+      .limit(1);
+    return result.length > 0;
+  } catch (err) {
+    logger.error("Error validating token:", err);
+    return false;
   }
 }
 
@@ -605,6 +629,7 @@ shareRouter.get("/oauth/callback", async (c) => {
     // We need to store OAuth 2.0 credentials but we'll return both OAuth 2.0 and user ID
     await storeAccessToken(
       c.env,
+      userId,
       data.access_token,
       data.refresh_token,
       data.expires_in,
@@ -631,56 +656,43 @@ shareRouter.get("/oauth/callback", async (c) => {
 
 // OAuth Refresh
 shareRouter.post("/oauth/refresh", async (c) => {
-  const refreshToken = await getRefreshToken(c.env);
-  if (!refreshToken) {
+  const userId = c.req.query("user_id");
+  if (!userId) {
     c.status(400);
-    return c.json({ error: "Refresh token not found" });
+    return c.json({ error: "user_id is required" });
   }
 
-  const clientId = c.env.TWITTER_CLIENT_ID;
-  const params = new URLSearchParams({
-    refresh_token: refreshToken,
-    grant_type: "refresh_token",
-    client_id: clientId,
-  });
+  const refreshToken = await getRefreshToken(c.env, userId);
+  if (!refreshToken) {
+    c.status(400);
+    return c.json({ error: "No refresh token found" });
+  }
 
   try {
     const response = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${Buffer.from(
+          `${c.env.TWITTER_CLIENT_ID}:${c.env.TWITTER_API_SECRET}`,
+        ).toString("base64")}`,
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error refreshing access token: ${errorText}`);
+      throw new Error(`Failed to refresh token: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as {
-      access_token: string;
-      refresh_token: string;
-      expires_in: number;
-    };
-
-    await updateAccessToken(
-      c.env,
-      data.access_token,
-      data.refresh_token,
-      data.expires_in,
-    );
-
-    return c.json({
-      access_token: data.access_token,
-    });
+    const data = await response.json();
+    await updateAccessToken(c.env, userId, data.access_token, data.refresh_token, data.expires_in);
+    return c.json({ success: true });
   } catch (error) {
-    logger.error("Error in OAuth refresh:", error);
     c.status(500);
-    return c.json({
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown error in OAuth refresh",
-    });
+    return c.json({ error: "Failed to refresh token" });
   }
 });
 
