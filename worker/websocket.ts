@@ -337,6 +337,37 @@ export class WebSocketDO {
     }
 
     try {
+      const headers = request.headers;
+      const messageId = headers.get("X-Message-Id");
+      if (messageId) {
+        const chunkIndex = parseInt(headers.get("X-Chunk-Index") || "0", 10);
+        const totalChunks = parseInt(headers.get("X-Total-Chunks") || "0", 10);
+        const chunk = await request.text();
+        const storageKey = `partial:${messageId}`;
+        let partial = (await this.state.storage.get(storageKey)) as { chunks: Record<string, string>; totalChunks: number } || { chunks: {}, totalChunks };
+        if (!partial.totalChunks) {
+          partial.totalChunks = totalChunks;
+        }
+        partial.chunks[chunkIndex] = chunk;
+        await this.state.storage.put(storageKey, partial);
+        if (Object.keys(partial.chunks).length < partial.totalChunks) {
+          return new Response(
+            JSON.stringify({ success: true, message: `Received chunk ${chunkIndex}` }),
+            { headers: { "Content-Type": "application/json" } },
+          );
+        }
+        // All chunks received, assemble and broadcast
+        const assembled = Array.from({ length: partial.totalChunks }, (_, i) => partial.chunks[i]).join("");
+        await this.state.storage.delete(storageKey);
+        const { room, event, data } = JSON.parse(assembled);
+        await this.broadcastToRoom(room, event, data);
+        return new Response(
+          JSON.stringify({ success: true, message: `Broadcast to ${room} successful` }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Non-chunked request: original logic
       const { room, event, data } = (await request.json()) as {
         room: string;
         event: string;
