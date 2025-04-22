@@ -232,7 +232,7 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "Filename parameter is required" }, 400);
     }
 
-    if (!process.env.R2) {
+    if (!R2) {
       logger.error("[/image/:filename] R2 storage is not available");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
@@ -259,7 +259,7 @@ tokenRouter.get("/image/:filename", async (c) => {
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
-    const object = await process.env.R2.get(imageKey);
+    const object = await R2.get(imageKey);
 
     if (!object) {
       logger.warn(
@@ -269,7 +269,7 @@ tokenRouter.get("/image/:filename", async (c) => {
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
         const prefix = imageKey.split("/")[0] + "/";
-        const objects = await process.env.R2.list({
+        const objects = await R2.list({
           prefix,
           limit: 10,
         });
@@ -345,7 +345,7 @@ tokenRouter.get("/metadata/:filename", async (c) => {
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
 
-    if (!process.env.R2) {
+    if (!R2) {
       logger.error("[/metadata/:filename] R2 storage is not configured");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
@@ -361,14 +361,14 @@ tokenRouter.get("/metadata/:filename", async (c) => {
     logger.log(
       `[/metadata/:filename] Checking primary location: ${primaryKey}`,
     );
-    let object = await process.env.R2.get(primaryKey);
+    let object = await R2.get(primaryKey);
 
     // If not found in primary location, check fallback location
     if (!object) {
       logger.log(
         `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
       );
-      object = await process.env.R2.get(fallbackKey);
+      object = await R2.get(fallbackKey);
     }
 
     if (!object) {
@@ -1783,7 +1783,7 @@ tokenRouter.post("/create-token", async (c) => {
           const filename = `${mintAddress}-${Date.now()}.png`;
 
           // Upload to R2
-          await process.env.R2.put(filename, imageBuffer, {
+          await R2.put(filename, imageBuffer, {
             httpMetadata: {
               contentType: "image/png",
             },
@@ -2191,7 +2191,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
             .buffer as ArrayBuffer;
 
           // 4) Overwrite the same key in R2
-          await process.env.R2.put(objectKey, buf, {
+          await R2.put(objectKey, buf, {
             httpMetadata: { contentType: "application/json" },
             customMetadata: { publicAccess: "true" },
           });
@@ -2526,7 +2526,7 @@ export async function uploadImportImage(c: Context) {
     const imageKey = `token-images/${imageFilename}`;
 
     // Upload to R2
-    await process.env.R2.put(imageKey, imageBuffer, {
+    await R2.put(imageKey, imageBuffer, {
       httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
     });
 

@@ -1658,16 +1658,16 @@ async function generateTokenOnDemand(
           const imageFilename = `${crypto.randomUUID()}${extension}`;
           const imageKey = `token-images/${imageFilename}`; // Consistent R2 prefix
 
-          if (!process.env.R2) { // Use process.env.R2
+          if (!R2) { // Use R2
             throw new Error(
-              "R2 storage (process.env.R2) is not configured. Cannot upload image.",
+              "R2 storage (R2) is not configured. Cannot upload image.",
             );
           }
 
           logger.log(
             `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`,
           );
-          await process.env.R2.put(imageKey, imageBuffer, { // Use process.env.R2.put
+          await R2.put(imageKey, imageBuffer, { // Use R2.put
             httpMetadata: {
               contentType,
               cacheControl: "public, max-age=31536000", // 1 year cache
@@ -2236,12 +2236,12 @@ export async function generatePreGeneratedTokens() { // Add env parameter
       const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
       logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
 
-      if (!process.env.R2) { // Use process.env.R2
-        throw new Error("[PreGen Upload] R2 binding (process.env.R2) is not available.");
+      if (!R2) { // Use R2
+        throw new Error("[PreGen Upload] R2 binding (R2) is not available.");
       }
 
       logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
-      const res = await process.env.R2.put(imageKey, imageBuffer, { // Use process.env.R2.put
+      const res = await R2.put(imageKey, imageBuffer, { // Use R2.put
         httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
       });
       // log the public url from the respnse

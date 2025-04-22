@@ -1,5 +1,47 @@
-import { Env } from "./env";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+// Removed Env import as we use process.env now
+// import { Env } from "./env";
 import { logger } from "./util";
+import crypto from "node:crypto"; // Import crypto if not already available globally in the environment
+import { Buffer } from "node:buffer"; // Ensure Buffer is available
+
+// Define the fixed public base URL
+const PUBLIC_STORAGE_BASE_URL = "https://621d1008ef1cb024077560dcb94dd126.r2.cloudflarestorage.com/autofun-storage";
+
+// Singleton S3 Client instance
+let s3ClientInstance: S3Client | null = null;
+
+// Helper function to create/get S3 client instance using process.env
+function getS3Client(): S3Client {
+    if (s3ClientInstance) {
+        return s3ClientInstance;
+    }
+
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const bucketName = process.env.R2_BUCKET_NAME; // Keep bucket name check here for validation
+
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+        // Log the missing variables for easier debugging
+        logger.error("Missing R2 S3 API environment variables. Check R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME.");
+        throw new Error("Missing required R2 S3 API environment variables.");
+    }
+    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+
+    s3ClientInstance = new S3Client({
+        region: "auto",
+        endpoint: endpoint,
+        credentials: {
+            accessKeyId: accessKeyId,
+            secretAccessKey: secretAccessKey,
+        },
+    });
+
+    logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
+    return s3ClientInstance;
+}
+
 
 // Store file mapping in a local cache for development
 const _fileCache: { [key: string]: string } = {};
@@ -7,7 +49,9 @@ const _fileCache: { [key: string]: string } = {};
 // Log uploaded files to an in-memory cache only
 function logUploadedFile(objectKey: string, publicUrl: string) {
   try {
-    if (process.env.NODE_ENV !== "development") return;
+    // Use a check for a specific dev environment variable if needed
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    if (!isDevelopment) return;
 
     // Add to in-memory cache
     _fileCache[objectKey] = publicUrl;
@@ -24,164 +68,121 @@ export function getUploadedFiles(): { [key: string]: string } {
   return { ..._fileCache };
 }
 
-// CloudFlare storage utility (R2) to replace Pinata
+// CloudFlare storage utility (using S3 interface via process.env)
 export async function uploadToCloudflare(
-  data: ArrayBuffer | object,
+  // Removed env parameter
+  data: ArrayBuffer | Buffer | Uint8Array | object,
   options: {
     isJson?: boolean;
     contentType?: string;
-    timeout?: number;
     filename?: string;
+    metadata?: Record<string, string>; // For custom metadata
+    basePath?: string; // Allow specifying base path like 'token-metadata' or 'token-images'
   } = {},
 ) {
-  // Apply a default timeout of 15 seconds
-  const timeout = options.timeout || 15000;
 
   // Generate a random UUID for uniqueness
   const randomId = crypto.randomUUID();
 
+  // Determine base path
+  const basePath = options.basePath ?? (options.isJson ? "token-metadata" : "token-images");
+
+
   // If filename is provided, use it to create a more meaningful object key
-  let objectKey = randomId;
+  let objectKeySuffix = randomId; // Default suffix if no filename
   if (options.filename) {
     // Sanitize filename - remove any potentially problematic characters
     const sanitizedFilename = options.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    // Create a key that includes both the UUID (for uniqueness) and the filename (for identification)
-    objectKey = `${randomId}-${sanitizedFilename}`;
+    // Create a suffix that includes both the UUID (for uniqueness) and the filename (for identification)
+    objectKeySuffix = `${randomId}-${sanitizedFilename}`;
   }
+
+  // Combine base path and suffix
+  const objectKey = `${basePath}/${objectKeySuffix}`;
+
 
   // Set the appropriate content type
   const contentType =
     options.contentType || (options.isJson ? "application/json" : "image/jpeg");
 
   logger.log(
-    `Using content type ${contentType} for upload, filename: ${options.filename || "none"}`,
+    `Preparing upload: Key=${objectKey}, ContentType=${contentType}, Filename=${options.filename || "none"}`,
   );
 
-  // Check if we're running in local development via Miniflare
-  const isLocalDev =
-    typeof process !== "undefined" && process.env.NODE_ENV === "development";
 
   try {
-    // Prepare data for upload
-    let objectData: ArrayBuffer;
-    if (options.isJson) {
-      // Convert JSON to ArrayBuffer for storage
+    // Prepare data for upload (needs to be Buffer or stream for S3)
+    let objectData: Buffer | Uint8Array;
+    if (options.isJson && !(data instanceof Buffer) && !(data instanceof Uint8Array)) {
+      // If JSON flag is set and data is not already binary, stringify
       const jsonString = JSON.stringify(data);
-      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
+      objectData = Buffer.from(jsonString, 'utf8');
     } else if (data instanceof ArrayBuffer) {
-      // Use data directly if it's already an ArrayBuffer
-      objectData = data;
-    } else if (
-      data instanceof Uint8Array ||
-      data instanceof Uint8ClampedArray
-    ) {
-      // Handle typed arrays
-      objectData = data.buffer as ArrayBuffer;
+      objectData = Buffer.from(data);
+    } else if (data instanceof Uint8Array || Buffer.isBuffer(data)) {
+       objectData = data;
     } else {
-      // Fallback for other object types
-      const jsonString = JSON.stringify(data);
-      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
+      // Fallback for non-binary, non-JSON flagged data: attempt stringify
+      logger.warn("Data provided to uploadToCloudflare is not ArrayBuffer, Uint8Array, or Buffer, and not flagged as JSON. Attempting JSON stringify fallback.");
+      try {
+          const jsonString = JSON.stringify(data);
+          objectData = Buffer.from(jsonString, 'utf8');
+      } catch (stringifyError) {
+          logger.error("Failed to stringify fallback data:", stringifyError);
+          throw new Error("Unsupported data type for upload and failed to stringify.");
+      }
     }
 
-    try {
-      // Create R2 upload and timeout promises
-      const uploadPromise = new Promise<void>((resolve, reject) => {
-        const objectPath = options.isJson ? "token-metadata" : "token-images";
+     const s3Client = getS3Client(); // Get client using process.env
+     const bucketName = process.env.R2_BUCKET_NAME;
+     if (!bucketName) {
+         throw new Error("R2_BUCKET_NAME environment variable is not set.");
+     }
 
-        // Check if R2 is available
-        if (!process.env.R2) {
-          reject(new Error("R2 is not available"));
-          return;
-        }
+     const putCommand = new PutObjectCommand({
+         Bucket: bucketName,
+         Key: objectKey,
+         Body: objectData,
+         ContentType: contentType,
+         // Add Cache-Control or other metadata as needed
+         CacheControl: "public, max-age=31536000", // Example: 1 year cache
+         Metadata: { // Pass custom metadata here if needed
+             publicAccess: "true", // Example custom metadata
+             originalFilename: options.filename || "",
+             ...(options.metadata || {}) // Include any other custom metadata
+         },
+     });
 
-        // Perform the upload
-        process.env.R2.put(objectPath + "/" + objectKey, objectData, {
-          httpMetadata: { contentType },
-          customMetadata: {
-            publicAccess: "true",
-            originalFilename: options.filename || "",
-          },
-        })
-          .then(() => {
-            resolve();
-          })
-          .catch((e: any) => {
-            reject(e);
-          });
-      });
+     logger.log(`Uploading to S3: Bucket=${bucketName}, Key=${objectKey}`);
+     await s3Client.send(putCommand);
+     logger.log(`S3 Upload successful for Key: ${objectKey}`);
 
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Upload timed out"));
-        }, timeout);
-      });
 
-      // Race the promises to implement timeout
-      await Promise.race([uploadPromise, timeoutPromise]);
-
-      const apiPath = options.isJson ? "metadata" : "image";
-      // Ensure proper path formatting - don't URL encode here as R2 handles this
-      const objectPath = options.isJson ? "token-metadata" : "token-images";
-
-      logger.log(
-        "uploading to r2",
-        process.env.R2_PUBLIC_URL,
-        process.env.API_URL,
-        process.env.NODE_ENV,
-      );
-      const publicUrl = process.env.API_URL?.includes("localhost")
-        ? `${process.env.API_URL}/api/${apiPath}/${objectKey}`
-        : `${process.env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
+      // Construct the public URL using the fixed base
+      const publicUrl = `${PUBLIC_STORAGE_BASE_URL}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(objectKey, publicUrl);
+      logger.log(`Successfully uploaded to R2 (S3 API), Public URL: ${publicUrl}`);
 
-      logger.log(`Successfully uploaded to R2: ${publicUrl}`);
       return publicUrl;
-    } catch (r2Error) {
-      // Handle specific R2 errors
-      logger.error("Cloudflare R2 upload failed:", r2Error);
 
-      // Return a fallback URL
-      const fallbackUrl = `${process.env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
-      logger.log("Using fallback URL:", fallbackUrl);
-
-      // Still log the fallback URL
-      logUploadedFile(objectKey, fallbackUrl);
-
-      return fallbackUrl;
-    }
   } catch (error) {
-    // Log detailed error information
-    if (error instanceof Error && error.message === "Upload timed out") {
-      logger.error(`Cloudflare R2 upload timed out after ${timeout}ms`);
-    } else {
-      logger.error("Error in uploadToCloudflare:", error);
-    }
-
-    // Return a fallback URL
-    const fallbackUrl = `${process.env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
-    logger.log("Using fallback URL from catch block:", fallbackUrl);
-
-    // Log even fallback URLs from errors
-    logUploadedFile(objectKey, fallbackUrl);
-
-    return fallbackUrl;
+    logger.error(`S3 API upload failed for Key ${objectKey}:`, error);
+    throw new Error(`Failed to upload object: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 // Function to upload a generated image to a predictable path for a token
 export async function uploadGeneratedImage(
-  data: ArrayBuffer | object,
+  // Removed env parameter
+  data: ArrayBuffer | Buffer | Uint8Array, // Accept Buffer/Uint8Array directly
   tokenMint: string,
   generationNumber: number,
   options: {
     contentType?: string;
-    timeout?: number;
   } = {},
 ) {
-  // Apply a default timeout of 15 seconds
-  const timeout = options.timeout || 15000;
 
   // Create predictable path based on token mint and generation number
   const objectKey = `generations/${tokenMint}/gen-${generationNumber}.jpg`;
@@ -189,72 +190,58 @@ export async function uploadGeneratedImage(
   // Set the appropriate content type
   const contentType = options.contentType || "image/jpeg";
 
+  logger.log(
+    `Preparing generated image upload: Key=${objectKey}, ContentType=${contentType}`,
+  );
+
   try {
     // Prepare data for upload
-    let objectData: ArrayBuffer;
-    if (data instanceof ArrayBuffer) {
-      objectData = data;
-    } else if (
-      data instanceof Uint8Array ||
-      data instanceof Uint8ClampedArray
-    ) {
-      objectData = data.buffer as ArrayBuffer;
-    } else {
-      const jsonString = JSON.stringify(data);
-      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
-    }
+    let objectData: Buffer | Uint8Array;
+     if (data instanceof ArrayBuffer) {
+        objectData = Buffer.from(data);
+     } else if (data instanceof Uint8Array || Buffer.isBuffer(data)) {
+        objectData = data;
+     } else {
+         logger.error("Invalid data type provided to uploadGeneratedImage. Expected ArrayBuffer, Buffer, or Uint8Array.");
+         throw new Error("Invalid data type for image upload.");
+     }
 
-    try {
-      // Create R2 upload and timeout promises
-      const uploadPromise = new Promise<void>((resolve, reject) => {
-        if (!env.R2) {
-          reject(new Error("R2 is not available"));
-          return;
+
+      const s3Client = getS3Client(); // Get client using process.env
+      const bucketName = process.env.R2_BUCKET_NAME;
+        if (!bucketName) {
+            throw new Error("R2_BUCKET_NAME environment variable is not set.");
         }
 
-        // Perform the upload
-        process.env.R2.put(objectKey, objectData, {
-          httpMetadata: {
-            contentType,
-            cacheControl: "public, max-age=31536000",
+      const putCommand = new PutObjectCommand({
+          Bucket: bucketName,
+          Key: objectKey,
+          Body: objectData,
+          ContentType: contentType,
+          CacheControl: "public, max-age=31536000", // Example: 1 year cache
+          Metadata: { // Custom metadata
+              publicAccess: "true",
+              tokenMint: tokenMint,
+              generationNumber: generationNumber.toString(),
           },
-          customMetadata: {
-            publicAccess: "true",
-            tokenMint: tokenMint,
-            generationNumber: generationNumber.toString(),
-          },
-        })
-          .then(() => {
-            resolve();
-          })
-          .catch((e: any) => {
-            reject(e);
-          });
       });
 
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Upload timed out"));
-        }, timeout);
-      });
+      logger.log(`Uploading generated image to S3: Bucket=${bucketName}, Key=${objectKey}`);
+      await s3Client.send(putCommand);
+      logger.log(`S3 Upload successful for generated image Key: ${objectKey}`);
 
-      // Race the promises to implement timeout
-      await Promise.race([uploadPromise, timeoutPromise]);
 
-      // Construct the public URL
-      const publicUrl = `${process.env.R2_PUBLIC_URL}/${objectKey}`;
+      // Construct the public URL using the fixed base
+      const publicUrl = `${PUBLIC_STORAGE_BASE_URL}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(objectKey, publicUrl);
 
-      logger.log(`Successfully uploaded generated image to R2: ${publicUrl}`);
+      logger.log(`Successfully uploaded generated image via S3 API, Public URL: ${publicUrl}`);
       return publicUrl;
-    } catch (r2Error) {
-      logger.error("Cloudflare R2 upload failed:", r2Error);
-      throw r2Error;
-    }
+
   } catch (error) {
-    logger.error("Error in uploadGeneratedImage:", error);
-    throw error;
+    logger.error(`Error in uploadGeneratedImage (S3 API) for Key ${objectKey}:`, error);
+    throw new Error(`Failed to upload generated image: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

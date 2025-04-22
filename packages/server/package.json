@@ -15,6 +15,7 @@
   "dependencies": {
     "@autodotfun/program": "workspace:*",
     "@autodotfun/raydium": "workspace:*",
+    "@aws-sdk/client-s3": "^3.787.0",
     "@cloudflare/workers-types": "^4.20250418.0",
     "@codex-data/sdk": "^1.0.6",
     "@coral-xyz/anchor": "^0.31.0",

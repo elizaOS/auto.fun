@@ -186,8 +186,8 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                 const imageBuffer = await imageResponse.arrayBuffer();
 
                 // Store in R2 if available
-                if (process.env.R2) {
-                  await process.env.R2.put(imageKey, imageBuffer, {
+                if (R2) {
+                  await R2.put(imageKey, imageBuffer, {
                     httpMetadata: {
                       contentType: "image/jpeg",
                       cacheControl: "public, max-age=31536000", // Cache for 1 year

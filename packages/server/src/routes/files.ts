@@ -24,7 +24,7 @@ fileRouter.get("/metadata/:filename", async (c) => {
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
 
-    if (!process.env.R2) {
+    if (!R2) {
       logger.error("[/metadata/:filename] R2 storage is not configured");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
@@ -40,14 +40,14 @@ fileRouter.get("/metadata/:filename", async (c) => {
     logger.log(
       `[/metadata/:filename] Checking primary location: ${primaryKey}`,
     );
-    let object = await process.env.R2.get(primaryKey);
+    let object = await R2.get(primaryKey);
 
     // If not found in primary location, check fallback location
     if (!object) {
       logger.log(
         `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
       );
-      object = await process.env.R2.get(fallbackKey);
+      object = await R2.get(fallbackKey);
     }
 
     if (!object) {
@@ -93,7 +93,7 @@ fileRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "Filename parameter is required" }, 400);
     }
 
-    if (!process.env.R2) {
+    if (!R2) {
       logger.error("[/image/:filename] R2 storage is not available");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
@@ -120,7 +120,7 @@ fileRouter.get("/image/:filename", async (c) => {
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
-    const object = await process.env.R2.get(imageKey);
+    const object = await R2.get(imageKey);
 
     if (!object) {
       logger.warn(
@@ -130,7 +130,7 @@ fileRouter.get("/image/:filename", async (c) => {
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
         const prefix = imageKey.split("/")[0] + "/";
-        const objects = await process.env.R2.list({
+        const objects = await R2.list({
           prefix,
           limit: 10,
         });
@@ -200,7 +200,7 @@ fileRouter.get("/twitter-image/:imageId", async (c) => {
     }
 
     // Ensure R2 is available
-    if (!process.env.R2) {
+    if (!R2) {
       return c.json({ error: "R2 storage is not available" }, 500);
     }
 
@@ -208,7 +208,7 @@ fileRouter.get("/twitter-image/:imageId", async (c) => {
     const imageKey = `twitter-images/${imageId}.jpg`;
 
     // Fetch the image from R2
-    const object = await process.env.R2.get(imageKey);
+    const object = await R2.get(imageKey);
 
     if (!object) {
       return c.json({ error: "Twitter profile image not found" }, 404);
@@ -257,7 +257,7 @@ fileRouter.get("/check-generated-images/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    if (!process.env.R2) {
+    if (!R2) {
       logger.error("R2 storage is not available");
       return c.json({ images: [] }, 200); // Return empty list if R2 not available
     }
@@ -270,7 +270,7 @@ fileRouter.get("/check-generated-images/:mint", async (c) => {
 
     // Try to list objects with the given prefix
     try {
-      const objects = await process.env.R2.list({
+      const objects = await R2.list({
         prefix: generationImagesPrefix,
         limit: 10, // Reasonable limit
       });
