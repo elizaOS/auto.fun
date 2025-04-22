@@ -11,6 +11,7 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
+import { Tooltip } from "react-tooltip";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -71,11 +72,17 @@ export default function Trade({ token }: { token: IToken }) {
     queryFn: async (): Promise<{
       displayMinReceived: string;
       convertedAmount: number;
+      minReceivedRaw: number;
     }> => {
-      if (!program) return { displayMinReceived: "0", convertedAmount: 0 };
+      const empty = {
+        displayMinReceived: "0",
+        convertedAmount: 0,
+        minReceivedRaw: 0,
+      };
+      if (!program) return empty;
       const style = isTokenSelling ? 1 : 0;
       const amount = sellAmount;
-      if (!amount) return { displayMinReceived: "0", convertedAmount: 0 };
+      if (!amount) return empty;
 
       const amountBN = new BN(amount);
       const tokenDecimalsBN = new BN(
@@ -113,7 +120,11 @@ export default function Trade({ token }: { token: IToken }) {
         ? formatNumber(minReceived, false, true)
         : formatNumber(minReceived, false, true);
 
-      return { displayMinReceived, convertedAmount };
+      return {
+        displayMinReceived,
+        minReceivedRaw: minReceived,
+        convertedAmount,
+      };
     },
     refetchInterval: 5000,
   });
@@ -274,7 +285,20 @@ export default function Trade({ token }: { token: IToken }) {
             {/* Buying */}
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
-              <div className="relative flex uppercase items-center gap-2">
+              <Tooltip anchorSelect="#minreceived">
+                {displayhMinReceivedQuery?.data?.minReceivedRaw
+                  ? formatNumber(
+                      displayhMinReceivedQuery?.data?.minReceivedRaw,
+                      true,
+                      true,
+                    )
+                  : "0"}{" "}
+                {isTokenSelling ? "SOL" : token?.ticker}
+              </Tooltip>
+              <div
+                className="relative flex uppercase items-center gap-2"
+                id="minreceived"
+              >
                 {displayhMinReceivedQuery?.isError
                   ? "Error"
                   : displayMinReceived}
