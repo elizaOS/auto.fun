@@ -5,17 +5,13 @@ import { WalletModal } from "@/components/wallet-dialog";
 import { Providers } from "@/providers";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { ToastContainer } from "react-toastify";
 
 export default function Layout() {
   const { pathname } = useLocation();
   const [showFooter, setShowFooter] = useState(false);
-  const [isFixed, setIsFixed] = useState(false);
-  const bottomHitCount = useRef(0);
-  const lastScrollY = useRef(0);
-  const isInitialMount = useRef(true);
   const isHomepage = pathname === "/";
   const isTosAccepted = localStorage.getItem("tosAccepted") === "true";
 
@@ -26,7 +22,6 @@ export default function Layout() {
   useEffect(() => {
     if (!isHomepage) {
       setShowFooter(true);
-      setIsFixed(false);
       return;
     }
   
@@ -39,7 +34,7 @@ export default function Layout() {
       }
     };
   
-    checkScrollPosition(); // check once on mount
+    checkScrollPosition();
   
     window.addEventListener("scroll", checkScrollPosition);
     return () => window.removeEventListener("scroll", checkScrollPosition);
