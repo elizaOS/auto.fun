@@ -269,11 +269,7 @@ export default function Page() {
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
           title="Market Cap"
-          value={
-            marketCapUSD > 0
-              ? abbreviateNumber(marketCapUSD)
-              : "-"
-          }
+          value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
         />
         <TopPageItem
           title="24hr Volume"
@@ -702,9 +698,7 @@ export default function Page() {
                     Price SOL
                   </span>
                   <span className="text-xl font-dm-mono text-autofun-text-primary">
-                    {priceSOL
-                      ? formatNumberSubscript(priceSOL)
-                      : "0.00000000"}
+                    {priceSOL ? formatNumberSubscript(priceSOL) : "0.00000000"}
                   </span>
                 </div>
               </div>

@@ -251,9 +251,9 @@ export async function createNewTokenData(
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
         ? Number(bondingCurveAccount.reserveLamport) /
-        1e9 /
-        (Number(bondingCurveAccount.reserveToken) /
-          Math.pow(10, TOKEN_DECIMALS))
+          1e9 /
+          (Number(bondingCurveAccount.reserveToken) /
+            Math.pow(10, TOKEN_DECIMALS))
         : 0;
     console.log("currentPrice", currentPrice);
 
@@ -303,7 +303,7 @@ export async function createNewTokenData(
         (Number(bondingCurveAccount.reserveLamport) / 1e9) * solPrice +
         (Number(bondingCurveAccount.reserveToken) /
           Math.pow(10, TOKEN_DECIMALS)) *
-        tokenPriceUSD,
+          tokenPriceUSD,
       currentPrice:
         Number(bondingCurveAccount.reserveLamport) /
         1e9 /
@@ -532,9 +532,9 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   const apiKey =
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-      "67ea9085-1406-4db8-8872-38ac77950d7a"
+        "67ea9085-1406-4db8-8872-38ac77950d7a"
       : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-      "67ea9085-1406-4db8-8872-38ac77950d7a";
+        "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
