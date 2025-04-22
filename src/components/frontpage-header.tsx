@@ -201,6 +201,11 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Add a ref to track if tokens have been processed initially
   const tokensProcessedRef = useRef(false);
 
+  // These refs need to be defined at the component level
+  const isVisibleRef = useRef(true);
+  const frameCountRef = useRef(0);
+  const animationIdRef = useRef<number | null>(null);
+
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
     if (tokensProcessedRef.current && sceneInitializedRef.current) return;
@@ -476,10 +481,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Physics world
     const world = new CANNON.World();
     worldRef.current = world;
-    world.gravity.set(0, -9.8 * 20, 0); // stronger gravity for faster falls
-    world.broadphase = new CANNON.NaiveBroadphase();
-    world.solver.iterations = 14;
-    world.allowSleep = true;
+    world.gravity.set(0, -9.8 * 10, 0); // Less intense gravity
+    world.solver.iterations = 7; // Reduce from 14 - still good enough for dice
+    world.broadphase = new CANNON.SAPBroadphase(world); // More efficient broadphase
+    world.allowSleep = true; // Critical for performance
 
     // Setup materials
     const floorMaterial = new CANNON.Material(FLOOR_MATERIAL);
@@ -533,9 +538,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       alpha: true, // Enable transparency
     });
     renderer.setSize(containerWidth, containerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.setClearColor(0x000000, 0); // Make background transparent
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Limit pixel ratio
+    renderer.powerPreference = 'high-performance';
+    renderer.precision = 'mediump'; // Medium precision is usually sufficient
+    renderer.shadowMap.enabled = false; // Remove shadow mapping
 
     // Add renderer to DOM
     containerRef.current.innerHTML = "";
@@ -550,7 +556,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     directionalLight.rotation.x = -Math.PI / 4; // 45 degrees pitched down
     directionalLight.rotation.z = -Math.PI / 8; // 45 degrees pitched right
     directionalLight.position.set(0, 5, 0);
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = false;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 50;
     directionalLight.shadow.camera.left = -20;
@@ -670,33 +676,25 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Helper function to create materials for a die with the same texture on all sides
     const createDieMaterialsWithSameTexture = (tokenImage: string) => {
       return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
-        // Make sure textureLoader has crossOrigin set
-        if (!textureLoader.crossOrigin) {
-          textureLoader.crossOrigin = "anonymous";
-        }
-
         textureLoader.load(
           tokenImage,
           (texture) => {
-            // Success callback - only resolve here
             texture.colorSpace = THREE.SRGBColorSpace;
+            texture.minFilter = THREE.LinearFilter; // Simpler filtering
+            texture.generateMipmaps = false; // Disable mipmaps for performance
             setIsLoading(false);
-
-            // Create materials with the successfully loaded texture
-            const materials = Array(6)
-              .fill(null)
-              .map(
-                () =>
-                  new THREE.MeshStandardMaterial({
-                    map: texture,
-                    roughness: 0.75,
-                    metalness: 0.2,
-                    emissiveMap: texture,
-                    emissiveIntensity: 0.3,
-                  }),
-              );
-
-            resolve(materials);
+            
+            // Create a single material instead of 6 identical ones
+            const material = new THREE.MeshStandardMaterial({
+              map: texture,
+              roughness: 0.75,
+              metalness: 0.2,
+              emissiveMap: texture,
+              emissiveIntensity: 0.3,
+            });
+            
+            // Reuse the same material for all sides
+            resolve(Array(6).fill(material));
           },
           undefined,
           (error) => {
@@ -746,7 +744,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const scale = 2.25;
 
     // Create dice
-    const diceGeometry = new THREE.BoxGeometry(scale, scale, scale);
+    const diceGeometry = new THREE.BoxGeometry(scale, scale, scale, 1, 1, 1);
     const dice: THREE.Mesh[] = [];
     const diceBodies: CANNON.Body[] = [];
 
@@ -806,6 +804,11 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       dice.push(die);
       diceBodies.push(dieBody);
+
+      // Set better sleep parameters on dice bodies
+      dieBody.allowSleep = true;
+      dieBody.sleepSpeedLimit = 0.5; // Higher threshold for sleeping
+      dieBody.sleepTimeLimit = 0.5; // Fall asleep faster
 
       return { die, dieBody };
     }
@@ -887,20 +890,30 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Animation function
     function animate() {
-      requestAnimationFrame(animate);
-
-      // Step the physics world
-      world.step(1 / 60);
-
-      // Update dice positions and rotations
-      for (let i = 0; i < diceBodies.length; i++) {
-        const dieBody = diceBodies[i];
-        const die = dice[i];
-
-        die.position.copy(dieBody.position as any);
-        die.quaternion.copy(dieBody.quaternion as any);
+      if (!containerRef.current) return;
+      
+      const animationId = requestAnimationFrame(animate);
+      animationIdRef.current = animationId;
+      
+      const isDiceActive = diceBodiesRef.current.length > 0 && diceBodiesRef.current.some(body => 
+        !body.sleepState && (body.velocity.length() > 0.1 || body.angularVelocity.length() > 0.1)
+      );
+      
+      if (isDiceActive || frameCountRef.current % 3 === 0) {
+        world.step(1/60);
+        
+        for (let i = 0; i < diceBodiesRef.current.length; i++) {
+          const dieBody = diceBodiesRef.current[i];
+          const die = diceRef.current[i];
+          
+          if (die && dieBody) {
+            die.position.copy(dieBody.position as any);
+            die.quaternion.copy(dieBody.quaternion as any);
+          }
+        }
       }
-
+      
+      frameCountRef.current++;
       renderer.render(scene, camera);
     }
 
@@ -1034,8 +1047,71 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Initial throw
     throwDice();
 
+    // Add visibility detection
+    useEffect(() => {
+      if (!containerRef.current) return;
+      
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            isVisibleRef.current = entry.isIntersecting;
+            
+            if (entry.isIntersecting && animationIdRef.current === null) {
+              animationIdRef.current = requestAnimationFrame(animate);
+            }
+          });
+        },
+        { threshold: 0.1 }
+      );
+      
+      observer.observe(containerRef.current);
+      
+      // Modify animation function to check visibility
+      const originalAnimate = animate;
+      animate = function() {
+        if (!isVisibleRef.current) {
+          if (frameCountRef.current % 60 === 0) {
+            requestAnimationFrame(animate);
+          } else {
+            setTimeout(() => requestAnimationFrame(animate), 1000);
+          }
+          frameCountRef.current++;
+          return;
+        }
+        
+        originalAnimate();
+      };
+      
+      return () => observer.disconnect();
+    }, []);
+
     // Cleanup on unmount
     return () => {
+      // Cancel any pending animation frames
+      if (animationIdRef.current !== null) {
+        cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = null;
+      }
+      
+      // Clear all physics bodies
+      if (worldRef.current) {
+        for (const body of diceBodiesRef.current) {
+          worldRef.current.removeBody(body);
+        }
+      }
+      
+      // Dispose of geometry and materials
+      for (const die of diceRef.current) {
+        if (die.geometry) die.geometry.dispose();
+        if (Array.isArray(die.material)) {
+          die.material.forEach(mat => mat.dispose());
+        }
+      }
+      
+      // Clear references
+      diceRef.current = [];
+      diceBodiesRef.current = [];
+      
       // Reset initialization flags on unmount
       sceneInitializedRef.current = false;
       tokensProcessedRef.current = false;
