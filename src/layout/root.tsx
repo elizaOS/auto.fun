@@ -29,47 +29,22 @@ export default function Layout() {
       setIsFixed(false);
       return;
     }
-
+  
     const checkScrollPosition = () => {
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      const threshold = 100;
-      const isAtBottom = scrollPosition >= documentHeight - threshold;
       const isNearTop = window.scrollY < 200;
-
-      const isScrollingDown = window.scrollY > lastScrollY.current;
-      lastScrollY.current = window.scrollY;
-
-      if (isAtBottom) {
-        if (isScrollingDown) {
-          bottomHitCount.current += 1;
-          if (bottomHitCount.current >= 2) {
-            setIsFixed(true);
-            setShowFooter(true);
-          } else {
-            setShowFooter(true);
-          }
-        }
-      } else if (!isFixed) {
-        setShowFooter(false);
-      }
-
       if (isNearTop) {
-        bottomHitCount.current = 0;
-        setIsFixed(false);
         setShowFooter(false);
+      } else {
+        setShowFooter(true);
       }
     };
-
-    // Check initial position
-    if (isInitialMount.current) {
-      checkScrollPosition();
-      isInitialMount.current = false;
-    }
-
+  
+    checkScrollPosition(); // check once on mount
+  
     window.addEventListener("scroll", checkScrollPosition);
     return () => window.removeEventListener("scroll", checkScrollPosition);
-  }, [isFixed, isHomepage]);
+  }, [isHomepage]);
+  
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -81,8 +56,11 @@ export default function Layout() {
             <BreakpointIndicator />
             <ToastContainer position="bottom-right" theme="dark" />
           </main>
+          <div className="h-[1500px]">
+
+          </div>
           <div
-            className={`${isHomepage ? (isFixed ? "fixed" : "absolute") : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
+            className={`${isHomepage ? "fixed" : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
           >
             <Footer />
           </div>
