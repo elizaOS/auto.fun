@@ -51,7 +51,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   return (
-    <div className="space-y-12 h-fit overflow-y-auto">
+    <div className="space-y-12 h-fit overflow-y-hidden overflow-x-none">
       <Table
         className="border-0 !rounded-0 !border-spacing-y-0"
         onMouseEnter={() => setPause(true)}
