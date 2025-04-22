@@ -2,10 +2,11 @@ import { Connection } from "@solana/web3.js";
 import dotenv from "dotenv";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { UpgradeWebSocket } from 'hono/ws';
-import { Context } from 'hono';
-import { createBunWebSocket } from 'hono/bun';
-import type { WSContext } from 'hono/ws'; // Import WSContext type for handlers
+import { UpgradeWebSocket } from "hono/ws";
+import { Context } from "hono";
+import { createBunWebSocket } from "hono/bun";
+import type { WSContext } from "hono/ws"; // Import WSContext type for handlers
+import { serve } from "@hono/node-server";
 
 // Load environment variables from .env file at the root
 dotenv.config({ path: "../../.env" });
@@ -29,9 +30,9 @@ import webhookRouter from "./routes/webhooks";
 // import { uploadToCloudflare } from "./uploader";
 import { logger } from "./util";
 // import { claimFees } from "./claimFees";
-import { webSocketManager } from './websocket-manager';
+import { webSocketManager } from "./websocket-manager";
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
-import { getGlobalRedisCache, getSharedRedisPool } from './redis';
+import { getGlobalRedisCache, getSharedRedisPool } from "./redis";
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
@@ -47,24 +48,26 @@ const app = new Hono<{ Variables: AppVariables }>();
 const env = process.env as unknown as Env; // Cast process.env, ensure Env type matches
 if (!env.REDIS_HOST || !env.REDIS_PORT) {
   // Add checks for other required env vars
-  logger.error("Missing required environment variables (e.g., REDIS_HOST, REDIS_PORT)");
+  logger.error(
+    "Missing required environment variables (e.g., REDIS_HOST, REDIS_PORT)"
+  );
   process.exit(1);
 }
 
 // Setup Solana connection
-const RPC_URL =
-  (process.env.NETWORK === "devnet"
+const RPC_URL = (
+  process.env.NETWORK === "devnet"
     ? process.env.DEVNET_SOLANA_RPC_URL
-    : process.env.MAINNET_SOLANA_RPC_URL)!;
+    : process.env.MAINNET_SOLANA_RPC_URL
+)!;
 
 if (!RPC_URL) {
   throw new Error(
-    "RPC_URL is not defined. Set NETWORK and corresponding RPC URL in .env",
+    "RPC_URL is not defined. Set NETWORK and corresponding RPC URL in .env"
   );
 }
 const connection = new Connection(RPC_URL, "confirmed");
 logger.info(`Connected to Solana RPC: ${RPC_URL}`);
-
 
 // --- Middleware ---
 
@@ -85,7 +88,7 @@ app.use(
     ],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
-  }),
+  })
 );
 
 // Authentication Middleware (from original index.ts)
@@ -161,7 +164,6 @@ api.route("/owner", ownerRouter);
 //     // Placeholder response until claimFees is integrated
 //     const txSignature = "placeholder_tx_signature_for_claim_fees";
 //     logger.info(`Claim fees would be triggered for ${tokenMint}`);
-
 
 //     if (txSignature) {
 //       // Handle success, maybe log or notify
@@ -261,37 +263,43 @@ api.route("/owner", ownerRouter);
 // --- Mount the API sub-router ---
 app.route("/api", api);
 
-// --- Special Cron Trigger Route --- 
+// --- Special Cron Trigger Route ---
 // Use a non-standard path and require a secret header
 const CRON_SECRET = process.env.CRON_SECRET; // Get secret from environment
 
 if (!CRON_SECRET) {
-    logger.warn("CRON_SECRET environment variable not set. Cron trigger endpoint will be disabled.");
+  logger.warn(
+    "CRON_SECRET environment variable not set. Cron trigger endpoint will be disabled."
+  );
 }
 
 // Mount this route directly on the main app, outside /api if desired
 app.post("/_internal/trigger-cron", async (c) => {
-    if (!CRON_SECRET) {
-        logger.error("Cron trigger endpoint called but CRON_SECRET is not configured.");
-        return c.json({ error: "Cron trigger not configured" }, 503); // Service Unavailable
-    }
+  if (!CRON_SECRET) {
+    logger.error(
+      "Cron trigger endpoint called but CRON_SECRET is not configured."
+    );
+    return c.json({ error: "Cron trigger not configured" }, 503); // Service Unavailable
+  }
 
-    const providedSecret = c.req.header("X-Cron-Secret");
-    if (providedSecret !== CRON_SECRET) {
-        logger.warn("Unauthorized attempt to trigger cron endpoint.");
-        return c.json({ error: "Unauthorized" }, 403);
-    }
+  const providedSecret = c.req.header("X-Cron-Secret");
+  if (providedSecret !== CRON_SECRET) {
+    logger.warn("Unauthorized attempt to trigger cron endpoint.");
+    return c.json({ error: "Unauthorized" }, 403);
+  }
 
-    logger.log("Cron trigger endpoint called successfully. Initiating tasks asynchronously...");
+  logger.log(
+    "Cron trigger endpoint called successfully. Initiating tasks asynchronously..."
+  );
 
-    // Run tasks asynchronously (fire and forget). Do NOT await here.
-    // The lock mechanism inside runCronTasks will prevent overlaps.
-    runCronTasks().catch(err => {
-        logger.error("Caught error from background cron task execution:", err);
-    });
+  // Run tasks asynchronously (fire and forget). Do NOT await here.
+  // The lock mechanism inside runCronTasks will prevent overlaps.
+  runCronTasks().catch((err) => {
+    logger.error("Caught error from background cron task execution:", err);
+  });
 
-    // Return immediately to the cron runner
-    return c.json({ success: true, message: "Cron tasks initiated." });
+  // Return immediately to the cron runner
+  return c.json({ success: true, message: "Cron tasks initiated." });
 });
 
 // --- Root and Maintenance Routes ---
@@ -305,16 +313,24 @@ app.get("/maintenance-mode", (c) => {
 // --- Not Found Handler ---
 app.notFound((c) => {
   logger.warn(`Not Found: ${c.req.method} ${c.req.url}`);
-  return c.json({ error: "Not Found", message: `Route ${c.req.method} ${c.req.url} not found.` }, 404);
+  return c.json(
+    {
+      error: "Not Found",
+      message: `Route ${c.req.method} ${c.req.url} not found.`,
+    },
+    404
+  );
 });
 
 // --- Error Handler ---
 app.onError((err, c) => {
-  logger.error(`Unhandled error on ${c.req.path}:`, err instanceof Error ? err.stack : err);
+  logger.error(
+    `Unhandled error on ${c.req.path}:`,
+    err instanceof Error ? err.stack : err
+  );
   // Avoid leaking stack traces in production
   return c.json({ error: "Internal Server Error" }, 500);
 });
-
 
 // --- Initialize Services ---
 const redisCache = getGlobalRedisCache(); // Use the global instance
@@ -328,24 +344,27 @@ logger.info("WebSocket Manager Initialized.");
 const { upgradeWebSocket, websocket } = createBunWebSocket();
 
 // --- Add WebSocket Upgrade Route ---
-app.get('/ws', upgradeWebSocket((c: Context) => {
-  return {
-    onOpen: (_evt: Event, wsInstance: WSContext) => {
-      webSocketManager.handleConnectionOpen(wsInstance);
-    },
-    onMessage: (evt: MessageEvent, wsInstance: WSContext) => {
-      webSocketManager.handleMessage(wsInstance, evt.data);
-    },
-    onClose: (_evt: CloseEvent, wsInstance: WSContext) => {
-      webSocketManager.handleConnectionClose(wsInstance);
-    },
-    onError: (evt: Event, wsInstance: WSContext) => {
-      logger.error('WebSocket error event:', evt);
-      const error = (evt as ErrorEvent).error || new Error('WebSocket error');
-      webSocketManager.handleConnectionError(wsInstance, error);
-    },
-  };
-}));
+app.get(
+  "/ws",
+  upgradeWebSocket((c: Context) => {
+    return {
+      onOpen: (_evt: Event, wsInstance: WSContext) => {
+        webSocketManager.handleConnectionOpen(wsInstance);
+      },
+      onMessage: (evt: MessageEvent, wsInstance: WSContext) => {
+        webSocketManager.handleMessage(wsInstance, evt.data);
+      },
+      onClose: (_evt: CloseEvent, wsInstance: WSContext) => {
+        webSocketManager.handleConnectionClose(wsInstance);
+      },
+      onError: (evt: Event, wsInstance: WSContext) => {
+        logger.error("WebSocket error event:", evt);
+        const error = (evt as ErrorEvent).error || new Error("WebSocket error");
+        webSocketManager.handleConnectionError(wsInstance, error);
+      },
+    };
+  })
+);
 
 // --- Start the server (Handled by Bun automatically via export) ---
 const PORT = parseInt(process.env.PORT || "8787", 10);
@@ -355,7 +374,15 @@ if (isNaN(PORT)) {
   process.exit(1);
 }
 
-logger.info(`Hono app configured. Bun will start server on port ${PORT}`);
+serve(
+  {
+    fetch: app.fetch,
+    port: PORT,
+  },
+  () => {
+    logger.info(`Hono app started server on port ${PORT}`);
+  }
+);
 
 // Export fetch and websocket handlers for Bun
 export default {
