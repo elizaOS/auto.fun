@@ -7,12 +7,17 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
-import { getDB, swaps, TokenHolderInsert, tokenHolders, tokens } from "./db";
+import { getDB, tokens } from "./db";
 import { Env } from "./env";
 import { getSOLPrice } from "./mcap";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
+import { createRedisCache } from "./redis/redisCacheService";
+import { logger } from "./util";
 
 const SOLANA_NETWORK_ID = 1399811149;
+
+// Define max swaps to keep in Redis list (consistent with other files)
+const MAX_SWAPS_TO_KEEP = 250;
 
 // Define a type for the expected structure of a processed swap
 // This should match the schema of your 'swaps' table
@@ -170,47 +175,37 @@ export class ExternalToken {
     const now = new Date();
 
     const allHolders = tokenSupply
-      ? codexHolders.items.map(
-          (holder): TokenHolderInsert => ({
-            id: crypto.randomUUID(),
-            mint: this.mint,
-            address: holder.address,
-            amount: holder.shiftedBalance,
-            percentage: (holder.shiftedBalance / tokenSupply) * 100,
-            lastUpdated: now,
-          }),
-        )
+      ? codexHolders.items.map((holder): any => ({
+          mint: this.mint,
+          address: holder.address,
+          amount: holder.shiftedBalance,
+          percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
+        }))
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const MAXIMUM_HOLDERS_STORED = 50;
-    const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
-
-    if (holders.length > 0) {
-      const MAX_SQLITE_PARAMETERS = 100;
-      const parametersPerHolder = Object.keys(holders[0]).length;
-      const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
-
-      for (let i = 0; i < holders.length; i += batchSize) {
-        const batch = holders.slice(i, i + batchSize);
-        await this.db
-          .insert(tokenHolders)
-          .values(batch)
-          .onConflictDoUpdate({
-            target: [tokenHolders.address],
-            set: {
-              amount: batch[0].amount,
-              percentage: batch[0].percentage,
-              lastUpdated: now,
-            },
-          });
-      }
+    const redisCache = createRedisCache(this.env);
+    const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+    try {
+      await redisCache.set(holdersListKey, JSON.stringify(allHolders));
+      logger.log(
+        `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`,
+      );
+    } catch (redisError) {
+      logger.error(
+        `ExternalToken: Failed to store holders in Redis for ${this.mint}:`,
+        redisError,
+      );
     }
 
-    await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
+    const top50Holders = allHolders.slice(0, 50);
+    await this.wsClient
+      .to(`token-${this.mint}`)
+      .emit("newHolder", top50Holders);
 
-    return holders;
+    return top50Holders;
   }
   // fetch and update swap data
   public async updateLatestSwapData(
@@ -388,38 +383,50 @@ export class ExternalToken {
   ): Promise<void> {
     if (processedSwaps.length === 0) return;
 
-    const MAX_SQLITE_PARAMETERS = 100;
-    const parametersPerSwap = Object.keys(processedSwaps[0]).length;
-    const batchSize =
-      Math.floor(MAX_SQLITE_PARAMETERS / parametersPerSwap) ||
-      processedSwaps.length;
+    // Instantiate Redis client
+    const redisCache = createRedisCache(this.env);
+    const listKey = redisCache.getKey(`swapsList:${this.mint}`);
 
-    // Sort swaps by ascending timestamp
+    // Sort swaps by ascending timestamp (oldest first)
+    // Important: We push to the START of the list (lpush),
+    // so processing oldest first ensures the list maintains newest-at-the-start order.
     processedSwaps.sort(
       (a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    console.log(
-      `Inserting ${processedSwaps.length} swaps in batches of ${batchSize} for ${this.mint}`,
+    logger.log(
+      `Inserting ${processedSwaps.length} swaps into Redis list ${listKey} for ${this.mint}`,
     );
 
     let insertedCount = 0;
-    for (let i = 0; i < processedSwaps.length; i += batchSize) {
-      const batch = processedSwaps.slice(i, i + batchSize);
-      const batchWithDates = batch.map((swap) => ({
-        ...swap,
-        timestamp: new Date(swap.timestamp),
-      }));
-      const result = await this.db
-        .insert(swaps)
-        .values(batchWithDates)
-        .onConflictDoNothing()
-        .returning({ insertedId: swaps.id });
-      insertedCount += result.length;
+    // Loop and push individually (lpush doesn't easily handle large arrays in ioredis types)
+    for (const swap of processedSwaps) {
+      try {
+        // Ensure timestamp is stringified correctly if it's a Date object
+        const swapToStore = {
+          ...swap,
+          timestamp:
+            swap.timestamp instanceof Date
+              ? swap.timestamp.toISOString()
+              : swap.timestamp,
+        };
+        await redisCache.lpush(listKey, JSON.stringify(swapToStore));
+        // Trim after each push to keep the list size controlled
+        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+        insertedCount++;
+      } catch (redisError) {
+        logger.error(
+          `ExternalToken: Failed to save swap to Redis list ${listKey}:`,
+          redisError,
+        );
+        // Optionally break or continue on error
+        // break;
+      }
     }
+
     console.log(
-      `Actually inserted ${insertedCount} new swaps for ${this.mint}`,
+      `Finished inserting. ${insertedCount} swaps pushed to Redis for ${this.mint}`,
     );
   }
 }

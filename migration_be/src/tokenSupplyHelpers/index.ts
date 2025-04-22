@@ -1,10 +1,9 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getDB, tokens, swaps } from "../db";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { getDB, tokens } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
 import { retryOperation } from "../raydium/utils";
-import { processTransactionLogs } from "../processTransactionLogs";
 // import {
 //   calculateFeaturedScore,
 //   getFeaturedMaxValues,

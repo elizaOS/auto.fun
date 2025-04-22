@@ -10,6 +10,7 @@ import { Context } from "hono"; // Import Context type
 import * as schema from "../db"; // Import your generated schema
 import { getDB } from "../db"; // Import the getDB helper
 import { Env } from "../env"; // Import Env type from env.ts
+import { createRedisCache } from "../redis/redisCacheService"; // Added redis import
 // ---=================================---
 
 // Placeholder types - replace with your actual DB types and Env definition
@@ -31,36 +32,34 @@ const db = (c: Context<any>) => getDB(c.env as Env);
 
 // Updated to use both database and blockchain
 async function checkUserTokenBalance(
-  drizzleDb: ReturnType<typeof db>,
   userPublicKey: string,
   tokenMint: string,
   env: Env,
 ): Promise<number> {
   console.log(`Checking balance for user ${userPublicKey}, token ${tokenMint}`);
+  const redisCache = createRedisCache(env); // Instantiate Redis
 
-  // First check database balance
-  let dbBalance = 0;
+  // First check Redis cache
+  let cachedBalance = 0;
+  const holdersListKey = redisCache.getKey(`holders:${tokenMint}`);
   try {
-    const result = await drizzleDb
-      .select({
-        amount: schema.tokenHolders.amount,
-      })
-      .from(schema.tokenHolders)
-      .where(
-        and(
-          eq(schema.tokenHolders.address, userPublicKey),
-          eq(schema.tokenHolders.mint, tokenMint),
-        ),
-      )
-      .limit(1);
-
-    dbBalance =
-      result.length > 0 && result[0].amount ? Number(result[0].amount) : 0;
-  } catch (error) {
+    const holdersString = await redisCache.get(holdersListKey);
+    if (holdersString) {
+      const allHolders: any[] = JSON.parse(holdersString);
+      const specificHolderData = allHolders.find(
+        (h) => h.address === userPublicKey,
+      );
+      if (specificHolderData) {
+        // Assuming amount stored is raw, adjust for decimals (e.g., 6)
+        cachedBalance = (specificHolderData.amount || 0) / Math.pow(10, 6);
+      }
+    }
+  } catch (redisError) {
     console.error(
-      `Error checking database balance for ${userPublicKey} / ${tokenMint}:`,
-      error,
+      `Chat: Error checking Redis balance for ${userPublicKey} / ${tokenMint}:`,
+      redisError,
     );
+    // Continue to blockchain check if Redis fails
   }
 
   // Then check blockchain balance
@@ -93,10 +92,10 @@ async function checkUserTokenBalance(
     );
   }
 
-  // Use the higher of the two balances
-  const effectiveBalance = Math.max(dbBalance, blockchainBalance);
+  // Use the higher of the two balances (Redis vs Blockchain)
+  const effectiveBalance = Math.max(cachedBalance, blockchainBalance);
   console.log(
-    `Balance check results - DB: ${dbBalance}, Blockchain: ${blockchainBalance}, Effective: ${effectiveBalance}`,
+    `Chat Balance check results - Redis: ${cachedBalance}, Blockchain: ${blockchainBalance}, Effective: ${effectiveBalance}`,
   );
 
   return effectiveBalance;
@@ -140,9 +139,7 @@ app.get("/chat/:tokenMint/tiers", async (c) => {
   }
 
   try {
-    const currentDb = db(c);
     const balance = await checkUserTokenBalance(
-      currentDb,
       user.publicKey,
       tokenMint,
       c.env,
@@ -176,9 +173,7 @@ app.get(
     const offset = parseInt(c.req.query("offset") || "0");
 
     try {
-      const currentDb = db(c);
       const balance = await checkUserTokenBalance(
-        currentDb,
         user.publicKey,
         tokenMint,
         c.env,
@@ -196,6 +191,7 @@ app.get(
       }
 
       // Fetch messages from the database
+      const currentDb = db(c);
       const messages = await currentDb
         .select()
         .from(schema.messages)
@@ -266,9 +262,7 @@ app.post(
     const { message, parentId } = c.req.valid("json");
 
     try {
-      const currentDb = db(c);
       const balance = await checkUserTokenBalance(
-        currentDb,
         user.publicKey,
         tokenMint,
         c.env,
@@ -297,6 +291,7 @@ app.post(
       };
 
       // Insert the new message into the database
+      const currentDb = db(c);
       const insertedResult = await currentDb
         .insert(schema.messages)
         .values(newMessageData)

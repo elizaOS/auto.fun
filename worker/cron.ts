@@ -4,16 +4,17 @@ import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { getLatestCandle } from "./chart";
-import { getDB, swaps, Token, tokens } from "./db";
+import { getDB, Token, tokens } from "./db";
 import { Env } from "./env";
-import { logger } from "./util";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
-import { checkAndReplenishTokens } from "./routes/generation";
+import { createRedisCache } from "./redis/redisCacheService";
+import { checkAndReplenishTokens, generateAdditionalTokenImages } from "./routes/generation";
+import { updateHoldersCache } from "./routes/token";
 import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
@@ -21,14 +22,15 @@ import {
   bulkUpdatePartialTokens,
   calculateFeaturedScore,
   createNewTokenData,
-  getFeaturedMaxValues,
-  updateHoldersCache,
+  getFeaturedMaxValues, logger
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
-import { generateAdditionalTokenImages } from "./routes/generation";
 
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
+
+// Define max swaps to keep in Redis list
+const MAX_SWAPS_TO_KEEP = 1000;
 
 function convertTokenDataToDBData(
   tokenData: Partial<TokenData>,
@@ -363,7 +365,19 @@ export async function processTransactionLogs(
 
     // Insert the swap record
     const db = getDB(env);
-    await db.insert(swaps).values(swapRecord);
+    const redisCache = createRedisCache(env);
+    const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
+    try {
+      await redisCache.lpush(listKey, JSON.stringify(swapRecord));
+      await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+      logger.log(
+        `Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`,
+      );
+    } catch (redisError) {
+      logger.error(`Failed to save swap to Redis list ${listKey}:`, redisError);
+      // Decide if we should proceed without saving swap history
+    }
+
     logger.log(
       `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
     );
@@ -424,16 +438,22 @@ export async function processTransactionLogs(
     //first buyer
     if (swapRecord.type === "buy") {
       // check if this is the very first swap on this mint
-      const count = await db
-        .select()
-        .from(swaps)
-        .where(eq(swaps.tokenMint, mintAddress))
-        .limit(2)
-        .execute();
-      if (count.length === 1) {
-        await awardUserPoints(env, swapRecord.user, {
-          type: "first_buyer",
-        });
+      try {
+        const listLength = await redisCache.llen(listKey);
+        if (listLength === 1) {
+          // If only the current swap is in the list
+          await awardUserPoints(env, swapRecord.user, {
+            type: "first_buyer",
+          });
+          logger.log(
+            `Awarded 'first_buyer' points to ${swapRecord.user} for ${mintAddress}`,
+          );
+        }
+      } catch (redisError) {
+        logger.error(
+          `Failed to check Redis list length for first_buyer points on ${listKey}:`,
+          redisError,
+        );
       }
     }
 
@@ -446,6 +466,7 @@ export async function processTransactionLogs(
     await wsClient.emit(`token-${mintAddress}`, "newSwap", {
       ...swapRecord,
       mint: mintAddress, // Add mint field for compatibility
+      timestamp: swapRecord.timestamp.toISOString(), // Convert Date to ISO string for emission
     });
 
     const latestCandle = await getLatestCandle(
@@ -572,7 +593,8 @@ export async function cron(
   try {
     // Check if this is a legitimate Cloudflare scheduled trigger
     // For scheduled triggers, the ctx should have a 'cron' property
-    const isScheduledEvent = "cron" in ctx && typeof ctx.cron === "string";
+    const _ctx = ctx as any; // Use type assertion as a workaround
+    const isScheduledEvent = typeof _ctx.cron === "string";
 
     if (!isScheduledEvent) {
       logger.warn(
@@ -582,7 +604,7 @@ export async function cron(
     }
 
     // Log the cron pattern being executed
-    const cronPattern = (ctx as { cron: string }).cron;
+    const cronPattern = (_ctx as { cron: string }).cron;
     logger.log(`Running scheduled tasks for cron pattern: ${cronPattern}...`);
     await updateTokens(env);
   } catch (error) {

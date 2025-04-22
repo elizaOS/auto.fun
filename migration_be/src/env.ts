@@ -74,4 +74,8 @@ export interface Env {
   ACCOUNT_FEE_MULTISIG: string;
   LOCAL_DB_PATH: string;
   DATABASE_URL: string;
+  // --- ADDED Redis properties ---
+  REDIS_HOST: string;
+  REDIS_PORT: string | number; // Allow string or number for flexibility
+  REDIS_PASSWORD?: string; // Password might be optional
 }

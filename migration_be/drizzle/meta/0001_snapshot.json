@@ -692,63 +692,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.token_holders": {
-      "name": "token_holders",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "mint": {
-          "name": "mint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "percentage": {
-          "name": "percentage",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated": {
-          "name": "last_updated",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "token_holders_address_unique": {
-          "name": "token_holders_address_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "address"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.tokens": {
       "name": "tokens",
       "schema": "",

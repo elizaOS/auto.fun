@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { Env } from "../env";
-import { logger } from "../util";
+// Assuming logger is not available or needed in migration_be context
+// import { logger } from "../util"; 
 import { RedisPool } from "./redisPool";
 dotenv.config();
 
@@ -13,7 +14,8 @@ class RedisCacheService {
   }
 
   getKey(key: string) {
-    return `${this.env.NETWORK}:${key}`;
+    // Use a specific prefix for migration data if needed, or just network
+    return `${this.env.NETWORK || 'migration'}:${key}`;
   }
   async get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
@@ -48,26 +50,26 @@ class RedisCacheService {
 
   // --- START NEW LIST METHODS ---
   async lpush(key: string, value: string): Promise<number> {
-    logger.info(`LPUSH to ${this.getKey(key)}`);
+    // console.log(`LPUSH to ${this.getKey(key)}`); // Avoid logger if unavailable
     return this.redisPool.useClient((client) =>
       client.lpush(this.getKey(key), value),
     );
   }
 
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
+    // console.log(`LRANGE from ${this.getKey(key)} ${start} ${stop}`); // Avoid logger
     return this.redisPool.useClient((client) =>
       client.lrange(this.getKey(key), start, stop),
     );
   }
 
   async llen(key: string): Promise<number> {
-    logger.info(`LLEN for ${this.getKey(key)}`);
+    // console.log(`LLEN for ${this.getKey(key)}`); // Avoid logger
     return this.redisPool.useClient((client) => client.llen(this.getKey(key)));
   }
 
   async ltrim(key: string, start: number, stop: number): Promise<"OK" | null> {
-    logger.info(`LTRIM on ${this.getKey(key)} ${start} ${stop}`);
+    // console.log(`LTRIM on ${this.getKey(key)} ${start} ${stop}`); // Avoid logger
     return this.redisPool.useClient((client) =>
       client.ltrim(this.getKey(key), start, stop),
     );
@@ -76,13 +78,13 @@ class RedisCacheService {
 }
 
 export function createRedisCache(env: Env) {
-  logger.info("Creating Redis cache service");
+  // console.log("Creating Redis cache service for migration_be"); // Avoid logger
   const redisPool = new RedisPool({
     host: env.REDIS_HOST,
     port: Number(env.REDIS_PORT),
     password: env.REDIS_PASSWORD,
   });
 
-  logger.info("Redis cache service created");
+  // console.log("Redis cache service created for migration_be"); // Avoid logger
   return new RedisCacheService(redisPool, env);
-}
+} 

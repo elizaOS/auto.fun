@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cache as honoCacheMiddleware } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
-import { getDB, swaps, tokens } from "../db";
+import { getDB, tokens } from "../db";
 import { Env } from "../env";
 import { createRedisCache } from "../redis/redisCacheService";
 import { logger } from "../util";
@@ -82,54 +82,93 @@ router.get("/swaps/:mint", async (c) => {
     const offset = (page - 1) * limit;
 
     // --- BEGIN REDIS CACHE CHECK ---
-    const cacheKey = `swaps:${mint}:${limit}:${page}`;
-    const redisCache = createRedisCache(c.env as Env);
-
-    if (redisCache) {
-      try {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          logger.log(`[Cache Hit] /swaps/${mint}?limit=${limit}&page=${page}`);
-          const parsedData = JSON.parse(cachedData);
-          if (parsedData && Array.isArray(parsedData.swaps)) {
-             return c.json(parsedData);
-          } else {
-             logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-          }
-        } else {
-          logger.log(`[Cache Miss] /swaps/${mint}?limit=${limit}&page=${page}`);
-        }
-      } catch (cacheError) {
-        logger.error(`Redis cache GET error for swaps:`, cacheError);
-      }
-    }
+    // --> CHANGE: Remove simple key caching check
+    // const cacheKey = `swaps:${mint}:${limit}:${page}`;
+    // const redisCache = createRedisCache(c.env as Env);
+    // if (redisCache) {
+    //   try {
+    //     const cachedData = await redisCache.get(cacheKey);
+    //     if (cachedData) {
+    //       logger.log(`[Cache Hit] /swaps/${mint}?limit=${limit}&page=${page}`);
+    //       const parsedData = JSON.parse(cachedData);
+    //       if (parsedData && Array.isArray(parsedData.swaps)) {
+    //          return c.json(parsedData);
+    //       } else {
+    //          logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+    //       }
+    //     } else {
+    //       logger.log(`[Cache Miss] /swaps/${mint}?limit=${limit}&page=${page}`);
+    //     }
+    //   } catch (cacheError) {
+    //     logger.error(`Redis cache GET error for swaps:`, cacheError);
+    //   }
+    // }
     // --- END REDIS CACHE CHECK ---
 
     // Get the DB connection
-    const db = getDB(c.env);
+    // const db = getDB(c.env);
 
     // Get real swap data from the database
-    const [swapsResult, totalSwapsQuery] = await Promise.all([
-      db
-        .select()
-        .from(swaps)
-        .where(eq(swaps.tokenMint, mint))
-        .orderBy(desc(swaps.timestamp))
-        .offset(offset)
-        .limit(limit),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(swaps)
-        .where(eq(swaps.tokenMint, mint))
-    ]);
+    // --> CHANGE: Read from Redis List instead of DB
+    // const [swapsResult, totalSwapsQuery] = await Promise.all([
+    //   db
+    //     .select()
+    //     .from(swaps)
+    //     .where(eq(swaps.tokenMint, mint))
+    //     .orderBy(desc(swaps.timestamp))
+    //     .offset(offset)
+    //     .limit(limit),
+    //   db
+    //     .select({ count: sql<number>`count(*)` })
+    //     .from(swaps)
+    //     .where(eq(swaps.tokenMint, mint))
+    // ]);
 
-    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
+    const redisCache = createRedisCache(c.env);
+    const listKey = redisCache.getKey(`swapsList:${mint}`);
+    let totalSwaps = 0;
+    let swapsResultRaw: any[] = []; // Use any[] for initial parsed data
+
+    try {
+      // Fetch total count and paginated swaps concurrently
+      const [countResult, swapStrings] = await Promise.all([
+        redisCache.llen(listKey),
+        redisCache.lrange(listKey, offset, offset + limit - 1),
+      ]);
+
+      totalSwaps = countResult;
+      swapsResultRaw = swapStrings.map((s) => JSON.parse(s));
+      logger.log(
+        `Retrieved ${swapsResultRaw.length} swaps (total: ${totalSwaps}) from Redis list ${listKey}`,
+      );
+    } catch (redisError) {
+      logger.error(
+        `Failed to read swaps from Redis list ${listKey}:`,
+        redisError,
+      );
+      // Return error or empty list depending on desired behavior
+      return c.json(
+        {
+          swaps: [],
+          page: page,
+          totalPages: 0,
+          total: 0,
+          error: "Failed to retrieve swap history from cache",
+        },
+        500,
+      );
+    }
+
+    // const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
     const totalPages = Math.ceil(totalSwaps / limit);
 
     // Format directions for better readability
-    const formattedSwaps = swapsResult.map((swap) => ({
+    // Also convert timestamp string back to ISO string if needed by frontend
+    const formattedSwaps = swapsResultRaw.map((swap) => ({
       ...swap,
       directionText: swap.direction === 0 ? "buy" : "sell",
+      // Ensure timestamp is in a consistent format (ISO string)
+      timestamp: swap.timestamp ? new Date(swap.timestamp).toISOString() : null,
     }));
 
     const responseData = {
@@ -140,14 +179,15 @@ router.get("/swaps/:mint", async (c) => {
     };
 
     // --- BEGIN REDIS CACHE SET ---
-    if (redisCache && responseData.swaps && responseData.swaps.length > 0) {
-       try {
-         await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-         logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-       } catch (cacheError) {
-         logger.error(`Redis cache SET error for swaps:`, cacheError);
-       }
-    }
+    // --> CHANGE: Remove cache set, as this endpoint now only reads
+    // if (redisCache && responseData.swaps && responseData.swaps.length > 0) {
+    //    try {
+    //      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+    //      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+    //    } catch (cacheError) {
+    //      logger.error(`Redis cache SET error for swaps:`, cacheError);
+    //    }
+    // }
     // --- END REDIS CACHE SET ---
 
     return c.json(responseData);

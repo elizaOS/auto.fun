@@ -1,11 +1,18 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
-import { getDB, swaps, tokens } from "../db";
+import { getDB, tokens } from "../db";
 import { Env } from "../env";
-import { logger } from "../util";
 import { retryOperation } from "../raydium/utils";
-import { calculateFeaturedScore, getFeaturedMaxValues } from "../util";
+import { createRedisCache } from "../redis/redisCacheService";
+import {
+  calculateFeaturedScore,
+  getFeaturedMaxValues,
+  logger
+} from "../util";
 import { getWebSocketClient } from "../websocket-client";
+
+// Define max swaps to keep in Redis list (consistent with other files)
+const MAX_SWAPS_TO_KEEP = 1000;
 
 export async function getAllLockedTokens(env: Env) {
   const db = getDB(env);
@@ -167,7 +174,21 @@ async function processSwapLog(
         txId: signature,
         timestamp: new Date(),
       };
-      await db.insert(swaps).values(swapRecord);
+      const redisCache = createRedisCache(env);
+      const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
+      try {
+        await redisCache.lpush(listKey, JSON.stringify(swapRecord));
+        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+        logger.log(
+          `Helper: Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`,
+        );
+      } catch (redisError) {
+        logger.error(
+          `Helper: Failed to save swap to Redis list ${listKey}:`,
+          redisError,
+        );
+        // Consider if we should proceed or return error
+      }
 
       const newToken = await db
         .update(tokens)
@@ -219,6 +240,7 @@ async function processSwapLog(
       await wsClient.emit(`token-${mintAddress}`, "newSwap", {
         ...swapRecord,
         mint: mintAddress, // Add mint field for compatibility
+        timestamp: swapRecord.timestamp.toISOString(), // Emit ISO string
       });
       await wsClient
         .to(`token-${swapRecord.tokenMint}`)
@@ -328,7 +350,11 @@ export async function processLastValidSwap(
       : env.MAINNET_SOLANA_RPC_URL;
 
   const connection = new Connection(rpcUrl, "confirmed");
-  const mint = token.address;
+  const mint = token.mint;
+  if (!mint) {
+    logger.error("processLastValidSwap: Token object missing mint property.");
+    return;
+  }
 
   // Fetch the last `limit` signatures
   const sigs = await connection.getSignaturesForAddress(new PublicKey(mint), {

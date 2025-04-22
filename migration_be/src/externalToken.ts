@@ -7,9 +7,10 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { Env } from "./env";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getDB, swaps, TokenHolderInsert, tokenHolders, tokens } from "./db";
+import { getDB, tokens } from "./db";
 import { eq } from "drizzle-orm";
 import { getSOLPrice } from "./mcap";
+import { createRedisCache } from "./redis/redisCacheService";
 
 const SOLANA_NETWORK_ID = 1399811149;
 
@@ -191,7 +192,7 @@ export class ExternalToken {
 
       const allHolders = tokenSupply
         ? codexHolders.items.map(
-          (holder): TokenHolderInsert => ({
+          (holder): any => ({
             id: crypto.randomUUID(),
             mint: this.mint,
             address: holder.address,
@@ -204,23 +205,18 @@ export class ExternalToken {
 
       allHolders.sort((a, b) => b.percentage - a.percentage);
 
-      const MAXIMUM_HOLDERS_STORED = 50;
-      const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
-
-      if (holders.length > 0) {
-        const MAX_SQLITE_PARAMETERS = 100;
-        const parametersPerHolder = Object.keys(holders[0]).length;
-        const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
-
-        for (let i = 0; i < holders.length; i += batchSize) {
-          const batch = holders.slice(i, i + batchSize);
-          await this.db.insert(tokenHolders).values(batch).onConflictDoNothing();
-        }
+      // Store full list in Redis instead of DB
+      const redisCache = createRedisCache(this.env);
+      const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+      try {
+          await redisCache.set(holdersListKey, JSON.stringify(allHolders));
+          console.log(`MigrationBE/ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`);
+      } catch (redisError) {
+          console.error(`MigrationBE/ExternalToken: Failed to store holders in Redis for ${this.mint}:`, redisError);
       }
 
-      // await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
-
-      return holders;
+      // Return the full list as stored in Redis
+      return allHolders;
     } catch (error) {
       console.error("Error updating holder data:", error);
       throw error;
@@ -402,39 +398,40 @@ export class ExternalToken {
   ): Promise<void> {
     if (processedSwaps.length === 0) return;
 
-    const MAX_SQLITE_PARAMETERS = 100;
-    const parametersPerSwap = Object.keys(processedSwaps[0]).length;
-    const batchSize =
-      Math.floor(MAX_SQLITE_PARAMETERS / parametersPerSwap) ||
-      processedSwaps.length;
+    // Instantiate Redis client (assuming local path)
+    const redisCache = createRedisCache(this.env);
+    const listKey = redisCache.getKey(`swapsList:${this.mint}`);
+    // Define max swaps consistent with worker (can be adjusted if needed for migration)
+    const MAX_SWAPS_TO_KEEP = 1000;
 
-    // Sort swaps by ascending timestamp
+    // Sort swaps by ascending timestamp (oldest first for lpush)
     processedSwaps.sort(
       (a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
     console.log(
-      `Inserting ${processedSwaps.length} swaps in batches of ${batchSize} for ${this.mint}`,
+      `MigrationBE: Inserting ${processedSwaps.length} swaps into Redis list ${listKey} for ${this.mint}`,
     );
 
     let insertedCount = 0;
-    for (let i = 0; i < processedSwaps.length; i += batchSize) {
-      const batch = processedSwaps.slice(i, i + batchSize);
-      const result = await this.db
-        .insert(swaps)
-        .values(
-          batch.map((swap) => ({
-            ...swap,
-            timestamp: new Date(swap.timestamp),
-          }))
-        )
-        .onConflictDoNothing()
-        .returning({ insertedId: swaps.id });
-      insertedCount += result.length;
+    for (const swap of processedSwaps) {
+      try {
+        // Ensure timestamp is stringified
+        const swapToStore = {
+          ...swap,
+          timestamp: typeof swap.timestamp !== 'string' ? new Date(swap.timestamp).toISOString() : swap.timestamp
+        };
+        await redisCache.lpush(listKey, JSON.stringify(swapToStore));
+        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+        insertedCount++;
+      } catch (redisError) {
+        console.error(`MigrationBE: Failed to save swap to Redis list ${listKey}:`, redisError);
+      }
     }
+
     console.log(
-      `Actually inserted ${insertedCount} new swaps for ${this.mint}`,
+      `MigrationBE: Finished inserting. ${insertedCount} swaps pushed to Redis for ${this.mint}`,
     );
   }
 }

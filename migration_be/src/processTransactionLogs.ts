@@ -1,27 +1,28 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
-import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import { getDB, Token, tokens, swaps } from "./db";
+import { getDB, Token, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
+import { getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
+import { TokenData, TokenDBData } from "./raydium/types/tokenData";
 import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
    createNewTokenData,
-} from "./utils"
-import { getSOLPrice } from "./mcap";
-import { ExternalToken } from "./externalToken";
-import { thawAccount } from "@solana/spl-token";
+} from "./utils";
+import { createRedisCache } from "./redis/redisCacheService";
 
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
+
+// Define max swaps to keep in Redis list (consistent with worker)
+const MAX_SWAPS_TO_KEEP = 1000;
 
 export async function resumeOnStart(env: Env, connection: Connection) {
 
@@ -223,7 +224,7 @@ export async function processTransactionLogs(
             const solPrice = await getSOLPrice(env);
             let tokenWithSupply = await getToken(env, mintAddress);
             if (!tokenWithSupply) {
-               // … same “add missing token” logic …
+               // … same "add missing token" logic …
                // then:
                tokenWithSupply = await getToken(env, mintAddress)!;
             }
@@ -259,10 +260,17 @@ export async function processTransactionLogs(
 
             // Insert the swap record
             const db = getDB(env);
-            await db.insert(swaps).values(swapRecord).onConflictDoNothing();
-            logger.log(
-               `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
-            );
+            const redisCache = createRedisCache(env);
+            const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
+            try {
+                await redisCache.lpush(listKey, JSON.stringify(swapRecord));
+                await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+                logger.log(
+                    `MigrationBE: Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`,
+                );
+            } catch (redisError) {
+                logger.error(`MigrationBE: Failed to save swap to Redis list ${listKey}:`, redisError);
+            }
 
             // check if the token exists and add it to the db if it does not  
             const token = await getToken(env, mintAddress);
