@@ -12,6 +12,7 @@ import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
+import { createRedisCache } from "../redis/redisCacheService";
 
 const router = new Hono<{
   Bindings: Env;
