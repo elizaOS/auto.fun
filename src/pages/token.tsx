@@ -104,16 +104,7 @@ export default function Page() {
     : false;
   // ---- End Moderator Check ----
 
-  // Load active tab from localStorage or default to "chart"
-  const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">(() => {
-    if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem(`token-tab-${address}`);
-      return savedTab === "chart" || savedTab === "ai" || savedTab === "chat"
-        ? savedTab
-        : "chart";
-    }
-    return "chart";
-  });
+  const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">("chart");
 
   const [signature, setSignature] = useState<string | undefined>(undefined);
 
@@ -124,13 +115,6 @@ export default function Page() {
       setSignature(undefined);
     }, 1000);
   };
-
-  // Save active tab to localStorage when it changes
-  useEffect(() => {
-    if (address) {
-      localStorage.setItem(`token-tab-${address}`, activeTab);
-    }
-  }, [activeTab, address]);
 
   // Fetch token details from API
   const tokenQuery = useQuery({
@@ -269,11 +253,7 @@ export default function Page() {
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
           title="Market Cap"
-          value={
-            marketCapUSD > 0
-              ? abbreviateNumber(marketCapUSD)
-              : "-"
-          }
+          value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
         />
         <TopPageItem
           title="24hr Volume"
@@ -327,7 +307,7 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
                 )}
               >
                 <div className="flex flex-wrap items-center justify-start w-full gap-2">
@@ -604,7 +584,7 @@ export default function Page() {
                   {formatNumber(
                     tokenBalance * currentPrice * solanaPrice,
                     true,
-                    false,
+                    false
                   )}
                 </span>
               </div>
@@ -657,7 +637,8 @@ export default function Page() {
                     </span>
                   </div>
                 </div>
-                {token?.status !== "migrated" && token?.curveProgress !== 100 ? (
+                {token?.status !== "migrated" &&
+                token?.curveProgress !== 100 ? (
                   <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
                     {/* Graduate this coin at{" "}
                     {formatNumber(graduationMarketCap, true)} market cap.{"\n"} */}
@@ -666,7 +647,7 @@ export default function Page() {
                       (token?.reserveLamport - token?.virtualReserves) /
                         LAMPORTS_PER_SOL,
                       true,
-                      true,
+                      true
                     )}{" "}
                     SOL in the bonding curve.
                   </p>
@@ -702,9 +683,7 @@ export default function Page() {
                     Price SOL
                   </span>
                   <span className="text-xl font-dm-mono text-autofun-text-primary">
-                    {priceSOL
-                      ? formatNumberSubscript(priceSOL)
-                      : "0.00000000"}
+                    {priceSOL ? formatNumberSubscript(priceSOL) : "0.00000000"}
                   </span>
                 </div>
               </div>
