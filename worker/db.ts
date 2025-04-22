@@ -129,6 +129,7 @@ export const messages = pgTable("messages", {
   replyCount: integer("reply_count"),
   likes: integer("likes").notNull().default(0),
   timestamp: timestamp("timestamp").notNull(),
+  tier: text("tier").notNull().default("1"),
 });
 
 // MessageLike schema

@@ -22,7 +22,7 @@ export interface UseTokensParams {
   sortBy: keyof IToken | "featured";
   sortOrder: SortOrderType;
   hideImported?: number;
-  bondingStatus?: "all" | "inprogress" | "bonded";
+  status?: "all" | "inprogress" | "bonded";
   pageSize?: number;
   enabled?: boolean;
 }
@@ -32,7 +32,7 @@ export const useTokens = (params: UseTokensParams) => {
     sortBy,
     sortOrder,
     hideImported,
-    bondingStatus,
+    status,
     pageSize = 50,
     enabled = true,
   } = params;
@@ -46,7 +46,7 @@ export const useTokens = (params: UseTokensParams) => {
     sortBy: sortBy as keyof IToken,
     sortOrder,
     ...(hideImported !== undefined && { hideImported }),
-    ...(bondingStatus && bondingStatus !== "all" && { bondingStatus }),
+    ...(status && status !== "all" && { status }),
     validationSchema: validationSchema as z.ZodType<IToken>,
     itemsPropertyName: "tokens",
     enabled,

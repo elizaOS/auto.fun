@@ -1118,29 +1118,29 @@ tokenRouter.get("/tokens", async (c) => {
     // Create a cache key based on the query parameters
     const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported}:${creator || ""}:${sortBy}:${sortOrder}`;
 
-    const redisCache = createRedisCache(c.env);
-    if (redisCache) {
-      try {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          logger.log(`Cache hit for ${cacheKey}`);
-          // check if the chache data is valid  
-          const parsedData = JSON.parse(cachedData);
-          if (parsedData && parsedData.tokens && parsedData.length > 0) {
-            return c.json(JSON.parse(cachedData));
-          } else {
-            logger.warn(`Cache data is empty or invalid for ${cacheKey}`);
-            // If the cache data is empty or invalid, remove it from Redis
-            console.log(`ignoring cache for ${cacheKey}`);
-          }
+    // const redisCache = createRedisCache(c.env);
+    // if (redisCache) {
+    //   try {
+    //     const cachedData = await redisCache.get(cacheKey);
+    //     if (cachedData) {
+    //       logger.log(`Cache hit for ${cacheKey}`);
+    //       // check if the chache data is valid  
+    //       const parsedData = JSON.parse(cachedData);
+    //       if (parsedData && parsedData.tokens && parsedData.length > 0) {
+    //         return c.json(JSON.parse(cachedData));
+    //       } else {
+    //         logger.warn(`Cache data is empty or invalid for ${cacheKey}`);
+    //         // If the cache data is empty or invalid, remove it from Redis
+    //         console.log(`ignoring cache for ${cacheKey}`);
+    //       }
 
-        }
-        logger.log(`Cache miss for ${cacheKey}`);
-      } catch (cacheError) {
-        logger.error(`Redis cache error:`, cacheError);
-        // Continue without caching if there's an error
-      }
-    }
+    //     }
+    //     logger.log(`Cache miss for ${cacheKey}`);
+    //   } catch (cacheError) {
+    //     logger.error(`Redis cache error:`, cacheError);
+    //     // Continue without caching if there's an error
+    //   }
+    // }
 
     // Use a shorter timeout for test environments
     const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
@@ -1320,14 +1320,14 @@ tokenRouter.get("/tokens", async (c) => {
       hasMore: page < totalPages,
     };
 
-    if (redisCache && tokensResult.length > 0) {
-      try {
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
-        logger.log(`Cached data for ${cacheKey} with 10s TTL`);
-      } catch (cacheError) {
-        logger.error(`Error caching token data:`, cacheError);
-      }
-    }
+    // if (redisCache && tokensResult.length > 0) {
+    //   try {
+    //     await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
+    //     logger.log(`Cached data for ${cacheKey} with 10s TTL`);
+    //   } catch (cacheError) {
+    //     logger.error(`Error caching token data:`, cacheError);
+    //   }
+    // }
 
     return c.json(responseData);
   } catch (error) {
@@ -1496,19 +1496,19 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
     const redisCache = createRedisCache(c.env);
-    if (redisCache) {
-      try {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          logger.log(`Cache hit for ${cacheKey}`);
-          return c.json(JSON.parse(cachedData));
-        }
-        logger.log(`Cache miss for ${cacheKey}`);
-      } catch (cacheError) {
-        logger.error(`Redis cache error:`, cacheError);
-        // Continue without caching if there's an error
-      }
-    }
+    // if (redisCache) {
+    //   try {
+    //     const cachedData = await redisCache.get(cacheKey);
+    //     if (cachedData) {
+    //       logger.log(`Cache hit for ${cacheKey}`);
+    //       return c.json(JSON.parse(cachedData));
+    //     }
+    //     logger.log(`Cache miss for ${cacheKey}`);
+    //   } catch (cacheError) {
+    //     logger.error(`Redis cache error:`, cacheError);
+    //     // Continue without caching if there's an error
+    //   }
+    // }
 
     // Get token data
     const db = getDB(c.env);
@@ -1685,15 +1685,15 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Format response with additional data
     const responseData = token;
-    if (redisCache) {
-      try {
-        // Cache for 5 seconds
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 5);
-        logger.log(`Cached data for ${cacheKey} with 5s TTL`);
-      } catch (cacheError) {
-        logger.error(`Error caching token data:`, cacheError);
-      }
-    }
+    // if (redisCache) {
+    //   try {
+    //     // Cache for 5 seconds
+    //     await redisCache.set(cacheKey, JSON.stringify(responseData), 5);
+    //     logger.log(`Cached data for ${cacheKey} with 5s TTL`);
+    //   } catch (cacheError) {
+    //     logger.error(`Error caching token data:`, cacheError);
+    //   }
+    // }
 
     return c.json(responseData);
   } catch (error) {

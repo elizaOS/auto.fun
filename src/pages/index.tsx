@@ -96,7 +96,7 @@ export default function Page() {
       sortOrder: "desc",
     };
     if (bondingStatus !== "all") {
-      params.bondingStatus = bondingStatus;
+      params.status = bondingStatus;
     }
     if (activeTab === "list") {
       params.sortBy = tableSortBy || "marketCapUSD";
