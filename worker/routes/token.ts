@@ -643,15 +643,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: c.env.NETWORK || "devnet",
-        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -917,14 +917,17 @@ export async function updateHoldersCache(
 
           // logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
 
-          await db.insert(tokenHolders).values(batch).onConflictDoUpdate({
-            target: [tokenHolders.mint, tokenHolders.address],
-            set: {
-              amount: batch[0].amount,
-              percentage: batch[0].percentage,
-              lastUpdated: new Date(),
-            },
-          });
+          await db
+            .insert(tokenHolders)
+            .values(batch)
+            .onConflictDoUpdate({
+              target: [tokenHolders.mint, tokenHolders.address],
+              set: {
+                amount: batch[0].amount,
+                percentage: batch[0].percentage,
+                lastUpdated: new Date(),
+              },
+            });
 
           // logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
         } catch (insertError) {
@@ -1124,7 +1127,7 @@ tokenRouter.get("/tokens", async (c) => {
     //     const cachedData = await redisCache.get(cacheKey);
     //     if (cachedData) {
     //       logger.log(`Cache hit for ${cacheKey}`);
-    //       // check if the chache data is valid  
+    //       // check if the chache data is valid
     //       const parsedData = JSON.parse(cachedData);
     //       if (parsedData && parsedData.tokens && parsedData.length > 0) {
     //         return c.json(JSON.parse(cachedData));
@@ -1644,8 +1647,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Get token holders count
     const holdersCountQuery = await db
