@@ -1,0 +1,21 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"lib": [
+			"dom",
+			"es2018"
+		],
+		"module": "es6",
+		"moduleResolution": "node",
+		"target": "es2018",
+		"noEmit": false,
+		"outDir": "./lib/",
+		"rootDir": "src",
+		"sourceMap": false,
+		"types": []
+	},
+	"include": [
+		"./src/**/*.ts"
+	],
+	"exclude": ["node_modules", "lib"]
+}

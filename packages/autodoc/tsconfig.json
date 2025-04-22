@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@elizaos/core": ["../core/src"],
+      "@elizaos/core/*": ["../core/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

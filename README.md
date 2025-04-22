@@ -16,10 +16,10 @@ Press the fun button.
 
 2. **Install Dependencies**
 
-   Install the project dependencies using npm:
+   Install the project dependencies using bun:
 
    ```sh
-   npm i
+   bun i
    ```
 
 3. **Build the Project**
@@ -27,7 +27,7 @@ Press the fun button.
    Build the application by running:
 
    ```sh
-   npm run build
+   bun run build
    ```
 
 4. **Start Development Server**
@@ -35,7 +35,7 @@ Press the fun button.
    Start the development server with:
 
    ```sh
-   npm run dev
+   bun run dev
    ```
 
 5. **Configure webhooks for chain events**
@@ -47,7 +47,7 @@ Press the fun button.
 
    This is so that each developer has a separate web hook and we aren't overwriting each other's webhooks.
 
-   `npm run dev` will then automatically tunnel your local server to a public https url, and then add
+   `bun run dev` will then automatically tunnel your local server to a public https url, and then add
    that url as a web hook to helius.
 
    *NOTE: sometimes the webhook takes a minute or so to propagate to helius so
@@ -77,7 +77,7 @@ This project is designed to be deployed using Cloudflare Pages for the frontend 
     *   Click "Save and Deploy".
 
 4.  **Deploy the Backend with Cloudflare Workers**
-    *   You will need the Wrangler CLI. Install it if you haven't: `npm install -g wrangler`.
+    *   You will need the Wrangler CLI. Install it if you haven't: `bun install -g wrangler`.
     *   Log in to Cloudflare: `wrangler login`.
     *   Navigate to the `api/` directory in your local project clone: `cd api`.
     *   Rename `wrangler.example.toml` to `wrangler.toml`. You might need to adjust settings inside, like the worker name, if needed.

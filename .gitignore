@@ -1,5 +1,4 @@
 # Logs
-vanity/target
 logs
 *.log
 npm-debug.log*
@@ -11,7 +10,6 @@ pnpm-lock.yaml
 stats.html
 .env
 .env.test
-bun.lock
 
 node_modules
 dist
@@ -32,3 +30,7 @@ dist-ssr
 .env
 .wrangler
 .dev.vars
+
+ignore/
+.turbo/
+package-lock.json
