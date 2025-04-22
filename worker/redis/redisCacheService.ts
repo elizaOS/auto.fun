@@ -106,3 +106,13 @@ export function createRedisCache(env: Env) {
   logger.info("Redis cache service created");
   return new RedisCacheService(redisPool, env);
 }
+
+// Singleton and getter for existing RedisCacheService
+let redisCacheInstance: RedisCacheService | null = null;
+
+export function getRedisCache(env: Env): RedisCacheService {
+  if (!redisCacheInstance) {
+    redisCacheInstance = createRedisCache(env);
+  }
+  return redisCacheInstance;
+}
