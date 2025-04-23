@@ -113,7 +113,7 @@ export default function Page() {
         throw error;
       }
     },
-    refetchInterval: 7500,
+    refetchInterval: 20000,
     refetchOnMount: true,
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
