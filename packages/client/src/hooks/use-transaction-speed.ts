@@ -1,6 +1,6 @@
 import { useLocalStorage } from "@uidotdev/usehooks";
 
-export type TTransactionSpeed = "fast" | "turbo" | "ultra";
+type TTransactionSpeed = "fast" | "turbo" | "ultra";
 
 export const useTransactionSpeed = () => {
   const [transactionSpeed, setTransactionSpeed] =

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router";
 
-export const Footer = () => {
+const Footer = () => {
   const { pathname } = useLocation();
   const isHomepage = pathname === "/";
 

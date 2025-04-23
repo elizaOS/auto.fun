@@ -9,7 +9,6 @@ import { and, asc, eq } from "drizzle-orm"; // Import Drizzle functions
 import { Context } from "hono"; // Import Context type
 import * as schema from "../db"; // Import your generated schema
 import { getDB } from "../db"; // Import the getDB helper
-import { Env } from "../env"; // Import Env type from process.env.ts
 import { getGlobalRedisCache } from "../redis";
 // ---=================================---
 

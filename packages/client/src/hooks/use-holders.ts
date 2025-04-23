@@ -11,7 +11,7 @@ const HolderSchema = z.object({
   lastUpdated: z.string().datetime(),
 });
 
-export type Holder = z.infer<typeof HolderSchema>;
+type Holder = z.infer<typeof HolderSchema>;
 
 export const useHolders = ({ tokenId }: { tokenId: string }) => {
   const pageSize = 100;

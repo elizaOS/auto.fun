@@ -723,11 +723,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                   />
                   <span className="truncate">{agent.twitterUserName}</span>
                 </div>
-                {/* {agent.official ? (
-                  <Badge variant="success">Official</Badge>
-                ) : (
-                  <Badge variant="default">Community</Badge>
-                )} */}
                 {publicKey && agent.ownerAddress === publicKey.toBase58() && (
                   <button
                     // ** CHANGE: Pass the whole agent object **

@@ -55,9 +55,6 @@ export default function Layout() {
           >
             <Footer />
           </div>
-          {/* <div className="block md:hidden">
-        <BottomBar />
-      </div> */}
           <WalletModal />
         </div>
       </Providers>

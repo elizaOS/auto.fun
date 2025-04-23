@@ -5,11 +5,8 @@ import { getDB, metadata } from "./db";
 import { logger } from "./logger";
 import { processTransactionLogs } from "./processTransactionLogs";
 
-
-
-
 export async function getLastProcessedSlot(): Promise<number | null> {
-   const db = await getDB();
+   const db = getDB();
 
    const row = await db.select()
       .from(metadata)

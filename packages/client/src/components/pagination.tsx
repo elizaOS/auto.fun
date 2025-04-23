@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import React from "react";
 import { twMerge } from "tailwind-merge";
 
-export interface IPagination {
+interface IPagination {
   page: number;
   totalPages: number;
   total: number;

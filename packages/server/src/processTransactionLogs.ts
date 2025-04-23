@@ -14,7 +14,6 @@ import { getToken } from "./migration/migrations";
 import { createRedisCache, getGlobalRedisCache } from "./redis";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { createNewTokenData, } from "./util";
-import { getWebSocketClient } from "./websocket-client";
 import { processTokenUpdateEvent } from "./routes/token";
 
 // Define max swaps to keep in Redis list (consistent with worker)

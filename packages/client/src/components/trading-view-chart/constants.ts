@@ -2,7 +2,6 @@ import { ChartingLibraryFeatureset } from "@autodotfun/charts";
 
 const RED = "#FF6767";
 const GREEN = "#47D0A5";
-export const DEFAULT_PERIOD = "4h";
 
 const chartStyleOverrides = [
   "candleStyle",
@@ -38,12 +37,6 @@ export const chartOverrides = {
 
   ...chartStyleOverrides,
 };
-
-export const disabledFeaturesOnMobile: ChartingLibraryFeatureset[] = [
-  "header_saveload",
-  "header_fullscreen_button",
-  "left_toolbar",
-];
 
 export const disabledFeatures: ChartingLibraryFeatureset[] = [
   "header_compare",

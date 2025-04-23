@@ -1,8 +1,9 @@
 // import { Connection, SendOptions } from "@solana/web3.js";
 import bs58 from "bs58";
 
-export type JitoRegion = "mainnet" | "amsterdam" | "frankfurt" | "ny" | "tokyo";
-export const JitoEndpoints = {
+type JitoRegion = "mainnet" | "amsterdam" | "frankfurt" | "ny" | "tokyo";
+
+const JitoEndpoints = {
   mainnet: "https://mainnet.block-engine.jito.wtf/api/v1/transactions",
   amsterdam:
     "https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/transactions",
@@ -11,7 +12,8 @@ export const JitoEndpoints = {
   ny: "https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions",
   tokyo: "https://tokyo.mainnet.block-engine.jito.wtf/api/v1/transactions",
 };
-export function getJitoEndpoint(region: JitoRegion) {
+
+function getJitoEndpoint(region: JitoRegion) {
   return JitoEndpoints[region];
 }
 /**
