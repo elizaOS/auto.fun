@@ -1,5 +1,5 @@
 import { parentPort } from "worker_threads";
-import { WebSocket } from "ws"; // only if using ws
+import { WebSocket } from "ws";
 import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { eq } from "drizzle-orm";
@@ -9,6 +9,7 @@ import { getWebSocketClient } from "../websocket-client";
 import { logger } from "../util";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import crypto from "node:crypto";
+import { webSocketManager } from '../websocket-manager';
 
 parentPort?.on("message", async (data: any) => {
    try {
@@ -58,6 +59,14 @@ parentPort?.on("message", async (data: any) => {
       };
 
       const redisCache = await getGlobalRedisCache();
+      const isReady = await redisCache.isPoolReady();
+      if (!redisCache) throw new Error("Redis Cache Service not found");
+
+      // Initialize WebSocketManager with Redis
+      if (!webSocketManager.redisCache) {
+         webSocketManager.initialize(redisCache);
+      }
+
       const listKey = `swapsList:${tokenMint}`;
 
       await redisCache.lpushTrim(
