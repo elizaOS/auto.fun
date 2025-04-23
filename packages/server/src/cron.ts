@@ -301,7 +301,7 @@ async function handleSwap(
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
   const reservesLog = logs.find((log) => log.includes("Reserves:"));
-  const feeLog = logs.find((log) => log.includes("fee:"));
+  const feeLog = logs.find((log) => log.includes("Fee:"));
   const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
 
 
