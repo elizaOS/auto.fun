@@ -28,10 +28,10 @@ import crypto from "node:crypto"; // Import crypto for lock value
 let s3ClientInstance: S3Client | null = null;
 function getS3Client(): S3Client {
     if (s3ClientInstance) return s3ClientInstance;
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucketName = process.env.R2_BUCKET_NAME;
+    const accountId = process.env.S3_ACCOUNT_ID;
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const bucketName = process.env.S3_BUCKET_NAME;
     if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
         logger.error("Missing R2 S3 API environment variables.");
         throw new Error("Missing required R2 S3 API environment variables.");
@@ -691,9 +691,9 @@ export async function updateTokens() {
   // --- Step 3: Sequential Batch Processing for Image Checks ---
   logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
   const s3Client = getS3Client();
-  const bucketName = process.env.R2_BUCKET_NAME;
+  const bucketName = process.env.S3_BUCKET_NAME;
   if (!bucketName) {
-      logger.error("Cron: R2_BUCKET_NAME not configured. Cannot check for generated images.");
+      logger.error("Cron: S3_BUCKET_NAME not configured. Cannot check for generated images.");
       // Decide whether to skip this step entirely or log per token
   }
 
@@ -734,7 +734,7 @@ export async function updateTokens() {
                   }
               } else {
                   // Log skipped check if bucket name is missing
-                  logger.warn(`Cron: Skipping image check for ${token.mint} as R2_BUCKET_NAME is not set.`);
+                  logger.warn(`Cron: Skipping image check for ${token.mint} as S3_BUCKET_NAME is not set.`);
               }
           }
       }));

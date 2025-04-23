@@ -29,10 +29,10 @@ import { generateAdditionalTokenImages } from "./generation";
 let s3ClientInstance: S3Client | null = null;
 function getS3Client(): S3Client {
     if (s3ClientInstance) return s3ClientInstance;
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucketName = process.env.R2_BUCKET_NAME;
+    const accountId = process.env.S3_ACCOUNT_ID;
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const bucketName = process.env.S3_BUCKET_NAME;
     if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
         logger.error("Missing R2 S3 API environment variables.");
         throw new Error("Missing required R2 S3 API environment variables.");
@@ -243,9 +243,9 @@ tokenRouter.get("/image/:filename", async (c) => {
     }
 
     const s3Client = getS3Client();
-    const bucketName = process.env.R2_BUCKET_NAME;
+    const bucketName = process.env.S3_BUCKET_NAME;
     if (!bucketName) {
-        logger.error("[/image/:filename] R2_BUCKET_NAME not configured.");
+        logger.error("[/image/:filename] S3_BUCKET_NAME not configured.");
         return c.json({ error: "Storage is not available" }, 500);
     }
 
@@ -352,9 +352,9 @@ tokenRouter.get("/metadata/:filename", async (c) => {
     }
 
     const s3Client = getS3Client();
-    const bucketName = process.env.R2_BUCKET_NAME;
+    const bucketName = process.env.S3_BUCKET_NAME;
     if (!bucketName) {
-        logger.error("[/metadata/:filename] R2_BUCKET_NAME not configured.");
+        logger.error("[/metadata/:filename] S3_BUCKET_NAME not configured.");
         return c.json({ error: "Storage is not available" }, 500);
     }
 
@@ -2196,9 +2196,9 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
 
           const s3Client = getS3Client();
-          const bucketName = process.env.R2_BUCKET_NAME;
+          const bucketName = process.env.S3_BUCKET_NAME;
            if (!bucketName) {
-              throw new Error("R2_BUCKET_NAME not configured for metadata update.");
+              throw new Error("S3_BUCKET_NAME not configured for metadata update.");
           }
 
           // 2) Fetch existing metadata content

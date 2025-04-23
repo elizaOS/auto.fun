@@ -17,14 +17,14 @@ function getS3Client(): S3Client {
         return s3ClientInstance;
     }
 
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucketName = process.env.R2_BUCKET_NAME; // Keep bucket name check here for validation
+    const accountId = process.env.S3_ACCOUNT_ID;
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const bucketName = process.env.S3_BUCKET_NAME; // Keep bucket name check here for validation
 
     if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
         // Log the missing variables for easier debugging
-        logger.error("Missing R2 S3 API environment variables. Check R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME.");
+        logger.error("Missing R2 S3 API environment variables. Check S3_ACCOUNT_ID, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME.");
         throw new Error("Missing required R2 S3 API environment variables.");
     }
     const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
@@ -134,9 +134,9 @@ export async function uploadToCloudflare(
     }
 
      const s3Client = getS3Client(); // Get client using process.env
-     const bucketName = process.env.R2_BUCKET_NAME;
+     const bucketName = process.env.S3_BUCKET_NAME;
      if (!bucketName) {
-         throw new Error("R2_BUCKET_NAME environment variable is not set.");
+         throw new Error("S3_BUCKET_NAME environment variable is not set.");
      }
 
      const putCommand = new PutObjectCommand({
@@ -208,9 +208,9 @@ export async function uploadGeneratedImage(
 
 
       const s3Client = getS3Client(); // Get client using process.env
-      const bucketName = process.env.R2_BUCKET_NAME;
+      const bucketName = process.env.S3_BUCKET_NAME;
         if (!bucketName) {
-            throw new Error("R2_BUCKET_NAME environment variable is not set.");
+            throw new Error("S3_BUCKET_NAME environment variable is not set.");
         }
 
       const putCommand = new PutObjectCommand({
