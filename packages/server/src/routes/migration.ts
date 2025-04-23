@@ -1,5 +1,5 @@
 import * as IDL from "@autodotfun/program/idl/autofun.json";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
+import * as raydium_vault_IDL_JSON from "@autodotfun/program/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/program/types/autofun";
 import { checkBalance } from "@autodotfun/raydium/src/raydiumVault";
 import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
@@ -12,6 +12,11 @@ import { TokenMigrator } from "../migration/migrateToken";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { createNewTokenData, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
+import { getGlobalRedisCache } from "../redis";
+
+
+const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
+
 
 const migrationRouter = new Hono<{
   Variables: {
@@ -64,14 +69,16 @@ migrationRouter.post("/migration/resume", async (c) => {
       provider,
     );
     const autofunProgram = new Program<Autofun>(IDL, provider);
-
+    const redisCache = await getGlobalRedisCache();
     // Create an instance of TokenMigrator.
     const tokenMigrator = new TokenMigrator(
+      process.env as any,
       connection,
       new Wallet(wallet),
       program,
       autofunProgram as any,
       provider,
+      redisCache,
     );
 
     // Call migrateToken: process the next migration step.

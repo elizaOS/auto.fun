@@ -1,5 +1,5 @@
-import * as IDL from "@autodotfun/program/idl/autofun.json";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
+import * as idlJson from "@autodotfun/program/idl/autofun.json";
+import * as raydium_vault_IDL_JSON from "@autodotfun/program/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/program/types/autofun";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
@@ -14,7 +14,10 @@ import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { TokenMigrator } from "./migrateToken";
+import { getGlobalRedisCache } from "../redis";
 
+const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
+const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
 export interface LockResult {
   txId: string;
 }
@@ -139,7 +142,7 @@ export async function executeMigrationStep(
   // Update token migration
   token.migration = token.migration ?? {};
   (token.migration as Record<string, any>)[step.name] = {
-    status: "success", 
+    status: "success",
     txId: result.txId,
     updatedAt: new Date().toISOString(),
   };
@@ -246,6 +249,26 @@ export async function getMigrationState(token: TokenData) {
   return null;
 }
 
+export async function safeUpdateTokenInDB(
+  data: Partial<TokenData>,
+  retries = 3,
+  delay = 2000
+): Promise<void> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await updateTokenInDB(data);
+      return;
+    } catch (err) {
+      logger.error(
+        `[DB] Failed to update token ${data.mint} on attempt ${attempt}:`,
+        err
+      );
+      if (attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 export async function checkMigratingTokens(limit: number) {
   try {
     const db = getDB();
@@ -278,14 +301,17 @@ export async function checkMigratingTokens(limit: number) {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL, provider) as any;
+    const autofunProgram = new Program<Autofun>(idl, provider) as any;
+    const redisCache = await getGlobalRedisCache();
 
     const tokenMigrator = new TokenMigrator(
-            connection,
+      process.env as any,
+      connection,
       new Wallet(wallet),
       program,
       autofunProgram,
       provider,
+      redisCache,
     );
 
     // Filter out tokens that have migration as null or empty object or migration.status is not locked
@@ -301,7 +327,7 @@ export async function checkMigratingTokens(limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(token.mint);
-      // await tokenMigrator.migrateToken(tokenM!);
+      await tokenMigrator.migrateToken(tokenM!);
     }
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);

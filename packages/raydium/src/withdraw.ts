@@ -22,6 +22,82 @@ export const withdrawTx = async (
   return tx;
 };
 
+
+export async function execWithdrawTxSafe(
+  tx: Transaction,
+  connection: Connection,
+  wallet: any,
+  maxRetries = 5
+): Promise<{ signature: string; logs: string[] }> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`[Withdraw] Attempt ${attempt + 1}/${maxRetries}`);
+
+      // Step 1: Sign
+      const signedTx = await wallet.signTransaction(tx);
+
+      // Step 2: Simulate first for preflight log inspection
+      const simulation = await connection.simulateTransaction(signedTx);
+      const preflightLogs = simulation.value.logs || [];
+      if (simulation.value.err) {
+        console.error(
+          `[Withdraw] Simulation failed:`,
+          simulation.value.err
+        );
+        throw new Error(`Simulation failed: ${JSON.stringify(simulation.value.err)}`);
+      }
+
+      // Step 3: Send
+      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+        maxRetries: 3,
+      });
+
+      // Step 4: Confirm — retry until it lands
+      const latestBlockhash = await connection.getLatestBlockhash();
+      let confirmed = false;
+      let finalLogs: string[] = [];
+
+      for (let confirmAttempt = 0; confirmAttempt < 10; confirmAttempt++) {
+        const txInfo = await connection.getTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+        });
+
+        if (txInfo?.meta?.err) {
+          throw new Error(`Withdraw tx failed on chain: ${JSON.stringify(txInfo.meta.err)}`);
+        }
+        if (txInfo && txInfo.meta) {
+          finalLogs = txInfo.meta.logMessages || [];
+        }
+
+        console.log(`[Withdraw] Waiting for confirmation attempt ${confirmAttempt + 1}`);
+        await new Promise((r) => setTimeout(r, 2000)); // wait 2s between attempts
+      }
+
+      if (!confirmed) {
+        throw new Error("Transaction not confirmed within expected window.");
+      }
+
+      console.log(`[Withdraw] Successfully confirmed ${signature}`);
+      return {
+        signature,
+        logs: [...preflightLogs, ...finalLogs],
+      };
+    } catch (err: any) {
+      lastError = err;
+      console.error(`[Withdraw] Attempt ${attempt + 1} failed:`, err.message);
+
+      const backoff = Math.min(1000 * 2 ** attempt, 10_000);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+
+  throw lastError || new Error("Withdraw failed after retries");
+}
+
 export async function execWithdrawTx(
   tx: Transaction,
   connection: Connection,

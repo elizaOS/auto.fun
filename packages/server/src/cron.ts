@@ -23,6 +23,20 @@ import {
 import { getWebSocketClient } from "./websocket-client";
 import { Buffer } from 'node:buffer'; // Buffer import
 import crypto from "node:crypto"; // Import crypto for lock value
+import { TokenMigrator } from "./migration/migrateToken";
+import * as idlJson from "@autodotfun/program/idl/autofun.json";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Autofun } from "@autodotfun/program/types/autofun";
+import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
+import * as raydium_vault_IDL_JSON from "@autodotfun/program/idl/raydium_vault.json";
+import { Wallet } from "./tokenSupplyHelpers/customWallet";
+
+
+
+const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
+const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
+
 
 // S3 Client Helper (copied from uploader.ts, using process.env)
 let s3ClientInstance: S3Client | null = null;
@@ -476,12 +490,50 @@ async function handleCurveComplete(
       return null;
     }
 
+    const tokenData: Partial<TokenData> = {
+      mint: mintAddress,
+      status: "migrating",
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const connection = new Connection(
+      process.env.NETWORK === "devnet"
+        ? process.env.DEVNET_SOLANA_RPC_URL!
+        : process.env.MAINNET_SOLANA_RPC_URL!,
+    );
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+    );
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+    );
+    const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+    );
+    const autofunProgram = new Program<Autofun>(idl as any, provider);
+    const redisCache = await getGlobalRedisCache();
+
+    const tokenMigrator = new TokenMigrator(
+      process.env as any,
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+      redisCache
+    );
+
     await updateTokenInDB(token);
+    await tokenMigrator.migrateToken(token);
     await wsClient.emit(
       "global",
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );
+
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
   } catch (err) {
