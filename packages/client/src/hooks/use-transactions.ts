@@ -42,6 +42,7 @@ export const useTransactions = ({
     sortBy: "timestamp",
     sortOrder: "desc",
     enabled: isPaused ? false : true,
+    refetchInterval: 30000
   });
 
   useEffect(() => {
