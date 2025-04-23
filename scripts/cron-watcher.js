@@ -22,13 +22,13 @@ const port = parseInt(args[2]) || DEFAULT_PORT;
 
 
 // Local worker endpoint
-const LOCAL_ENDPOINT = `http://127.0.0.1:${port}/_internal/trigger-cron`;
+const ENDPOINT = process.env.CRON_URL || "http://127.0.0.1:8787/_internal/trigger-cron";
 const CRON_PATTERN = "*/1 * * * *";
 
 console.log("🕒 Cloudflare Cron Emulator");
 console.log(`Interval: ${interval} seconds`);
 console.log(`Iterations: ${iterations === 0 ? "infinite" : iterations}`);
-console.log(`Endpoint: ${LOCAL_ENDPOINT}`);
+console.log(`Endpoint: ${ENDPOINT}`);
 console.log(`Cron pattern: ${CRON_PATTERN}`);
 console.log("Press Ctrl+C to stop\n");
 
@@ -40,7 +40,7 @@ async function triggerCron() {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] Triggering cron job...`);
 
-    const response = await fetch(LOCAL_ENDPOINT, {
+    const response = await fetch(ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
