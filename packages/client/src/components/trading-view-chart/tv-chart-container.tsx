@@ -9,7 +9,7 @@ import { chartOverrides, disabledFeatures, enabledFeatures } from "./constants";
 import { getDataFeed } from "./datafeed";
 import { twMerge } from "tailwind-merge";
 
-export type TVChartContainerProps = {
+type TVChartContainerProps = {
   name: string;
   pairIndex: number;
   token: string;

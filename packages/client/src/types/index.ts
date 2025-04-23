@@ -4,14 +4,14 @@ import { z } from "zod";
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
-export interface IPagination {
+interface IPagination {
   page: number;
   totalPages: number;
   total: number;
   hasMore: boolean;
 }
 
-export interface ISwap {
+interface ISwap {
   amountIn: number;
   amountOut: number;
   direction: 0 | 1;
@@ -24,7 +24,7 @@ export interface ISwap {
   user: string;
 }
 
-export interface ITokenHolder {
+interface ITokenHolder {
   id: string;
   mint: string;
   address: string;

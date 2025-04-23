@@ -13,13 +13,13 @@ import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import type { FC, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-export interface WalletModalProviderProps {
+interface WalletModalProviderProps {
   children: ReactNode;
   className?: string;
   container?: string;
 }
 
-export interface WalletModalProps {
+interface WalletModalProps {
   className?: string;
   container?: string;
 }
