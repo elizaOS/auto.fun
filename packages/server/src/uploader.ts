@@ -6,7 +6,7 @@ import crypto from "node:crypto"; // Import crypto if not already available glob
 import { Buffer } from "node:buffer"; // Ensure Buffer is available
 
 // Define the fixed public base URL
-const PUBLIC_STORAGE_BASE_URL = "https://621d1008ef1cb024077560dcb94dd126.r2.cloudflarestorage.com/autofun-storage";
+const PUBLIC_STORAGE_BASE_URL = "https://storage.autofun.tech";
 
 // Singleton S3 Client instance
 let s3ClientInstance: S3Client | null = null;
