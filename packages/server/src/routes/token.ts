@@ -965,6 +965,7 @@ async function checkBlockchainTokenBalance(
 export async function processTokenUpdateEvent(
   tokenData: any,
   shouldEmitGlobal: boolean = false,
+  isNewTokenEvent: boolean = false, // Add the new flag
 ): Promise<void> {
   try {
     // Get WebSocket client
@@ -997,8 +998,18 @@ export async function processTokenUpdateEvent(
       logger.log(`Emitted token update event for ${tokenData.mint}`);
     }
 
-    // Optionally emit to global room for activity feed
-    if (shouldEmitGlobal) {
+    // Handle global emission based on flags
+    if (isNewTokenEvent) {
+      // If it's a new token event, *only* emit the global "newToken" event
+      await wsClient.emit("global", "newToken", {
+        ...enrichedTokenData,
+        timestamp: new Date(),
+      });
+      if (debugWs) {
+        logger.log(`Emitted NEW token event to global feed: ${tokenData.mint}`);
+      }
+    } else if (shouldEmitGlobal) {
+      // Otherwise, if shouldEmitGlobal is true (and it's not a new token), emit "updateToken" globally
       await wsClient.emit("global", "updateToken", {
         ...enrichedTokenData,
         timestamp: new Date(),

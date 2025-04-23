@@ -392,24 +392,3 @@ app.delete(
 );
 
 export default app;
-
-// Basic WebSocket Server Stub (Illustrative - needs proper implementation)
-// You would typically run this alongside Hono or integrate using Hono's WebSocket support
-/*
-const webSocketServer = {
-    clients: new Map(), // Map<roomId, Set<WebSocket>>
-    broadcastToRoom: (tokenMint: string, tier: string, data: any) => {
-        const roomId = `${tokenMint}-${tier}`;
-        const roomClients = webSocketServer.clients.get(roomId);
-        if (roomClients) {
-            const message = JSON.stringify(data);
-            roomClients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(message);
-                }
-            });
-        }
-    },
-    // Add methods for handling connections, disconnections, subscriptions etc.
-};
-*/

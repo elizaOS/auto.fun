@@ -14,6 +14,8 @@ import { getToken } from "./migration/migrations";
 import { createRedisCache } from "./redis";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { createNewTokenData, } from "./util";
+import { getWebSocketClient } from "./websocket-client";
+import { processTokenUpdateEvent } from "./routes/token";
 
 // Define max swaps to keep in Redis list (consistent with worker)
 const MAX_SWAPS_TO_KEEP = 1000;
@@ -336,11 +338,21 @@ export async function processTransactionLogs(
                   console.error(`[Withdraw] CF update failed:`, httpErr);
                }
             })();
-            await getDB()
+            const inserted = await getDB()
                .insert(tokens)
                .values(newToken as Token)
                .onConflictDoNothing()
+               .returning();
 
+            // --- Emit WebSocket event for the new token --- START
+            if (inserted && inserted.length > 0) {
+               logger.log(`Emitting newToken WebSocket event for ${rawTokenAddress}`);
+               // Use processTokenUpdateEvent to handle enrichment and emission
+               await processTokenUpdateEvent(inserted[0], true, true);
+            } else {
+               logger.warn(`Token ${rawTokenAddress} might already exist or failed to insert, not emitting newToken event.`);
+            }
+            // --- Emit WebSocket event for the new token --- END
 
             events.push({ tokenAddress: rawTokenAddress, event: "newToken" });
          } catch (err: any) {

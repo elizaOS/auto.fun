@@ -1,9 +1,10 @@
-import { Connection } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
 import { Context, Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
 import { cors } from "hono/cors";
 import type { WSContext } from "hono/ws"; // Import WSContext type for handlers
+import { startLogSubscription } from "./subscription/subscription";
 
 // Load environment variables from .env file at the root
 dotenv.config({ path: "../../.env" });
@@ -271,21 +272,5 @@ export default {
   websocket, // Add the websocket handler
 };
 
-function startLogWorker() {
 
-  const child = fork(path.join(__dirname, "subscription/logWorker"), [], {
-    env: process.env,
-  });
-
-  logger.info("🚀 Started log subscription worker with PID", child.pid);
-
-  child.on("exit", (code) => {
-    logger.error(`❌ Log subscription worker exited with code ${code}. Restarting...`);
-    setTimeout(startLogWorker, 1000); // Restart after 1s
-  });
-
-  child.on("error", (err) => {
-    logger.error("❌ Error in log subscription worker:", err);
-  });
-}
-startLogWorker();
+startLogSubscription(connection, new PublicKey(process.env.PROGRAM_ID!), env);

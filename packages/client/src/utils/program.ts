@@ -1,7 +1,7 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMemo } from "react";
-import { Autofun } from "@autodotfun/program/types/autofun";
+import { Autofun } from "@autodotfun/program/types/autofun.ts";
 import IDL from "@autodotfun/program/idl/autofun.json";
 
 export const SEED_CONFIG = "config";
