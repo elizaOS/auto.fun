@@ -11,7 +11,6 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
-import { Tooltip } from "react-tooltip";
 import numeral from "numeral";
 
 export default function Trade({ token }: { token: IToken }) {
@@ -303,20 +302,8 @@ export default function Trade({ token }: { token: IToken }) {
             {/* Buying */}
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
-              <Tooltip anchorSelect="#minreceived">
-                {displayhMinReceivedQuery?.data?.minReceivedRaw
-                  ? formatNumber(
-                      displayhMinReceivedQuery?.data?.minReceivedRaw,
-                      true,
-                      true,
-                    )
-                  : "0"}{" "}
-                {isTokenSelling ? "SOL" : token?.ticker}
-              </Tooltip>
-              <div
-                className="relative flex uppercase items-center gap-2"
-                id="minreceived"
-              >
+
+              <div className="relative flex uppercase items-center gap-2">
                 {displayhMinReceivedQuery?.isError
                   ? "Error"
                   : displayMinReceived}
