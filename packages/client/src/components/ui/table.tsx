@@ -11,7 +11,7 @@ const Table = React.forwardRef<
       ref={ref}
       className={twMerge(
         "w-full caption-bottom text-sm border-separate border-spacing-y-4",
-        className
+        className,
       )}
       {...props}
     />
@@ -51,7 +51,7 @@ const TableRow = React.forwardRef<
     ref={ref}
     className={twMerge(
       "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      className
+      className,
     )}
     {...props}
   />
@@ -66,7 +66,7 @@ const TableHead = React.forwardRef<
     ref={ref}
     className={twMerge(
       "h-5 px-4 text-left whitespace-nowrap align-middle font-dm-mono font-normal text-[14px] leading-[16px] tracking-[2px] uppercase text-autofun-text-info [&:has([role=checkbox])]:pr-0",
-      className
+      className,
     )}
     {...props}
   />
@@ -81,7 +81,7 @@ const TableCell = React.forwardRef<
     ref={ref}
     className={twMerge(
       "p-4 align-middle font-dm-mono font-normal text-base leading-5 tracking-normal text-center [&:has([role=checkbox])]:pr-0 bg-autofun-background-card border-autofun-stroke-primary border-t border-b border-x-0 first:first:border-l last:last:border-r",
-      className
+      className,
     )}
     {...props}
   />

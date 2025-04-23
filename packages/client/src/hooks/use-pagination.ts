@@ -36,10 +36,10 @@ export type UsePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
   "page"
 > & { enabled?: boolean; useUrlState?: boolean };
 
-type UseInfinitePaginationOptions<
-  TOutput = object,
-  TInput = TOutput,
-> = Omit<PaginationOptions<TOutput, TInput>, "page"> & { enabled?: boolean };
+type UseInfinitePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
+  PaginationOptions<TOutput, TInput>,
+  "page"
+> & { enabled?: boolean };
 
 const fetchPaginatedData = async <
   TOutput extends Record<string, unknown>,
