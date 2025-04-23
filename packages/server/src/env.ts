@@ -52,4 +52,6 @@ export interface Env {
   REDIS_HOST: string;
   REDIS_PORT: string;
   REDIS_PASSWORD: string;
+  // CORS settings
+  ALLOWED_ORIGINS?: string;
 }

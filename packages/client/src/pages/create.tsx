@@ -659,7 +659,9 @@ const uploadImage = async (metadata: TokenMetadata) => {
     console.warn("No metadata URL returned from server, using fallback URL");
 
     // Generate a fallback URL using the mint address or a UUID
-    result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
+    result.metadataUrl = env.getMetadataUrl(
+      metadata.tokenMint || crypto.randomUUID(),
+    );
   }
 
   return result;
@@ -2260,7 +2262,7 @@ export const Create = () => {
               metadataUrl,
             );
             // Fallback: generate a unique metadata URL based on mint address
-            metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+            metadataUrl = env.getMetadataUrl(tokenMint);
           }
 
           // Update the coin drop image to use the final uploaded URL
@@ -2277,7 +2279,7 @@ export const Create = () => {
 
         // Generate a metadata URL if none exists
         if (!metadataUrl) {
-          metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+          metadataUrl = env.getMetadataUrl(tokenMint);
           console.log(
             "Using default metadata URL for imported token:",
             metadataUrl,
@@ -2285,13 +2287,13 @@ export const Create = () => {
         }
       } else if (!media_base64 && !metadataUrl) {
         // No image provided, generate minimal metadata URL
-        metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+        metadataUrl = env.getMetadataUrl(tokenMint);
       }
 
       // Double-check that we have a valid metadata URL
       if (!metadataUrl) {
         console.warn("No metadata URL set, using fallback");
-        metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+        metadataUrl = env.getMetadataUrl(tokenMint);
       }
 
       // Create token on-chain

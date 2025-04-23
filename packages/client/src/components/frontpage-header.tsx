@@ -449,21 +449,15 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.wakeUp();
 
       // Impulse and Torque values - might need tuning
-      const impulseMagnitudeFactor = 10 * dieBody.mass; // Scale impulse by mass
-
-      console.log("impulseMagnitudeFactor", impulseMagnitudeFactor);
-
-      const impulseMagnitude = impulseMagnitudeFactor + 100000;
-
-      console.log("impulseMagnitude", impulseMagnitude);
+      const impulseMagnitudeFactor = 40 * dieBody.mass; // Scale impulse by mass
 
       // const torqueMagnitude = 0.5 * dieBody.mass; // Significantly reduced torque magnitude
 
       // Apply random impulse (linear force)
       const impulseVector = new CANNON.Vec3(
-        (Math.random() - 0.5) * impulseMagnitude,
-        Math.random() * (impulseMagnitude * 0.5), // More upward impulse
-        (Math.random() - 0.5) * impulseMagnitude,
+        (Math.random() - 0.5) * impulseMagnitudeFactor,
+        Math.random() * (impulseMagnitudeFactor * 0.5), // More upward impulse
+        (Math.random() - 0.5) * impulseMagnitudeFactor,
       );
       // Apply impulse at the center of mass
       // Providing the world point to apply the impulse (center of mass in this case)

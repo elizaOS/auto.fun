@@ -38,13 +38,8 @@ interface TokenData {
   [key: string]: any; // For other properties that might exist
 }
 
-// List of admin wallet addresses (copied from worker/routes/adminAddresses.ts)
-const adminAddresses: string[] = [
-  "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
-  "ASktkp5ERQmmHChzSEqGbWNrqAdDdrJjS8AJG5G3cTCh", // Boris (Borko)
-  "DScqtGwFoDTme2Rzdjpdb2w7CtuKc6Z8KF7hMhbx8ugQ", // Shaw
-  "5kNQWceagenBAr3SjRNVtusNBE7dFGcozw8CEgM5HBt9", // Accelxr
-];
+// Use admin addresses from environment
+const { adminAddresses } = env;
 
 export default function AdminTab() {
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
