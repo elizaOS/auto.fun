@@ -2116,7 +2116,7 @@ export async function generatePreGeneratedTokens() {
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   // Add env parameter
-  threshold: number = 3
+  threshold?: number
 ): Promise<void> {
   if (!threshold) {
     threshold = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"); // Use env variable

@@ -114,6 +114,8 @@ export const users = pgTable("users", {
     .default(sql`gen_random_uuid()`),
   name: text("name"),
   address: text("address").notNull().unique(),
+  display_name: text("display_name"),
+  profile_picture_url: text("profile_picture_url"),
   points: integer("points").notNull().default(0),
   rewardPoints: integer("reward_points").notNull().default(0),
   createdAt: timestamp("created_at")

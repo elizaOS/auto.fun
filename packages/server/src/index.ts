@@ -157,7 +157,7 @@ app.post("/trigger-cron", async (c) => {
   await runCronTasks();
 
   // Return immediately to the cron runner
-  return c.json({ success: true, message: "Cron tasks initiated." });
+  return c.json({ success: true, message: "Cron tasks finished." });
 });
 
 // --- Root and Maintenance Routes ---
