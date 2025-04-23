@@ -28,6 +28,10 @@ export class CacheService {
   async getSolPrice(): Promise<number | null> {
     const cacheKey = "solPrice";
     try {
+      if (!this.redisCache) {
+        logger.error("Redis cache is not initialized.");
+        return null;
+      }
       const cachedValue = await this.redisCache.get(cacheKey);
       if (cachedValue) {
         const price = parseFloat(cachedValue);
@@ -55,6 +59,10 @@ export class CacheService {
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
     const cacheKey = "solPrice";
     try {
+      if (!this.redisCache) {
+        logger.error("Redis cache is not initialized.");
+        return;
+      }
       await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
       logger.log(
         `Cached SOL price (${price}) in Redis with TTL ${ttlSeconds}s`,
