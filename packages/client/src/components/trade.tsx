@@ -48,7 +48,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -84,13 +84,18 @@ export default function Trade({ token }: { token: IToken }) {
       const amount = sellAmount;
       if (!amount) return empty;
 
-      const amountBN = new BN(amount);
+      const amountStr = amount.toString();
+      const decimalPlaces = amountStr.includes(".")
+        ? amountStr.split(".")[1].length
+        : 0;
+      const scaleFactor = 10 ** decimalPlaces;
+      const amountBN = new BN(Math.round(amount * scaleFactor));
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
       );
       const convertedAmountT = isTokenSelling
-        ? amountBN.mul(tokenDecimalsBN).toNumber()
-        : amountBN.mul(new BN(1e9)).toNumber();
+        ? amountBN.mul(tokenDecimalsBN).div(new BN(scaleFactor)).toNumber()
+        : amountBN.mul(new BN(1e9)).div(new BN(scaleFactor)).toNumber();
 
       const decimals = isTokenSelling
         ? new BN(1e9)
@@ -109,7 +114,7 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
 
       const convertedAmount = new BN(swapAmount).div(decimals).toNumber();
@@ -176,7 +181,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -290,7 +295,7 @@ export default function Trade({ token }: { token: IToken }) {
                   ? formatNumber(
                       displayhMinReceivedQuery?.data?.minReceivedRaw,
                       true,
-                      true,
+                      true
                     )
                   : "0"}{" "}
                 {isTokenSelling ? "SOL" : token?.ticker}
