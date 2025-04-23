@@ -140,7 +140,8 @@ if (!CRON_SECRET) {
 }
 
 // Mount this route directly on the main app, outside /api if desired
-app.post("/_internal/trigger-cron", async (c) => {
+app.post("/trigger-cron", async (c) => {
+  console.log("Triggering cron");
   const providedSecret = c.req.header("X-Cron-Secret");
   if (providedSecret !== CRON_SECRET) {
     logger.warn("Unauthorized attempt to trigger cron endpoint.");

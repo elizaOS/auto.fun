@@ -14,7 +14,7 @@ const DEFAULT_PORT = 8787; // default wrangler dev port
 const port = parseInt(process.argv[2]) || DEFAULT_PORT;
 
 // Local worker endpoint
-const ENDPOINT = process.env.CRON_URL || "http://127.0.0.1:8787/_internal/trigger-cron";
+const ENDPOINT = process.env.CRON_URL || "http://127.0.0.1:8787/trigger-cron";
 const CRON_PATTERN = "*/1 * * * *";
 
 console.log("🕒 Cloudflare Cron Single Trigger");
