@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { processTransactionLogs } from "../cron";
-import { createRedisCache } from "../redis";
+import { createRedisCache, getGlobalRedisCache } from "../redis";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
+import { logger } from "../util";
 import { queueJob } from "../workers/processPool";
 
 const router = new Hono<{

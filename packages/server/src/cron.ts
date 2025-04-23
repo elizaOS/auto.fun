@@ -220,7 +220,7 @@ type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
   logs: string[],
   signature: string,
-  wsClient: WebSocketClient,
+  wsClient?: WebSocketClient,
 ): Promise<ProcessResult> {
   if (!wsClient) {
     wsClient = getWebSocketClient();

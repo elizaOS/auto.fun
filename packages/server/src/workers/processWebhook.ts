@@ -49,7 +49,7 @@ process.on("message", async (data: any) => {
 
       if (!token) return;
 
-      const ext = new ExternalToken(tokenMint);
+      const ext = await ExternalToken.create(tokenMint, redisCache);
       await ext.updateLatestSwapData(5);
       const latestCandle = await getLatestCandle(tokenMint, swap, token);
       await ext.updateMarketAndHolders();
