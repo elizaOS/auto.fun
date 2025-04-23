@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "bun dist/index.js",
-    "dev": "bun run src/index.ts",
+    "dev": "PORT=8787 bun run src/index.ts",
     "migrateTokensFromSqlite": "bun run src/migrateTokensFromSqlite.ts",
     "testClaim": "bun run src/testClaim.ts",
     "test": "jest",

@@ -397,4 +397,69 @@ fileRouter.get("/check-generated-images/:mint", async (c) => {
   }
 });
 
+
+// --- Add /upload route (adapted from original index.ts) ---
+// Needs adjustment for Node.js environment (e.g., R2 access)
+// import { uploadToCloudflare } from "./uploader"; // Requires Node.js adaptation
+// import { Buffer } from 'buffer'; // Node.js Buffer
+
+fileRouter.post("/upload", async (c) => {
+  try {
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const body = await c.req.json();
+    if (!body.image) {
+      return c.json({ error: "Image is required" }, 400);
+    }
+
+    const matches = body.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return c.json({ error: "Invalid image format" }, 400);
+    }
+
+    const contentType = matches[1];
+    const imageData = matches[2];
+    const imageBuffer = Buffer.from(imageData, "base64"); // Use Node.js Buffer
+
+    let filename = `image_${Date.now()}`;
+    if (body.metadata?.name) {
+      const sanitizedName = body.metadata.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+      let extension = ".jpg"; // Default
+      if (contentType === "image/png") extension = ".png";
+      else if (contentType === "image/gif") extension = ".gif";
+      else if (contentType === "image/svg+xml") extension = ".svg";
+      else if (contentType === "image/webp") extension = ".webp";
+      filename = `${sanitizedName}${extension}`;
+    }
+
+    // --- Cloudflare R2 Upload Logic Needs Replacement ---
+    // const imageUrl = await uploadToCloudflare(imageBuffer, { contentType, filename });
+    // Replace uploadToCloudflare with a Node.js compatible S3/R2 client like AWS SDK v3
+    // Example placeholder using a dummy function:
+    // const imageUrl = await nodeUploadFunction(imageBuffer, { contentType, filename, /* Add Node S3/R2 config */ });
+    const imageUrl = `https://placeholder.r2.dev/${filename}`; // Replace with actual URL from Node upload
+    logger.log(`(Placeholder) Would upload image: ${filename} (${contentType})`);
+    // --- End R2 Replacement ---
+
+    let metadataUrl = "";
+    if (body.metadata) {
+      const metadataFilename = `${filename.replace(/\.[^.]+$/, "")}_metadata.json`;
+      const metadataBuffer = Buffer.from(JSON.stringify({ ...body.metadata, image: imageUrl }));
+      // --- Metadata Upload Logic Needs Replacement ---
+      // metadataUrl = await nodeUploadFunction(metadataBuffer, { contentType: 'application/json', filename: metadataFilename, /* Add Node S3/R2 config */ });
+      metadataUrl = `https://placeholder.r2.dev/${metadataFilename}`; // Replace
+      logger.log(`(Placeholder) Would upload metadata: ${metadataFilename}`);
+      // --- End Metadata Replacement ---
+    }
+
+    return c.json({ success: true, imageUrl, metadataUrl });
+  } catch (error) {
+    logger.error("Error uploading:", error);
+    return c.json({ error: "Upload failed" }, 500);
+  }
+});
+
 export default fileRouter;

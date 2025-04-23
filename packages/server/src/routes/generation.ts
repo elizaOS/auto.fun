@@ -49,7 +49,7 @@ export const TOKEN_OWNERSHIP = {
 export async function checkRateLimits(
   mint: string,
   type: MediaType,
-  publicKey?: string,
+  publicKey?: string
 ): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   // Special handling for test environments
   if (process.env.NODE_ENV === "test") {
@@ -70,7 +70,7 @@ export async function checkRateLimits(
   const db = getDB();
 
   const cutoffTime = new Date(
-    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS,
+    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS
   );
 
   // Create a timeout for the database query
@@ -78,8 +78,8 @@ export async function checkRateLimits(
   const dbTimeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
       () => reject(new Error("Rate limits check timed out")),
-      dbTimeout,
-    ),
+      dbTimeout
+    )
   );
 
   try {
@@ -91,8 +91,8 @@ export async function checkRateLimits(
         and(
           eq(mediaGenerations.mint, mint),
           eq(mediaGenerations.type, type),
-          gte(mediaGenerations.timestamp, cutoffTime),
-        ),
+          gte(mediaGenerations.timestamp, cutoffTime)
+        )
       );
 
     // Race the query against the timeout
@@ -139,7 +139,7 @@ export async function checkTokenOwnership(
   mint: string,
   publicKey: string,
   mode: "fast" | "pro" = "fast",
-  mediaType: MediaType = MediaType.IMAGE,
+  mediaType: MediaType = MediaType.IMAGE
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Special handling for test environments
@@ -204,19 +204,19 @@ export async function checkTokenOwnership(
           specificHolderData = allHolders.find((h) => h.address === publicKey);
         } else {
           logger.log(
-            `checkTokenOwnership: No holders found in Redis for ${mint}`,
+            `checkTokenOwnership: No holders found in Redis for ${mint}`
           );
         }
       } catch (redisError) {
         logger.error(
           `checkTokenOwnership: Failed to get holders from Redis for ${mint}:`,
-          redisError,
+          redisError
         );
         // Fallback to blockchain check if Redis fails
         return await checkBlockchainTokenBalance(
           mint,
           publicKey,
-          minimumRequired,
+          minimumRequired
         );
       }
       // ---> END CHANGE
@@ -225,12 +225,12 @@ export async function checkTokenOwnership(
       if (!specificHolderData) {
         // User is not a token holder according to cache, check the blockchain directly as fallback
         logger.log(
-          `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`,
+          `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`
         );
         return await checkBlockchainTokenBalance(
           mint,
           publicKey,
-          minimumRequired,
+          minimumRequired
         );
       }
 
@@ -257,7 +257,7 @@ export async function checkTokenOwnership(
       return await checkBlockchainTokenBalance(
         mint,
         publicKey,
-        minimumRequired,
+        minimumRequired
       );
     }
   } catch (error) {
@@ -274,7 +274,7 @@ export async function checkTokenOwnership(
 async function checkBlockchainTokenBalance(
   mint: string,
   publicKey: string,
-  minimumRequired: number,
+  minimumRequired: number
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Connect to Solana
@@ -288,7 +288,7 @@ async function checkBlockchainTokenBalance(
     const response = await connection.getTokenAccountsByOwner(
       userPublicKey,
       { mint: mintPublicKey },
-      { commitment: "confirmed" },
+      { commitment: "confirmed" }
     );
 
     // Calculate total token amount
@@ -297,8 +297,8 @@ async function checkBlockchainTokenBalance(
     // Get token balances from all accounts
     const tokenAccountInfos = await Promise.all(
       response.value.map(({ pubkey }) =>
-        connection.getTokenAccountBalance(pubkey),
-      ),
+        connection.getTokenAccountBalance(pubkey)
+      )
     );
 
     // Sum up all token balances
@@ -322,7 +322,7 @@ async function checkBlockchainTokenBalance(
   } catch (error) {
     // Log the error but don't block operations due to a token check failure
     logger.error(
-      `Error checking blockchain token balance for user ${publicKey}: ${error}`,
+      `Error checking blockchain token balance for user ${publicKey}: ${error}`
     );
 
     // Default to allowing if we can't check the balance
@@ -332,81 +332,80 @@ async function checkBlockchainTokenBalance(
 }
 
 // Helper to generate media using fal.ai or Cloudflare Workers
-export async function generateMedia(
-  data: {
-    prompt: string;
-    type: MediaType;
-    negative_prompt?: string;
-    num_inference_steps?: number;
-    seed?: number;
-    num_frames?: number;
-    fps?: number;
-    motion_bucket_id?: number;
-    duration?: number;
-    duration_seconds?: number;
-    bpm?: number;
-    guidance_scale?: number;
-    width?: number;
-    height?: number;
-    mode?: "fast" | "pro";
-    image_url?: string; // For image-to-video
-    lyrics?: string; // For music generation
-    reference_audio_url?: string;
-    style_prompt?: string;
-    music_duration?: string;
-    cfg_strength?: number;
-    scheduler?: string;
-  },
-) {
+export async function generateMedia(data: {
+  prompt: string;
+  type: MediaType;
+  negative_prompt?: string;
+  num_inference_steps?: number;
+  seed?: number;
+  num_frames?: number;
+  fps?: number;
+  motion_bucket_id?: number;
+  duration?: number;
+  duration_seconds?: number;
+  bpm?: number;
+  guidance_scale?: number;
+  width?: number;
+  height?: number;
+  mode?: "fast" | "pro";
+  image_url?: string; // For image-to-video
+  lyrics?: string; // For music generation
+  reference_audio_url?: string;
+  style_prompt?: string;
+  music_duration?: string;
+  cfg_strength?: number;
+  scheduler?: string;
+}) {
   // Set default timeout - shorter for tests
   const timeout = 300000;
 
   // Initialize fal.ai client
   if (!process.env.FAL_API_KEY) {
-      throw new Error("FAL_API_KEY environment variable not set.");
+    throw new Error("FAL_API_KEY environment variable not set.");
   }
   fal.config({
     credentials: process.env.FAL_API_KEY,
   });
   logger.log("Fal AI client configured.");
 
-
   // Create a timeout promise
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(
       () => reject(new Error(`Media generation timed out after ${timeout}ms`)),
-      timeout,
-    ),
+      timeout
+    )
   );
 
   let generationPromise;
 
   // --- Image Generation (Fast & Pro using Fal) ---
   if (data.type === MediaType.IMAGE) {
-      const isProMode = data.mode === "pro";
-      const model = isProMode ? "fal-ai/flux-pro/v1.1-ultra" : "fal-ai/flux/schnell";
-      const input: any = { prompt: data.prompt };
+    const isProMode = data.mode === "pro";
+    const model = isProMode
+      ? "fal-ai/flux-pro/v1.1-ultra"
+      : "fal-ai/flux/schnell";
+    const input: any = { prompt: data.prompt };
 
-      if (isProMode) {
-          logger.log(`Using Fal AI (${model}) for pro image generation...`);
-          if (data.width) input.width = data.width;
-          if (data.height) input.height = data.height;
-          // Add any other pro-specific params here
-      } else {
-          logger.log(`Using Fal AI (${model}) for fast image generation...`);
-          input.num_inference_steps = 4; // Schnell default/equivalent
-          // Add any other schnell-specific params here
-      }
+    if (isProMode) {
+      logger.log(`Using Fal AI (${model}) for pro image generation...`);
+      if (data.width) input.width = data.width;
+      if (data.height) input.height = data.height;
+      // Add any other pro-specific params here
+    } else {
+      logger.log(`Using Fal AI (${model}) for fast image generation...`);
+      input.num_inference_steps = 4; // Schnell default/equivalent
+      // Add any other schnell-specific params here
+    }
 
-      generationPromise = fal.subscribe(model, {
-          input,
-          logs: true,
-          onQueueUpdate: (update: any) => {
-              if (update.status === "IN_PROGRESS") {
-                  console.log("Image generation progress:", update.logs);
-              }
-          },
-      });
+    generationPromise = fal.subscribe(model, {
+      input,
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log("Image generation progress:", update.logs);
+        }
+      },
+    });
   }
   // --- Video Generation --- (Existing Fal Logic)
   else if (data.type === MediaType.VIDEO && data.image_url) {
@@ -464,36 +463,39 @@ export async function generateMedia(
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
         },
-        data.style_prompt,
+        data.style_prompt
       );
     }
 
     const formattedLyrics = formatLyricsForDiffrhythm(lyricsToUse);
     const input = {
-        lyrics: formattedLyrics,
-        reference_audio_url:
-          data.reference_audio_url ||
-          "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
-        style_prompt: data.style_prompt || "pop",
-        music_duration: data.music_duration || "95s",
-        cfg_strength: data.cfg_strength || 4,
-        scheduler: data.scheduler || "euler",
-        num_inference_steps: data.num_inference_steps || 32,
+      lyrics: formattedLyrics,
+      reference_audio_url:
+        data.reference_audio_url ||
+        "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
+      style_prompt: data.style_prompt || "pop",
+      music_duration: data.music_duration || "95s",
+      cfg_strength: data.cfg_strength || 4,
+      scheduler: data.scheduler || "euler",
+      num_inference_steps: data.num_inference_steps || 32,
     };
     console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
 
     generationPromise = fal.subscribe("fal-ai/diffrhythm", {
-        input,
-        logs: true,
-        onQueueUpdate: (update: any) => {
-          if (update.status === "IN_PROGRESS") {
-            console.log("Music generation progress:", update.logs);
-          }
-        },
+      input,
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log("Music generation progress:", update.logs);
+        }
+      },
     });
 
     // For audio, handle the result specifically to include lyrics
-    const result = await Promise.race([generationPromise, timeoutPromise]) as any;
+    const result = (await Promise.race([
+      generationPromise,
+      timeoutPromise,
+    ])) as any;
     console.log("Audio generation result:", JSON.stringify(result, null, 2));
 
     const audioUrl = result.data?.audio?.url;
@@ -509,15 +511,15 @@ export async function generateMedia(
         },
       },
     };
-
   } else {
-     // Should not happen given the logic, but good practice
-    throw new Error(`Unsupported media type or configuration: ${data.type}, mode: ${data.mode}`);
+    // Should not happen given the logic, but good practice
+    throw new Error(
+      `Unsupported media type or configuration: ${data.type}, mode: ${data.mode}`
+    );
   }
 
   // If generationPromise was set (for Image/Video cases), await and return
   return await Promise.race([generationPromise, timeoutPromise]);
-
 }
 
 // Create a Hono app for media generation routes
@@ -600,7 +602,7 @@ app.post("/:mint/generate", async (c) => {
         error:
           "Generation request timed out. Please try again with a simpler prompt.",
       },
-      504,
+      504
     );
   }, endpointTimeout);
 
@@ -640,10 +642,7 @@ app.post("/:mint/generate", async (c) => {
     // Create a database timeout
     const dbTimeout = 5000; // 5 seconds
     const dbTimeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Database query timed out")),
-        dbTimeout,
-      ),
+      setTimeout(() => reject(new Error("Database query timed out")), dbTimeout)
     );
 
     // Check if the token exists in the database
@@ -684,7 +683,7 @@ app.post("/:mint/generate", async (c) => {
           mint,
           user.publicKey,
           mode,
-          validatedData.type,
+          validatedData.type
         );
 
         if (!ownershipCheck.allowed) {
@@ -712,7 +711,7 @@ app.post("/:mint/generate", async (c) => {
               type: "OWNERSHIP_REQUIREMENT",
               minimumRequired,
             },
-            403,
+            403
           );
         }
       }
@@ -731,7 +730,7 @@ app.post("/:mint/generate", async (c) => {
               type: "OWNERSHIP_REQUIREMENT",
               minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
             },
-            403,
+            403
           );
         }
         // Otherwise it's a standard rate limit error
@@ -740,10 +739,11 @@ app.post("/:mint/generate", async (c) => {
             error: "Rate limit exceeded. Please try again later.",
             limit: RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY,
             cooldown: RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
-            message: `You can generate up to ${RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
-              } ${validatedData.type}s per day`,
+            message: `You can generate up to ${
+              RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
+            } ${validatedData.type}s per day`,
           },
-          429,
+          429
         );
       }
     } catch (error) {
@@ -809,12 +809,12 @@ app.post("/:mint/generate", async (c) => {
     // Return the media URL and remaining generation count
     clearTimeoutSafe(endpointTimeoutId);
     return c.json({
-        success: true,
-        mediaUrl,
-        remainingGenerations: rateLimit.remaining - 1,
-        resetTime: new Date(
-            Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
-        ).toISOString(),
+      success: true,
+      mediaUrl,
+      remainingGenerations: rateLimit.remaining - 1,
+      resetTime: new Date(
+        Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS
+      ).toISOString(),
     });
   } catch (error) {
     clearTimeoutSafe(endpointTimeoutId);
@@ -826,7 +826,7 @@ app.post("/:mint/generate", async (c) => {
 
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -865,12 +865,12 @@ app.get("/:mint/history", async (c) => {
     if (!token || token.length === 0) {
       return c.json(
         { error: "Not authorized to view generation history for this token" },
-        403,
+        403
       );
     }
 
     const cutoffTime = new Date(
-      Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+      Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
     );
 
     // Build query conditions
@@ -907,18 +907,18 @@ app.get("/:mint/history", async (c) => {
       remaining: type
         ? RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - counts[type]
         : {
-          [MediaType.IMAGE]:
-            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
-            counts[MediaType.IMAGE],
-          [MediaType.VIDEO]:
-            RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
-            counts[MediaType.VIDEO],
-          [MediaType.AUDIO]:
-            RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
-            counts[MediaType.AUDIO],
-      },
+            [MediaType.IMAGE]:
+              RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
+              counts[MediaType.IMAGE],
+            [MediaType.VIDEO]:
+              RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
+              counts[MediaType.VIDEO],
+            [MediaType.AUDIO]:
+              RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
+              counts[MediaType.AUDIO],
+          },
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+        Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
       ).toISOString(),
     });
   } catch (error) {
@@ -930,7 +930,7 @@ app.get("/:mint/history", async (c) => {
 
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -950,7 +950,7 @@ app.post("/generate-metadata", async (c) => {
           details:
             error instanceof Error ? error.message : "Unknown parsing error",
         },
-        400,
+        400
       );
     }
 
@@ -983,7 +983,7 @@ app.post("/generate-metadata", async (c) => {
               code: e.code,
             })),
           },
-          400,
+          400
         );
       }
       throw error;
@@ -992,42 +992,48 @@ app.post("/generate-metadata", async (c) => {
     // Custom max retries for endpoint
     const MAX_RETRIES = 10;
     logger.log(
-      `Generating token metadata with up to ${MAX_RETRIES} retries...`,
+      `Generating token metadata with up to ${MAX_RETRIES} retries...`
     );
 
     // Function to generate metadata with the specified prompt data
-    async function generatePromptMetadata(maxRetries = MAX_RETRIES) { // Add env parameter
+    async function generatePromptMetadata(maxRetries = MAX_RETRIES) {
+      // Add env parameter
       let retryCount = 0;
 
       if (!process.env.FAL_API_KEY) {
-        throw new Error("FAL_API_KEY environment variable not set for metadata generation.");
+        throw new Error(
+          "FAL_API_KEY environment variable not set for metadata generation."
+        );
       }
       fal.config({ credentials: process.env.FAL_API_KEY });
 
       while (retryCount < maxRetries) {
         try {
           logger.log(
-            `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+            `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`
           );
 
           const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
           const falInput = {
-              model: "meta-llama/llama-4-scout",
-              // Combine messages into prompt/system_prompt for fal
-              system_prompt: systemPromptContent,
-              prompt: "Generate the token metadata based on the system prompt.", // Or adjust if createTokenPrompt provides the main prompt
-              // Temperature is not directly supported in fal.subscribe input for all models? Check fal docs.
-              // Assuming the model's default or configured temperature is used.
+            model: "gemini-2.0-flash-001",
+            // Combine messages into prompt/system_prompt for fal
+            system_prompt: systemPromptContent,
+            prompt: "Generate the token metadata based on the system prompt.", // Or adjust if createTokenPrompt provides the main prompt
+            // Temperature is not directly supported in fal.subscribe input for all models? Check fal docs.
+            // Assuming the model's default or configured temperature is used.
           };
 
           logger.log("Fal AI Input:", JSON.stringify(falInput));
 
           // Use fal.subscribe
-          const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
-              input: falInput,
-              logs: true, // Optional: for debugging
+          const response: any = await fal.subscribe("fal-ai/any-llm", {
+            input: {
+              prompt: falInput.prompt,
+              system_prompt: falInput.system_prompt, // Add system_prompt here
+              model: "google/gemini-flash-1.5",
+            },
+            logs: true, // Optional: for debugging
           });
-
 
           // Parse the JSON response with robust error handling
           let metadata: Record<string, string>;
@@ -1036,18 +1042,24 @@ app.post("/generate-metadata", async (c) => {
           const rawOutput = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
           logger.log(
             `[Endpoint - Attempt ${retryCount + 1}] Raw Fal AI output:`,
-            typeof rawOutput === 'string' ? rawOutput.substring(0, 100) + "..." : JSON.stringify(rawOutput),
+            typeof rawOutput === "string"
+              ? rawOutput.substring(0, 100) + "..."
+              : JSON.stringify(rawOutput)
           );
+
+          console.log("rawOutput is", rawOutput);
 
           // First try to extract JSON using regex - find content between the first { and last }
           const jsonRegex = /{[\s\S]*}/;
           // Ensure rawOutput is a string before matching
-          const jsonString = typeof rawOutput === 'string' ? rawOutput.match(jsonRegex)?.[0] : null;
-
+          const jsonString =
+            typeof rawOutput === "string"
+              ? rawOutput.match(jsonRegex)?.[0]
+              : null;
 
           if (!jsonString) {
             logger.warn(
-              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in Fal AI response, retrying...`,
+              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in Fal AI response, retrying...`
             );
             retryCount++;
             continue;
@@ -1055,7 +1067,7 @@ app.post("/generate-metadata", async (c) => {
 
           logger.log(
             `[Endpoint - Attempt ${retryCount + 1}] Extracted JSON string:`,
-            jsonString.substring(0, 100) + "...",
+            jsonString.substring(0, 100) + "..."
           );
 
           try {
@@ -1065,21 +1077,15 @@ app.post("/generate-metadata", async (c) => {
             // If the first extraction fails, try a more aggressive approach
             // Look for individual fields and construct a JSON object
             logger.log(
-              `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+              `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`
             );
 
             // Field extraction might be less reliable with complex LLM output
             // Consider refining the prompt to *only* output JSON
             const nameMatch = jsonString.match(/"name"\s*:\s*"([^"]+)"/);
-            const symbolMatch = jsonString.match(
-              /"symbol"\s*:\s*"([^"]+)"/,
-            );
-            const descMatch = jsonString.match(
-              /"description"\s*:\s*"([^"]+)"/,
-            );
-            const promptMatch = jsonString.match(
-              /"prompt"\s*:\s*"([^"]+)"/,
-            );
+            const symbolMatch = jsonString.match(/"symbol"\s*:\s*"([^"]+)"/);
+            const descMatch = jsonString.match(/"description"\s*:\s*"([^"]+)"/);
+            const promptMatch = jsonString.match(/"prompt"\s*:\s*"([^"]+)"/);
 
             if (nameMatch && symbolMatch && descMatch && promptMatch) {
               metadata = {
@@ -1089,11 +1095,11 @@ app.post("/generate-metadata", async (c) => {
                 prompt: promptMatch[1],
               };
               logger.log(
-                `[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+                `[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`
               );
             } else {
               logger.warn(
-                `[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+                `[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`
               );
               retryCount++;
               continue;
@@ -1108,7 +1114,7 @@ app.post("/generate-metadata", async (c) => {
             !metadata.prompt
           ) {
             logger.warn(
-              `[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+              `[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`
             );
             retryCount++;
             continue;
@@ -1118,13 +1124,13 @@ app.post("/generate-metadata", async (c) => {
           metadata.symbol = metadata.symbol.toUpperCase();
 
           logger.log(
-            `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+            `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`
           );
           return metadata;
         } catch (error) {
           logger.error(
             `[Endpoint - Attempt ${retryCount + 1}] Error during metadata generation:`,
-            error,
+            error
           );
           retryCount++;
 
@@ -1137,7 +1143,7 @@ app.post("/generate-metadata", async (c) => {
 
       // All retries failed
       logger.error(
-        `Failed to generate metadata after ${maxRetries} attempts in endpoint`,
+        `Failed to generate metadata after ${maxRetries} attempts in endpoint`
       );
       return null;
     }
@@ -1147,10 +1153,13 @@ app.post("/generate-metadata", async (c) => {
 
     if (!metadata) {
       // All retries failed - provide fallback in development or return error
-      if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+      if (
+        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "test"
+      ) {
         const randomNum = Math.floor(Math.random() * 1000);
         logger.log(
-          "Using fallback metadata in development/test environment after all retries failed",
+          "Using fallback metadata in development/test environment after all retries failed"
         );
         return c.json({
           success: true,
@@ -1171,7 +1180,7 @@ app.post("/generate-metadata", async (c) => {
           error:
             "Failed to generate valid token metadata after maximum retries",
         },
-        500,
+        500
       );
     }
 
@@ -1184,7 +1193,7 @@ app.post("/generate-metadata", async (c) => {
     console.error("Error in metadata endpoint:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1223,13 +1232,13 @@ app.post("/generate", async (c) => {
               code: e.code,
             })),
           },
-          400,
+          400
         );
       }
       throw error;
     }
 
-    const result = await generateMedia(validatedData) as any;
+    const result = (await generateMedia(validatedData)) as any;
 
     console.log("result is", result);
 
@@ -1263,7 +1272,7 @@ app.post("/generate", async (c) => {
           success: false,
           error: `Failed to generate ${validatedData.type}. Please try again.`,
         },
-        500,
+        500
       );
     }
 
@@ -1282,7 +1291,7 @@ app.post("/generate", async (c) => {
             ? error.message
             : "Unknown error generating media",
       },
-      500,
+      500
     );
   }
 });
@@ -1294,7 +1303,7 @@ export async function generateImage(
   mint: string,
   prompt: string,
   negativePrompt?: string,
-  creator?: string,
+  creator?: string
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test image
@@ -1352,7 +1361,7 @@ export async function generateVideo(
   mint: string,
   prompt: string,
   negativePrompt?: string,
-  creator?: string,
+  creator?: string
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test video
@@ -1417,7 +1426,7 @@ export async function generateVideo(
 export async function getDailyGenerationCount(
   db: any,
   mint: string,
-  creator: string,
+  creator: string
 ): Promise<number> {
   try {
     // In test mode, return a low count
@@ -1430,7 +1439,7 @@ export async function getDailyGenerationCount(
     const today = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate(),
+      now.getDate()
     ).toISOString();
 
     // Find the last generation for this creator and token
@@ -1489,7 +1498,7 @@ async function generateTokenOnDemand(): Promise<{
     }
 
     logger.log(
-      `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`,
+      `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`
     );
 
     // Step 2: Generate Image URL with Retry Logic
@@ -1500,40 +1509,47 @@ async function generateTokenOnDemand(): Promise<{
     while (imageAttempt < maxImageRetries && !finalImageUrl) {
       imageAttempt++;
       logger.log(
-        `Generating image URL for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`,
+        `Generating image URL for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`
       );
       try {
         // Generate image using generateMedia (now uses Fal)
-        const imageResult = await generateMedia({
+        const imageResult = (await generateMedia({
           prompt: metadata.prompt,
           type: MediaType.IMAGE,
-          mode: 'fast' // Explicitly request fast mode
-        }) as any;
+          mode: "fast", // Explicitly request fast mode
+        })) as any;
 
         // Extract the URL (expecting direct URL from Fal)
-        const sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
+        const sourceImageUrl =
+          imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
 
-        if (!sourceImageUrl || !sourceImageUrl.startsWith('http')) {
-            logger.error("Fal image generation result:", JSON.stringify(imageResult));
-            throw new Error("Image generation did not return a valid HTTP(S) URL.");
+        if (!sourceImageUrl || !sourceImageUrl.startsWith("http")) {
+          logger.error(
+            "Fal image generation result:",
+            JSON.stringify(imageResult)
+          );
+          throw new Error(
+            "Image generation did not return a valid HTTP(S) URL."
+          );
         }
 
         logger.log(
-            `[Attempt ${imageAttempt}] Received direct URL from Fal: ${sourceImageUrl}`,
+          `[Attempt ${imageAttempt}] Received direct URL from Fal: ${sourceImageUrl}`
         );
         finalImageUrl = sourceImageUrl;
-
       } catch (error) {
         logger.error(
           `[Attempt ${imageAttempt}] Error during image URL generation:`, // Corrected log message
-          error,
+          error
         );
         if (imageAttempt >= maxImageRetries) {
           logger.error(
-            "Max image URL generation retries reached. Failing token generation.",
+            "Max image URL generation retries reached. Failing token generation."
           );
         } else {
-          await new Promise((resolve) => setTimeout(resolve, 500 * imageAttempt));
+          await new Promise((resolve) =>
+            setTimeout(resolve, 500 * imageAttempt)
+          );
         }
       }
     } // End while loop
@@ -1589,7 +1605,7 @@ async function generateTokenOnDemand(): Promise<{
           },
         ]);
         logger.log(
-          `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
+          `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`
         );
       } catch (err) {
         logger.error("Error saving on-demand token to database:", err);
@@ -1631,7 +1647,7 @@ app.get("/pre-generated-token", async (c) => {
 
     if (!randomToken || randomToken.length === 0) {
       logger.log(
-        "No pre-generated tokens available. Generating one on demand...",
+        "No pre-generated tokens available. Generating one on demand..."
       );
 
       // Generate a token on the fly
@@ -1657,7 +1673,7 @@ app.get("/pre-generated-token", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
@@ -1687,8 +1703,8 @@ app.post("/mark-token-used", async (c) => {
         .where(
           or(
             name ? eq(preGeneratedTokens.name, name) : undefined,
-            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined,
-          ),
+            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined
+          )
         );
     }
 
@@ -1702,40 +1718,46 @@ app.post("/mark-token-used", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
 
 // Function to generate metadata using Fal with retry
-async function generateMetadata(maxRetries = 10) { // Add env parameter
+async function generateMetadata(maxRetries = 10) {
+  // Add env parameter
   let retryCount = 0;
 
   if (!process.env.FAL_API_KEY) {
-    throw new Error("FAL_API_KEY environment variable not set for metadata generation.");
+    throw new Error(
+      "FAL_API_KEY environment variable not set for metadata generation."
+    );
   }
   fal.config({ credentials: process.env.FAL_API_KEY });
 
   while (retryCount < maxRetries) {
     try {
       logger.log(
-        `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+        `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`
       );
 
       const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
       const falInput = {
-          model: "meta-llama/llama-4-scout",
-          system_prompt: systemPromptContent,
-          prompt: "Generate the token metadata based on the system prompt.",
-          // Temperature adjustment might need different handling with Fal
+        model: "gemini-2.0-flash-001",
+        system_prompt: systemPromptContent,
+        prompt: "Generate the token metadata based on the system prompt.",
+        // Temperature adjustment might need different handling with Fal
       };
 
       // Use fal.subscribe
-      const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
-          input: falInput,
-          logs: true,
+      const response: any = await fal.subscribe("fal-ai/any-llm", {
+        input: {
+          prompt: falInput.prompt,
+          system_prompt: falInput.system_prompt,
+          model: "google/gemini-flash-1.5",
+        },
+        logs: true, // Optional: for debugging
       });
-
 
       // Parse the JSON response with robust error handling
       let metadata: Record<string, string>;
@@ -1744,17 +1766,19 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
       const rawOutput = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
       logger.log(
         `[Attempt ${retryCount + 1}] Raw Fal AI response:`,
-        typeof rawOutput === 'string' ? rawOutput.substring(0, 100) + "..." : JSON.stringify(rawOutput),
+        typeof rawOutput === "string"
+          ? rawOutput.substring(0, 100) + "..."
+          : JSON.stringify(rawOutput)
       );
 
       // First try to extract JSON using regex - find content between the first { and last }
       const jsonRegex = /{[\s\S]*}/;
-       const jsonString = typeof rawOutput === 'string' ? rawOutput.match(jsonRegex)?.[0] : null;
-
+      const jsonString =
+        typeof rawOutput === "string" ? rawOutput.match(jsonRegex)?.[0] : null;
 
       if (!jsonString) {
         logger.warn(
-          `[Attempt ${retryCount + 1}] Could not find JSON object in Fal AI response, retrying...`,
+          `[Attempt ${retryCount + 1}] Could not find JSON object in Fal AI response, retrying...`
         );
         retryCount++;
         continue;
@@ -1762,7 +1786,7 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
 
       logger.log(
         `[Attempt ${retryCount + 1}] Extracted JSON string:`,
-        jsonString.substring(0, 100) + "...",
+        jsonString.substring(0, 100) + "..."
       );
 
       try {
@@ -1772,15 +1796,13 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
         // If the first extraction fails, try a more aggressive approach
         // Look for individual fields and construct a JSON object
         logger.log(
-          `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+          `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`
         );
 
         // Field extraction might be less reliable with complex LLM output
         const nameMatch = jsonString.match(/"name"\s*:\s*"([^"]+)"/);
         const symbolMatch = jsonString.match(/"symbol"\s*:\s*"([^"]+)"/);
-        const descMatch = jsonString.match(
-          /"description"\s*:\s*"([^"]+)"/,
-        );
+        const descMatch = jsonString.match(/"description"\s*:\s*"([^"]+)"/);
         const promptMatch = jsonString.match(/"prompt"\s*:\s*"([^"]+)"/);
 
         if (nameMatch && symbolMatch && descMatch && promptMatch) {
@@ -1791,11 +1813,11 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
             prompt: promptMatch[1],
           };
           logger.log(
-            `[Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+            `[Attempt ${retryCount + 1}] Successfully extracted fields from response`
           );
         } else {
           logger.warn(
-            `[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+            `[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`
           );
           retryCount++;
           continue;
@@ -1810,7 +1832,7 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
         !metadata.prompt
       ) {
         logger.warn(
-          `[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+          `[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`
         );
         retryCount++;
         continue;
@@ -1820,13 +1842,13 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
       metadata.symbol = metadata.symbol.toUpperCase();
 
       logger.log(
-        `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+        `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`
       );
       return metadata;
     } catch (error) {
       logger.error(
         `[Attempt ${retryCount + 1}] Error during metadata generation:`,
-        error,
+        error
       );
       retryCount++;
 
@@ -1842,10 +1864,13 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
 
   // In development, provide a detailed fallback
   // Using process.env here as env might not be available in fallback scenario? Revisit if needed.
-  if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.NODE_ENV === "test"
+  ) {
     const randomNum = Math.floor(Math.random() * 1000);
     logger.log(
-      "Using fallback metadata in development/test environment after all retries failed",
+      "Using fallback metadata in development/test environment after all retries failed"
     );
     return {
       name: `FallbackToken${randomNum}`,
@@ -1861,7 +1886,8 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
 }
 
 // Function to generate new pre-generated tokens
-export async function generatePreGeneratedTokens() { // Removed env parameter
+export async function generatePreGeneratedTokens() {
+  // Removed env parameter
   let metadata: Record<string, string> | null = null;
   try {
     // ----- Step 1: Generate Metadata (using Fal) -----
@@ -1870,7 +1896,9 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
     let metadataRetryCount = 0;
 
     if (!process.env.FAL_API_KEY) {
-      logger.error("[PreGen Metadata] FAL_API_KEY is not configured. Skipping token generation.");
+      logger.error(
+        "[PreGen Metadata] FAL_API_KEY is not configured. Skipping token generation."
+      );
       return;
     }
     fal.config({ credentials: process.env.FAL_API_KEY });
@@ -1878,39 +1906,47 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
     while (metadataRetryCount < MAX_METADATA_RETRIES) {
       try {
         logger.log(
-          `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`,
+          `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`
         );
 
         const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
         const falInput = {
-            model: "meta-llama/llama-4-scout",
-            system_prompt: systemPromptContent,
-            prompt: "Generate token metadata (name, symbol, description, prompt) based on the system prompt. Output ONLY the JSON object.",
-            // Temperature adjustment might need different handling with Fal
+          model: "gemini-2.0-flash-001",
+          system_prompt: systemPromptContent,
+          prompt:
+            "Generate token metadata (name, symbol, description, prompt) based on the system prompt. Output ONLY the JSON object.",
+          // Temperature adjustment might need different handling with Fal
         };
 
         // Use fal.subscribe
-        const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
-            input: falInput,
-            logs: true, // Optional for debugging
+        const response: any = await fal.subscribe("fal-ai/any-llm", {
+          input: {
+            prompt: falInput.prompt,
+            system_prompt: falInput.system_prompt,
+            model: "google/gemini-flash-1.5",
+          },
+          logs: true, // Optional: for debugging
         });
-
 
         let parsedMetadata: Record<string, string> | null = null;
         const rawOutput = response?.data?.output || response?.output || "";
         const jsonRegex = /{.*}/s; // Use /s flag to match across lines
         // Ensure rawOutput is string before match
-        const jsonString = typeof rawOutput === 'string' ? rawOutput.match(jsonRegex)?.[0] : null;
-
+        const jsonString =
+          typeof rawOutput === "string"
+            ? rawOutput.match(jsonRegex)?.[0]
+            : null;
 
         if (jsonString) {
           try {
             parsedMetadata = JSON.parse(jsonString);
-            logger.log(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Parsed JSON successfully.`);
+            logger.log(
+              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Parsed JSON successfully.`
+            );
           } catch (parseError) {
             logger.warn(
-              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Raw output: ${rawOutput.substring(0,100)}...`,
-              parseError,
+              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Raw output: ${rawOutput.substring(0, 100)}...`,
+              parseError
             );
             // Fallback field extraction (less reliable)
             const nameMatch = rawOutput.match(/"name"\s*:\s*"([^"]+)"/);
@@ -1918,15 +1954,24 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
             const descMatch = rawOutput.match(/"description"\s*:\s*"([^"]+)"/);
             const promptMatch = rawOutput.match(/"prompt"\s*:\s*"([^"]+)"/);
             if (nameMatch && symbolMatch && descMatch && promptMatch) {
-              parsedMetadata = { name: nameMatch[1], symbol: symbolMatch[1], description: descMatch[1], prompt: promptMatch[1] };
-              logger.log(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`);
+              parsedMetadata = {
+                name: nameMatch[1],
+                symbol: symbolMatch[1],
+                description: descMatch[1],
+                prompt: promptMatch[1],
+              };
+              logger.log(
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`
+              );
             } else {
-              logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields from raw output.`);
+              logger.warn(
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields from raw output.`
+              );
             }
           }
         } else {
           logger.warn(
-            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in Fal AI response. Raw output: ${rawOutput.substring(0,100)}...`,
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in Fal AI response. Raw output: ${rawOutput.substring(0, 100)}...`
           );
         }
 
@@ -1941,19 +1986,19 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
           parsedMetadata.symbol = parsedMetadata.symbol.toUpperCase();
           metadata = parsedMetadata; // Assign successfully parsed and validated metadata
           logger.log(
-            `[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`,
+            `[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`
           );
           break; // Exit retry loop
         } else {
           logger.warn(
-            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`,
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`
           );
           metadataRetryCount++;
         }
       } catch (error) {
         logger.error(
           `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during Fal generation:`,
-          error,
+          error
         );
         metadataRetryCount++;
         if (metadataRetryCount < MAX_METADATA_RETRIES) {
@@ -1964,11 +2009,14 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
 
     if (!metadata) {
       logger.error(
-        "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.",
+        "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token."
       );
       // Use fallback in development/test
       // Using process.env here as env might not be available in fallback scenario? Revisit if needed.
-      if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+      if (
+        process.env.NODE_ENV === "development" ||
+        process.env.NODE_ENV === "test"
+      ) {
         const randomNum = Math.floor(Math.random() * 1000);
         logger.log("[PreGen Metadata] Using fallback metadata.");
         metadata = {
@@ -1987,31 +2035,36 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
     let finalImageUrl: string = "";
     try {
       logger.log(
-        `[PreGen Image] Generating image URL for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
+        `[PreGen Image] Generating image URL for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`
       );
-      const imageResult = await generateMedia({
+      const imageResult = (await generateMedia({
         prompt: metadata.prompt,
         type: MediaType.IMAGE,
-        mode: 'fast' // Explicitly request fast mode
-      }) as any;
+        mode: "fast", // Explicitly request fast mode
+      })) as any;
 
       // Extract the URL (expecting direct URL from Fal)
-      const sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
+      const sourceImageUrl =
+        imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
 
-      if (!sourceImageUrl || !sourceImageUrl.startsWith('http')) {
-        logger.error("Fal image generation result:", JSON.stringify(imageResult));
-        throw new Error("generateMedia did not return a valid image HTTP(S) URL.");
+      if (!sourceImageUrl || !sourceImageUrl.startsWith("http")) {
+        logger.error(
+          "Fal image generation result:",
+          JSON.stringify(imageResult)
+        );
+        throw new Error(
+          "generateMedia did not return a valid image HTTP(S) URL."
+        );
       }
 
       finalImageUrl = sourceImageUrl;
       logger.log(
-        `[PreGen Image] Successfully generated image URL for ${metadata.name}: ${finalImageUrl}`,
+        `[PreGen Image] Successfully generated image URL for ${metadata.name}: ${finalImageUrl}`
       );
-
     } catch (imageError) {
       logger.error(
         `[PreGen Image] Error generating image URL for ${metadata.name}:`,
-        imageError,
+        imageError
       );
       return; // Stop if image generation fails
     }
@@ -2048,7 +2101,7 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
     const tokenName = metadata?.name || "unknown_token_error";
     logger.error(
       `[PreGen Process] Unexpected error during generation for ${tokenName}:`,
-      error,
+      error
     );
   }
 }
@@ -2056,7 +2109,7 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   // Add env parameter
-  threshold: number = 3,
+  threshold: number = 3
 ): Promise<void> {
   if (!threshold) {
     threshold = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"); // Use env variable
@@ -2081,7 +2134,7 @@ export async function checkAndReplenishTokens(
       if (count < threshold) {
         const tokensToGenerate = threshold - count;
         logger.log(
-          `Generating ${tokensToGenerate} new pre-generated tokens...`,
+          `Generating ${tokensToGenerate} new pre-generated tokens...`
         );
         await generatePreGeneratedTokens(); // Pass env
         retries++;
@@ -2153,14 +2206,17 @@ app.post("/enhance-and-generate", async (c) => {
 
     if (!existingToken || existingToken.length === 0) {
       // For development, allow generation even if token doesn't exist in DB
-      if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
+      if (
+        process.env.NODE_ENV !== "development" &&
+        process.env.NODE_ENV !== "test"
+      ) {
         return c.json(
           {
             success: false,
             error:
               "Token not found. Please provide a valid token mint address.",
           },
-          404,
+          404
         );
       }
       console.log("Token not found in DB, but proceeding in development mode");
@@ -2170,7 +2226,7 @@ app.post("/enhance-and-generate", async (c) => {
     const rateLimit = await checkRateLimits(
       tokenMint,
       mediaType,
-      user.publicKey,
+      user.publicKey
     );
 
     if (!rateLimit.allowed) {
@@ -2187,7 +2243,7 @@ app.post("/enhance-and-generate", async (c) => {
             type: "OWNERSHIP_REQUIREMENT",
             minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
           },
-          403,
+          403
         );
       }
       // Otherwise it's a standard rate limit error
@@ -2197,11 +2253,12 @@ app.post("/enhance-and-generate", async (c) => {
           error: "Rate limit exceeded. Please try again later.",
           limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
           cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
-          message: `You can generate up to ${RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
-            } ${mediaType}s per day.`,
+          message: `You can generate up to ${
+            RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
+          } ${mediaType}s per day.`,
           remaining: rateLimit.remaining,
         },
-        429,
+        429
       );
     }
 
@@ -2210,7 +2267,7 @@ app.post("/enhance-and-generate", async (c) => {
       tokenMint,
       user.publicKey,
       mode,
-      mediaType,
+      mediaType
     );
 
     if (!ownershipCheck.allowed) {
@@ -2235,7 +2292,7 @@ app.post("/enhance-and-generate", async (c) => {
           type: "OWNERSHIP_REQUIREMENT",
           minimumRequired,
         },
-        403,
+        403
       );
     }
 
@@ -2245,7 +2302,7 @@ app.post("/enhance-and-generate", async (c) => {
     const enhancedPrompt = await generateEnhancedPrompt(
       userPrompt,
       tokenMetadata,
-      mediaType,
+      mediaType
     );
 
     if (!enhancedPrompt) {
@@ -2254,7 +2311,7 @@ app.post("/enhance-and-generate", async (c) => {
           success: false,
           error: "Failed to enhance the prompt. Please try again.",
         },
-        500,
+        500
       );
     }
 
@@ -2279,11 +2336,11 @@ app.post("/enhance-and-generate", async (c) => {
       generationParams.lyrics = lyrics;
     }
 
-    const result = await generateMedia(generationParams) as any;
+    const result = (await generateMedia(generationParams)) as any;
 
     console.log(
       "Media generation result:",
-      JSON.stringify(result).substring(0, 200) + "...",
+      JSON.stringify(result).substring(0, 200) + "..."
     );
 
     // Validate response
@@ -2342,7 +2399,7 @@ app.post("/enhance-and-generate", async (c) => {
           success: false,
           error: `Failed to generate ${mediaType}. Please try again.`,
         },
-        500,
+        500
       );
     }
 
@@ -2386,7 +2443,7 @@ app.post("/enhance-and-generate", async (c) => {
       generationId,
       remainingGenerations: rateLimit.remaining - 1,
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
+        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS
       ).toISOString(),
     };
 
@@ -2414,7 +2471,7 @@ app.post("/enhance-and-generate", async (c) => {
             ? error.message
             : "Unknown error generating media",
       },
-      500,
+      500
     );
   }
 });
@@ -2428,11 +2485,13 @@ async function generateEnhancedPrompt(
     description?: string;
     prompt?: string;
   },
-  mediaType: MediaType = MediaType.IMAGE,
+  mediaType: MediaType = MediaType.IMAGE
 ): Promise<string> {
   try {
-     if (!process.env.FAL_API_KEY) {
-      throw new Error("FAL_API_KEY environment variable not set for prompt enhancement.");
+    if (!process.env.FAL_API_KEY) {
+      throw new Error(
+        "FAL_API_KEY environment variable not set for prompt enhancement."
+      );
     }
     fal.config({ credentials: process.env.FAL_API_KEY });
 
@@ -2447,29 +2506,31 @@ async function generateEnhancedPrompt(
       systemPromptContent +=
         "\nAdditionally, focus on acoustic elements, mood, and atmosphere suitable for audio content. Enhance the user prompt based on this.";
     } else {
-        systemPromptContent += "\nEnhance the user prompt for image generation based on the token context provided.";
+      systemPromptContent +=
+        "\nEnhance the user prompt for image generation based on the token context provided.";
     }
-
 
     // Use Fal AI to enhance the prompt
     const falInput = {
-        model: "meta-llama/llama-4-scout",
-        system_prompt: systemPromptContent,
-        prompt: `User prompt to enhance: "${userPrompt}". Output ONLY the enhanced prompt text.`,
-        // Temperature adjustment might need different handling with Fal
+      model: "gemini-2.0-flash-001",
+      system_prompt: systemPromptContent,
+      prompt: `User prompt to enhance: "${userPrompt}". Output ONLY the enhanced prompt text.`,
+      // Temperature adjustment might need different handling with Fal
     };
 
-    const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
-        input: falInput,
-        logs: true,
+    const response: any = await fal.subscribe("fal-ai/any-llm", {
+      input: {
+        prompt: falInput.prompt,
+        system_prompt: falInput.system_prompt,
+        model: "google/gemini-flash-1.5",
+      },
+      logs: true, // Optional: for debugging
     });
-
 
     // Extract just the prompt text from the response
     let enhancedPrompt = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
     // Clean up potential extraneous text if the model didn't follow instructions perfectly
-    enhancedPrompt = enhancedPrompt.trim().replace(/^"|"$/g, ''); // Remove surrounding quotes
-
+    enhancedPrompt = enhancedPrompt.trim().replace(/^"|"$/g, ""); // Remove surrounding quotes
 
     // If the prompt is too long, truncate it to 500 characters
     if (enhancedPrompt.length > 500) {
@@ -2478,11 +2539,12 @@ async function generateEnhancedPrompt(
 
     // Basic validation if enhancement failed
     if (!enhancedPrompt || enhancedPrompt.length < 10) {
-        logger.warn("Fal AI prompt enhancement resulted in a short/empty prompt, falling back.");
-        // Fallback logic
-        return `${tokenMetadata.name} (${tokenMetadata.symbol}): ${userPrompt}`;
+      logger.warn(
+        "Fal AI prompt enhancement resulted in a short/empty prompt, falling back."
+      );
+      // Fallback logic
+      return `${tokenMetadata.name} (${tokenMetadata.symbol}): ${userPrompt}`;
     }
-
 
     return enhancedPrompt;
   } catch (error) {
@@ -2496,7 +2558,7 @@ async function generateEnhancedPrompt(
 // Function to generate additional images for a token
 export async function generateAdditionalTokenImages(
   tokenMint: string,
-  description: string,
+  description: string
 ): Promise<void> {
   try {
     logger.log(`Generating additional images for token ${tokenMint}`);
@@ -2506,17 +2568,17 @@ export async function generateAdditionalTokenImages(
       generateEnhancedPrompt(
         description,
         { name: "", symbol: "", description },
-        MediaType.IMAGE,
+        MediaType.IMAGE
       ),
       generateEnhancedPrompt(
         description,
         { name: "", symbol: "", description },
-        MediaType.IMAGE,
+        MediaType.IMAGE
       ),
       generateEnhancedPrompt(
         description,
         { name: "", symbol: "", description },
-        MediaType.IMAGE,
+        MediaType.IMAGE
       ),
     ]);
 
@@ -2525,7 +2587,7 @@ export async function generateAdditionalTokenImages(
       enhancedPrompts.map(async (prompt, index) => {
         if (!prompt) {
           logger.error(
-            `Failed to generate enhanced prompt ${index + 1} for token ${tokenMint}`,
+            `Failed to generate enhanced prompt ${index + 1} for token ${tokenMint}`
           );
           return;
         }
@@ -2533,10 +2595,10 @@ export async function generateAdditionalTokenImages(
         try {
           // Generate the image
           // Pass env to generateMedia call
-          const imageResult = await generateMedia({
+          const imageResult = (await generateMedia({
             prompt,
             type: MediaType.IMAGE,
-          }) as any;
+          })) as any;
 
           if (!imageResult?.data?.images?.[0]?.url) {
             throw new Error("No image URL in generation result");
@@ -2550,22 +2612,22 @@ export async function generateAdditionalTokenImages(
           // Upload to R2 with predictable path
           await uploadGeneratedImage(imageBuffer, tokenMint, index + 1);
           logger.log(
-            `Successfully generated and uploaded image ${index + 1} for token ${tokenMint}`,
+            `Successfully generated and uploaded image ${index + 1} for token ${tokenMint}`
           );
         } catch (error) {
           logger.error(
             `Error generating/uploading image ${index + 1} for token ${tokenMint}:`,
-            error,
+            error
           );
         }
-      }),
+      })
     );
 
     logger.log(`Completed generating additional images for token ${tokenMint}`);
   } catch (error) {
     logger.error(
       `Error in generateAdditionalTokenImages for ${tokenMint}:`,
-      error,
+      error
     );
   }
 }
@@ -2627,11 +2689,13 @@ async function generateLyrics(
     symbol: string;
     description?: string;
   },
-  stylePrompt?: string,
+  stylePrompt?: string
 ): Promise<string> {
   try {
-     if (!process.env.FAL_API_KEY) {
-      throw new Error("FAL_API_KEY environment variable not set for lyrics generation.");
+    if (!process.env.FAL_API_KEY) {
+      throw new Error(
+        "FAL_API_KEY environment variable not set for lyrics generation."
+      );
     }
     fal.config({ credentials: process.env.FAL_API_KEY });
 
@@ -2657,17 +2721,20 @@ async function generateLyrics(
     [00:12.50] Third line of chorus`;
 
     const falInput = {
-        model: "meta-llama/llama-4-scout",
-        system_prompt: systemPrompt,
-        prompt: "Generate the lyrics based on the system prompt instructions.",
-        // Temperature adjustment might need different handling with Fal
+      model: "gemini-2.0-flash-001",
+      system_prompt: systemPrompt,
+      prompt: "Generate the lyrics based on the system prompt instructions.",
+      // Temperature adjustment might need different handling with Fal
     };
 
-    const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
-        input: falInput,
-        logs: true,
+    const response: any = await fal.subscribe("fal-ai/any-llm", {
+      input: {
+        prompt: falInput.prompt,
+        system_prompt: falInput.system_prompt,
+        model: "google/gemini-flash-1.5",
+      },
+      logs: true, // Optional: for debugging
     });
-
 
     // Ensure the lyrics have proper formatting
     let lyrics = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
@@ -2675,11 +2742,13 @@ async function generateLyrics(
 
     // Basic validation
     if (!lyrics || !lyrics.includes("[") || lyrics.length < 20) {
-        logger.error("Failed to generate valid lyrics structure from Fal AI. Response:", lyrics);
-        // Provide a fallback structure
-        return `[verse]\n[00:00.00] Song about ${tokenMetadata.name}\n[00:03.00] Symbol ${tokenMetadata.symbol}\n[chorus]\n[00:06.00] Based on: ${tokenMetadata.description?.substring(0, 50)}...\n[00:09.00] Fal AI generation failed.`;
+      logger.error(
+        "Failed to generate valid lyrics structure from Fal AI. Response:",
+        lyrics
+      );
+      // Provide a fallback structure
+      return `[verse]\n[00:00.00] Song about ${tokenMetadata.name}\n[00:03.00] Symbol ${tokenMetadata.symbol}\n[chorus]\n[00:06.00] Based on: ${tokenMetadata.description?.substring(0, 50)}...\n[00:09.00] Fal AI generation failed.`;
     }
-
 
     // Add section markers if they're missing (might be less necessary if prompt works well)
     if (!lyrics.includes("[verse]")) {
@@ -2687,26 +2756,34 @@ async function generateLyrics(
     }
     if (!lyrics.includes("[chorus]")) {
       // Find the first timestamp after [verse] lines and insert [chorus] before it
-       const lines = lyrics.split('\n');
-       let verseEnded = false;
-       let chorusInserted = false;
-       for(let i=0; i<lines.length; i++) {
-           if(lines[i].includes('[verse]')) verseEnded = true;
-           if(verseEnded && lines[i].match(/\[\d{2}:\d{2}\.\d{2}\]/) && !lines[i-1]?.includes('[verse]')) {
-               lines.splice(i, 0, '[chorus]');
-               chorusInserted = true;
-               break;
-           }
-       }
-       if (!chorusInserted) lyrics = lyrics + '\n[chorus]\n[00:15.00] Default chorus line.'; // Add fallback chorus if needed
-       else lyrics = lines.join('\n');
+      const lines = lyrics.split("\n");
+      let verseEnded = false;
+      let chorusInserted = false;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes("[verse]")) verseEnded = true;
+        if (
+          verseEnded &&
+          lines[i].match(/\[\d{2}:\d{2}\.\d{2}\]/) &&
+          !lines[i - 1]?.includes("[verse]")
+        ) {
+          lines.splice(i, 0, "[chorus]");
+          chorusInserted = true;
+          break;
+        }
+      }
+      if (!chorusInserted)
+        lyrics = lyrics + "\n[chorus]\n[00:15.00] Default chorus line."; // Add fallback chorus if needed
+      else lyrics = lines.join("\n");
     }
 
     // Add timestamps if they're missing (less likely if prompt works)
     const lines = lyrics.split("\n");
     let currentTime = 0;
     const formattedLines = lines.map((line: string) => {
-      if (line.trim() === '' || (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/))) {
+      if (
+        line.trim() === "" ||
+        (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/))
+      ) {
         return line; // Keep section markers or empty lines as is
       }
       if (!line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
@@ -2717,14 +2794,14 @@ async function generateLyrics(
         currentTime += 2.5; // Add 2.5 seconds between lines
         return `${timestamp} ${line.trim()}`;
       } else {
-          // Extract time if present to keep track for subsequent lines
-          const timeMatch = line.match(/\[(\d{2}):(\d{2})\.(\d{2})\]/);
-          if(timeMatch) {
-              const minutes = parseInt(timeMatch[1], 10);
-              const seconds = parseInt(timeMatch[2], 10);
-              const ms = parseInt(timeMatch[3], 10);
-              currentTime = minutes * 60 + seconds + ms / 100 + 2.5; // Update current time based on last timestamp + delta
-          }
+        // Extract time if present to keep track for subsequent lines
+        const timeMatch = line.match(/\[(\d{2}):(\d{2})\.(\d{2})\]/);
+        if (timeMatch) {
+          const minutes = parseInt(timeMatch[1], 10);
+          const seconds = parseInt(timeMatch[2], 10);
+          const ms = parseInt(timeMatch[3], 10);
+          currentTime = minutes * 60 + seconds + ms / 100 + 2.5; // Update current time based on last timestamp + delta
+        }
       }
       return line;
     });

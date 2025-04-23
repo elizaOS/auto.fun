@@ -31,6 +31,8 @@ import { webSocketManager } from "./websocket-manager";
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
 import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
+import { uploadToCloudflare } from "./uploader"; // Import the uploader function
+import { Buffer } from "node:buffer"; // Ensure Buffer is available for base64 decoding
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
@@ -118,132 +120,6 @@ api.route("/", webhookRouter);
 api.route("/", migrationRouter);
 api.route("/admin", adminRouter); // Note: Ensure admin/owner routes have appropriate checks
 api.route("/owner", ownerRouter);
-
-// --- Add /claim-fees route from app.ts ---
-// Assuming claimFees function is available and adapted for Hono context if needed
-// import { claimFees } from './claimFees'; // Make sure this import exists and works
-
-// api.post("/claim-fees", async (c) => {
-//   try {
-//     // Auth check - verifyAuth middleware should handle this
-//     const user = c.get("user");
-//     if (!user) {
-//       // This check might be redundant if verifyAuth enforces authentication
-//       // Depending on verifyAuth's behavior, you might adjust this
-//       return c.json({ error: "Unauthorized" }, 401);
-//     }
-
-//     // Get body - Hono uses c.req.json()
-//     const body = await c.req.json();
-//     const { tokenMint, userAddress, nftMint, poolId } = body;
-
-//     if (!tokenMint || !userAddress || !nftMint || !poolId) {
-//       return c.json(
-//         { error: "Missing required fields: tokenMint, userAddress, nftMint, poolId" },
-//         400,
-//       );
-//     }
-
-//     // Optional: Validate userAddress matches authenticated user if necessary
-//     // if (user.publicKey !== userAddress) {
-//     //   return c.json({ error: "User address mismatch" }, 403);
-//     // }
-
-//     const claimer = new PublicKey(userAddress);
-
-//     // Call the claimFees function (ensure it's imported and adapted)
-//     // const txSignature = await claimFees(
-//     //   new PublicKey(nftMint),
-//     //   new PublicKey(poolId),
-//     //   connection, // Pass the shared Solana connection
-//     //   claimer,
-//     // );
-
-//     // Placeholder response until claimFees is integrated
-//     const txSignature = "placeholder_tx_signature_for_claim_fees";
-//     logger.info(`Claim fees would be triggered for ${tokenMint}`);
-
-//     if (txSignature) {
-//       // Handle success, maybe log or notify
-//       logger.info(`Claim fees triggered for ${tokenMint}, Tx: ${txSignature}`);
-//       // TODO: Notify user if necessary
-//     }
-
-//     return c.json({ status: "Claim fees triggered", tokenMint, txSignature }); // Return signature
-//   } catch (err: any) {
-//     logger.error("Error in /claim-fees:", err);
-//     // Provide a more generic error message to the client for security
-//     return c.json({ error: "Failed to trigger claim fees" }, 500);
-//   }
-// });
-
-// --- Add /upload route (adapted from original index.ts) ---
-// Needs adjustment for Node.js environment (e.g., R2 access)
-// import { uploadToCloudflare } from "./uploader"; // Requires Node.js adaptation
-// import { Buffer } from 'buffer'; // Node.js Buffer
-
-// api.post("/upload", async (c) => {
-//   try {
-//     const user = c.get("user");
-//     if (!user) {
-//       return c.json({ error: "Authentication required" }, 401);
-//     }
-
-//     const body = await c.req.json();
-//     if (!body.image) {
-//       return c.json({ error: "Image is required" }, 400);
-//     }
-
-//     const matches = body.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-//     if (!matches || matches.length !== 3) {
-//       return c.json({ error: "Invalid image format" }, 400);
-//     }
-
-//     const contentType = matches[1];
-//     const imageData = matches[2];
-//     const imageBuffer = Buffer.from(imageData, "base64"); // Use Node.js Buffer
-
-//     let filename = `image_${Date.now()}`;
-//     if (body.metadata?.name) {
-//       const sanitizedName = body.metadata.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
-//       let extension = ".jpg"; // Default
-//       if (contentType === "image/png") extension = ".png";
-//       else if (contentType === "image/gif") extension = ".gif";
-//       else if (contentType === "image/svg+xml") extension = ".svg";
-//       else if (contentType === "image/webp") extension = ".webp";
-//       filename = `${sanitizedName}${extension}`;
-//     }
-
-//     // --- Cloudflare R2 Upload Logic Needs Replacement ---
-//     // const imageUrl = await uploadToCloudflare(imageBuffer, { contentType, filename });
-//     // Replace uploadToCloudflare with a Node.js compatible S3/R2 client like AWS SDK v3
-//     // Example placeholder using a dummy function:
-//     // const imageUrl = await nodeUploadFunction(imageBuffer, { contentType, filename, /* Add Node S3/R2 config */ });
-//     const imageUrl = `https://placeholder.r2.dev/${filename}`; // Replace with actual URL from Node upload
-//     logger.log(`(Placeholder) Would upload image: ${filename} (${contentType})`);
-//     // --- End R2 Replacement ---
-
-//     let metadataUrl = "";
-//     if (body.metadata) {
-//       const metadataFilename = `${filename.replace(/\.[^.]+$/, "")}_metadata.json`;
-//       const metadataBuffer = Buffer.from(JSON.stringify({ ...body.metadata, image: imageUrl }));
-//       // --- Metadata Upload Logic Needs Replacement ---
-//       // metadataUrl = await nodeUploadFunction(metadataBuffer, { contentType: 'application/json', filename: metadataFilename, /* Add Node S3/R2 config */ });
-//       metadataUrl = `https://placeholder.r2.dev/${metadataFilename}`; // Replace
-//       logger.log(`(Placeholder) Would upload metadata: ${metadataFilename}`);
-//       // --- End Metadata Replacement ---
-//     }
-
-//     return c.json({ success: true, imageUrl, metadataUrl });
-//   } catch (error) {
-//     logger.error("Error uploading:", error);
-//     return c.json({ error: "Upload failed" }, 500);
-//   }
-// });
-
-// --- Add /sol-price route (adapted from original index.ts) ---
-// Needs adjustment for Node.js caching if getSOLPrice used CF Cache API
-// import { getSOLPrice } from "./mcap"; // Ensure adapted for Node.js
 
 api.get("/sol-price", async (c) => {
   try {
