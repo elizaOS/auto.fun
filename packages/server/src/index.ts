@@ -1,13 +1,13 @@
-import { Connection, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
+dotenv.config();
+
+console.log("*** process.env", process.env)
+
+import { Connection } from "@solana/web3.js";
 import { Context, Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
 import { cors } from "hono/cors";
 import type { WSContext } from "hono/ws"; // Import WSContext type for handlers
-import { startLogSubscription } from "./subscription/subscription";
-
-// Load environment variables from .env file at the root
-dotenv.config();
 
 import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";
@@ -30,12 +30,10 @@ import { logger } from "./util";
 // import { claimFees } from "./claimFees";
 import { webSocketManager } from "./websocket-manager";
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
+import { fork } from "node:child_process";
+import path from "node:path";
 import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
-import { uploadToCloudflare } from "./uploader"; // Import the uploader function
-import { Buffer } from "node:buffer"; // Ensure Buffer is available for base64 decoding
-import path from "node:path";
-import { fork } from "node:child_process";
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
