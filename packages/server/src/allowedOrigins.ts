@@ -2,7 +2,7 @@
 import dotenv from "dotenv";
 
 // Load environment variables from .env file
-dotenv.config({ path: "../../.env" });
+dotenv.config();
 
 console.log("ALLOWED_ORIGINS", process.env.ALLOWED_ORIGINS);
 
@@ -11,5 +11,7 @@ console.log("ALLOWED_ORIGINS", process.env.ALLOWED_ORIGINS);
 const envAllowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : null;
+
+console.log("envAllowedOrigins", envAllowedOrigins);
 
 export const allowedOrigins = envAllowedOrigins || ["http://localhost:3000"];

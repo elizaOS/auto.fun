@@ -7,7 +7,7 @@ import type { WSContext } from "hono/ws"; // Import WSContext type for handlers
 import { startLogSubscription } from "./subscription/subscription";
 
 // Load environment variables from .env file at the root
-dotenv.config({ path: "../../.env" });
+dotenv.config();
 
 import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";

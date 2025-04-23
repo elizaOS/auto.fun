@@ -8,7 +8,7 @@
   ],
   "packageManager": "bun@1.2.4",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "cp .env packages/server/.env && turbo run dev",
     "build": "turbo run build",
     "build:client": "bun install && turbo run build --filter=@autodotfun/client",
     "start": "turbo run dev",
