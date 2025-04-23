@@ -30,7 +30,15 @@ Press the fun button.
    bun run build
    ```
 
-4. **Start Development Server**
+4. **Run Database Migrations**
+
+   Apply database migrations to set up your database schema:
+
+   ```sh
+   bun run migrate
+   ```
+
+5. **Start Development Server**
 
    Start the development server with:
 
@@ -38,7 +46,7 @@ Press the fun button.
    bun run dev
    ```
 
-5. **Configure webhooks for chain events**
+6. **Configure webhooks for chain events**
 
    By default, we will mock the webhook events using a web socket server in mock-helius-webhook.js. If you want to test with real webhooks in dev, modify the dev script in package.json
    to call the setup-webhook.js rather than mock-helius-webhook.js. Then:
