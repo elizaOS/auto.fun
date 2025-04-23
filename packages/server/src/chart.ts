@@ -35,8 +35,7 @@ interface ChartResponse {
 }
 
 // For devnet testing - placeholder token address for locked tokens since there are none in devnet
-export const DEV_TEST_TOKEN_ADDRESS =
-  "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+const DEV_TEST_TOKEN_ADDRESS = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
 
 interface PriceFeedInfo {
   price: number;
@@ -56,7 +55,7 @@ type CandlePrice = {
 export async function getLatestCandle(
   tokenMint: string,
   swap: any,
-  tokenInfo?: any,
+  tokenInfo?: any
 ) {
   // Get a time range that covers just this swap
   const swapTime = new Date(swap.timestamp).getTime() / 1000;
@@ -84,7 +83,7 @@ export async function getLatestCandle(
         candleStart + candlePeriod,
         "1", // 1 minute candles
         undefined,
-        undefined,
+        undefined
       );
 
       if (candles.length > 0) {
@@ -101,7 +100,7 @@ export async function getLatestCandle(
     candleStart * 1000, // start (ms)
     (candleStart + candlePeriod) * 1000, // end (ms)
     1, // 1 min range
-    tokenMint,
+    tokenMint
   );
 
   return latestCandle && latestCandle.length > 0 ? latestCandle[0] : null; // Return the single candle
@@ -111,7 +110,7 @@ export async function fetchPriceChartData(
   start: number,
   end: number,
   range: number,
-  tokenMint: string,
+  tokenMint: string
 ) {
   const db = getDB();
   const [tokenInfo] = await db
@@ -134,12 +133,12 @@ export async function fetchPriceChartData(
       const swapStrings = await redisCache.lrange(listKey, 0, -1); // Fetch all swaps
       swapRecordsRaw = swapStrings.map((s) => JSON.parse(s));
       logger.log(
-        `Chart: Retrieved ${swapRecordsRaw.length} raw swaps from Redis list ${listKey}`,
+        `Chart: Retrieved ${swapRecordsRaw.length} raw swaps from Redis list ${listKey}`
       );
     } catch (redisError) {
       logger.error(
         `Chart: Failed to read swaps from Redis list swapsList:${tokenMint}:`,
-        redisError,
+        redisError
       );
       return []; // Return empty if cache fails
     }
@@ -159,7 +158,7 @@ export async function fetchPriceChartData(
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
-        }) => swap.price != null && swap.timestamp != null,
+        }) => swap.price != null && swap.timestamp != null
       ) // Filter out swaps with null price or timestamp
       .map(
         (swap: {
@@ -177,7 +176,7 @@ export async function fetchPriceChartData(
             swap.direction === 0
               ? (swap.amountIn || 0) / 1e9 // Convert from lamports to SOL
               : (swap.amountOut || 0) / 1e9,
-        }),
+        })
       );
 
     if (!priceFeeds.length) return [];
@@ -220,7 +219,7 @@ export async function fetchPriceChartData(
         Math.floor(end / 1000),
         resolution,
         undefined,
-        undefined,
+        undefined
       );
 
       // For 120 minute resolution, we need to combine 2 x 60m candles
@@ -269,7 +268,7 @@ export async function fetchPriceChartData(
           tokenAddress,
           Math.floor(start / 1000),
           Math.floor(end / 1000),
-          1399811149,
+          1399811149
         );
 
         // Convert to price feed format - ensure timestamps are never null
@@ -293,7 +292,7 @@ export async function fetchPriceChartData(
   }
 }
 
-export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
+const getCandleData = (priceFeeds: PriceFeedInfo[], range: number) => {
   const priceHistory = priceFeeds
     .map((feed) => ({
       price: feed.price,
@@ -345,7 +344,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
     let en = priceHistory[pIndex].price;
     let vol = 0;
     const prevIndex = pIndex;
-    for (; pIndex < priceHistory.length;) {
+    for (; pIndex < priceHistory.length; ) {
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;
@@ -384,7 +383,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
   }
 
   return cdFeeds;
-}
+};
 
 /**
  * Fetch price chart data for locked tokens using Codex API
@@ -399,7 +398,7 @@ export async function fetchLockedTokenChartData(
   token: string,
   start: number,
   end: number,
-  range: number,
+  range: number
 ): Promise<any[]> {
   try {
     // Construct Codex API URL for the token chart data
@@ -410,7 +409,7 @@ export async function fetchLockedTokenChartData(
 
     if (!response.ok) {
       throw new Error(
-        `Codex API error: ${response.status} ${response.statusText}`,
+        `Codex API error: ${response.status} ${response.statusText}`
       );
     }
 
@@ -427,7 +426,7 @@ export async function fetchLockedTokenChartData(
     const pairs = data.pairs.sort(
       (a, b) =>
         parseFloat(b.liquidity?.usd || "0") -
-        parseFloat(a.liquidity?.usd || "0"),
+        parseFloat(a.liquidity?.usd || "0")
     );
 
     const mainPair = pairs[0];
@@ -443,7 +442,7 @@ export async function fetchLockedTokenChartData(
 
     if (!chartResponse.ok) {
       throw new Error(
-        `Chart API error: ${chartResponse.status} ${chartResponse.statusText}`,
+        `Chart API error: ${chartResponse.status} ${chartResponse.statusText}`
       );
     }
 
@@ -505,7 +504,7 @@ interface Candle {
  */
 export function groupCandlesByRange(
   candles: Candle[],
-  rangeMinutes: number,
+  rangeMinutes: number
 ): Candle[] {
   if (candles.length === 0) return [];
 
@@ -531,7 +530,7 @@ export function groupCandlesByRange(
       // Process current group and start a new one
       if (currentGroup.length > 0) {
         groupedCandles.push(
-          createCandleFromGroup(currentGroup, currentRangeStart),
+          createCandleFromGroup(currentGroup, currentRangeStart)
         );
       }
 
