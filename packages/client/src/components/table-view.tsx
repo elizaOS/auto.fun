@@ -120,7 +120,7 @@ export function TableView({
           return (
             <TableRow
               key={token.mint}
-              className="cursor-pointer"
+              className="cursor-pointer p-4"
               onClick={() => navigate(`/token/${token.mint}`)}
             >
               <TableCell>
@@ -140,11 +140,11 @@ export function TableView({
                     />
                   </div>
                   <div className="flex flex-col gap-1 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0">
-                        {token.name}
+                    <div className="flex flex-col md:flex-row min-w-0 items-start">
+                      <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi truncate min-w-0">
+                        {window.innerWidth <= 768 ? token.name.slice(0, 15) + (token.name.length > 15 ? '...' : '') : token.name}
                       </div>
-                      <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
+                      <div className="text-autofun-text-secondary md:ml-2 text-base font-normal font-dm-mono uppercase truncate min-w-0">
                         ${token.ticker}
                       </div>
                       <Verified isVerified={token?.verified ? true : false} />

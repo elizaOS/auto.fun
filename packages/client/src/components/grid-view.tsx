@@ -7,7 +7,7 @@ import TokenStatus from "./token-status";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
       {data.map((token: IToken, _: number) => {
         return (
           <Link
@@ -31,18 +31,19 @@ export default function GridView({ data }: { data: IToken[] }) {
                 </div>
               </div>
               <div className="flex flex-col w-full min-w-0 z-10">
-                <div className="absolute flex flex-col bottom-0 right-0 p-2 px-3 items-end min-w-0">
-                  <div className="text-autofun-text-primary text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-                    Vol {abbreviateNumber(token.volume24h)}
-                  </div>
+                <div className="absolute flex flex-col top-0 right-0 p-2 px-3 items-end min-w-0">
                   <div className="text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
                     MC {abbreviateNumber(token.marketCapUSD)}
                   </div>
+                  <div className="text-autofun-text-primary text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                    Vol {abbreviateNumber(token.volume24h)}
+                  </div>
                 </div>
               </div>
-              <div className="absolute top-0 right-0 p-2 px-3 text-autofun-text-primary text-xs font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+              <div className="absolute bottom-0 right-0 p-2 px-3 text-autofun-text-primary text-xs font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
                 {fromNow(token.createdAt, true)}
               </div>
+              
               <div className="w-full h-full aspect-square relative">
                 <div className="absolute top-0 rotate-180 size-full bg-[linear-gradient(to_bottom,rgba(0,0,0,0.8)_0%,transparent_20%,transparent_80%,rgba(0,0,0,0.5)_100%)] z-1" />
                 <SkeletonImage
