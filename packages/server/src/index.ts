@@ -23,7 +23,6 @@ import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
 import tokenRouter from "./routes/token";
 import webhookRouter from "./routes/webhooks";
-// import { uploadToCloudflare } from "./uploader";
 import { logger } from "./util";
 // import { claimFees } from "./claimFees";
 import { webSocketManager } from "./websocket-manager";
