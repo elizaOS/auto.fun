@@ -17,44 +17,7 @@ process.on("message", async (data: any) => {
       const tokenMint = token0IsSol ? swap.token1Address : swap.token0Address;
       const isBuy = swap.eventDisplayType === "Buy";
 
-      let amountIn: number;
-      let amountOut: number;
-      let price: number;
 
-      if (token0IsSol) {
-         if (isBuy) {
-            amountIn = Number(swap.data.amount0) * LAMPORTS_PER_SOL;
-            amountOut = Number(swap.data.amount1) * 1e6;
-            price = amountIn / LAMPORTS_PER_SOL / (amountOut / 1e6);
-         } else {
-            amountIn = Number(swap.data.amount1) * 1e6;
-            amountOut = Number(swap.data.amount0) * LAMPORTS_PER_SOL;
-            price = amountOut / LAMPORTS_PER_SOL / (amountIn / 1e6);
-         }
-      } else {
-         if (isBuy) {
-            amountIn = Number(swap.data.amount1) * LAMPORTS_PER_SOL;
-            amountOut = Number(swap.data.amount0) * 1e6;
-            price = amountIn / LAMPORTS_PER_SOL / (amountOut / 1e6);
-         } else {
-            amountIn = Number(swap.data.amount0) * 1e6;
-            amountOut = Number(swap.data.amount1) * LAMPORTS_PER_SOL;
-            price = amountOut / LAMPORTS_PER_SOL / (amountIn / 1e6);
-         }
-      }
-
-      const swapRecord = {
-         id: crypto.randomUUID(),
-         tokenMint,
-         user: swap.maker,
-         type: isBuy ? "buy" : "sell",
-         direction: isBuy ? 0 : 1,
-         amountIn,
-         amountOut,
-         price,
-         txId: swap.transactionHash,
-         timestamp: new Date(swap.timestamp * 1000),
-      };
 
       const redisCache = await getGlobalRedisCache();
       const isReady = await redisCache.isPoolReady();
@@ -64,8 +27,6 @@ process.on("message", async (data: any) => {
          await webSocketManager.initialize(redisCache);
       }
 
-      const listKey = `swapsList:${tokenMint}`;
-      await redisCache.lpushTrim(listKey, JSON.stringify(swapRecord), 1000);
 
       let token = null;
       const cachedToken = await redisCache.get(`codex-webhook:${tokenMint}`);
@@ -94,11 +55,7 @@ process.on("message", async (data: any) => {
       await ext.updateMarketAndHolders();
 
       const wsClient = getWebSocketClient();
-      await wsClient.to(`token-${tokenMint}`).emit("newSwap", {
-         ...swapRecord,
-         mint: tokenMint,
-         timestamp: swapRecord.timestamp.toISOString(),
-      });
+
       await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
 
       process.exit(0);
