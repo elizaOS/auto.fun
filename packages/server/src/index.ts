@@ -229,14 +229,14 @@ app.onError((err, c) => {
   if (!redisCache) throw new Error("Redis Cache Service not found");
 
   // Initialize WebSocketManager with Redis
-  if(!webSocketManager.redisCache) {
+  if (!webSocketManager.redisCache) {
     webSocketManager.initialize(redisCache);
   }
 
-  if(!webSocketManager.redisCache) {
+  if (!webSocketManager.redisCache) {
     throw new Error("WebSocket Manager not initialized");
   }
-  
+
 })().catch((err) => {
   logger.error("Error during initialization:", err);
 
@@ -272,9 +272,22 @@ export default {
   websocket, // Add the websocket handler
 };
 
-try {
-  startLogSubscription(connection, new PublicKey(process.env.PROGRAM_ID!), env);
-} catch (error) {
-  logger.error("Error starting log subscription:", error);
-}
 
+function startLogWorker() {
+
+  const child = fork(path.join(__dirname, "subscription/logWorker"), [], {
+    env: process.env,
+  });
+
+  logger.info("🚀 Started log subscription worker with PID", child.pid);
+
+  child.on("exit", (code) => {
+    logger.error(`❌ Log subscription worker exited with code ${code}. Restarting...`);
+    setTimeout(startLogWorker, 1000); // Restart after 1s
+  });
+
+  child.on("error", (err) => {
+    logger.error("❌ Error in log subscription worker:", err);
+  });
+}
+startLogWorker();

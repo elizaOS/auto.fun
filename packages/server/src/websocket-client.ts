@@ -4,6 +4,7 @@
 // import { Env } from "./env"; // Env might not be needed if not used for configuration
 import { webSocketManager } from './websocket-manager'; // Import the manager instance
 import { logger } from "./util";
+import { getGlobalRedisCache } from './redis';
 
 export class WebSocketClient {
   // No longer needs Durable Object reference
@@ -16,46 +17,17 @@ export class WebSocketClient {
 
   // Send a message to a specific room (token or global)
   async emit(room: string, event: string, data: any): Promise<void> {
-    try {
-      const formattedRoom =
-        room === "global"
-          ? "global"
-          : room.startsWith("token-")
-            ? room
-            : `token-${room}`;
-
-      // Directly call the manager's broadcast method
-      webSocketManager.broadcastToRoom(formattedRoom, event, data);
-      // No need to handle chunking here, ws library handles message sizes
-
-    } catch (error) {
-      logger.error(`Failed to emit to room ${room}:`, error);
-      // Re-throw or handle as appropriate for the caller
-      throw error;
-    }
+    const redis = await getGlobalRedisCache();
+    const formattedRoom = room === "global" ? "global" : room.startsWith("token-") ? room : `token-${room}`;
+    const message = JSON.stringify({ room: formattedRoom, event, data });
+    await redis.publish("ws:broadcast", message);
   }
 
   // Send a message to a specific client by ID
-  async emitToClient(
-    clientId: string,
-    event: string,
-    data: any,
-  ): Promise<boolean> { // Return boolean indicating success
-    try {
-       // Directly call the manager's send method
-      const success = webSocketManager.sendToClient(clientId, event, data);
-      if (!success) {
-          // Log or handle the failure case if needed
-          logger.warn(`EmitToClient failed for client ${clientId} (likely disconnected)`);
-      }
-      return success;
-
-    } catch (error) {
-      logger.error(`Failed to emit to client ${clientId}:`, error);
-      // Re-throw or handle as appropriate for the caller
-      // Consider returning false on error
-      return false;
-    }
+  async emitToClient(clientId: string, event: string, data: any): Promise<void> {
+    const redis = await getGlobalRedisCache();
+    const message = JSON.stringify({ clientId, event, data });
+    await redis.publish("ws:direct", message);
   }
 
   // Helper that returns an object with direct emit method for chaining
