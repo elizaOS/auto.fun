@@ -58,7 +58,7 @@ const unparsedEnv = {
     : import.meta.env.VITE_PROGRAM_ID ||
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   appEnv: process.env.NODE_ENV,
-  r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL,
+  s3PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL || import.meta.env.VITE_S3_PUBLIC_URL,
 } as const;
 
 const envSchema = z.object({
@@ -73,7 +73,7 @@ const envSchema = z.object({
   programId: z.string().min(1),
   feeVault: z.string().min(1),
   appEnv: z.enum(["development", "production"]),
-  r2PublicUrl: z.string().min(1),
+  s3PublicUrl: z.string().min(1),
 });
 
 const parsedEnv = envSchema.parse(unparsedEnv);

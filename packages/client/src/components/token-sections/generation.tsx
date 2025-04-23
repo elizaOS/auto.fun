@@ -181,7 +181,7 @@ export default function CommunityTab() {
               } else {
                 // Otherwise, use the R2 public URL
                 imageUrls.push(
-                  `${env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
+                  `${env.s3PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
                 );
               }
             }
