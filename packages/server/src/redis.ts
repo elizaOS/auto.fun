@@ -39,6 +39,17 @@ export function getSharedRedisPool(): RedisPool {
 
 export class RedisCacheService {
   constructor(private redisPool: RedisPool) { }
+  async isPoolReady(): Promise<boolean> {
+    try {
+      return await this.redisPool.useClient(async (client) => {
+        const pong = await client.ping();
+        return pong === "PONG";
+      });
+    } catch (err) {
+      logger.error("Redis pool not ready:", err);
+      return false;
+    }
+  }
 
   getKey(key: string) {
     // Avoid double-prefixing if key already includes network
