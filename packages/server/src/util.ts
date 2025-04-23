@@ -310,8 +310,6 @@ export async function createNewTokenData(
       lastUpdated: new Date(),
     };
 
-    getWebSocketClient().to("global").emit("newToken", { mint: tokenData.mint });
-
     return tokenData;
   } catch (error) {
     logger.error("Error processing new token log:", error);

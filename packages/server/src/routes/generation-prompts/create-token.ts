@@ -1,5 +1,4 @@
-import { Env } from "../../env";
-import { ideas, adjectives, nouns, exampleFormats } from "./constants";
+import { adjectives, exampleFormats, ideas, nouns } from "./constants";
 
 export async function createTokenPrompt(validatedData?: any) {
   // Customize AI prompt based on user input

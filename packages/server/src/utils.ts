@@ -212,7 +212,7 @@ export const fetchMetadataWithBackoff = async (
    }
 };
 
-export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
+export const getRpcUrl = (forceMainnet: boolean = false) => {
    // Extract the base URL and ensure we use the correct API key
    let baseUrl;
 

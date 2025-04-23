@@ -319,21 +319,29 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Wake up the body
       dieBody.wakeUp();
 
-      // Apply random velocity
-      const velocity = new CANNON.Vec3(
-        (Math.random() - 0.5) * 15,
-        -10 - Math.random() * 15,
-        (Math.random() - 0.5) * 15,
+      // Apply random impulse (adjust magnitude as needed)
+      const impulseMagnitude = 150 * dieBody.mass; // Reduced initial impulse magnitude
+      const impulseVector = new CANNON.Vec3(
+        (Math.random() - 0.5) * impulseMagnitude * 0.1, // Less horizontal impulse
+        -impulseMagnitude * 0.1 - Math.random() * impulseMagnitude * 0.1, // Controlled downward impulse
+        (Math.random() - 0.5) * impulseMagnitude * 0.1, // Less horizontal impulse
       );
-      dieBody.velocity.copy(velocity);
+      // Apply impulse at a random offset point to induce tumbling
+      const point = new CANNON.Vec3(
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+      ).scale(0.5); // Apply impulse slightly off-center
+      dieBody.applyImpulse(impulseVector, point);
 
-      // Apply spin
-      const angularVelocity = new CANNON.Vec3(
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20,
+      // Apply random torque (adjust magnitude as needed)
+      const torqueMagnitude = 80 * dieBody.mass; // Reduced initial torque magnitude
+      const torqueVector = new CANNON.Vec3(
+        (Math.random() - 0.5) * torqueMagnitude,
+        (Math.random() - 0.5) * torqueMagnitude,
+        (Math.random() - 0.5) * torqueMagnitude,
       );
-      dieBody.angularVelocity.copy(angularVelocity);
+      dieBody.applyTorque(torqueVector);
     }
   };
 

@@ -15,7 +15,7 @@ export function startLogSubscription(
          async (logs: Logs) => {
             if (logs.err) return logger.warn('⚠️ tx errored', logs.err);
             try {
-               await processTransactionLogs(env, logs.signature, logs.logs);
+               await processTransactionLogs(logs.logs, logs.signature);
             } catch (err) {
                logger.error('❌ onLogs handler error:', err);
             }

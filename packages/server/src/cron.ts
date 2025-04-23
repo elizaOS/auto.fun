@@ -260,7 +260,7 @@ async function handleNewToken(
       .insert(tokens)
       .values([newToken as Token])
       .onConflictDoNothing();
-    await wsClient.emit("global", "newToken", newToken);
+    await wsClient.emit("global", "newToken", sanitizeTokenForWebSocket(newToken));
     await updateHoldersCache(rawTokenAddress);
 
     return { found: true, tokenAddress: rawTokenAddress, event: "newToken" };
