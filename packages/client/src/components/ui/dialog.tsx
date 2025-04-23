@@ -92,7 +92,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={twMerge(
-      "font-satoshi font-medium text-xl leading-7 tracking-[-2%] my-auto text-[#2FD345]",
+      "font-satoshi font-medium text-xl leading-7 tracking-[-2%] my-auto text-[#03FF24]",
       className,
     )}
     {...props}

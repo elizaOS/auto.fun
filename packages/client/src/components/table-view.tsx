@@ -160,7 +160,7 @@ export function TableView({
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="text-left text-[#2FD345]">
+              <TableCell className="text-left text-[#03FF24]">
                 {formatNumber(token.marketCapUSD)}
               </TableCell>
               <TableCell className="text-left">

@@ -108,7 +108,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                     <TableCell
                       className={twMerge([
                         "text-left",
-                        isBuy ? "text-[#2FD345]" : "text-[#EF5350]",
+                        isBuy ? "text-[#03FF24]" : "text-[#EF5350]",
                       ])}
                     >
                       {swap.type}

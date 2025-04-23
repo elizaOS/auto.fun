@@ -52,8 +52,8 @@ export default function SearchBar() {
 
   return (
     <div className="relative min-w-[120px] max-w-full lg:w-[400px] xl:w-[600px]">
-      <div className="flex w-full items-center h-11 px-3 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
-        <Search className="size-6 text-[#8C8C8C] group-hover:text-[#2FD345] shrink-0 mr-2" />
+      <div className="flex w-full items-center h-11 px-3 bg-[#171717] border border-[#262626] hover:border-[#03FF24]/50 focus-within:border-[#03FF24]/50 transition-colors">
+        <Search className="size-6 text-[#8C8C8C] group-hover:text-[#03FF24] shrink-0 mr-2" />
         <input
           type="text"
           value={searchInput}
@@ -124,7 +124,7 @@ const AgentSearchResult = ({
           alt={name}
         />
         <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors flex items-center">
+          <div className="text-white text-[16px] font-medium group-hover:text-[#03FF24] transition-colors flex items-center">
             <span className="truncate">{name}</span>
             <span className="pl-2 text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors flex-shrink-0">
               ${symbol}
@@ -143,7 +143,7 @@ const AgentSearchResult = ({
           <span className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
             MC
           </span>
-          <span className="text-[#2FD345] text-sm font-medium whitespace-nowrap">
+          <span className="text-[#03FF24] text-sm font-medium whitespace-nowrap">
             {abbreviateNumber(marketCap)}
           </span>
         </div>

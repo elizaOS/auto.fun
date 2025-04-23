@@ -15,7 +15,7 @@ const DialogHeader = ({ className, ...props }) => (_jsx("div", { className: twMe
 DialogHeader.displayName = "DialogHeader";
 const DialogFooter = ({ className, ...props }) => (_jsx("div", { className: twMerge("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className), ...props }));
 DialogFooter.displayName = "DialogFooter";
-const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (_jsx(DialogPrimitive.Title, { ref: ref, className: twMerge("font-satoshi font-medium text-xl leading-7 tracking-[-2%] my-auto text-[#2FD345]", className), ...props })));
+const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (_jsx(DialogPrimitive.Title, { ref: ref, className: twMerge("font-satoshi font-medium text-xl leading-7 tracking-[-2%] my-auto text-[#03FF24]", className), ...props })));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (_jsx(DialogPrimitive.Description, { ref: ref, className: twMerge("text-sm text-muted-foreground", className), ...props })));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;

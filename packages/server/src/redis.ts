@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { createPool, Pool } from "generic-pool";
 import IORedis, { Redis } from "ioredis";
 import { logger } from "./util";
-import crypto from "node:crypto"; // Needed for unique lock value
+dotenv.config();
 
 let globalRedisCache: RedisCacheService | null = null;
 
@@ -14,7 +14,6 @@ export function getGlobalRedisCache(): RedisCacheService {
    return globalRedisCache;
 }
 
-dotenv.config();
 
 // Singleton RedisPool instance
 let sharedRedisPool: RedisPool | null = null;

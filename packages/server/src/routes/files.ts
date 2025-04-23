@@ -1,10 +1,7 @@
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Hono } from "hono";
-import { S3Client, GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { logger } from "../util";
 import { Buffer } from 'node:buffer'; // Ensure Buffer is available
-
-// Define the fixed public base URL for constructing links
-const PUBLIC_STORAGE_BASE_URL = "https://621d1008ef1cb024077560dcb94dd126.r2.cloudflarestorage.com/autofun-storage";
+import { logger } from "../util";
 
 // Singleton S3 Client instance
 let s3ClientInstance: S3Client | null = null;
@@ -37,6 +34,44 @@ function getS3Client(): S3Client {
 
     logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
     return s3ClientInstance;
+}
+
+// Helper function to upload to R2
+async function uploadToR2(buffer: Buffer, options: { contentType: string, key: string }): Promise<string> {
+    const s3Client = getS3Client();
+    const bucketName = process.env.S3_BUCKET_NAME;
+    if (!bucketName) {
+        throw new Error("S3_BUCKET_NAME environment variable is not set.");
+    }
+
+    const putCmd = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: options.key,
+        Body: buffer,
+        ContentType: options.contentType,
+        ACL: 'public-read', // Make uploaded files publicly readable
+    });
+
+    try {
+        await s3Client.send(putCmd);
+        logger.log(`Successfully uploaded to R2: ${options.key}`);
+
+        // Construct the public URL (adjust if you have a custom domain)
+        const accountId = process.env.S3_ACCOUNT_ID;
+        // If you have a public bucket URL configured (e.g., via CNAME or R2 Public Bucket setting) use that:
+        // const publicUrl = `https://your-public-bucket-url.com/${options.key}`;
+        // Otherwise, construct the standard R2 URL:
+         const publicUrl = `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${options.key}`;
+
+
+        // Alternatively, return a URL that routes through your API if you want to proxy image/metadata access
+        // Example: return `/api/image/${options.key.split('/').pop()}`; // (Needs adjustment based on key structure)
+        // For now, returning the direct public R2 URL. If the client expects API URLs, adjust this.
+        return publicUrl;
+    } catch (error) {
+        logger.error(`Failed to upload ${options.key} to R2:`, error);
+        throw new Error(`Failed to upload ${options.key}`);
+    }
 }
 
 // Define the router (Env removed from Bindings as we use process.env)
@@ -147,6 +182,14 @@ fileRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "Filename parameter is required" }, 400);
     }
 
+    // Define CORS headers early
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Max-Age": "86400",
+    };
+
     const s3Client = getS3Client();
     const bucketName = process.env.S3_BUCKET_NAME;
     if (!bucketName) {
@@ -166,6 +209,7 @@ fileRouter.get("/image/:filename", async (c) => {
         `[/image/:filename] Detected generation image request: ${imageKey}`,
       );
     } else {
+      // Assume standard token image if not a generation request
       imageKey = `token-images/${filename}`;
     }
 
@@ -204,12 +248,7 @@ fileRouter.get("/image/:filename", async (c) => {
         }
         const dataBuffer = Buffer.from(data);
 
-        const corsHeaders = {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "*",
-          "Access-Control-Max-Age": "86400",
-        };
+        // corsHeaders defined above
 
         logger.log(
           `[/image/:filename] Serving ${filename} with type ${contentType}`,
@@ -244,7 +283,47 @@ fileRouter.get("/image/:filename", async (c) => {
                 );
             }
 
-            return c.json({ error: "Image not found" }, 404);
+            // Attempt fallback to check token-images/ if it was a generation request initially
+             if (generationMatch) {
+                const fallbackKey = `token-images/${filename.replace(/^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\./, '')}`; // Construct fallback filename
+                logger.log(`[/image/:filename] Generation image not found, attempting fallback: ${fallbackKey}`);
+                try {
+                    const fallbackCmd = new GetObjectCommand({ Bucket: bucketName, Key: fallbackKey });
+                    const fallbackResponse = await s3Client.send(fallbackCmd);
+                     logger.log(
+                      `[/image/:filename] Found fallback object in S3: Size=${fallbackResponse.ContentLength}, Type=${fallbackResponse.ContentType}`,
+                    );
+                    const fallbackData = await fallbackResponse.Body?.transformToByteArray();
+                     if (!fallbackData) {
+                         logger.error(`[/image/:filename] Fallback image body stream is empty for ${fallbackKey}`);
+                         return c.json({ error: "Failed to read fallback image content" }, 500);
+                    }
+                    const fallbackDataBuffer = Buffer.from(fallbackData);
+                    const fallbackContentType = fallbackResponse.ContentType || "image/jpeg";
+
+                    return new Response(fallbackDataBuffer, {
+                      headers: {
+                        "Content-Type": fallbackContentType,
+                        "Content-Length": fallbackResponse.ContentLength?.toString() ?? '0',
+                        "Cache-Control": "public, max-age=31536000",
+                        ...corsHeaders, // Defined above
+                      },
+                    });
+
+                } catch (fallbackError: any) {
+                     if (fallbackError.name === 'NoSuchKey') {
+                         logger.warn(`[/image/:filename] Fallback image also not found: ${fallbackKey}`);
+                     } else {
+                         logger.error(`[/image/:filename] Error fetching fallback image ${fallbackKey}:`, fallbackError);
+                     }
+                     // If fallback also fails, return 404
+                     return c.json({ error: "Image not found" }, 404);
+                }
+             } else {
+                 // If it wasn't a generation request and not found, return 404 directly
+                 return c.json({ error: "Image not found" }, 404);
+             }
+
         } else {
             logger.error(`[/image/:filename] Error fetching image ${imageKey} from S3:`, error);
             throw error; // Rethrow unexpected error
@@ -398,68 +477,136 @@ fileRouter.get("/check-generated-images/:mint", async (c) => {
 });
 
 
-// --- Add /upload route (adapted from original index.ts) ---
-// Needs adjustment for Node.js environment (e.g., R2 access)
-// import { uploadToCloudflare } from "./uploader"; // Requires Node.js adaptation
-// import { Buffer } from 'buffer'; // Node.js Buffer
-
+// --- Updated /upload route ---
 fileRouter.post("/upload", async (c) => {
   try {
+    // Basic auth check - assuming 'user' is set by middleware
     const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
-    }
+    // if (!user) { // Uncomment if auth is strictly required
+    //   logger.warn("[/upload] Unauthorized attempt.");
+    //   return c.json({ error: "Authentication required" }, 401);
+    // }
 
     const body = await c.req.json();
     if (!body.image) {
-      return c.json({ error: "Image is required" }, 400);
+      logger.warn("[/upload] Request missing image data.");
+      return c.json({ error: "Image data (base64) is required" }, 400);
+    }
+    if (!body.metadata || !body.metadata.name || !body.metadata.symbol) {
+        logger.warn("[/upload] Request missing required metadata fields (name, symbol).");
+        return c.json({ error: "Metadata (name, symbol) is required" }, 400);
     }
 
-    const matches = body.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+    const matches = body.image.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/); // More specific regex for image content type
     if (!matches || matches.length !== 3) {
+      logger.warn("[/upload] Invalid image data format (expected data:image/...;base64,...).");
       return c.json({ error: "Invalid image format" }, 400);
     }
 
     const contentType = matches[1];
     const imageData = matches[2];
-    const imageBuffer = Buffer.from(imageData, "base64"); // Use Node.js Buffer
+    const imageBuffer = Buffer.from(imageData, "base64");
 
-    let filename = `image_${Date.now()}`;
-    if (body.metadata?.name) {
-      const sanitizedName = body.metadata.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
-      let extension = ".jpg"; // Default
-      if (contentType === "image/png") extension = ".png";
-      else if (contentType === "image/gif") extension = ".gif";
-      else if (contentType === "image/svg+xml") extension = ".svg";
-      else if (contentType === "image/webp") extension = ".webp";
-      filename = `${sanitizedName}${extension}`;
-    }
+    // Generate filename (e.g., using symbol and timestamp for uniqueness)
+    const sanitizedSymbol = body.metadata.symbol.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    let extension = ".jpg"; // Default
+    if (contentType === "image/png") extension = ".png";
+    else if (contentType === "image/gif") extension = ".gif";
+    else if (contentType === "image/svg+xml") extension = ".svg";
+    else if (contentType === "image/webp") extension = ".webp";
+    // Consider using a unique ID instead of timestamp if high concurrency is expected
+    const imageFilename = `${sanitizedSymbol}_${Date.now()}${extension}`;
+    const imageKey = `token-images/${imageFilename}`;
 
-    // --- Cloudflare R2 Upload Logic Needs Replacement ---
-    // const imageUrl = await uploadToCloudflare(imageBuffer, { contentType, filename });
-    // Replace uploadToCloudflare with a Node.js compatible S3/R2 client like AWS SDK v3
-    // Example placeholder using a dummy function:
-    // const imageUrl = await nodeUploadFunction(imageBuffer, { contentType, filename, /* Add Node S3/R2 config */ });
-    const imageUrl = `https://placeholder.r2.dev/${filename}`; // Replace with actual URL from Node upload
-    logger.log(`(Placeholder) Would upload image: ${filename} (${contentType})`);
-    // --- End R2 Replacement ---
+    // --- Upload Image ---
+    logger.log(`[/upload] Uploading image to R2 key: ${imageKey}`);
+    const imageUrl = await uploadToR2(imageBuffer, { contentType, key: imageKey });
+    logger.log(`[/upload] Image uploaded successfully: ${imageUrl}`);
+    // --- End Image Upload ---
 
+    // --- Upload Metadata ---
     let metadataUrl = "";
-    if (body.metadata) {
-      const metadataFilename = `${filename.replace(/\.[^.]+$/, "")}_metadata.json`;
-      const metadataBuffer = Buffer.from(JSON.stringify({ ...body.metadata, image: imageUrl }));
-      // --- Metadata Upload Logic Needs Replacement ---
-      // metadataUrl = await nodeUploadFunction(metadataBuffer, { contentType: 'application/json', filename: metadataFilename, /* Add Node S3/R2 config */ });
-      metadataUrl = `https://placeholder.r2.dev/${metadataFilename}`; // Replace
-      logger.log(`(Placeholder) Would upload metadata: ${metadataFilename}`);
-      // --- End Metadata Replacement ---
-    }
+    // Ensure the metadata object includes the *actual* uploaded image URL
+    const finalMetadata = {
+        ...body.metadata,
+        image: imageUrl, // Use the actual R2 URL
+        // Add other standard fields if needed
+        // properties: { files: [{ uri: imageUrl, type: contentType }] } // Example for Metaplex standard
+    };
 
-    return c.json({ success: true, imageUrl, metadataUrl });
+    const metadataFilename = `${sanitizedSymbol}_${Date.now()}_metadata.json`;
+    const metadataKey = `token-metadata/${metadataFilename}`;
+    const metadataBuffer = Buffer.from(JSON.stringify(finalMetadata, null, 2)); // Pretty print JSON
+
+    logger.log(`[/upload] Uploading metadata to R2 key: ${metadataKey}`);
+    // Note: We upload metadata directly to R2 here.
+    // The client should fetch it via the /metadata/:filename endpoint.
+    const directMetadataR2Url = await uploadToR2(metadataBuffer, {
+      contentType: 'application/json',
+      key: metadataKey
+    });
+    logger.log(`[/upload] Metadata uploaded successfully (direct R2 URL): ${directMetadataR2Url}`);
+
+    // Construct the URL for the client to use to fetch metadata *via the API*
+    // This assumes the API is running at a base URL accessible to the client.
+    // Use relative path if server and client are on same domain, or absolute if needed.
+    const apiUrl = process.env.API_URL || c.req.url.split('/api/')[0]; // Attempt to infer API base URL
+    metadataUrl = `${apiUrl}/api/metadata/${metadataFilename}`; // This is the URL the client/programs should use
+    logger.log(`[/upload] Constructed metadata URL for client: ${metadataUrl}`);
+     // --- End Metadata Upload ---
+
+    return c.json({
+        success: true,
+        imageUrl: imageUrl,       // Direct public URL to the image on R2
+        metadataUrl: metadataUrl  // URL pointing to the /api/metadata/:filename endpoint
+    });
   } catch (error) {
-    logger.error("Error uploading:", error);
-    return c.json({ error: "Upload failed" }, 500);
+    logger.error("[/upload] Error processing upload request:", error);
+    return c.json({ error: "Upload failed due to server error" }, 500);
   }
 });
+
+
+// Add a similar endpoint for imported images if needed, reusing uploadToR2
+fileRouter.post("/upload-import-image", async (c) => {
+   try {
+    const user = c.get("user");
+    // if (!user) { ... } // Add auth if needed
+
+    const body = await c.req.json();
+     if (!body.imageBase64) {
+       return c.json({ error: "Image data (imageBase64) is required" }, 400);
+     }
+
+     const matches = body.imageBase64.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/);
+     if (!matches || matches.length !== 3) {
+       return c.json({ error: "Invalid image format" }, 400);
+     }
+
+     const contentType = matches[1];
+     const imageData = matches[2];
+     const imageBuffer = Buffer.from(imageData, "base64");
+
+     // Generate a unique filename for the imported image
+     let extension = ".jpg";
+     if (contentType === "image/png") extension = ".png";
+     else if (contentType === "image/gif") extension = ".gif";
+     else if (contentType === "image/svg+xml") extension = ".svg";
+     else if (contentType === "image/webp") extension = ".webp";
+     const imageFilename = `imported_${Date.now()}${extension}`;
+     const imageKey = `token-images/${imageFilename}`; // Store in the same place or separate?
+
+     logger.log(`[/upload-import-image] Uploading imported image to R2 key: ${imageKey}`);
+     const imageUrl = await uploadToR2(imageBuffer, { contentType, key: imageKey });
+     logger.log(`[/upload-import-image] Imported image uploaded successfully: ${imageUrl}`);
+
+     return c.json({ success: true, imageUrl: imageUrl });
+
+   } catch (error) {
+      logger.error("[/upload-import-image] Error processing imported image upload:", error);
+      return c.json({ error: "Imported image upload failed" }, 500);
+   }
+});
+
 
 export default fileRouter;

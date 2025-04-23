@@ -58,7 +58,8 @@ const unparsedEnv = {
     : import.meta.env.VITE_PROGRAM_ID ||
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   appEnv: process.env.NODE_ENV,
-  s3PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL || import.meta.env.VITE_S3_PUBLIC_URL,
+  s3PublicUrl:
+    import.meta.env.VITE_R2_PUBLIC_URL || import.meta.env.VITE_S3_PUBLIC_URL,
 } as const;
 
 const envSchema = z.object({

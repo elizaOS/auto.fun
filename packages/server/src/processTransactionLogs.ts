@@ -1,7 +1,7 @@
 import * as IDL from "@autodotfun/program/idl/autofun.json";
 import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/program/types/autofun";
-import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
 import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
@@ -13,12 +13,7 @@ import { TokenMigrator } from "./migration/migrateToken";
 import { getToken } from "./migration/migrations";
 import { createRedisCache } from "./redis";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
-import {
-   createNewTokenData,
-} from "./utils";
-
-// Store the last processed signature to avoid duplicate processing
-const lastProcessedSignature: string | null = null;
+import { createNewTokenData, } from "./util";
 
 // Define max swaps to keep in Redis list (consistent with worker)
 const MAX_SWAPS_TO_KEEP = 1000;

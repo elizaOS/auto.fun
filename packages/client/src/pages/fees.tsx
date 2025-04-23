@@ -7,7 +7,7 @@ const FeesContent = () => {
             <div className="w-full mb-12">
               {/* Header */}
               <div className="flex flex-col py-5 px-4 gap-3.5 border-b">
-                <h1 className="text-2xl md:text-[32px] font-satoshi font-medium leading-9 tracking-[-0.018em] text-[#2FD345]">
+                <h1 className="text-2xl md:text-[32px] font-satoshi font-medium leading-9 tracking-[-0.018em] text-[#03FF24]">
                   Fees On Auto.fun
                 </h1>
                 <p className="text-sm md:text-base font-satoshi text-[#8C8C8C] leading-6">
@@ -46,7 +46,7 @@ const TableRow = ({ title, text }: { title: string; text: string }) => {
       <span className="font-dm-mono text-[10px] text-xs lg:text-sm text-white tracking-[2px] uppercase">
         {title}
       </span>
-      <span className="font-dm-mono text-[10px] text-xs lg:text-sm text-[#2FD345] tracking-[2px] uppercase">
+      <span className="font-dm-mono text-[10px] text-xs lg:text-sm text-[#03FF24] tracking-[2px] uppercase">
         {text}
       </span>
     </div>

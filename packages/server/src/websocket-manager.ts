@@ -34,6 +34,11 @@ class WebSocketManager {
         if (this.redisCache) {
             logger.warn("WebSocketManager RedisCacheService already set.");
         }
+
+        if (!redisCache) {
+            throw new Error("RedisCacheService not provided to WebSocketManager.");
+        }
+
         this.redisCache = redisCache;
         logger.info("WebSocketManager initialized with RedisCacheService.");
         this.startHeartbeat();
@@ -95,15 +100,10 @@ class WebSocketManager {
             return;
         }
 
-        if (clientMetadata.ws !== ws) {
-            logger.warn(`Message received for clientId ${clientIdFromMessage} but WSContext does not match stored context.`);
-            return;
-        }
-
         clientMetadata.isAlive = true; // Got message, must be alive
 
         if (!this.redisCache) {
-            logger.error("Redis cache not available in handleMessage");
+            logger.error(`Redis cache not available in handleMessage for client ${clientIdFromMessage}`);
             return;
         }
         if (!parsedMessage || !parsedMessage.event) {
@@ -132,6 +132,11 @@ class WebSocketManager {
             }
         } catch (error) {
             logger.error(`Error handling message event '${event}' for client ${clientMetadata.clientId}:`, error);
+            try {
+                clientMetadata.ws.send(JSON.stringify({ event: 'error', data: `Failed to process event ${event}` }));
+            } catch (sendError) {
+                logger.warn(`Failed to send error message back to client ${clientMetadata.clientId}`, sendError);
+            }
         }
     }
 

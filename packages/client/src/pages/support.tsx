@@ -15,7 +15,7 @@ export default function SupportPage() {
                 to="https://twitter.com/autodotfun"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
+                className="flex items-center gap-2 text-white hover:text-[#03FF24] transition-colors"
               >
                 <svg
                   width="24"
@@ -31,7 +31,7 @@ export default function SupportPage() {
                 to="https://discord.com/invite/tgCCVF9vEa"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
+                className="flex items-center gap-2 text-white hover:text-[#03FF24] transition-colors"
               >
                 <svg
                   width="24"
@@ -45,7 +45,7 @@ export default function SupportPage() {
               </Link>
               <Link
                 to="https://web.telegram.org/k/#@AutoDotFunBot"
-                className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
+                className="flex items-center gap-2 text-white hover:text-[#03FF24] transition-colors"
               >
                 <img
                   src="/nav/tg-icon.svg"
