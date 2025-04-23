@@ -6,7 +6,7 @@ import { Connection, Keypair } from "@solana/web3.js";
 import { and, eq } from "drizzle-orm";
 import { updateTokenInDB } from "../cron";
 import { getDB, tokens } from "../db";
-import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
 import { TokenData } from "@autodotfun/raydium/src/types/tokenData";
 import { retryOperation } from "@autodotfun/raydium/src/utils";
 import { updateTokenSupplyFromChain } from "../tokenSupplyHelpers";

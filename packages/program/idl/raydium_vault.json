@@ -12,7 +12,16 @@
   "instructions": [
     {
       "name": "change_claimer",
-      "discriminator": [89, 180, 248, 121, 12, 93, 126, 137],
+      "discriminator": [
+        89,
+        180,
+        248,
+        121,
+        12,
+        93,
+        126,
+        137
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -26,8 +35,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -40,8 +67,22 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 112, 111, 115, 105, 116,
-                  105, 111, 110
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
                 ]
               },
               {
@@ -64,7 +105,16 @@
     },
     {
       "name": "change_emergency_authority",
-      "discriminator": [14, 23, 238, 255, 180, 142, 114, 8],
+      "discriminator": [
+        14,
+        23,
+        238,
+        255,
+        180,
+        142,
+        114,
+        8
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -79,8 +129,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -96,7 +164,16 @@
     },
     {
       "name": "change_executor_authority",
-      "discriminator": [158, 112, 196, 228, 59, 224, 185, 41],
+      "discriminator": [
+        158,
+        112,
+        196,
+        228,
+        59,
+        224,
+        185,
+        41
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -111,8 +188,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -128,7 +223,16 @@
     },
     {
       "name": "change_manager_authority",
-      "discriminator": [60, 237, 137, 28, 46, 142, 255, 123],
+      "discriminator": [
+        60,
+        237,
+        137,
+        28,
+        46,
+        142,
+        255,
+        123
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -143,8 +247,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -160,7 +282,16 @@
     },
     {
       "name": "claim",
-      "discriminator": [62, 198, 214, 193, 213, 159, 108, 210],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -174,8 +305,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -188,8 +337,22 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 112, 111, 115, 105, 116,
-                  105, 111, 110
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
                 ]
               },
               {
@@ -211,8 +374,28 @@
               {
                 "kind": "const",
                 "value": [
-                  108, 111, 99, 107, 95, 99, 112, 95, 97, 117, 116, 104, 111,
-                  114, 105, 116, 121, 95, 115, 101, 101, 100
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  99,
+                  112,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121,
+                  95,
+                  115,
+                  101,
+                  101,
+                  100
                 ]
               }
             ],
@@ -224,20 +407,28 @@
         },
         {
           "name": "fee_nft_owner",
-          "docs": ["Fee nft owner who is allowed to receive fees"]
+          "docs": [
+            "Fee nft owner who is allowed to receive fees"
+          ]
         },
         {
           "name": "fee_nft_account",
-          "docs": ["Fee token account"]
+          "docs": [
+            "Fee token account"
+          ]
         },
         {
           "name": "locked_liquidity",
-          "docs": ["Store the locked the information of liquidity"],
+          "docs": [
+            "Store the locked the information of liquidity"
+          ],
           "writable": true
         },
         {
           "name": "cpmm_program",
-          "docs": ["cpmm program"],
+          "docs": [
+            "cpmm program"
+          ],
           "address": "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"
         },
         {
@@ -247,8 +438,32 @@
               {
                 "kind": "const",
                 "value": [
-                  118, 97, 117, 108, 116, 95, 97, 110, 100, 95, 108, 112, 95,
-                  109, 105, 110, 116, 95, 97, 117, 116, 104, 95, 115, 101, 101,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  110,
+                  100,
+                  95,
+                  108,
+                  112,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  95,
+                  115,
+                  101,
+                  101,
                   100
                 ]
               }
@@ -273,7 +488,9 @@
         },
         {
           "name": "recipient_token_0_account",
-          "docs": ["The token account for receive token_0"],
+          "docs": [
+            "The token account for receive token_0"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -285,9 +502,38 @@
               {
                 "kind": "const",
                 "value": [
-                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
-                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
-                  245, 133, 126, 255, 0, 169
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
                 ]
               },
               {
@@ -298,16 +544,47 @@
             "program": {
               "kind": "const",
               "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
               ]
             }
           }
         },
         {
           "name": "recipient_token_1_account",
-          "docs": ["The token account for receive token_1"],
+          "docs": [
+            "The token account for receive token_1"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -319,9 +596,38 @@
               {
                 "kind": "const",
                 "value": [
-                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
-                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
-                  245, 133, 126, 255, 0, 169
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
                 ]
               },
               {
@@ -332,9 +638,38 @@
             "program": {
               "kind": "const",
               "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
               ]
             }
           }
@@ -357,15 +692,21 @@
         },
         {
           "name": "vault_0_mint",
-          "docs": ["The mint of token_0 vault"]
+          "docs": [
+            "The mint of token_0 vault"
+          ]
         },
         {
           "name": "vault_1_mint",
-          "docs": ["The mint of token_1 vault"]
+          "docs": [
+            "The mint of token_1 vault"
+          ]
         },
         {
           "name": "locked_lp_vault",
-          "docs": ["locked lp token account"],
+          "docs": [
+            "locked lp token account"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -376,9 +717,38 @@
               {
                 "kind": "const",
                 "value": [
-                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
-                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
-                  245, 133, 126, 255, 0, 169
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
                 ]
               },
               {
@@ -389,26 +759,61 @@
             "program": {
               "kind": "const",
               "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
               ]
             }
           }
         },
         {
           "name": "token_program",
-          "docs": ["token Program"],
+          "docs": [
+            "token Program"
+          ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "token_program_2022",
-          "docs": ["Token program 2022"],
+          "docs": [
+            "Token program 2022"
+          ],
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "memo_program",
-          "docs": ["memo program"],
+          "docs": [
+            "memo program"
+          ],
           "address": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
         }
       ],
@@ -416,7 +821,16 @@
     },
     {
       "name": "deposit",
-      "discriminator": [242, 35, 198, 137, 82, 225, 242, 182],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -430,8 +844,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -445,8 +877,22 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 112, 111, 115, 105, 116,
-                  105, 111, 110
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
                 ]
               },
               {
@@ -471,8 +917,28 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 110, 102, 116, 95, 115, 101, 101, 100
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  110,
+                  102,
+                  116,
+                  95,
+                  115,
+                  101,
+                  101,
+                  100
                 ]
               },
               {
@@ -500,7 +966,16 @@
     },
     {
       "name": "emergency_withdraw",
-      "discriminator": [239, 45, 203, 64, 150, 73, 218, 92],
+      "discriminator": [
+        239,
+        45,
+        203,
+        64,
+        150,
+        73,
+        218,
+        92
+      ],
       "accounts": [
         {
           "name": "authority",
@@ -514,8 +989,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -529,8 +1022,22 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 112, 111, 115, 105, 116,
-                  105, 111, 110
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
                 ]
               },
               {
@@ -552,8 +1059,28 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 110, 102, 116, 95, 115, 101, 101, 100
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  110,
+                  102,
+                  116,
+                  95,
+                  115,
+                  101,
+                  101,
+                  100
                 ]
               },
               {
@@ -576,7 +1103,16 @@
     },
     {
       "name": "initialize",
-      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -591,8 +1127,26 @@
               {
                 "kind": "const",
                 "value": [
-                  114, 97, 121, 100, 105, 117, 109, 95, 118, 97, 117, 108, 116,
-                  95, 99, 111, 110, 102, 105, 103
+                  114,
+                  97,
+                  121,
+                  100,
+                  105,
+                  117,
+                  109,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               }
             ]
@@ -600,7 +1154,9 @@
         },
         {
           "name": "system_program",
-          "docs": ["System program"],
+          "docs": [
+            "System program"
+          ],
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -619,49 +1175,148 @@
   "accounts": [
     {
       "name": "LockedCpLiquidityState",
-      "discriminator": [25, 10, 238, 197, 207, 234, 73, 22]
+      "discriminator": [
+        25,
+        10,
+        238,
+        197,
+        207,
+        234,
+        73,
+        22
+      ]
     },
     {
       "name": "UserPosition",
-      "discriminator": [251, 248, 209, 245, 83, 234, 17, 27]
+      "discriminator": [
+        251,
+        248,
+        209,
+        245,
+        83,
+        234,
+        17,
+        27
+      ]
     },
     {
       "name": "VaultConfig",
-      "discriminator": [99, 86, 43, 216, 184, 102, 119, 77]
+      "discriminator": [
+        99,
+        86,
+        43,
+        216,
+        184,
+        102,
+        119,
+        77
+      ]
     }
   ],
   "events": [
     {
       "name": "ClaimerChanged",
-      "discriminator": [58, 116, 209, 125, 102, 22, 183, 26]
+      "discriminator": [
+        58,
+        116,
+        209,
+        125,
+        102,
+        22,
+        183,
+        26
+      ]
     },
     {
       "name": "CpFeeCollected",
-      "discriminator": [33, 223, 81, 151, 208, 80, 188, 1]
+      "discriminator": [
+        33,
+        223,
+        81,
+        151,
+        208,
+        80,
+        188,
+        1
+      ]
     },
     {
       "name": "EmergencyChanged",
-      "discriminator": [216, 70, 157, 227, 147, 10, 142, 77]
+      "discriminator": [
+        216,
+        70,
+        157,
+        227,
+        147,
+        10,
+        142,
+        77
+      ]
     },
     {
       "name": "EmergencyWithdrawed",
-      "discriminator": [139, 158, 121, 121, 239, 210, 1, 50]
+      "discriminator": [
+        139,
+        158,
+        121,
+        121,
+        239,
+        210,
+        1,
+        50
+      ]
     },
     {
       "name": "ExecutorChanged",
-      "discriminator": [231, 13, 59, 234, 251, 184, 82, 224]
+      "discriminator": [
+        231,
+        13,
+        59,
+        234,
+        251,
+        184,
+        82,
+        224
+      ]
     },
     {
       "name": "ManagerChanged",
-      "discriminator": [142, 97, 175, 220, 73, 27, 252, 56]
+      "discriminator": [
+        142,
+        97,
+        175,
+        220,
+        73,
+        27,
+        252,
+        56
+      ]
     },
     {
       "name": "NftPositionDeposited",
-      "discriminator": [59, 70, 235, 200, 51, 202, 245, 222]
+      "discriminator": [
+        59,
+        70,
+        235,
+        200,
+        51,
+        202,
+        245,
+        222
+      ]
     },
     {
       "name": "VaultInitialized",
-      "discriminator": [180, 43, 207, 2, 18, 71, 3, 75]
+      "discriminator": [
+        180,
+        43,
+        207,
+        2,
+        18,
+        71,
+        3,
+        75
+      ]
     }
   ],
   "errors": [
@@ -842,59 +1497,84 @@
         "fields": [
           {
             "name": "locked_lp_amount",
-            "docs": ["The Locked liquidity amount without claimed lp fee"],
+            "docs": [
+              "The Locked liquidity amount without claimed lp fee"
+            ],
             "type": "u64"
           },
           {
             "name": "claimed_lp_amount",
-            "docs": ["Claimed lp fee amount"],
+            "docs": [
+              "Claimed lp fee amount"
+            ],
             "type": "u64"
           },
           {
             "name": "unclaimed_lp_amount",
-            "docs": ["Unclaimed lp fee amount"],
+            "docs": [
+              "Unclaimed lp fee amount"
+            ],
             "type": "u64"
           },
           {
             "name": "last_lp",
-            "docs": ["Last updated cp pool lp total supply"],
+            "docs": [
+              "Last updated cp pool lp total supply"
+            ],
             "type": "u64"
           },
           {
             "name": "last_k",
-            "docs": ["Last updated cp pool k"],
+            "docs": [
+              "Last updated cp pool k"
+            ],
             "type": "u128"
           },
           {
             "name": "recent_epoch",
-            "docs": ["Account update recent epoch"],
+            "docs": [
+              "Account update recent epoch"
+            ],
             "type": "u64"
           },
           {
             "name": "pool_id",
-            "docs": ["The ID of the pool with which this record is connected"],
+            "docs": [
+              "The ID of the pool with which this record is connected"
+            ],
             "type": "pubkey"
           },
           {
             "name": "fee_nft_mint",
-            "docs": ["nft mint to check who has authority to collect fee"],
+            "docs": [
+              "nft mint to check who has authority to collect fee"
+            ],
             "type": "pubkey"
           },
           {
             "name": "locked_owner",
-            "docs": ["The owner who has locked liquidity"],
+            "docs": [
+              "The owner who has locked liquidity"
+            ],
             "type": "pubkey"
           },
           {
             "name": "locked_lp_mint",
-            "docs": ["The mint of locked lp token"],
+            "docs": [
+              "The mint of locked lp token"
+            ],
             "type": "pubkey"
           },
           {
             "name": "padding",
-            "docs": ["Unused bytes for future upgrades."],
+            "docs": [
+              "Unused bytes for future upgrades."
+            ],
             "type": {
-              "array": ["u64", 8]
+              "array": [
+                "u64",
+                8
+              ]
             }
           }
         ]
@@ -939,12 +1619,16 @@
         "fields": [
           {
             "name": "claimer",
-            "docs": ["The owner of this position"],
+            "docs": [
+              "The owner of this position"
+            ],
             "type": "pubkey"
           },
           {
             "name": "position_nft",
-            "docs": ["The NFT or token representing this position"],
+            "docs": [
+              "The NFT or token representing this position"
+            ],
             "type": "pubkey"
           },
           {
@@ -956,12 +1640,16 @@
           },
           {
             "name": "created_at",
-            "docs": ["Timestamp when the position was created"],
+            "docs": [
+              "Timestamp when the position was created"
+            ],
             "type": "i64"
           },
           {
             "name": "last_updated",
-            "docs": ["Timestamp of the last update to the position"],
+            "docs": [
+              "Timestamp of the last update to the position"
+            ],
             "type": "i64"
           }
         ]
@@ -974,17 +1662,23 @@
         "fields": [
           {
             "name": "executor_authority",
-            "docs": ["The authority that can manage executing operations"],
+            "docs": [
+              "The authority that can manage executing operations"
+            ],
             "type": "pubkey"
           },
           {
             "name": "emergency_authority",
-            "docs": ["The authority that can manage emergency operations"],
+            "docs": [
+              "The authority that can manage emergency operations"
+            ],
             "type": "pubkey"
           },
           {
             "name": "manager_authority",
-            "docs": ["The authority that can manage administrative operations"],
+            "docs": [
+              "The authority that can manage administrative operations"
+            ],
             "type": "pubkey"
           }
         ]

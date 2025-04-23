@@ -1,6 +1,6 @@
 import { eq, gt, sql } from "drizzle-orm";
 import { getDB, tokens, users } from "../db";
-import { getToken } from "../raydium/migration/migrations";
+import { getToken } from "../migration/migrations";
 
 import { Env } from "../env";
 import { getGlobalRedisCache } from "../redis";

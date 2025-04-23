@@ -2,7 +2,7 @@ import * as IDL from "@autodotfun/program/idl/autofun.json";
 import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/program/types/autofun";
 import { checkBalance } from "@autodotfun/raydium/src/raydiumVault";
-import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq } from "drizzle-orm";

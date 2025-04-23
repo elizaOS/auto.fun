@@ -272,5 +272,9 @@ export default {
   websocket, // Add the websocket handler
 };
 
+try {
+  startLogSubscription(connection, new PublicKey(process.env.PROGRAM_ID!), env);
+} catch (error) {
+  logger.error("Error starting log subscription:", error);
+}
 
-startLogSubscription(connection, new PublicKey(process.env.PROGRAM_ID!), env);

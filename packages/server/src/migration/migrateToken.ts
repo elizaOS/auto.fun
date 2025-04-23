@@ -11,7 +11,7 @@ import { updateTokenInDB } from "../cron";
 import { ExternalToken } from "../externalToken";
 import { initSdk, txVersion } from "@autodotfun/raydium/src/raydium-config";
 import { depositToRaydiumVault } from "@autodotfun/raydium/src/raydiumVault";
-import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
 import { TokenData } from "@autodotfun/raydium/src/types/tokenData";
 import { retryOperation, sendNftTo, sendSolTo } from "@autodotfun/raydium/src/utils";
 import { execWithdrawTx, withdrawTx } from "@autodotfun/raydium/src/withdraw";

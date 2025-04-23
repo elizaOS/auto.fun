@@ -405,11 +405,18 @@ class WebSocketManager {
     // --- Send Direct Message to Client ---
     public sendToClient(clientId: string, event: string, data: any): boolean {
         const clientMetadata = this.clients.get(clientId);
-            try {
-                const message = JSON.stringify({ event, data });
-                clientMetadata.ws.send(message);
-                logger.log(`Sent direct message event ${event} to client ${clientId}`);
-                return true;
+        if (!clientMetadata) {
+            logger.warn(`Client ${clientId} not found in clients map.`);
+            return false;
+        }
+        try {
+            const message = JSON.stringify({ event, data });
+            if (!clientMetadata.ws) {
+                throw new Error(`Client ${clientId} has no WebSocket connection.`);
+            }
+            clientMetadata.ws.send(message);
+            logger.log(`Sent direct message event ${event} to client ${clientId}`);
+            return true;
             } catch (error) {
                 logger.error(`Failed to stringify or send direct message to client ${clientId}:`, error);
                 return false;
