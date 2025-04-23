@@ -1,10 +1,10 @@
-import * as idlJson from "@autodotfun/program/idl/autofun.json";
+import * as idlJson from "@autodotfun/types/idl/autofun.json";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 
-import { Autofun } from "@autodotfun/program/types/autofun";
+import { Autofun } from "@autodotfun/types/types/autofun";
 import { getRpcUrl } from "./util";
 // Initialize the Solana configuration with the provided environment
 export function initSolanaConfig() {

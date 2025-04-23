@@ -1,7 +1,7 @@
-import * as IDL from "@autodotfun/program/idl/autofun.json";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
-import { Autofun } from "@autodotfun/program/types/autofun";
-import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
+import * as IDL from "@autodotfun/types/idl/autofun.json";
+import * as raydium_vault_IDL from "@autodotfun/types/idl/raydium_vault.json";
+import { Autofun } from "@autodotfun/types/types/autofun";
+import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";

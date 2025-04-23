@@ -13,7 +13,7 @@
     "deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
-    "@autodotfun/program": "workspace:*",
+    "@autodotfun/types": "workspace:*",
     "@aws-sdk/client-ecs": "^3.772.0",
     "@codex-data/sdk": "^1.0.5",
     "@coral-xyz/anchor": "^0.31.0",

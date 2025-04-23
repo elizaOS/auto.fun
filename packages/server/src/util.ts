@@ -21,7 +21,7 @@ import { getDB, Token, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig, getProgram } from "./solana";
-import { Autofun } from "@autodotfun/program/types/autofun";
+import { Autofun } from "@autodotfun/types/types/autofun";
 import { getWebSocketClient } from "./websocket-client";
 import { ExternalToken } from "./externalToken";
 

@@ -1,12 +1,12 @@
-import * as IDL from "@autodotfun/program/idl/autofun.json";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
-import { Autofun } from "@autodotfun/program/types/autofun";
+import * as IDL from "@autodotfun/types/idl/autofun.json";
+import * as raydium_vault_IDL from "@autodotfun/types/idl/raydium_vault.json";
+import { Autofun } from "@autodotfun/types/types/autofun";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import { and, eq } from "drizzle-orm";
 import { updateTokenInDB } from "../cron";
 import { getDB, tokens } from "../db";
-import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import { TokenData } from "@autodotfun/raydium/src/types/tokenData";
 import { retryOperation } from "@autodotfun/raydium/src/utils";
 import { updateTokenSupplyFromChain } from "../tokenSupplyHelpers";

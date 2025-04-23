@@ -11,7 +11,7 @@ import {
   LOCKING_PROGRAM,
   LOCK_CP_AUTH_SEED,
 } from "./pdas";
-import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import { retryOperation } from "./utils";
 
 export async function depositToRaydiumVault(

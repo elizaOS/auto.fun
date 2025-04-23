@@ -2,8 +2,8 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { claim } from "@autodotfun/raydium/src/raydiumVault";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { RaydiumVault } from "@autodotfun/program/types/raydium_vault";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
+import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
+import * as raydium_vault_IDL from "@autodotfun/types/idl/raydium_vault.json";
 import dotenv from 'dotenv';
 
 dotenv.config();
