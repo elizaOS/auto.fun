@@ -1029,9 +1029,6 @@ app.post("/generate-metadata", async (c) => {
             // Assuming the model's default or configured temperature is used.
           };
 
-          console.log("systemPromptContent is", systemPromptContent);
-          console.log("prompt is", prompt);
-
           logger.log("Fal AI Input:", JSON.stringify(falInput));
 
           // Use fal.subscribe
