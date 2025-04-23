@@ -1,8 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-console.log("*** process.env", process.env)
-
 import { Connection } from "@solana/web3.js";
 import { Context, Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
