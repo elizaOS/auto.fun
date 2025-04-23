@@ -18,7 +18,8 @@ export class WebSocketClient {
   // Send a message to a specific room (token or global)
   async emit(room: string, event: string, data: any): Promise<void> {
     const redis = await getGlobalRedisCache();
-    const message = JSON.stringify({ room, event, data });
+    const formattedRoom = room === "global" ? "global" : room.startsWith("token-") ? room : `token-${room}`;
+    const message = JSON.stringify({ room: formattedRoom, event, data });
     await redis.publish("ws:broadcast", message);
   }
 
