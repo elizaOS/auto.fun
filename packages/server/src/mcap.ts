@@ -5,10 +5,7 @@ import {
   getPythProgramKeyForCluster,
 } from "@pythnetwork/client";
 import { Connection } from "@solana/web3.js";
-import { SQLWrapper, and, eq, ne } from "drizzle-orm";
 import { CacheService } from "./cache";
-import { getDB, tokens } from "./db";
-import { Env } from "./env";
 import { initSdk } from "./raydium";
 import {
   shouldUpdateSupply,
