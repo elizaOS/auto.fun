@@ -7,7 +7,7 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getSOLPrice } from "./mcap";
-import { getGlobalRedisCache } from "./redis";
+import { getGlobalRedisCache, RedisCache } from "./redis";
 import { logger } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 
@@ -15,6 +15,9 @@ const SOLANA_NETWORK_ID = 1399811149;
 
 // Define max swaps to keep in Redis list (consistent with other files)
 const MAX_SWAPS_TO_KEEP = 250;
+
+// Time in seconds before refreshing market/holder data
+const MARKET_HOLDER_REFRESH_INTERVAL = 60;
 
 // Define a type for the expected structure of a processed swap
 // This should match the schema of your 'swaps' table
@@ -31,6 +34,13 @@ type ProcessedSwap = {
   timestamp: Date;
 };
 
+// Type for combined market and holder data
+type TokenDetails = {
+  marketData: any; // Replace 'any' with a specific type if available
+  holders: any[]; // Replace 'any' with a specific type if available
+  lastUpdated: number; // Timestamp of the update
+};
+
 /**
  * Use to fetch/update token, holder and swap data for an external token (either post-bond or imported).
  */
@@ -38,11 +48,21 @@ export class ExternalToken {
   private sdk: Codex;
   private mint: string;
   private wsClient: WebSocketClient;
+  private redisCache: RedisCache; // Store Redis client instance
 
-  constructor(mint: string) {
+  // Constructor is now private and requires RedisCache
+  private constructor(mint: string, redisClient: RedisCache) {
     this.sdk = new Codex(process.env.CODEX_API_KEY || "");
     this.mint = mint;
     this.wsClient = getWebSocketClient();
+    this.redisCache = redisClient;
+  }
+
+  // Public static async factory method
+  public static async create(mint: string, redisClient?: RedisCache): Promise<ExternalToken> {
+      // Await the global cache only if no client is provided
+      const resolvedRedisClient = redisClient || await getGlobalRedisCache();
+      return new ExternalToken(mint, resolvedRedisClient);
   }
 
   public async registerWebhook() {
@@ -90,115 +110,161 @@ export class ExternalToken {
   }
 
   public async updateAllData() {
-    const marketData = await this.updateMarketData();
-
-    const [swapData, holderData] = await Promise.all([
-      this.updateLatestSwapData(),
-      this.updateHolderData(marketData.tokenSupply),
+    logger.info(`ExternalToken [${this.mint}]: Starting updateAllData.`);
+    // Run market/holder update (forced) and latest swap fetch in parallel
+    const [detailsResult, swapDataResult] = await Promise.all([
+      this.updateMarketAndHolders(true), // Force update market/holders
+      this.updateLatestSwapData()       // Fetch latest swaps
     ]);
 
-    return { marketData, swapData, holderData };
-  }
-
-  public async updateMarketAndHolders() {
-    const marketData = await this.updateMarketData();
-    const holders = await this.updateHolderData(marketData.tokenSupply);
-    return { marketData, holders };
-  }
-
-  public async updateMarketData() {
-    const { filterTokens } = await this.sdk.queries.filterTokens({
-      tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
-    });
-
-    const token = filterTokens?.results?.[0];
-    if (!token) {
-      throw new Error("failed to find token with codex");
-    }
-    const createdAt = token.token?.createdAt;
-    // get data from codex number createdAt
-    const creationTime = createdAt ? new Date(createdAt * 1000) : new Date();
-    const tokenSupplyUi = token.token?.info?.circulatingSupply
-      ? Number(token.token?.info?.circulatingSupply)
-      : 0;
-    const tokenDecimals = token.token?.decimals ?? 9;
-    const tokenSupply = tokenSupplyUi
-      ? Number(tokenSupplyUi) * 10 ** tokenDecimals
-      : 1_000_000_000 * 1e9; // 1 billion tokens with 9 decimals
-    const marketCap =
-      token.token?.info?.circulatingSupply && token.priceUSD
-        ? Number(token.token.info.circulatingSupply) * Number(token.priceUSD)
-        : token.marketCap
-          ? Number(token.marketCap)
-          : 0;
-    const newTokenData = {
-      marketCapUSD: marketCap,
-      volume24h: token.volume24 ? Number(token.volume24) : 0,
-      liquidity: token.liquidity ? Number(token.liquidity) : 0,
-      tokenPriceUSD: token.priceUSD ? Number(token.priceUSD) : 0,
-      holderCount: token.holders,
-      tokenSupplyUiAmount: tokenSupplyUi,
-      tokenSupply: tokenSupply.toString(),
-      tokenDecimals: tokenDecimals,
-      // time of import
-      createdAt: creationTime,
+    logger.info(`ExternalToken [${this.mint}]: Finished updateAllData.`);
+    // Return combined results
+    return {
+      marketData: detailsResult?.marketData,
+      swapData: swapDataResult,
+      holderData: detailsResult?.holders
     };
-
-    // Remove DB write for ephemeral data; store stats in Redis
-    const redisCache = await getGlobalRedisCache();
-    const statsKey = `token:stats:${this.mint}`;
-    await redisCache.set(statsKey, JSON.stringify(newTokenData), 60);
-    logger.log(`ExternalToken: Stored market stats in Redis for ${this.mint} with TTL 60s`);
-
-    // Emit updated stats via WebSocket
-    this.wsClient.to("global").emit("updateToken", newTokenData);
-
-    return { newTokenData, tokenSupply };
   }
 
-  public async updateHolderData(tokenSupply: number) {
-    const { holders: codexHolders } = await this.sdk.queries.holders({
-      input: {
-        tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
-      },
-    });
+  // Updated method to fetch/update market and holder data with caching and time check
+  public async updateMarketAndHolders(forceUpdate = false): Promise<TokenDetails | null> {
+    const detailsKey = `token:details:${this.mint}`;
+    const now = Date.now();
 
-    const now = new Date();
+    // 1. Try to get cached details
+    if (!forceUpdate) {
+      try {
+        const cachedDetailsRaw = await this.redisCache.get(detailsKey);
+        if (cachedDetailsRaw) {
+          const cachedDetails = JSON.parse(cachedDetailsRaw) as TokenDetails;
+          // Check if cache is recent enough
+          if (now - cachedDetails.lastUpdated < MARKET_HOLDER_REFRESH_INTERVAL * 1000) {
+            logger.info(`ExternalToken: Using cached market/holder details for ${this.mint} (updated ${Math.round((now - cachedDetails.lastUpdated)/1000)}s ago)`);
+            return cachedDetails;
+          }
+          logger.info(`ExternalToken: Cached market/holder details for ${this.mint} are stale. Refreshing.`);
+        }
+      } catch (err) {
+        logger.error(`ExternalToken: Error reading cached details for ${this.mint}:`, err);
+        // Proceed to fetch fresh data on error
+      }
+    } else {
+      logger.info(`ExternalToken: Force refreshing market/holder details for ${this.mint}.`);
+    }
 
-    const allHolders = tokenSupply
-      ? codexHolders.items.map((holder): any => ({
+    // 2. Fetch fresh data if cache is missing, stale, or forced
+    logger.info(`ExternalToken: Fetching fresh market/holder details for ${this.mint}.`);
+    try {
+      const marketResult = await this._fetchMarketData(); // Use internal fetch method
+      if (!marketResult) {
+        logger.error(`ExternalToken: Failed to fetch market data for ${this.mint}. Aborting update.`);
+        return null; // Or return previously cached data if available?
+      }
+
+      const holderResult = await this._fetchHolderData(marketResult.tokenSupply); // Use internal fetch method
+
+      const combinedDetails: TokenDetails = {
+        marketData: marketResult.newTokenData,
+        holders: holderResult,
+        lastUpdated: now,
+      };
+
+      // 3. Store combined data in Redis
+      await this.redisCache.set(detailsKey, JSON.stringify(combinedDetails), MARKET_HOLDER_REFRESH_INTERVAL * 2); // Cache for double the interval?
+      logger.log(`ExternalToken: Stored updated market/holder details in Redis for ${this.mint}`);
+
+      // 4. Emit WebSocket updates (consider doing this outside if possible)
+      this.wsClient.to("global").emit("updateToken", combinedDetails.marketData);
+      this.wsClient.to(`token-${this.mint}`).emit("newHolder", combinedDetails.holders);
+
+      return combinedDetails;
+    } catch (error) {
+      logger.error(`ExternalToken: Failed to update market/holder details for ${this.mint}:`, error);
+      // Maybe return the last known good cache if available?
+      return null;
+    }
+  }
+
+  // Internal method to fetch market data, returns data without saving to Redis
+  private async _fetchMarketData(): Promise<{ newTokenData: any; tokenSupply: number } | null> {
+    try {
+      const { filterTokens } = await this.sdk.queries.filterTokens({
+        tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
+      });
+
+      const token = filterTokens?.results?.[0];
+      if (!token) {
+        throw new Error("failed to find token with codex");
+      }
+      const createdAt = token.token?.createdAt;
+      const creationTime = createdAt ? new Date(createdAt * 1000) : new Date();
+      const tokenSupplyUi = token.token?.info?.circulatingSupply
+        ? Number(token.token?.info?.circulatingSupply)
+        : 0;
+      const tokenDecimals = token.token?.decimals ?? 9; // Default or fetch dynamically
+      const tokenSupply = tokenSupplyUi
+        ? Number(tokenSupplyUi) * 10 ** tokenDecimals
+        : 1_000_000_000 * 10 ** tokenDecimals; // Use dynamic decimals
+      const marketCap =
+        token.token?.info?.circulatingSupply && token.priceUSD
+          ? Number(token.token.info.circulatingSupply) * Number(token.priceUSD)
+          : token.marketCap
+            ? Number(token.marketCap)
+            : 0;
+
+      const newTokenData = {
+        mint: this.mint, // Ensure mint is included
+        marketCapUSD: marketCap,
+        volume24h: token.volume24 ? Number(token.volume24) : 0,
+        liquidity: token.liquidity ? Number(token.liquidity) : 0,
+        tokenPriceUSD: token.priceUSD ? Number(token.priceUSD) : 0,
+        holderCount: token.holders ?? 0, // Use nullish coalescing
+        tokenSupplyUiAmount: tokenSupplyUi,
+        tokenSupply: tokenSupply.toString(),
+        tokenDecimals: tokenDecimals,
+        createdAt: creationTime,
+      };
+
+      return { newTokenData, tokenSupply };
+    } catch (error) {
+      logger.error(`ExternalToken: Error fetching market data for ${this.mint}:`, error);
+      return null;
+    }
+  }
+
+  // Internal method to fetch holder data, returns data without saving to Redis
+  private async _fetchHolderData(tokenSupply: number): Promise<any[]> {
+    try {
+      const { holders: codexHolders } = await this.sdk.queries.holders({
+        input: {
+          tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
+        },
+      });
+
+      const now = new Date();
+
+      // Ensure tokenSupply is valid before calculating percentage
+      const hasValidSupply = typeof tokenSupply === 'number' && tokenSupply > 0;
+
+      const allHolders = codexHolders.items.map((holder): any => ({
         mint: this.mint,
         address: holder.address,
         amount: holder.shiftedBalance,
-        percentage: (holder.shiftedBalance / tokenSupply) * 100,
+        // Calculate percentage only if supply is valid, otherwise default to 0
+        percentage: hasValidSupply ? (holder.shiftedBalance / tokenSupply) * 100 : 0,
         lastUpdated: now,
-      }))
-      : [];
+      }));
 
-    allHolders.sort((a, b) => b.percentage - a.percentage);
+      allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const redisCache = await getGlobalRedisCache();
-    const holdersListKey = `holders:${this.mint}`;
-    const top50Holders = allHolders.slice(0, 50);
-
-    try {
-      await redisCache.set(holdersListKey, JSON.stringify(top50Holders));
-      logger.log(
-        `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`,
-      );
-    } catch (redisError) {
-      logger.error(
-        `ExternalToken: Failed to store holders in Redis for ${this.mint}:`,
-        redisError,
-      );
+      const top50Holders = allHolders.slice(0, 50);
+      return top50Holders;
+    } catch(error) {
+      logger.error(`ExternalToken: Error fetching holder data for ${this.mint}:`, error);
+      return []; // Return empty array on error
     }
-
-    await this.wsClient
-      .to(`token-${this.mint}`)
-      .emit("newHolder", top50Holders);
-
-    return top50Holders;
   }
+
   // fetch and update swap data
   public async updateLatestSwapData(
     BATCH_LIMIT = 200,

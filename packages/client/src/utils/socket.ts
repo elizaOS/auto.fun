@@ -63,6 +63,14 @@ class SocketWrapper {
     this.ws.onmessage = (event) => {
       try {
         const { event: eventName, data } = JSON.parse(event.data);
+
+        // Handle server pings
+        if (eventName === "ping") {
+          // Respond immediately
+          this.emit("pong"); // Use emit to handle queuing/connection state
+          return; // Don't process ping further
+        }
+
         // Listen for the clientId event specifically
         if (eventName === "clientId" && typeof data === "string") {
           console.log("Received client ID:", data);

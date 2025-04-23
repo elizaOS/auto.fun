@@ -1,7 +1,8 @@
-import { getDB, tokens } from "../db";
 import { eq } from "drizzle-orm";
+import { getDB, tokens } from "../db";
 import { ExternalToken } from "../externalToken";
 import { createRedisCache } from "../redis";
+import { logger } from "../util";
 
 // TODO: Replace with redis cache
 export async function startMonitoringBatch(
@@ -30,16 +31,20 @@ export async function startMonitoringBatch(
   }
 
   const batch = mints.slice(cursor, cursor + batchSize);
+  logger.info(`Monitoring: Processing batch of ${batch.length} tokens starting from cursor ${cursor}.`);
+
   for (const mint of batch) {
     try {
-      const ext = new ExternalToken(mint);
+      const ext = await ExternalToken.create(mint, redisCache);
       await ext.registerWebhook();
+      logger.info(`Monitoring: Successfully registered webhook for ${mint}.`);
     } catch (err) {
-      console.error(`Failed to register ${mint}:`, err);
+      logger.error(`Monitoring: Failed to register webhook for ${mint}:`, err);
     }
   }
 
   cursor += batch.length;
+  logger.info(`Monitoring: Batch processed. Updating cursor to ${cursor}.`);
   await redisCache.set("lockedCursor", cursor.toString());
   return { processed: batch.length, total };
 }

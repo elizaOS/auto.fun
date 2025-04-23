@@ -18,10 +18,8 @@ export async function startLogSubscription(
 
    // Initialize WebSocketManager with Redis
    if (!webSocketManager.redisCache) {
-      webSocketManager.initialize(redisCache);
+      await webSocketManager.initialize(redisCache);
    }
-
-
 
    const wsClient = getWebSocketClient()
 

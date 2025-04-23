@@ -1890,7 +1890,8 @@ tokenRouter.post("/create-token", async (c) => {
 
       if (imported) {
         try {
-          const importedToken = new ExternalToken(mintAddress);
+          const redisCache = await getGlobalRedisCache();
+          const importedToken = await ExternalToken.create(mintAddress, redisCache);
           const { marketData } = await importedToken.registerWebhook();
           // Fetch historical data in the background
           (async () => await importedToken.fetchHistoricalSwapData())();

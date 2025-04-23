@@ -64,7 +64,7 @@ parentPort?.on("message", async (data: any) => {
 
       // Initialize WebSocketManager with Redis
       if (!webSocketManager.redisCache) {
-         webSocketManager.initialize(redisCache);
+         await webSocketManager.initialize(redisCache);
       }
 
       const listKey = `swapsList:${tokenMint}`;
@@ -98,7 +98,7 @@ parentPort?.on("message", async (data: any) => {
          return;
       }
 
-      const ext = new ExternalToken(tokenMint);
+      const ext = await ExternalToken.create(tokenMint, redisCache);
       await ext.updateLatestSwapData(20);
       const latestCandle = await getLatestCandle(tokenMint, swap, token);
       await ext.updateMarketAndHolders();

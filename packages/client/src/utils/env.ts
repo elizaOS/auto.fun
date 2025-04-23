@@ -61,10 +61,7 @@ const unparsedEnv = {
       : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL,
   rpcUrlMainnet: import.meta.env.VITE_MAINNET_RPC_URL,
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
-  finalTokenPrice:
-    import.meta.env.VITE_FINAL_TOKEN_PRICE || "4.5100194181788156e-8",
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
-  feeVault: import.meta.env.VITE_FEE_VAULT,
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
   apiUrl: isDevnet
@@ -77,7 +74,7 @@ const unparsedEnv = {
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   appEnv: process.env.NODE_ENV,
   s3PublicUrl:
-    import.meta.env.VITE_R2_PUBLIC_URL || import.meta.env.VITE_S3_PUBLIC_URL,
+    import.meta.env.VITE_S3_PUBLIC_URL || import.meta.env.VITE_S3_PUBLIC_URL,
   metadataBaseUrl: import.meta.env.VITE_METADATA_BASE_URL,
   imageOptimizationUrl: import.meta.env.VITE_IMAGE_OPTIMIZATION_URL,
   exampleImageUrl: import.meta.env.VITE_EXAMPLE_IMAGE_URL,
@@ -90,12 +87,10 @@ const envSchema = z.object({
   rpcUrl: z.string().min(1),
   rpcUrlMainnet: z.string().min(1),
   virtualReserves: z.string().min(1),
-  finalTokenPrice: z.string().min(1),
   tokenSupply: z.string().min(1),
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
   programId: z.string().min(1),
-  feeVault: z.string().min(1),
   appEnv: z.enum(["development", "production"]),
   s3PublicUrl: z.string().min(1),
   metadataBaseUrl: z.string().min(1),

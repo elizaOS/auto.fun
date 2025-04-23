@@ -221,7 +221,7 @@ app.onError((err, c) => {
 
   // Initialize WebSocketManager with Redis
   if (!webSocketManager.redisCache) {
-    webSocketManager.initialize(redisCache);
+    await webSocketManager.initialize(redisCache);
   }
 
   if (!webSocketManager.redisCache) {

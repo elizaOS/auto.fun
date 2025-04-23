@@ -39,9 +39,6 @@ export class TokenMigrator {
     public provider: AnchorProvider,
     public redisCache: RedisCacheService,
   ) { }
-  FEE_PERCENTAGE = 10; // 10% fee for pool creation
-
-
 
   async resetMigration(mint: string): Promise<void> {
     const stepNames = this.getMigrationSteps().map((s) => s.name);

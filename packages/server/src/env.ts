@@ -8,13 +8,11 @@ export interface Env {
   VIRTUAL_RESERVES: string;
   CURVE_LIMIT: string;
   WALLET_PRIVATE_KEY: string;
-  FEE_PERCENTAGE: string;
   CODEX_API_KEY: string;
   API_URL: string; // URL for self, for accessing cached assets
   FAL_API_KEY: string;
   LOCAL_DEV: string;
   NODE_ENV: string;
-  SWAP_FEE: string;
   // Authentication
   JWT_SECRET: string;
   // Solana connection

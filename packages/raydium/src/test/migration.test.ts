@@ -43,7 +43,6 @@
 //       CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || "",
 //       CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || "",
 //       NODE_ENV: process.env.NODE_ENV || "development",
-//       SWAP_FEE: process.env.SWAP_FEE || "0.3",
 //       JWT_SECRET: process.env.JWT_SECRET || "",
 //       RPC_URL: (process.env.NETWORK === "mainnet"
 //         ? process.env.MAINNET_SOLANA_RPC_URL
