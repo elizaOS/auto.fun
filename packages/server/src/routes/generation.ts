@@ -937,6 +937,12 @@ app.get("/:mint/history", async (c) => {
 
 // Generate token metadata endpoint
 app.post("/generate-metadata", async (c) => {
+
+  // get the body parameter
+  const body = await c.req.json();
+
+  const {prompt} = body;
+
   console.log("generate-metadata");
   try {
     // Parse request body
@@ -1013,7 +1019,7 @@ app.post("/generate-metadata", async (c) => {
             `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`
           );
 
-          const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
+          const systemPromptContent = await createTokenPrompt({prompt: prompt}); // Removed validatedData argument
           const falInput = {
             model: "gemini-2.0-flash-001",
             // Combine messages into prompt/system_prompt for fal
@@ -1022,6 +1028,9 @@ app.post("/generate-metadata", async (c) => {
             // Temperature is not directly supported in fal.subscribe input for all models? Check fal docs.
             // Assuming the model's default or configured temperature is used.
           };
+
+          console.log("systemPromptContent is", systemPromptContent);
+          console.log("prompt is", prompt);
 
           logger.log("Fal AI Input:", JSON.stringify(falInput));
 
@@ -1204,6 +1213,8 @@ app.post("/generate", async (c) => {
   try {
     // Parse request body
     const body = await c.req.json();
+
+    const {prompt} = body;
 
     // Create simplified schema for direct generation
     const GenerateRequestSchema = z.object({
