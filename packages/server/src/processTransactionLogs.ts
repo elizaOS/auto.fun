@@ -47,7 +47,7 @@ function convertTokenDataToDBData(
 }
 
 export async function updateTokenInDB(
-    tokenData: Partial<TokenData>,
+   tokenData: Partial<TokenData>,
 ): Promise<Token> {
    const db = getDB();
    const now = new Date().toISOString();
@@ -126,7 +126,7 @@ export async function updateTokenInDB(
 }
 
 export async function processTransactionLogs(
-    logs: string[],
+   logs: string[],
    signature: string,
 ): Promise<{
    found: boolean;
@@ -230,7 +230,7 @@ export async function processTransactionLogs(
             // Insert the swap record
             const db = getDB();
             const redisCache = createRedisCache();
-            const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
+            const listKey = `swapsList:${mintAddress}`;
             try {
                await redisCache.lpush(listKey, JSON.stringify(swapRecord));
                await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
@@ -319,7 +319,7 @@ export async function processTransactionLogs(
                signature,
                rawTokenAddress,
                rawCreatorAddress,
-                           );
+            );
 
             // call the cf backend 
             (async () => {
@@ -410,7 +410,7 @@ export async function processTransactionLogs(
             const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
             const tokenMigrator = new TokenMigrator(
-                              connection,
+               connection,
                new Wallet(wallet),
                program,
                autofunProgram,
@@ -466,7 +466,7 @@ export async function addOneToken() {
       signature,
       rawTokenAddress,
       rawCreatorAddress,
-         );
+   );
 
    // call the cf backend 
    (async () => {
@@ -500,7 +500,7 @@ const list = [{
 },
 ]
 export async function migrateTokensFromList(
-    connection: Connection,
+   connection: Connection,
 
 ) {
    // look for the token in the db if we do not have it add it
@@ -514,7 +514,7 @@ export async function migrateTokensFromList(
             mintAddress.signature,
             mintAddress.mint,
             mintAddress.creator,
-                     );
+         );
          await getDB()
             .insert(tokens)
             .values(newToken as Token).onConflictDoNothing();
@@ -542,7 +542,7 @@ export async function migrateTokensFromList(
    const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
    const tokenMigrator = new TokenMigrator(
-            connection,
+      connection,
       new Wallet(wallet),
       program,
       autofunProgram,
