@@ -122,7 +122,7 @@ export const TVChartContainer = ({
           "header_widget.buttons.borderColor": "#262626",
           "header_widget.buttons.fontSize": 11,
         },
-        interval: "5" as ResolutionString,
+        interval: "1" as ResolutionString,
       };
 
       tvWidgetRef.current = new widget(widgetOptions);
