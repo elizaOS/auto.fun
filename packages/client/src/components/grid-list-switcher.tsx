@@ -36,7 +36,9 @@ export default function GridListSwitcher() {
         <Button
           variant="outline"
           onClick={toggleViewMode}
-          aria-label={activeTab === "grid" ? "Switch to list view" : "Switch to grid view"}
+          aria-label={
+            activeTab === "grid" ? "Switch to list view" : "Switch to grid view"
+          }
           className="p-2"
         >
           {activeTab === "grid" ? (

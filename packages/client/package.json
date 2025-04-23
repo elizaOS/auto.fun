@@ -14,9 +14,9 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@autodotfun/charts": "workspace:*",
     "@autodotfun/types": "workspace:*",
     "@coral-xyz/anchor": "^0.31.0",
-    "@autodotfun/charts": "workspace:*",
     "@noble/ed25519": "^2.2.3",
     "@noble/hashes": "^1.7.2",
     "@radix-ui/react-dialog": "^1.1.6",
@@ -39,6 +39,7 @@
     "dayjs": "^1.11.13",
     "lodash": "^4.17.21",
     "lucide-react": "^0.483.0",
+    "numeral": "^2.0.6",
     "preact": "^10.26.4",
     "prettier": "^3.5.3",
     "react": ">=19.0.0",
@@ -77,6 +78,7 @@
     "@types/bs58": "^4.0.4",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.1",
+    "@types/numeral": "^2.0.5",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@types/react-helmet": "^6.1.11",

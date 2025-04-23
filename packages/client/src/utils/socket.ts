@@ -65,9 +65,9 @@ class SocketWrapper {
         const { event: eventName, data } = JSON.parse(event.data);
 
         // Handle server pings
-        if (eventName === 'ping') {
+        if (eventName === "ping") {
           // Respond immediately
-          this.emit('pong'); // Use emit to handle queuing/connection state
+          this.emit("pong"); // Use emit to handle queuing/connection state
           return; // Don't process ping further
         }
 

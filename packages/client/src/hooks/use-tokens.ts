@@ -51,6 +51,7 @@ export const useTokens = (params: UseTokensParams) => {
     validationSchema: validationSchema as z.ZodType<IToken>,
     itemsPropertyName: "tokens",
     enabled,
+    refetchInterval: 15000,
   });
 
   useEffect(() => {

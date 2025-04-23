@@ -43,7 +43,7 @@ export default function GridView({ data }: { data: IToken[] }) {
               <div className="absolute bottom-0 right-0 p-2 px-3 text-autofun-text-primary text-xs font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
                 {fromNow(token.createdAt, true)}
               </div>
-              
+
               <div className="w-full h-full aspect-square relative">
                 <div className="absolute top-0 rotate-180 size-full bg-[linear-gradient(to_bottom,rgba(0,0,0,0.8)_0%,transparent_20%,transparent_80%,rgba(0,0,0,0.5)_100%)] z-1" />
                 <SkeletonImage
