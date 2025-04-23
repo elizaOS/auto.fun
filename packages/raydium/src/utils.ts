@@ -5,9 +5,9 @@ import {
   sendAndConfirmTransaction,
   SystemProgram,
   Transaction,
-  VersionedTransaction,
-  TransactionMessage,
   TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 
 export const fixedPoint = parseFloat("1000000000");

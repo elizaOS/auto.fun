@@ -226,15 +226,15 @@ export class TokenMigrator {
     const transaction = await withdrawTx(
       this.wallet.publicKey,
       new PublicKey(token.mint),
-      this.connection,
+      this.connection as any,
       this.autofunProgram as any,
     );
 
     transaction.instructions = [...transaction.instructions];
 
     const { signature: txId, logs } = await execWithdrawTx(
-      transaction,
-      this.connection,
+      transaction as any,
+      this.connection as any,
       this.wallet,
     );
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
@@ -491,7 +491,7 @@ export class TokenMigrator {
       );
     }
     const txSignature = await sendNftTo(
-      signerWallet,
+      signerWallet as any,
       multisig,
       new PublicKey(nftMinted), // 10% NFT
       this.connection,

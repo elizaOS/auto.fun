@@ -21,6 +21,6 @@
     "noUnusedParameters": false,
     "noEmit": false
   },
-  "include": ["src/**/*", "../server/migration"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

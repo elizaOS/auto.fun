@@ -117,7 +117,7 @@ export async function fetchSOLPriceFromPyth(): Promise<number> {
       getPythClusterApiUrl(PYTHNET_CLUSTER_NAME),
     );
     const pythPublicKey = getPythProgramKeyForCluster(PYTHNET_CLUSTER_NAME);
-    const pythClient = new PythHttpClient(pythConnection, pythPublicKey);
+    const pythClient = new PythHttpClient(pythConnection as any, pythPublicKey);
 
     const data = await pythClient.getData();
     const solPrice = data.productPrice.get(SOLUSD_SYMBOL);

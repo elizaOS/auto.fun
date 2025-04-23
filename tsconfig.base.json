@@ -12,7 +12,7 @@
     "declaration": true, // Generate .d.ts files
     "declarationMap": true, // Generate sourcemaps for .d.ts
     "sourceMap": true, // Generate .js.map files
-    "composite": true, // Enable project references/incremental builds
+    "composite": false, // Enable project references/incremental builds
     "noEmit": true, // Prevent base config from emitting files directly
     "isolatedModules": true // Ensure files can be transpiled independently
   }

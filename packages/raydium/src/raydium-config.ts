@@ -32,7 +32,7 @@ export const initSdk = async (params: {
     `Raydium SDK: Connected to RPC ${connection.rpcEndpoint} in ${cluster}`,
   );
   raydium = await Raydium.load({
-    owner: params?.owner || owner,
+    owner: params?.owner || owner as any,
     connection,
     cluster,
     disableFeatureCheck: true,
