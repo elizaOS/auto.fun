@@ -306,10 +306,28 @@ async function handleSwap(
 
   if (mintLog && swapLog && reservesLog && swapeventLog) {
     try {
-      const mintAddress = mintLog!.split("Mint:")[1].trim().replace(/[",)]/g, '');
-      const [user, direction, amount] = swapLog.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
-      const [reserveToken, reserveLamport] = reservesLog.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
-      const [usr, dir, amountOut] = swapeventLog.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
+      const mintAddress = mintLog?.match(/Mint:\s*([A-Za-z0-9]+)/)?.[1];
+      const swapMatch = swapLog?.match(/Swap:\s+([A-Za-z0-9]+)\s+(\d+)\s+(\d+)/);
+      const user = swapMatch?.[1];
+      const direction = swapMatch?.[2];
+      const amount = swapMatch?.[3];
+
+      const amountOut = swapeventLog?.match(/SwapEvent:\s+\S+\s+\d+\s+(\d+)/)?.[1];
+      const reserveMatch = reservesLog?.match(/Reserves:\s*(\d+)\s+(\d+)/);
+      const reserveToken = reserveMatch?.[1];
+      const reserveLamport = reserveMatch?.[2];
+      if (
+        !mintAddress ||
+        !swapMatch ||
+        !user ||
+        !direction ||
+        !amount ||
+        !amountOut ||
+        !reserveMatch
+      ) {
+        logger.error(`Invalid swap log: ${swapLog}`);
+        return null;
+      }
 
       // Retrieve token mint info to get decimals.
       const tokenWithSupply = await getToken(mintAddress);
@@ -355,11 +373,11 @@ async function handleSwap(
       const db = getDB();
       const redisCache = await getGlobalRedisCache();
       const listKey = `swapsList:${mintAddress}`;
-
+      console.log(`Adding swap to Redis list ${listKey}`);
 
       const ext = await ExternalToken.create(mintAddress, redisCache);
       await ext.insertProcessedSwaps([swapRecord]);
-
+      console.log(`sending swap to the user ${mintAddress}`);
       await wsClient.emit(`global`, "newSwap", {
         ...swapRecord,
         tokenMint: mintAddress,
