@@ -42,7 +42,17 @@ if (isDevnet) {
     "import.meta.env.VITE_IMAGE_OPTIMIZATION_URL",
     import.meta.env.VITE_IMAGE_OPTIMIZATION_URL,
   );
+  console.log(
+    "import.meta.env.VITE_ADMIN_ADDRESSES",
+    import.meta.env.VITE_ADMIN_ADDRESSES,
+  );
 }
+
+// Parse admin addresses from comma-separated string to array
+const parseAdminAddresses = (addressesStr: string | undefined): string[] => {
+  if (!addressesStr) return [];
+  return addressesStr.split(',').map(addr => addr.trim());
+};
 
 const unparsedEnv = {
   rpcUrl:
@@ -73,6 +83,7 @@ const unparsedEnv = {
     import.meta.env.VITE_IMAGE_OPTIMIZATION_URL,
   exampleImageUrl:
     import.meta.env.VITE_EXAMPLE_IMAGE_URL,
+  adminAddresses: parseAdminAddresses(import.meta.env.VITE_ADMIN_ADDRESSES) || [],
 } as const;
 
 const envSchema = z.object({
@@ -91,6 +102,7 @@ const envSchema = z.object({
   metadataBaseUrl: z.string().min(1),
   imageOptimizationUrl: z.string().min(1),
   exampleImageUrl: z.string().min(1),
+  adminAddresses: z.array(z.string()),
 });
 
 const parsedEnv = envSchema.parse(unparsedEnv);
