@@ -1,20 +1,17 @@
 import { Connection } from "@solana/web3.js";
 import dotenv from "dotenv";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { UpgradeWebSocket } from "hono/ws";
-import { Context } from "hono";
+import { Context, Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
+import { cors } from "hono/cors";
 import type { WSContext } from "hono/ws"; // Import WSContext type for handlers
-import { serve } from "@hono/node-server";
 
 // Load environment variables from .env file at the root
 dotenv.config({ path: "../../.env" });
 
 import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";
-import { Env } from "./env"; // Assuming Env type is defined and includes Redis vars
 import { runCronTasks } from "./cron"; // Import the cron task runner
+import { Env } from "./env"; // Assuming Env type is defined and includes Redis vars
 import { adminRouter, ownerRouter } from "./routes/admin";
 import agentRouter from "./routes/agents";
 import authRouter from "./routes/auth";
@@ -33,9 +30,7 @@ import { logger } from "./util";
 import { webSocketManager } from "./websocket-manager";
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
 import { getSOLPrice } from './mcap';
-import { fork } from "child_process";
-import path from "path";
-import { getGlobalRedisCache, getSharedRedisPool } from "./redis";
+import { getGlobalRedisCache } from "./redis";
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
@@ -366,14 +361,6 @@ app.get(
     };
   })
 );
-
-// --- Start the server (Handled by Bun automatically via export) ---
-const PORT = parseInt(process.env.PORT || "8787", 10);
-
-if (isNaN(PORT)) {
-  logger.error(`Invalid PORT environment variable: ${process.env.PORT}.`);
-  process.exit(1);
-}
 
 // Export fetch and websocket handlers for Bun
 export default {

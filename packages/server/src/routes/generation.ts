@@ -1012,7 +1012,7 @@ app.post("/generate-metadata", async (c) => {
 
           const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
           const falInput = {
-              model: "fal-ai/meta-llama/llama-4-scout",
+              model: "meta-llama/llama-4-scout",
               // Combine messages into prompt/system_prompt for fal
               system_prompt: systemPromptContent,
               prompt: "Generate the token metadata based on the system prompt.", // Or adjust if createTokenPrompt provides the main prompt
@@ -1023,7 +1023,7 @@ app.post("/generate-metadata", async (c) => {
           logger.log("Fal AI Input:", JSON.stringify(falInput));
 
           // Use fal.subscribe
-          const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+          const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
               input: falInput,
               logs: true, // Optional: for debugging
           });
@@ -1724,14 +1724,14 @@ async function generateMetadata(maxRetries = 10) { // Add env parameter
 
       const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
       const falInput = {
-          model: "fal-ai/meta-llama/llama-4-scout",
+          model: "meta-llama/llama-4-scout",
           system_prompt: systemPromptContent,
           prompt: "Generate the token metadata based on the system prompt.",
           // Temperature adjustment might need different handling with Fal
       };
 
       // Use fal.subscribe
-      const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+      const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
           input: falInput,
           logs: true,
       });
@@ -1883,14 +1883,14 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
 
         const systemPromptContent = await createTokenPrompt(); // Removed validatedData argument
         const falInput = {
-            model: "fal-ai/meta-llama/llama-4-scout",
+            model: "meta-llama/llama-4-scout",
             system_prompt: systemPromptContent,
             prompt: "Generate token metadata (name, symbol, description, prompt) based on the system prompt. Output ONLY the JSON object.",
             // Temperature adjustment might need different handling with Fal
         };
 
         // Use fal.subscribe
-        const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+        const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
             input: falInput,
             logs: true, // Optional for debugging
         });
@@ -2453,13 +2453,13 @@ async function generateEnhancedPrompt(
 
     // Use Fal AI to enhance the prompt
     const falInput = {
-        model: "fal-ai/meta-llama/llama-4-scout",
+        model: "meta-llama/llama-4-scout",
         system_prompt: systemPromptContent,
         prompt: `User prompt to enhance: "${userPrompt}". Output ONLY the enhanced prompt text.`,
         // Temperature adjustment might need different handling with Fal
     };
 
-    const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+    const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
         input: falInput,
         logs: true,
     });
@@ -2657,13 +2657,13 @@ async function generateLyrics(
     [00:12.50] Third line of chorus`;
 
     const falInput = {
-        model: "fal-ai/meta-llama/llama-4-scout",
+        model: "meta-llama/llama-4-scout",
         system_prompt: systemPrompt,
         prompt: "Generate the lyrics based on the system prompt instructions.",
         // Temperature adjustment might need different handling with Fal
     };
 
-    const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+    const response: any = await fal.subscribe("meta-llama/llama-4-scout", {
         input: falInput,
         logs: true,
     });
