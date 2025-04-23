@@ -54,7 +54,7 @@ router.post("/codex-webhook", async (c) => {
   const body = await c.req.json();
   const swapEvent = WebhookTokenPairEvent.parse(body).data.event;
 
-  const child = fork(path.join(__dirname, "subscription/processWebhook.ts"), {
+  const child = fork(path.join(__dirname, "../subscription/processWebhook.ts"), {
     execArgv: ["--loader", "ts-node/esm"], // if using TypeScript
     env: process.env,
   });

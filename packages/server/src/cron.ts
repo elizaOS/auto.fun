@@ -30,7 +30,7 @@ import {
   getFeaturedMaxValues,
   logger,
 } from "./util";
-import { getWebSocketClient } from "./websocket-client";
+import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -220,7 +220,7 @@ type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
   logs: string[],
   signature: string,
-  wsClient: any = null,
+  wsClient: WebSocketClient,
 ): Promise<ProcessResult> {
   if (!wsClient) {
     wsClient = getWebSocketClient();
@@ -243,7 +243,7 @@ export async function processTransactionLogs(
 async function handleNewToken(
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: WebSocketClient,
 ): Promise<HandlerResult> {
   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
   if (!newTokenLog) return null;
@@ -285,7 +285,7 @@ async function handleNewToken(
 async function handleSwap(
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: WebSocketClient,
 ): Promise<HandlerResult | null> {
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
@@ -469,7 +469,7 @@ async function handleSwap(
 async function handleCurveComplete(
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: WebSocketClient,
 ): Promise<HandlerResult> {
   const completeLog = logs.find((log) => log.includes("curve is completed"));
   const mintLog = logs.find((log) => log.includes("Mint:"));

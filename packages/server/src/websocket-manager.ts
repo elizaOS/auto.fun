@@ -4,6 +4,7 @@ import { logger } from './util';
 // Import the correct type from Hono
 import type { WSContext } from 'hono/ws';
 import { getGlobalRedisCache } from './redis';
+import { j } from 'react-router/dist/development/fog-of-war-D4x86-Xc';
 
 // Interface for our client metadata, not extending WSContext
 interface ClientMetadata {
@@ -38,6 +39,10 @@ class WebSocketManager {
         const subClient = await this.redisCache.redisPool.getSubscriberClient();
         await subClient.subscribe("ws:broadcast", (_, message) => {
             const { room, event, data } = JSON.parse(message as string);
+            if (event === "newToken") {
+                const tokenMint = JSON.parse(data)?.tokenMint;
+                logger.log(`Broadcasting newToken ${tokenMint} event to room ${room}`);
+            }
             this.broadcastToRoom(room, event, data);
         });
 
