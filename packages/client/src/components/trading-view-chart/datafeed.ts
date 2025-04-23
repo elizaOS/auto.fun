@@ -80,8 +80,8 @@ export function getDataFeed({
       onErrorCallback,
     ) => {
       const { from, to, firstDataRequest } = periodParams;
-      const FIVE_DAYS = 5 * 24 * 60 * 60;
-      const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
+      const TWO_DAYS = 2 * 24 * 60 * 60;
+      const adjustedFrom = firstDataRequest ? from - TWO_DAYS : from;
 
       try {
         const chartTable = await getChartTable({

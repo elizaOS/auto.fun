@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "start": "bun run src/index.ts",
+    "start": "PORT=8787 bun run src/index.ts",
     "start-server": "bun run start",
     "dev": "PORT=8787 bun run src/index.ts",
     "migrateTokensFromSqlite": "bun run src/migrateTokensFromSqlite.ts",
