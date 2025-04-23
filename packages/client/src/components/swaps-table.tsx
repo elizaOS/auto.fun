@@ -36,17 +36,28 @@ export default function SwapsTable({ token }: { token: IToken }) {
 
     if (isNaN(numericAmount)) return "0";
 
+    // Multiply token amount by 1000 to correct for 3 zeroes issue
+    const adjustedAmount = isToken ? numericAmount * 1000 : numericAmount;
+
     if (isToken) {
-      // Format token amount
-      if (numericAmount >= 1000000) {
-        return `${(numericAmount / 1000000).toFixed(2)}M`;
-      } else if (numericAmount >= 1000) {
-        return `${(numericAmount / 1000).toFixed(2)}K`;
+      // Format token amount with proper handling of decimal places
+      if (adjustedAmount >= 1000000) {
+        return `${(adjustedAmount / 1000000).toFixed(2)}M`;
+      } else if (adjustedAmount >= 1000) {
+        return `${(adjustedAmount / 1000).toFixed(2)}K`;
       } else {
-        return numericAmount.toFixed(2);
+        // Use proper rounding to preserve decimal places
+        return adjustedAmount.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
       }
     } else {
-      return numericAmount.toFixed(4);
+      // For SOL amounts
+      return adjustedAmount.toLocaleString(undefined, {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4
+      });
     }
   };
 
