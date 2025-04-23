@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import {
   authenticate,
   authStatus,
@@ -92,9 +92,9 @@ authRouter.post("/register", async (c) => {
   }
 });
 
-authRouter.post("/authenticate", (c) => authenticate(c));
-authRouter.post("/generate-nonce", (c) => generateNonce(c));
-authRouter.post("/logout", (c) => logout(c));
-authRouter.get("/auth-status", (c) => authStatus(c));
+authRouter.post("/authenticate", (c: Context) => authenticate(c));
+authRouter.post("/generate-nonce", (c: Context) => generateNonce(c));
+authRouter.post("/logout", (c: Context) => logout(c));
+authRouter.get("/auth-status", (c: Context) => authStatus(c));
 
 export default authRouter;

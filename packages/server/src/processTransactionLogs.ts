@@ -23,36 +23,6 @@ const lastProcessedSignature: string | null = null;
 // Define max swaps to keep in Redis list (consistent with worker)
 const MAX_SWAPS_TO_KEEP = 1000;
 
-export async function resumeOnStart(connection: Connection) {
-
-   if (!process.env.WALLET_PRIVATE_KEY) {
-      throw new Error("Wallet private key not found");
-   }
-
-   const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
-   );
-   const provider = new AnchorProvider(
-      connection,
-      new Wallet(wallet),
-      AnchorProvider.defaultOptions(),
-   );
-   const program = new Program<RaydiumVault>(
-      raydium_vault_IDL as any,
-      provider,
-   );
-   const autofunProgram = new Program<Autofun>(IDL as any, provider);
-
-   const tokenMigrator = new TokenMigrator(
-            connection,
-      new Wallet(wallet),
-      program,
-      autofunProgram,
-      provider,
-   );
-   await tokenMigrator.resumeMigrationsOnStart()
-}
-
 function convertTokenDataToDBData(
    tokenData: Partial<TokenData>,
 ): Partial<TokenDBData> {

@@ -12,7 +12,7 @@ import { Buffer } from 'node:buffer'; // Buffer import
 import { getDB, Token, tokens } from "../db";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "../redis";
 import { uploadToCloudflare } from "../uploader"; // Import the S3 uploader
 import {
   applyFeaturedSort,

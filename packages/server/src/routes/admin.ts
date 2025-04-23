@@ -610,14 +610,17 @@ const requireTokenOwner = async (c: any, next: Function) => {
     return c.json({ error: "Token mint required" }, 400);
   }
 
-  // Fetch token data to check ownership
-  const token = await process.env.DB.prepare(
-    "SELECT creator FROM tokens WHERE mint = ?",
-  )
-    .bind(tokenMint)
-    .first();
+  // Fetch token data to check ownership using Drizzle syntax
+  const db = getDB();
+  const tokenResult = await db.select({ creator: tokens.creator })
+                               .from(tokens)
+                               .where(eq(tokens.mint, tokenMint))
+                               .limit(1);
 
-  if (!token || token.creator !== user.publicKey) {
+  const tokenCreator = tokenResult[0]?.creator;
+
+  if (!tokenCreator || tokenCreator !== user.publicKey) {
+    logger.warn(`Ownership check failed: User ${user.publicKey} tried to access owner route for token ${tokenMint} owned by ${tokenCreator || 'not found'}`);
     return c.json({ error: "Token ownership required" }, 403);
   }
 

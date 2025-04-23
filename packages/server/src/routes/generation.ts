@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { verifyAuth } from "../auth";
 import { getDB, mediaGenerations, preGeneratedTokens, tokens } from "../db";
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "../redis";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
@@ -1461,11 +1461,7 @@ export async function getDailyGenerationCount(
   }
 }
 
-// Function to generate a token on demand
-async function generateTokenOnDemand(
-  // Removed env parameter
-  // Removed context dependency
-): Promise<{
+async function generateTokenOnDemand(): Promise<{
   success: boolean;
   token?: {
     id: string;
@@ -1639,7 +1635,7 @@ app.get("/pre-generated-token", async (c) => {
       );
 
       // Generate a token on the fly
-      const result = await generateTokenOnDemand(c.executionCtx);
+      const result = await generateTokenOnDemand();
 
       if (!result.success) {
         return c.json({ error: result.error }, 500);

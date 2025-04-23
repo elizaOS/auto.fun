@@ -1,7 +1,7 @@
 import { getDB, tokens } from "../db";
 import { eq } from "drizzle-orm";
 import { ExternalToken } from "../externalToken";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createRedisCache } from "../redis";
 
 // TODO: Replace with redis cache
 export async function startMonitoringBatch(

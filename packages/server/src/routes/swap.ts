@@ -4,7 +4,7 @@ import { cache as honoCacheMiddleware } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, tokens } from "../db";
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "../redis";
 import { logger } from "../util";
 
 const router = new Hono<{

@@ -3,7 +3,7 @@ import { getDB, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
 
 import { Env } from "../env";
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "../redis";
 // point events for now
 export type PointEvent =
   | { type: "wallet_connected" }

@@ -191,7 +191,7 @@ export class RedisCacheService {
     // Check if script already defined to avoid redefining on every call
     if (!(client as any).releaseLockScript) { // Check if command name exists
         try {
-            // Define the script and store its SHA1 hash on the client instance for efficiency
+            // Define the script command
             (client as any).defineCommand("releaseLockScript", {
                 numberOfKeys: 1,
                 lua: this.releaseLockScript,
@@ -217,8 +217,7 @@ export class RedisCacheService {
       const result = await this.redisPool.useClient(async (client) => {
         // Ensure script is defined for this client connection
         await this.defineReleaseLockScript(client);
-        // Execute the Lua script
-        // Note: `releaseLockScript` is the command name we defined
+        // Execute the Lua script using the defined command name
         return await (client as any).releaseLockScript(keyWithPrefix, lockValue);
       });
 

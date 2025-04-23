@@ -4,14 +4,12 @@ import { Hono } from "hono";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { getLatestCandle } from "../chart";
-import { processTransactionLogs } from "../cron";
 import { getDB, tokens } from "../db";
 import { ExternalToken } from "../externalToken";
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { createRedisCache, getGlobalRedisCache } from "../redis";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-import { createRedisCache } from "../redis/redisCacheService";
 
 const router = new Hono<{
   Variables: {

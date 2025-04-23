@@ -2,7 +2,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, tokens } from "../db";
 import { retryOperation } from "../raydium/utils";
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "../redis";
 import { calculateFeaturedScore, getFeaturedMaxValues, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 

@@ -10,7 +10,7 @@ import { Context } from "hono"; // Import Context type
 import * as schema from "../db"; // Import your generated schema
 import { getDB } from "../db"; // Import the getDB helper
 import { Env } from "../env"; // Import Env type from process.env.ts
-import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "../redis";
 // ---=================================---
 
 // Placeholder types - replace with your actual DB types and Env definition

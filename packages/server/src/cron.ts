@@ -7,7 +7,7 @@ import { getDB, Token, tokens } from "./db";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { getToken } from "./migration/migrations";
 import { awardGraduationPoints, awardUserPoints } from "./points";
-import { getGlobalRedisCache } from "./redis/redisCacheGlobal";
+import { getGlobalRedisCache } from "./redis";
 import {
   checkAndReplenishTokens,
   generateAdditionalTokenImages, // Assumes this uses S3 uploader internally now
@@ -215,14 +215,14 @@ export async function processTransactionLogs(
   }
 
   // Try each handler in sequence and return on first match
-  const newTokenResult = await handleNewToken(logs, signature, wsClient);
-  if (newTokenResult) return newTokenResult;
+  await handleNewToken(logs, signature, wsClient);
+  // if (newTokenResult) return newTokenResult;
 
-  const swapResult = await handleSwap(logs, signature, wsClient);
-  if (swapResult) return swapResult;
+  await handleSwap(logs, signature, wsClient);
+  // if (swapResult) return swapResult;
 
-  const curveResult = await handleCurveComplete(logs, signature, wsClient);
-  if (curveResult) return curveResult;
+  await handleCurveComplete(logs, signature, wsClient);
+  // if (curveResult) return curveResult;
 
   // Default: no event found
   return { found: false };
