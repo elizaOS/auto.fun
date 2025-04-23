@@ -62,38 +62,6 @@ export const getToken = async ({
   }
 };
 
-export const getTokenHolders = async ({ address }: { address: string }) => {
-  try {
-    const endpoint = `/api/token/${address}/holders`;
-    const data = await fetcher(endpoint, "GET");
-    return data;
-  } catch (error) {
-    console.error(`Error fetching holders: ${error}`);
-    return { holders: [], page: 1, totalPages: 0, total: 0 };
-  }
-};
-
-export const refreshTokenHolders = async ({ address }: { address: string }) => {
-  try {
-    const data = await fetcher(`/api/token/${address}/refresh-holders`, "GET");
-    return data;
-  } catch (error) {
-    console.error(`Error refreshing token holders: ${error}`);
-    throw error;
-  }
-};
-
-export const getTokenSwapHistory = async ({ address }: { address: string }) => {
-  try {
-    const endpoint = `/api/swaps/${address}`;
-    const data = await fetcher(endpoint, "GET");
-    return data;
-  } catch (error) {
-    console.error(`Error fetching swaps: ${error}`);
-    return { swaps: [], page: 1, totalPages: 0, total: 0 };
-  }
-};
-
 export const getSearchTokens = async ({ search }: { search: string }) => {
   const data = await fetcher(`/api/tokens?search=${search}`, "GET");
   return data;

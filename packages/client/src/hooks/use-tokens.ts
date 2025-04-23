@@ -10,7 +10,8 @@ export const HomepageTokenSchema = TokenSchema.and(
     numComments: z.number().default(0),
   }),
 );
-export const HomepageFeaturedSchema = HomepageTokenSchema.and(
+
+const HomepageFeaturedSchema = HomepageTokenSchema.and(
   z.object({
     featuredScore: z.number().nullable().optional(),
   }),

@@ -94,7 +94,7 @@ const fetchPaginatedData = async <
   };
 };
 
-export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
+const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPageParam = searchParams.get("page");
   const initialPage = initialPageParam
