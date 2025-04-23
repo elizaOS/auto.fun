@@ -1,10 +1,9 @@
+import { Connection } from "@solana/web3.js";
+import { eq } from "drizzle-orm";
+import PQueue from "p-queue";
+import { getDB, metadata } from "./db";
 import { logger } from "./logger";
 import { processTransactionLogs } from "./processTransactionLogs";
-import { Token, getDB, metadata } from "./db";
-import PQueue from "p-queue";
-import { Env } from "./env";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
 
 
 

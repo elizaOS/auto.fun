@@ -1,8 +1,7 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   getDB,
-  messageLikes,
   messages,
   messages as messagesTable,
 } from "../db";
@@ -81,22 +80,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
       return { messages: [], total: 0 };
     })) as { messages: any[]; total: number };
 
-    // If we have real results, check if user is logged in to add hasLiked field
-    const userPublicKey = c.get("user")?.publicKey;
     let messagesWithLikes = result.messages;
-
-    if (userPublicKey && result.messages.length > 0) {
-      try {
-        messagesWithLikes = await addHasLikedToMessages(
-          db,
-          result.messages,
-          userPublicKey,
-        );
-      } catch (error) {
-        logger.error("Error adding likes info to messages:", error);
-        // Continue with messages without like info
-      }
-    }
 
     const totalPages = Math.ceil(result.total / limit);
 
@@ -136,17 +120,7 @@ messagesRouter.get("/messages/:messageId/replies", async (c) => {
       .where(eq(messages.parentId, messageId))
       .orderBy(desc(messages.timestamp));
 
-    // If user is logged in, add hasLiked field to replies
-    const userPublicKey = c.get("user")?.publicKey;
     let repliesWithLikes = repliesResult;
-
-    if (userPublicKey && repliesResult.length > 0) {
-      repliesWithLikes = await addHasLikedToMessages(
-        db,
-        repliesResult,
-        userPublicKey,
-      );
-    }
 
     return c.json(repliesWithLikes);
   } catch (error) {
@@ -183,27 +157,8 @@ messagesRouter.get("/messages/:messageId/thread", async (c) => {
       .orderBy(desc(messages.timestamp));
 
     // If user is logged in, add hasLiked field
-    const userPublicKey = c.get("user")?.publicKey;
     let parentWithLikes = parentResult;
     let repliesWithLikes = repliesResult;
-
-    if (userPublicKey) {
-      if (parentResult.length > 0) {
-        parentWithLikes = await addHasLikedToMessages(
-          db,
-          parentResult,
-          userPublicKey,
-        );
-      }
-
-      if (repliesResult.length > 0) {
-        repliesWithLikes = await addHasLikedToMessages(
-          db,
-          repliesResult,
-          userPublicKey,
-        );
-      }
-    }
 
     return c.json({
       parent: parentWithLikes[0],
@@ -283,121 +238,5 @@ messagesRouter.post("/messages/:mint", async (c) => {
     );
   }
 });
-
-// Like a message
-messagesRouter.post("/messages/:messageId/likes", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const messageId = c.req.param("messageId");
-    const userAddress = user.publicKey;
-
-    const db = getDB();
-
-    // Find the message
-    const message = await db
-      .select()
-      .from(messagesTable)
-      .where(eq(messages.id, messageId))
-      .limit(1);
-
-    if (message.length === 0) {
-      return c.json({ error: "Message not found" }, 404);
-    }
-
-    // Check if user already liked this message
-    const existingLike = await db
-      .select()
-      .from(messageLikes)
-      .where(
-        and(
-          eq(messageLikes.messageId, messageId),
-          eq(messageLikes.userAddress, userAddress),
-        ),
-      )
-      .limit(1);
-
-    if (existingLike.length > 0) {
-      return c.json({ error: "Already liked this message" }, 400);
-    }
-
-    // Create like record
-    await db.insert(messageLikes).values([
-      {
-        id: crypto.randomUUID(),
-        messageId,
-        userAddress,
-        timestamp: new Date(),
-      },
-    ]);
-
-    // Increment message likes
-    await db
-      .update(messages)
-      .set({
-        likes: sql`${messages.likes} + 1`,
-      } as any)
-      .where(eq(messages.id, messageId));
-
-    // Get updated message
-    const updatedMessage = await db
-      .select()
-      .from(messagesTable)
-      .where(eq(messages.id, messageId))
-      .limit(1);
-
-    return c.json({ ...updatedMessage[0], hasLiked: true });
-  } catch (error) {
-    logger.error("Error liking message:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Helper function to add hasLiked field to messages
-async function addHasLikedToMessages(
-  db: ReturnType<typeof getDB>,
-  messagesList: Array<any>,
-  userAddress: string,
-): Promise<Array<any>> {
-  if (
-    !Array.isArray(messagesList) ||
-    messagesList.length === 0 ||
-    !userAddress
-  ) {
-    return messagesList;
-  }
-
-  // Extract message IDs
-  const messageIds = messagesList.map((message) => message.id);
-
-  // Query for likes by this user for these messages
-  const userLikes = await db
-    .select()
-    .from(messageLikes)
-    .where(
-      and(
-        inArray(messageLikes.messageId, messageIds),
-        eq(messageLikes.userAddress, userAddress),
-      ),
-    );
-
-  // Create a Set of liked message IDs for quick lookup
-  const likedMessageIds = new Set(
-    userLikes.map((like: { messageId: string }) => like.messageId),
-  );
-
-  // Add hasLiked field to each message
-  return messagesList.map((message) => ({
-    ...message,
-    hasLiked: likedMessageIds.has(message.id),
-  }));
-}
 
 export default messagesRouter;
