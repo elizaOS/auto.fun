@@ -25,6 +25,7 @@ export async function startLogSubscription(
    const wsClient = getWebSocketClient()
 
    async function watch() {
+
       subId = await connection.onLogs(
          programId,
          async (logs: Logs) => {

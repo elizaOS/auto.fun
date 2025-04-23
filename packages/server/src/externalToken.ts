@@ -10,6 +10,8 @@ import { getSOLPrice } from "./mcap";
 import { getGlobalRedisCache, RedisCache } from "./redis";
 import { logger } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
+import { getDB, tokens } from "./db";
+import { eq } from "drizzle-orm";
 
 const SOLANA_NETWORK_ID = 1399811149;
 
@@ -128,6 +130,7 @@ export class ExternalToken {
   // Updated method to fetch/update market and holder data with caching and time check
   public async updateMarketAndHolders(forceUpdate = false): Promise<TokenDetails | null> {
     const detailsKey = `token:details:${this.mint}`;
+    const holdersListKey = `holders:${this.mint}`;
     const now = Date.now();
 
     // 1. Try to get cached details
@@ -170,6 +173,8 @@ export class ExternalToken {
 
       // 3. Store combined data in Redis
       await this.redisCache.set(detailsKey, JSON.stringify(combinedDetails), MARKET_HOLDER_REFRESH_INTERVAL * 2); // Cache for double the interval?
+      // add holders to a separate list
+      await this.redisCache.set(holdersListKey, JSON.stringify(holderResult), MARKET_HOLDER_REFRESH_INTERVAL * 2);
       logger.log(`ExternalToken: Stored updated market/holder details in Redis for ${this.mint}`);
 
       // 4. Emit WebSocket updates (consider doing this outside if possible)
@@ -223,6 +228,17 @@ export class ExternalToken {
         tokenDecimals: tokenDecimals,
         createdAt: creationTime,
       };
+      const filtered = Object.fromEntries(
+        Object.entries(newTokenData).filter(
+          ([, value]) => value !== 0 && value !== undefined && value !== null,
+        ),
+      );
+
+      const db = await getDB();
+      await db
+        .update(tokens)
+        .set(filtered)
+        .where(eq(tokens.mint, this.mint))
 
       return { newTokenData, tokenSupply };
     } catch (error) {
