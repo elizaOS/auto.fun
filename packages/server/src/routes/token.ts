@@ -1461,6 +1461,13 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
         logger.log(
           `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`,
         );
+        const ts = await redisCache.get(`${holdersListKey}:lastUpdated`);
+        if (!ts || Date.now() - new Date(ts).getTime() > 5 * 60_000) {
+          // >5 min old (or never set) → refresh in background
+          void updateHoldersCache(mint)
+            .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+            .catch((err) => logger.error(`Async holders refresh failed:`, err));
+        }
       } else {
         logger.log(`No holders found in Redis for key ${holdersListKey}`);
         // Return empty if not found in cache (as updateHoldersCache should populate it)
