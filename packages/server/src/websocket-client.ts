@@ -1,9 +1,3 @@
-// WebSocket client for sending messages to connected clients
-// This now interacts directly with the in-memory WebSocketManager
-// import type { DurableObjectNamespace } from "@cloudflare/workers-types"; // No longer needed
-// import { Env } from "./env"; // Env might not be needed if not used for configuration
-import { webSocketManager } from './websocket-manager'; // Import the manager instance
-import { logger } from "./util";
 import { getGlobalRedisCache } from './redis';
 
 export class WebSocketClient {

@@ -117,6 +117,13 @@ export const TokenSchema = z
     }, z.number().nullish()),
     verified: z.number().nullish(),
     featured: z.number().nullish(),
+    hidden: z.preprocess((val) => {
+      if (typeof val === "string") {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }
+      return val;
+    }, z.number().nullish()),
   })
   .transform((data) => ({
     ...data,
@@ -160,6 +167,7 @@ export const TokenSchema = z
     imported: data.imported != null ? Number(data.imported) : 0,
     verified: data?.verified ? data?.verified : 0,
     featured: data?.featured ? data?.featured : 0,
+    hidden: data?.hidden ? !!data.hidden : false,
   }));
 
 export type IToken = z.infer<typeof TokenSchema>;

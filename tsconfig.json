@@ -14,7 +14,7 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "jsx": "react-jsx",
-    "types": ["@cloudflare/workers-types", "node"],
+    "types": ["node"],
     "paths": {
       "@/*": ["./src/*"]
     },

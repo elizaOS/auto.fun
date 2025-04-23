@@ -13,7 +13,7 @@ import { getDB, Token, tokens } from "../db";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
 import { getGlobalRedisCache } from "../redis";
-import { uploadToCloudflare } from "../uploader"; // Import the S3 uploader
+import { uploadWithS3 } from "../uploader"; // Import the S3 uploader
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -42,10 +42,6 @@ function getS3Client(): S3Client {
   logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
   return s3ClientInstance;
 }
-
-// Define the fixed public base URL
-const PUBLIC_STORAGE_BASE_URL = "https://621d1008ef1cb024077560dcb94dd126.r2.cloudflarestorage.com/autofun-storage";
-
 
 // Basic logger implementation if not globally available
 const logger = {
@@ -1801,7 +1797,7 @@ tokenRouter.post("/create-token", async (c) => {
           const filename = `${mintAddress}-${Date.now()}.${ext}`;
 
           // Upload using the uploader function (which now uses S3)
-          imageUrl = await uploadToCloudflare(
+          imageUrl = await uploadWithS3(
             // Pass necessary env vars if uploader expects them (it shouldn't anymore)
             imageBuffer,
             { filename, contentType, basePath: 'token-images' }
@@ -2572,11 +2568,11 @@ async function uploadImportImage(c: Context) {
 
     // Generate unique filename
     const imageFilename = `${crypto.randomUUID()}${extension}`;
-    // No need for imageKey construction here if using uploadToCloudflare
+    // No need for imageKey construction here if using uploadWithS3
     // const imageKey = `token-images/${imageFilename}`;
 
     // Upload using the uploader function
-    const imageUrl = await uploadToCloudflare(
+    const imageUrl = await uploadWithS3(
       // Env no longer needed here
       imageBuffer,
       { filename: imageFilename, contentType, basePath: 'token-images' }

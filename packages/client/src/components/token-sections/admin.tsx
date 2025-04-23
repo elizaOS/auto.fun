@@ -3,7 +3,7 @@ import { isFromDomain } from "@/utils";
 import { env } from "@/utils/env";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
 import { Icons } from "../icons";
@@ -448,11 +448,28 @@ export default function AdminTab() {
 
   // If not a moderator or owner, don't render the admin controls
   if (!isModerator && !isTokenOwner) {
-    return null;
+    return (
+        <div className="p-4 text-center text-autofun-text-secondary">
+            Admin controls are only available to moderators and the token creator.
+        </div>
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col p-4 gap-4">
+      {/* --- ADD ADMIN VIEW LINK HERE --- */}
+      {isModerator && mint && ( // Only show for moderators, owner check is implicit by rendering this tab
+         <div className="flex justify-end mb-2">
+           <Link
+             to={`/admin/tokens/${mint}`}
+             className="text-sm px-3 py-1 rounded bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary transition-colors"
+           >
+             Go to Full Admin View
+           </Link>
+         </div>
+      )}
+      {/* --- END LINK --- */}
+
       <div className="grid grid-cols-1">
         {/* Website Field */}
         <Controller

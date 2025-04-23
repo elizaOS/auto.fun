@@ -7,7 +7,7 @@ export const queryClient = new QueryClient();
 
 export const fetcher = async (
   endpoint: string,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   body?: object,
 ) => {
   try {

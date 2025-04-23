@@ -21,7 +21,6 @@
     "migrate": "turbo run migrate --filter=@autodotfun/server"
   },
   "dependencies": {
-    "@aws-sdk/client-ecs": "^3.772.0",
     "@codex-data/sdk": "^1.0.5",
     "@coral-xyz/anchor": "^0.31.0",
     "@emnapi/core": "^1.4.3",
@@ -32,7 +31,6 @@
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.1.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
-    "@neondatabase/serverless": "^1.0.0",
     "@noble/ed25519": "^2.2.3",
     "@noble/hashes": "^1.7.2",
     "@project-serum/serum": "^0.13.65",
@@ -50,16 +48,13 @@
     "@tailwindcss/vite": "^4.1.4",
     "@tanstack/react-query": "^5.69.0",
     "@tanstack/react-table": "^8.9.9",
-    "@tsndr/cloudflare-worker-jwt": "^3.1.4",
     "@tybys/wasm-util": "^0.9.0",
     "@types/ioredis": "^4.28.10",
     "@types/socket.io": "^3.0.2",
     "@types/three": "^0.174.0",
     "@uidotdev/usehooks": "^2.4.1",
     "@web3auth/sign-in-with-solana": "^4.0.0",
-    "agent-twitter-client": "0.0.18",
     "axios": "^1.8.4",
-    "better-sqlite3": "^11.9.1",
     "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
@@ -98,7 +93,6 @@
     "rollup-plugin-node-polyfills": "^0.2.1",
     "socket.io": "^4.8.1",
     "socket.io-serverless": "^0.2.1",
-    "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.0.2",
     "tailwind-scrollbar": "^4.0.2",
     "three": "^0.174.0",
@@ -113,7 +107,6 @@
     "esbuild": "0.25.3"
   },
   "optionalDependencies": {
-    "@cloudflare/workerd-linux-64": "^1.20250416.0",
     "@rollup/rollup-linux-x64-gnu": "^4.38.0",
     "@tailwindcss/oxide-linux-arm64-musl": "^4.1.4",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.1.4",
@@ -127,7 +120,6 @@
     "@solana/web3.js": "^1.98.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250320.0",
     "@eslint/js": "^9.23.0",
     "@preact/preset-vite": "^2.10.1",
     "@types/bn.js": "^5.1.6",

@@ -2086,7 +2086,7 @@ export async function generatePreGeneratedTokens() {
       // ... (Decoding logic removed)
 
       logger.log(`[PreGen Upload] Uploading image via uploader function...`);
-      finalImageUrl = await uploadToCloudflare(
+      finalImageUrl = await uploadWithS3(
          imageBuffer,
          { filename: imageFilename, contentType: contentType, basePath: 'token-images' }
       );

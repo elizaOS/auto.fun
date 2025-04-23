@@ -1,5 +1,4 @@
 import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
-// import { ExecutionContext } from "@cloudflare/workers-types/experimental"; // Removed CF dependency
 import * as idlJson from "@autodotfun/types/idl/autofun.json";
 import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/types/types/autofun";

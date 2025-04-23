@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { getDB, tokenAgents, tokens } from "../db";
 import { logger } from "../logger";
 // import { TwitterAgent } from "../agents/twitter/twitterAgent";
-import { uploadToCloudflare } from "../uploader";
+import { uploadWithS3 } from "../uploader";
 import { Buffer } from "node:buffer";
 
 // Define the router with environment typing
@@ -186,8 +186,8 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                 // Use twitterUserId which should be unique
                 const filename = `agent-profiles/${twitterUserId}-${Date.now()}.${fileExtension}`;
 
-                // Use uploadToCloudflare (which uses S3)
-                finalImageUrl = await uploadToCloudflare(
+                // Use uploadWithS3 (which uses S3)
+                finalImageUrl = await uploadWithS3(
                     imageBuffer,
                     { filename, contentType, basePath: 'agent-profiles' }
                 );

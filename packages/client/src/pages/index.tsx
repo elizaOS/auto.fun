@@ -174,9 +174,8 @@ export default function Page() {
           </div>
         )}
         {/* Top Navigation */}
-        <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
+        <div className="flex justify-between gap-1 w-full md:flex-wrap">
           {/* Grid Sort Buttons - Hide on Table View */}
-          {activeTab === "grid" && (
             <div className="flex items-center gap-1">
               {/* TODO: change to toggle button for newest/oldest */}
               <Button
@@ -199,14 +198,8 @@ export default function Page() {
                 <span className="hidden sm:inline">Market Cap</span>
                 <span className="sm:hidden">MCap</span>
               </Button>
-            </div>
-          )}
-          {/* Placeholder div to maintain layout when grid buttons hide */}
-          {activeTab !== "grid" && <div className="flex-1" />}
-
-          <div className="flex items-center gap-2">
-            {/* Filter Button & Popover */}
-            <div className="relative" ref={filterRef}>
+              </div>
+            <div className="relative flex" ref={filterRef}>
               <Button
                 variant="outline"
                 size="small"
@@ -218,6 +211,7 @@ export default function Page() {
                   <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
                 )}
               </Button>
+              <GridListSwitcher />
               {isFilterOpen && (
                 <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
                   <div className="flex justify-between items-center mb-3">
@@ -300,9 +294,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-            {/* Existing Grid/List Switcher */}
-            <GridListSwitcher />
-          </div>
         </div>
         <div className="flex flex-col flex-1">
           {!query?.isLoading && query?.items?.length === 0 ? (

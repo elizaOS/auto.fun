@@ -79,7 +79,6 @@ export class ExternalToken {
               {
                 alertRecurrence: AlertRecurrence.Indefinite,
                 callbackUrl: `${process.env.API_URL}/api/codex-webhook`,
-                // callbackUrl: `https://out-charitable-remain-declined.trycloudflare.com/api/codex-webhook`,
                 conditions: {
                   tokenAddress: {
                     eq: this.mint,

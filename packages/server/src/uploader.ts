@@ -69,7 +69,7 @@ export function getUploadedFiles(): { [key: string]: string } {
 }
 
 // CloudFlare storage utility (using S3 interface via process.env)
-export async function uploadToCloudflare(
+export async function uploadWithS3(
   // Removed env parameter
   data: ArrayBuffer | Buffer | Uint8Array | object,
   options: {
@@ -123,7 +123,7 @@ export async function uploadToCloudflare(
        objectData = data;
     } else {
       // Fallback for non-binary, non-JSON flagged data: attempt stringify
-      logger.warn("Data provided to uploadToCloudflare is not ArrayBuffer, Uint8Array, or Buffer, and not flagged as JSON. Attempting JSON stringify fallback.");
+      logger.warn("Data provided to uploadWithS3 is not ArrayBuffer, Uint8Array, or Buffer, and not flagged as JSON. Attempting JSON stringify fallback.");
       try {
           const jsonString = JSON.stringify(data);
           objectData = Buffer.from(jsonString, 'utf8');

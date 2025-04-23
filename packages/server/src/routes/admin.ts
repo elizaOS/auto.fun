@@ -1,9 +1,11 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, and, or, count, SQL } from "drizzle-orm";
+import { PgSelect } from "drizzle-orm/pg-core";
 import { Hono } from "hono";
 import { verifyAuth } from "../auth";
-import { getDB, tokens, users } from "../db";
+import { getDB, tokens, users, Token } from "../db";
 import { logger } from "../logger";
 import { adminAddresses } from "./adminAddresses";
+import { getFeaturedMaxValues, applyFeaturedSort } from "../util";
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -599,6 +601,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
     });
   }
 });
+
 const requireTokenOwner = async (c: any, next: Function) => {
   const user = c.get("user");
   if (!user) {
@@ -626,6 +629,7 @@ const requireTokenOwner = async (c: any, next: Function) => {
 
   await next();
 };
+
 // Create owner router for token owner specific endpoints
 const ownerRouter = new Hono<{
   Variables: {
@@ -673,5 +677,466 @@ ownerRouter.post("/tokens/:mint/social", async (c) => {
 });
 
 ownerRouter.use("*", requireTokenOwner);
+
+// --- Build Base Query for Admin Tokens (Omits hidden filter) ---
+function buildAdminTokensBaseQuery(
+  db: any,
+  params: {
+    hideImported?: number;
+    search?: string;
+    sortBy?: string;
+    maxVolume?: number;
+    maxHolders?: number;
+  },
+): PgSelect {
+  const { hideImported, search, sortBy, maxVolume, maxHolders } = params;
+  // Select all columns initially, similar to the original builder
+  let query = db.select().from(tokens).$dynamic();
+  const conditions: (SQL | undefined)[] = [];
+
+  if (hideImported === 1) {
+    conditions.push(sql`${tokens.imported} = 0`);
+    logger.log(`[Admin Query Build] Adding condition: imported = 0`);
+  }
+
+  if (search) {
+    conditions.push(
+      or(
+        sql`${tokens.name} ILIKE ${'%' + search + '%'}`,
+        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`,
+        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`,
+      ),
+    );
+    logger.log(`[Admin Query Build] Adding condition: search LIKE ${search}`);
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions.filter((c): c is SQL => !!c)));
+  }
+  return query;
+}
+
+// --- Build Count Query for Admin Tokens (Omits hidden filter) ---
+function buildAdminTokensCountBaseQuery(
+  db: any,
+  params: {
+    hideImported?: number;
+    search?: string;
+  },
+): PgSelect {
+  let query = db.select({ count: count() }).from(tokens).$dynamic();
+  const { hideImported, search } = params;
+  const conditions: (SQL | undefined)[] = [];
+
+  if (hideImported === 1) {
+    conditions.push(sql`${tokens.imported} = 0`);
+    logger.log(`[Admin Count Build] Adding condition: imported = 0`);
+  }
+
+  if (search) {
+    conditions.push(
+      or(
+        sql`${tokens.name} ILIKE ${'%' + search + '%'}`,
+        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`,
+        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`,
+      ),
+    );
+    logger.log(`[Admin Count Build] Adding condition: search LIKE ${search}`);
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions.filter((c): c is SQL => !!c)));
+  }
+  return query;
+}
+
+// --- NEW: Route to retrieve ALL tokens (including hidden) for Admin Panel ---
+adminRouter.get("/tokens", requireAdmin, async (c) => {
+  // --- Parameter Reading (similar to /api/tokens) ---
+  const queryParams = c.req.query();
+  const isSearching = !!queryParams.search;
+  const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
+  const page = parseInt(queryParams.page as string) || 1;
+  const skip = (page - 1) * limit;
+  const hideImportedParam = queryParams.hideImported;
+  const hideImported = hideImportedParam === "1" ? 1 : undefined;
+  const search = queryParams.search as string | undefined;
+
+  // Adjust sortBy logic for admin if needed (e.g., different default)
+  let sortBy = queryParams.sortBy as string | undefined;
+  let sortOrder = (queryParams.sortOrder as string)?.toLowerCase() || "desc";
+
+  // Handle frontend-specific sort keys if passed directly
+  if (sortBy === "all") {
+      sortBy = "featured";
+      sortOrder = "desc";
+  } else if (sortBy === "oldest") {
+      sortBy = "createdAt";
+      sortOrder = "asc";
+  } else if (!sortBy) {
+      sortBy = "createdAt";
+      sortOrder = "desc";
+  }
+
+  logger.log(
+    `[GET /api/admin/tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, search=${search}, limit=${limit}, page=${page}`,
+  );
+
+  // No caching for the admin endpoint to ensure freshness
+  const db = getDB();
+
+  // --- Get max values for featured sort (if used) ---
+  const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
+  // --- Build Base Queries using ADMIN builders ---
+  const filterParams = {
+    hideImported,
+    search,
+    sortBy,
+    maxVolume,
+    maxHolders,
+  };
+  let baseQuery = buildAdminTokensBaseQuery(db, filterParams);
+  const countQuery = buildAdminTokensCountBaseQuery(db, filterParams);
+
+  // --- Apply Sorting to Main Query ---
+  const validSortColumns: Record<string, any> = {
+    createdAt: tokens.createdAt,
+    marketCapUSD: tokens.marketCapUSD,
+  };
+
+  if (sortBy === "featured") {
+    baseQuery = applyFeaturedSort(baseQuery, maxVolume, maxHolders, sortOrder);
+    logger.log(`[Admin Query Build] Applied sort: featured weighted`);
+  } else {
+    const sortColumn = validSortColumns[sortBy] || tokens.createdAt;
+     if (sortOrder === "desc") {
+      baseQuery = baseQuery.orderBy(
+        sql`CASE WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 ELSE 0 END`,
+        sql`${sortColumn} DESC NULLS LAST`
+      );
+      logger.log(`[Admin Query Build] Applied sort: ${sortBy} DESC`);
+    } else {
+      baseQuery = baseQuery.orderBy(
+          sql`CASE WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 ELSE 0 END`,
+          sql`${sortColumn} ASC NULLS LAST`
+      );
+      logger.log(`[Admin Query Build] Applied sort: ${sortBy} ASC`);
+    }
+  }
+
+  // --- Apply Pagination ---
+  baseQuery = baseQuery.limit(limit).offset(skip);
+  logger.log(
+    `[Admin Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
+  );
+
+  // --- Execute Queries ---
+  let tokensResult: Token[] | undefined;
+  let total = 0;
+  try {
+    logger.log("[Admin Execution] Awaiting baseQuery...");
+    // Cast to any[] as a workaround for persistent Drizzle/TS type inference issues
+    tokensResult = (await baseQuery.execute()) as any[];
+    logger.log(
+      `[Admin Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
+    );
+    const countResult = await countQuery.execute();
+    total = Number(countResult[0]?.count || 0);
+    logger.log(`[Admin Execution] countQuery finished, total: ${total}`);
+  } catch (error) {
+    logger.error("Admin Token query failed:", error);
+    tokensResult = [];
+    total = 0;
+  }
+
+  // --- Process and Return ---
+  const totalPages = Math.ceil(total / limit);
+
+  // Map results to plain objects with necessary conversions
+  const resultTokens =
+    tokensResult?.map((token) => {
+       const plainToken: Record<string, any> = { ...token }; // Start with plain object
+
+       // Convert BigInts to strings
+       for (const [key, value] of Object.entries(plainToken)) {
+           if (typeof value === 'bigint') {
+               plainToken[key] = value.toString();
+           }
+           // Add other conversions like Dates if needed
+       }
+
+       // Ensure flags are booleans
+       plainToken.hidden = !!plainToken.hidden;
+       plainToken.featured = !!plainToken.featured;
+       plainToken.verified = !!plainToken.verified;
+
+       return plainToken; // Return the plain, processed object
+    }) || [];
+
+  const responseData = {
+    tokens: resultTokens, // This is now any[]
+    page,
+    totalPages,
+    total,
+    hasMore: page < totalPages,
+  };
+
+  logger.log(`[Admin API Response] Returning ${responseData.tokens.length} tokens.`);
+  return c.json(responseData);
+});
+// --- END NEW ADMIN GET TOKENS ROUTE ---
+
+// --- Route to update core token details (name, ticker, image, url, description) ---
+adminRouter.put("/tokens/:mint/details", requireAdmin, async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const body = await c.req.json();
+    // Add description to destructuring
+    const { name, ticker, image, url, description } = body;
+
+    // Basic validation (can be more sophisticated)
+    if (name !== undefined && (typeof name !== 'string' || name === "")) {
+        return c.json({ error: "Invalid name provided" }, 400);
+    }
+     if (ticker !== undefined && (typeof ticker !== 'string' || ticker === "")) {
+        return c.json({ error: "Invalid ticker provided" }, 400);
+    }
+    // Allow empty string for image/url/description to clear the field
+    if (image !== undefined && typeof image !== 'string') {
+         return c.json({ error: "Invalid image URL provided" }, 400);
+    }
+    if (url !== undefined && typeof url !== 'string') {
+        return c.json({ error: "Invalid metadata URL provided" }, 400);
+    }
+    if (description !== undefined && typeof description !== 'string') {
+        return c.json({ error: "Invalid description provided" }, 400);
+    }
+
+    const db = getDB();
+
+    // Check if token exists
+    const tokenData = await db
+      .select({ id: tokens.id })
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Prepare update data - only include fields that were provided in the request
+    const updatePayload: Partial<Token> = { lastUpdated: new Date() };
+    if (name !== undefined) updatePayload.name = name;
+    if (ticker !== undefined) updatePayload.ticker = ticker;
+    if (image !== undefined) updatePayload.image = image;
+    if (url !== undefined) updatePayload.url = url;
+    if (description !== undefined) updatePayload.description = description; // Add description
+
+     // Only update if there are changes other than lastUpdated
+    if (Object.keys(updatePayload).length <= 1) {
+       // Return current token data even if no changes were made?
+       const currentToken = await db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1);
+       return c.json({ success: true, message: "No details provided to update.", token: currentToken[0] });
+    }
+
+    // Update token with the new details
+    await db
+      .update(tokens)
+      .set(updatePayload)
+      .where(eq(tokens.mint, mint));
+
+    logger.log(`Admin updated details for token ${mint}`);
+
+    // Get the updated token data to return
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token details updated successfully",
+      token: updatedToken[0], // Return the full updated token
+    });
+  } catch (error) {
+    logger.error(`Error updating token details for ${c.req.param("mint")}:`, error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error updating details" },
+      500,
+    );
+  }
+});
+// --- END PUT ROUTE ---
+
+// --- Add S3 imports and helpers ---
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Buffer } from "node:buffer";
+
+// Define the fixed public base URL used for constructing URLs (should match uploader.ts)
+const PUBLIC_STORAGE_BASE_URL = "https://storage.autofun.tech";
+
+// Singleton S3 Client instance for admin routes
+let adminS3ClientInstance: S3Client | null = null;
+
+// Helper function to create/get S3 client instance using process.env (specific to admin routes)
+function getAdminS3Client(): S3Client {
+    if (adminS3ClientInstance) {
+        return adminS3ClientInstance;
+    }
+    // Reuse environment variables logic from uploader/token routes
+    const accountId = process.env.S3_ACCOUNT_ID;
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const bucketName = process.env.S3_BUCKET_NAME;
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+        logger.error("Missing R2 S3 API environment variables in admin route.");
+        throw new Error("Missing required R2 S3 API environment variables.");
+    }
+    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+    adminS3ClientInstance = new S3Client({
+        region: "auto",
+        endpoint: endpoint,
+        credentials: { accessKeyId, secretAccessKey },
+    });
+    logger.log(`Admin S3 Client initialized for endpoint: ${endpoint}`);
+    return adminS3ClientInstance;
+}
+// --- End S3 imports and helpers ---
+
+// --- NEW: Route to update metadata JSON ---
+adminRouter.post("/tokens/:mint/metadata", requireAdmin, async (c) => {
+    try {
+        const mint = c.req.param("mint");
+        if (!mint || mint.length < 32 || mint.length > 44) {
+            return c.json({ error: "Invalid mint address" }, 400);
+        }
+
+        // Get updated metadata content from request body
+        const body = await c.req.text(); // Expect raw JSON string
+        let updatedMetadata: object;
+        try {
+            updatedMetadata = JSON.parse(body);
+        } catch (e) {
+            return c.json({ error: "Invalid JSON format provided" }, 400);
+        }
+
+        const db = getDB();
+
+        // Get token data, including URL and imported status
+        const tokenData = await db
+            .select({ url: tokens.url, imported: tokens.imported })
+            .from(tokens)
+            .where(eq(tokens.mint, mint))
+            .limit(1);
+
+        if (!tokenData || tokenData.length === 0) {
+            return c.json({ error: "Token not found" }, 404);
+        }
+
+        const token = tokenData[0];
+
+        // --- Check if token is imported ---
+        if (token.imported === 1) {
+            logger.warn(`Admin attempted to update metadata for imported token ${mint}`);
+            return c.json({ error: "Cannot update metadata for imported tokens" }, 403);
+        }
+
+        // --- Check if original metadata URL exists ---
+        if (!token.url) {
+            return c.json({ error: "Token does not have existing metadata URL to update" }, 400);
+        }
+
+        // --- Extract S3 Object Key from URL ---
+        let objectKey = "";
+        const expectedStoragePrefix = "token-metadata/";
+        const localApiPrefix = "/api/metadata/";
+
+        if (token.url.startsWith(PUBLIC_STORAGE_BASE_URL + "/")) {
+            objectKey = token.url.substring((PUBLIC_STORAGE_BASE_URL + "/").length);
+            // Optional: Double-check if the extracted key starts with the expected storage prefix
+            if (!objectKey.startsWith(expectedStoragePrefix)) {
+                logger.warn(`Extracted key "${objectKey}" from public URL for ${mint} does not start with expected prefix "${expectedStoragePrefix}".`);
+                // Decide whether to proceed or error out
+            }
+        } else {
+            // Handle other URLs (like local http://localhost:8787/api/metadata/...)
+            try {
+                const parsedUrl = new URL(token.url);
+                const path = parsedUrl.pathname;
+
+                if (path.startsWith(localApiPrefix)) {
+                    // Extract the filename part after /api/metadata/
+                    const filename = path.substring(localApiPrefix.length);
+                    // Construct the correct S3 key
+                    objectKey = `${expectedStoragePrefix}${filename}`;
+                    logger.log(`Parsed local API URL for ${mint}. Constructed S3 key: ${objectKey}`);
+                } else {
+                     // Log a warning if the path doesn't match expected local or public formats
+                     logger.error(`Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`);
+                     return c.json({ error: "Cannot determine storage key from token metadata URL format" }, 500);
+                }
+            } catch (urlParseError) {
+                 logger.error(`Failed to parse metadata URL to get object key for ${mint}: ${token.url}`, urlParseError);
+                 return c.json({ error: "Could not determine storage key from token metadata URL" }, 500);
+            }
+        }
+
+        if (!objectKey) {
+             // This condition might be redundant now if the above logic handles all cases or errors out
+             logger.error(`Failed to extract a valid object key for ${mint} from URL: ${token.url}`);
+             return c.json({ error: "Failed to extract valid storage key from metadata URL" }, 500);
+        }
+
+        // --- Upload updated metadata to S3 ---
+        const s3Client = getAdminS3Client();
+        const bucketName = process.env.S3_BUCKET_NAME;
+        if (!bucketName) {
+            throw new Error("S3_BUCKET_NAME environment variable is not set.");
+        }
+
+        const metadataBuffer = Buffer.from(JSON.stringify(updatedMetadata, null, 2), 'utf8'); // Pretty print JSON
+
+        // --- Add Logging Here ---
+        logger.log(`Attempting S3 PutObject: Bucket=${bucketName}, Key=${objectKey}, ContentLength=${metadataBuffer.length}`);
+        // --- End Logging ---
+
+        const putCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: objectKey,
+            Body: metadataBuffer,
+            ContentType: "application/json",
+            CacheControl: "public, max-age=3600", // Shorter cache for potentially changing metadata? Or keep long? Let's use 1 hour.
+            Metadata: { publicAccess: "true" } // Ensure public access if needed
+        });
+
+        logger.log(`Uploading updated metadata to S3: Bucket=${bucketName}, Key=${objectKey}`);
+        await s3Client.send(putCommand);
+        logger.log(`S3 metadata update successful for Key: ${objectKey}`);
+
+        // Optionally, update the token's lastUpdated timestamp in the DB
+        await db.update(tokens).set({ lastUpdated: new Date() }).where(eq(tokens.mint, mint));
+
+        return c.json({
+            success: true,
+            message: "Token metadata updated successfully",
+            metadataUrl: token.url // Return the original URL which should now point to updated content
+        });
+
+    } catch (error) {
+        logger.error(`Error updating token metadata for ${c.req.param("mint")}:`, error);
+        return c.json(
+            { error: error instanceof Error ? error.message : "Unknown error updating metadata" },
+            500
+        );
+    }
+});
+// --- END METADATA UPDATE ROUTE ---
 
 export { adminRouter, ownerRouter };
