@@ -364,6 +364,7 @@ async function handleSwap(
       await wsClient.emit(`global`, "newSwap", {
         ...swapRecord,
         tokenMint: mintAddress,
+        mint: mintAddress,
         timestamp: swapRecord.timestamp.toISOString(),
       });
 
