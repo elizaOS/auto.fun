@@ -51,22 +51,22 @@ const WebhookTokenPairEvent = z.object({
 
 
 router.post("/codex-webhook", async (c) => {
-  const body = await c.req.json();
-  const swapEvent = WebhookTokenPairEvent.parse(body).data.event;
+  // const body = await c.req.json();
+  // const swapEvent = WebhookTokenPairEvent.parse(body).data.event;
 
-  const child = fork(path.join(__dirname, "../subscription/processWebhook.ts"), {
-    execArgv: ["--loader", "ts-node/esm"], // if using TypeScript
-    env: process.env,
-  });
+  // const child = fork(path.join(__dirname, "../subscription/processWebhook.ts"), {
+  //   execArgv: ["--loader", "ts-node/esm"], // if using TypeScript
+  //   env: process.env,
+  // });
 
-  child.send(swapEvent);
+  // child.send(swapEvent);
 
-  // Optional: log on exit
-  child.on("exit", (code) => {
-    if (code !== 0) {
-      console.error(`Child process failed for ${swapEvent.transactionHash}`);
-    }
-  });
+  // // Optional: log on exit
+  // child.on("exit", (code) => {
+  //   if (code !== 0) {
+  //     console.error(`Child process failed for ${swapEvent.transactionHash}`);
+  //   }
+  // });
 
   return c.json({ message: "Accepted" });
 });
