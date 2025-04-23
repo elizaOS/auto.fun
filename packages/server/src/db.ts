@@ -210,12 +210,16 @@ export const metadata = pgTable("metadata", {
   value: text("value").notNull(),
 });
 
-export function getDB() {
-   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-   // pass your schema here
-   return drizzle(pool, { schema });
-}
+let dbInstance: ReturnType<typeof drizzle> | null = null;
+let poolInstance: Pool | null = null;
 
+export function getDB() {
+  if (!dbInstance) {
+     poolInstance = new Pool({ connectionString: process.env.DATABASE_URL });
+     dbInstance = drizzle(poolInstance, { schema });
+  }
+  return dbInstance;
+}
 
 // Type definitions for common query results
 export type Token = typeof schema.tokens.$inferSelect;
