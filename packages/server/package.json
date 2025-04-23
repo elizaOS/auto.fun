@@ -12,11 +12,12 @@
     "testClaim": "bun run src/testClaim.ts",
     "test": "jest",
     "lint": "eslint . --fix --ignore-pattern ../../.gitignore",
-    "migrate": "drizzle-kit migrate"
+    "migrate": "drizzle-kit migrate",
+    "knip": "knip"
   },
   "dependencies": {
-    "@autodotfun/types": "workspace:*",
     "@autodotfun/raydium": "workspace:*",
+    "@autodotfun/types": "workspace:*",
     "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
     "@cloudflare/workers-types": "^4.20250418.0",
@@ -39,6 +40,7 @@
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.42.0",
     "express": "^5.1.0",
+    "hono": "^4.7.7",
     "import": "^0.0.6",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
@@ -52,6 +54,7 @@
     "@types/node-fetch": "^2.6.12",
     "@types/pg": "^8.11.13",
     "drizzle-kit": "^0.31.0",
+    "knip": "^5.50.5",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3"
