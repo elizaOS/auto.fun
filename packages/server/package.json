@@ -10,7 +10,8 @@
     "migrateTokensFromSqlite": "bun run src/migrateTokensFromSqlite.ts",
     "testClaim": "bun run src/testClaim.ts",
     "test": "jest",
-    "lint": "eslint . --fix --ignore-pattern ../../.gitignore"
+    "lint": "eslint . --fix --ignore-pattern ../../.gitignore",
+    "migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@autodotfun/program": "workspace:*",
