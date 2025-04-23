@@ -534,7 +534,7 @@ export async function runCronTasks() {
 // Main function containing the logic previously in the cron export
 export async function updateTokens() {
   const db = getDB();
-  const cache = getGlobalRedisCache();
+  const cache = await getGlobalRedisCache();
   logger.log("Starting updateTokens cron task...");
 
   // Define batch size for sequential processing
