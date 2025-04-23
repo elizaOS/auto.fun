@@ -30,6 +30,9 @@
     },
     "migrate": {
       "cache": false
+    },
+    "start-server": {
+      "dependsOn": ["build"]
     }
   }
 }

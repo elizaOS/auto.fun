@@ -262,7 +262,6 @@ export class RedisCacheService {
 export function createRedisCache(): RedisCacheService {
   const pool = getSharedRedisPool();
   const instance = new RedisCacheService(pool);
-  console.log('instance', instance)
   return instance;
 }
 
