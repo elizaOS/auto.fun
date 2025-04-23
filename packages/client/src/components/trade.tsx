@@ -12,6 +12,7 @@ import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
 import { Tooltip } from "react-tooltip";
+import numeral from "numeral";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -34,8 +35,6 @@ export default function Trade({ token }: { token: IToken }) {
     return parseFloat(clean);
   };
 
-  // Use blockchain data if available, otherwise fall back to token data
-  // const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = token?.currentPrice || 0;
 
   const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
@@ -48,7 +47,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -91,7 +90,7 @@ export default function Trade({ token }: { token: IToken }) {
       const scaleFactor = 10 ** decimalPlaces;
       const amountBN = new BN(Math.round(amount * scaleFactor));
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).div(new BN(scaleFactor)).toNumber()
@@ -114,16 +113,30 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport
+              token.reserveLamport,
             );
 
-      const convertedAmount = new BN(swapAmount).div(decimals).toNumber();
+      const SCALE_FACTOR = Math.max(1000000, decimals.toNumber());
+      const scaledAmount = new BN(swapAmount).mul(new BN(SCALE_FACTOR));
+      const convertedAmount =
+        scaledAmount.div(decimals).toNumber() / SCALE_FACTOR;
 
       const minReceived = convertedAmount * (1 - slippage / 100);
 
-      const displayMinReceived = isTokenSelling
-        ? formatNumber(minReceived, false, true)
-        : formatNumber(minReceived, false, true);
+      const formatWithoutTrailingZeros = (num: number): string => {
+        let precision = 8;
+        if (num < 0.0001) precision = 12;
+        else if (num < 0.01) precision = 10;
+        const rounded = parseFloat(num.toFixed(precision));
+        const str = rounded.toString();
+        if (!str.includes(".")) return str;
+        return str.replace(/\.?0+$/, "");
+      };
+
+      const displayMinReceived =
+        minReceived < 1000
+          ? formatWithoutTrailingZeros(minReceived)
+          : numeral(minReceived).format("0.00a");
 
       return {
         displayMinReceived,
@@ -181,7 +194,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount)
+                      : formatAmount(convertedAmount),
                   );
                 }
                 setIsTokenSelling(true);
@@ -225,7 +238,7 @@ export default function Trade({ token }: { token: IToken }) {
                     const value = target.value;
                     const [whole, decimal] = value.split(".");
                     const formattedValue = decimal
-                      ? `${whole}.${decimal.slice(0, 2)}`
+                      ? `${whole}.${decimal.slice(0, 18)}`
                       : value;
 
                     setSellAmount(Number(formattedValue));
@@ -295,7 +308,7 @@ export default function Trade({ token }: { token: IToken }) {
                   ? formatNumber(
                       displayhMinReceivedQuery?.data?.minReceivedRaw,
                       true,
-                      true
+                      true,
                     )
                   : "0"}{" "}
                 {isTokenSelling ? "SOL" : token?.ticker}
