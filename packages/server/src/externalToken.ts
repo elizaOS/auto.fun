@@ -245,7 +245,7 @@ export class ExternalToken {
               direction: 0,
               amountIn: SolValue * LAMPORTS_PER_SOL,
               amountOut: Math.abs(baseAmount),
-              price: swapData.priceUsd ? Number(swapData.priceUsd) : 0,
+              price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
             };
           case EventDisplayType.Sell:
             return {
@@ -254,7 +254,7 @@ export class ExternalToken {
               direction: 1,
               amountIn: Math.abs(baseAmount),
               amountOut: SolValue * LAMPORTS_PER_SOL,
-              price: swapData.priceUsd ? Number(swapData.priceUsd) : 0,
+              price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
             };
           default:
             return null;
@@ -283,7 +283,7 @@ export class ExternalToken {
     let cursor: string | undefined | null = undefined;
 
     console.log(`Starting historical update for ${this.mint}`);
-
+    const solPrice = await getSOLPrice();
     while (hasMore) {
       const { getTokenEvents } = await this.sdk.queries.getTokenEvents({
         query: {
@@ -330,24 +330,30 @@ export class ExternalToken {
             user: codexSwap.maker || "",
           };
 
+          const priceUsdtotal = swapData.priceUsdTotal || 0;
+          const SolValue = priceUsdtotal
+            ? Number(priceUsdtotal) / Number(solPrice)
+            : 0;
+          const baseAmount = Number(swapData.amount0 || 0);
+
           switch (codexSwap.eventDisplayType) {
             case EventDisplayType.Buy:
               return {
                 ...commonData,
                 type: "buy",
                 direction: 0,
-                amountIn: -Number(swapData.amount1 || 0) * LAMPORTS_PER_SOL,
-                amountOut: Number(swapData.amount0 || 0) * 1e6,
-                price: swapData.priceUsd ? Number(swapData.priceUsd) : 0,
+                amountIn: SolValue * LAMPORTS_PER_SOL,
+                amountOut: Math.abs(baseAmount),
+                price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
               };
             case EventDisplayType.Sell:
               return {
                 ...commonData,
                 type: "sell",
                 direction: 1,
-                amountIn: -Number(swapData.amount0 || 0) * 1e6,
-                amountOut: Number(swapData.amount1 || 0) * LAMPORTS_PER_SOL,
-                price: swapData.priceUsd ? Number(swapData.priceUsd) : 0,
+                amountIn: Math.abs(baseAmount),
+                amountOut: SolValue * LAMPORTS_PER_SOL,
+                price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
               };
             default:
               return null;
