@@ -154,9 +154,7 @@ app.post("/trigger-cron", async (c) => {
 
   // Run tasks asynchronously (fire and forget). Do NOT await here.
   // The lock mechanism inside runCronTasks will prevent overlaps.
-  runCronTasks().catch((err) => {
-    logger.error("Caught error from background cron task execution:", err);
-  });
+  await runCronTasks();
 
   // Return immediately to the cron runner
   return c.json({ success: true, message: "Cron tasks initiated." });

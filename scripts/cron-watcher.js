@@ -8,6 +8,9 @@
  */
 
 import fetch from "node-fetch";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Configuration (can be overridden via command line args)
 const DEFAULT_INTERVAL = 60; // seconds

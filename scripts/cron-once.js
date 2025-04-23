@@ -7,7 +7,10 @@
  * Simplified version of cron-watcher.js for one-time execution.
  */
 
+import dotenv from "dotenv";
 import fetch from "node-fetch";
+
+dotenv.config();
 
 // Configuration (can be overridden via command line args)
 const DEFAULT_PORT = 8787; // default wrangler dev port
