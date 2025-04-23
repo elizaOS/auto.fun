@@ -443,7 +443,7 @@ export const verifyAuth = async (
     let headerToken: string | null = null;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      logger.log("Found Authorization header in verifyAuth");
+      // logger.log("Found Authorization header in verifyAuth");
       headerToken = authHeader.substring(7); // Remove "Bearer " prefix
     }
 
@@ -454,15 +454,15 @@ export const verifyAuth = async (
     // Check for JWT token
     if (tokenToUse && tokenToUse.includes(".")) {
       try {
-        logger.log("Found JWT token, validating...");
+        // logger.log("Found JWT token, validating...");
         const tokenData = await validateJwtToken(tokenToUse);
 
         if (tokenData) {
           // Token is valid, set user
           c.set("user", { publicKey: tokenData.publicKey });
-          logger.log("User authenticated via JWT token", {
-            publicKey: tokenData.publicKey,
-          });
+          // logger.log("User authenticated via JWT token", {
+          //   publicKey: tokenData.publicKey,
+          // });
           await next();
           return;
         } else {

@@ -8,7 +8,8 @@
   ],
   "packageManager": "bun@1.2.4",
   "scripts": {
-    "dev": "cp .env packages/server/.env && turbo run dev",
+    "cron": "node scripts/cron-once.js",
+    "dev": "cp .env packages/server/.env && concurrently \"turbo run dev\" \"node scripts/cron-watcher.js\"",
     "build": "turbo run build",
     "build:client": "bun install && turbo run build --filter=@autodotfun/client",
     "start": "turbo run dev",

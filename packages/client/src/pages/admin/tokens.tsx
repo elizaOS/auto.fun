@@ -259,11 +259,18 @@ function AdminTokenDetails({ address }: { address: string }) {
   const [editImage, setEditImage] = useState("");
   const [editUrl, setEditUrl] = useState(""); // For metadata URL
   const [editDescription, setEditDescription] = useState(""); // Add state for description
-  const [originalDetails, setOriginalDetails] = useState({ name: "", ticker: "", image: "", url: "", description: "" }); // Add description
+  const [originalDetails, setOriginalDetails] = useState({
+    name: "",
+    ticker: "",
+    image: "",
+    url: "",
+    description: "",
+  }); // Add description
 
   // --- State for metadata editor ---
   const [metadataContent, setMetadataContent] = useState<string>("");
-  const [originalMetadataContent, setOriginalMetadataContent] = useState<string>("");
+  const [originalMetadataContent, setOriginalMetadataContent] =
+    useState<string>("");
   const [isLoadingMetadata, setIsLoadingMetadata] = useState<boolean>(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [isMetadataJsonValid, setIsMetadataJsonValid] = useState<boolean>(true);
@@ -283,11 +290,11 @@ function AdminTokenDetails({ address }: { address: string }) {
         setEditDescription(tokenData.description || ""); // Initialize description
         // Store original details for change detection
         setOriginalDetails({
-           name: tokenData.name || "",
-           ticker: tokenData.ticker || "",
-           image: tokenData.image || "",
-           url: tokenData.url || "",
-           description: tokenData.description || "", // Store original description
+          name: tokenData.name || "",
+          ticker: tokenData.ticker || "",
+          image: tokenData.image || "",
+          url: tokenData.url || "",
+          description: tokenData.description || "", // Store original description
         });
         return {
           ...tokenData,
@@ -306,7 +313,11 @@ function AdminTokenDetails({ address }: { address: string }) {
   // --- Effect to fetch metadata content --- (Separate useEffect for clarity)
   useEffect(() => {
     const fetchMetadata = async () => {
-      if (tokenQuery.data && tokenQuery.data.url && tokenQuery.data.imported !== 1) {
+      if (
+        tokenQuery.data &&
+        tokenQuery.data.url &&
+        tokenQuery.data.imported !== 1
+      ) {
         setIsLoadingMetadata(true);
         setMetadataError(null);
         setMetadataContent(""); // Reset content before fetching
@@ -316,7 +327,9 @@ function AdminTokenDetails({ address }: { address: string }) {
           // Use fetch directly as fetcher might expect JSON response, but we need text
           const response = await fetch(tokenQuery.data.url);
           if (!response.ok) {
-            throw new Error(`Failed to fetch metadata: ${response.status} ${response.statusText}`);
+            throw new Error(
+              `Failed to fetch metadata: ${response.status} ${response.statusText}`,
+            );
           }
           const textContent = await response.text();
           // Basic check if it looks like JSON before pretty printing
@@ -333,7 +346,9 @@ function AdminTokenDetails({ address }: { address: string }) {
           setIsMetadataJsonValid(true); // Assume valid if initial parse works
         } catch (error) {
           console.error("Error fetching metadata content:", error);
-          setMetadataError(error instanceof Error ? error.message : "Failed to load metadata");
+          setMetadataError(
+            error instanceof Error ? error.message : "Failed to load metadata",
+          );
           setIsMetadataJsonValid(false);
         } finally {
           setIsLoadingMetadata(false);
@@ -469,23 +484,31 @@ function AdminTokenDetails({ address }: { address: string }) {
 
   // Mutation for updating token details (name, ticker, image, url)
   const updateTokenDetailsMutation = useMutation({
-    mutationFn: async (details: { name: string; ticker: string; image: string; url: string; description: string }) => { // Add description to type
+    mutationFn: async (details: {
+      name: string;
+      ticker: string;
+      image: string;
+      url: string;
+      description: string;
+    }) => {
+      // Add description to type
       return await fetcher(
         `/api/admin/tokens/${address}/details`,
         "PUT", // Use PUT method
         details,
       );
     },
-    onSuccess: (data) => { // data contains { success, message, token }
+    onSuccess: (data) => {
+      // data contains { success, message, token }
       toast.success(`Token details updated successfully`);
       // Update original details state to prevent immediate re-save
-       setOriginalDetails({
-         name: data.token.name || "",
-         ticker: data.token.ticker || "",
-         image: data.token.image || "",
-         url: data.token.url || "",
-         description: data.token.description || "", // Update original description
-       });
+      setOriginalDetails({
+        name: data.token.name || "",
+        ticker: data.token.ticker || "",
+        image: data.token.image || "",
+        url: data.token.url || "",
+        description: data.token.description || "", // Update original description
+      });
       // Invalidate query to refetch potentially changed data
       tokenQuery.refetch();
     },
@@ -509,16 +532,23 @@ function AdminTokenDetails({ address }: { address: string }) {
         headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
       }
 
-      const response = await fetch(`${env.apiUrl}/api/admin/tokens/${address}/metadata`, {
-          method: 'POST',
+      const response = await fetch(
+        `${env.apiUrl}/api/admin/tokens/${address}/metadata`,
+        {
+          method: "POST",
           headers,
           body: newMetadataString, // Send the raw string
           credentials: "include",
-      });
+        },
+      );
 
       if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }));
-          throw new Error(errorData.error || `Failed to update metadata (${response.status})`);
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: `HTTP error ${response.status}` }));
+        throw new Error(
+          errorData.error || `Failed to update metadata (${response.status})`,
+        );
       }
       return response.json(); // Contains { success, message, metadataUrl }
     },
@@ -528,14 +558,18 @@ function AdminTokenDetails({ address }: { address: string }) {
       // Re-format potentially un-prettified input string before saving as original
       let savedContent = metadataContent;
       try {
-          savedContent = JSON.stringify(JSON.parse(metadataContent), null, 2);
-          setMetadataContent(savedContent); // Update editor content to formatted version
-      } catch (e) { /* Keep raw content if formatting fails */ }
+        savedContent = JSON.stringify(JSON.parse(metadataContent), null, 2);
+        setMetadataContent(savedContent); // Update editor content to formatted version
+      } catch (e) {
+        /* Keep raw content if formatting fails */
+      }
       setOriginalMetadataContent(savedContent);
       // No need to refetch tokenQuery data as the URL doesn't change
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update metadata");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update metadata",
+      );
     },
   });
 
@@ -648,8 +682,12 @@ function AdminTokenDetails({ address }: { address: string }) {
               <span className="ml-2">{token.ticker}</span>
             </div>
             <div>
-              <span className="text-autofun-text-secondary text-sm">Created:</span>
-              <span className="ml-2 text-sm">{new Date(token.createdAt).toLocaleString()}</span>
+              <span className="text-autofun-text-secondary text-sm">
+                Created:
+              </span>
+              <span className="ml-2 text-sm">
+                {new Date(token.createdAt).toLocaleString()}
+              </span>
             </div>
             <div>
               <span className="text-autofun-text-secondary">Status:</span>
@@ -719,7 +757,9 @@ function AdminTokenDetails({ address }: { address: string }) {
             </div>
             {/* Ticker (Editable) */}
             <div className="flex flex-col gap-1">
-              <label className="text-autofun-text-secondary text-sm">Ticker:</label>
+              <label className="text-autofun-text-secondary text-sm">
+                Ticker:
+              </label>
               <input
                 type="text"
                 value={editTicker}
@@ -730,7 +770,9 @@ function AdminTokenDetails({ address }: { address: string }) {
             </div>
             {/* Image URL (Editable) - ADD/Ensure this is here */}
             <div className="flex flex-col gap-1">
-              <label className="text-autofun-text-secondary text-sm">Image URL:</label>
+              <label className="text-autofun-text-secondary text-sm">
+                Image URL:
+              </label>
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
@@ -781,27 +823,28 @@ function AdminTokenDetails({ address }: { address: string }) {
 
             {/* --- MOVE Save Details Button HERE --- */}
             <div className="pt-2">
-               <button
-                 type="button"
-                 onClick={handleSaveDetails}
-                 disabled={updateTokenDetailsMutation.isPending || !detailsChanged}
-                 className="ml-auto cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 {updateTokenDetailsMutation.isPending ? "Saving..." : "Save Details"}
-               </button>
-           </div>
-           {/* --- END MOVE --- */}
+              <button
+                type="button"
+                onClick={handleSaveDetails}
+                disabled={
+                  updateTokenDetailsMutation.isPending || !detailsChanged
+                }
+                className="ml-auto cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updateTokenDetailsMutation.isPending
+                  ? "Saving..."
+                  : "Save Details"}
+              </button>
+            </div>
+            {/* --- END MOVE --- */}
 
             {/* Created Date (Not Editable) */}
-            <div>
-               {/* ... content ... */}
-            </div>
+            <div>{/* ... content ... */}</div>
 
             {/* Status Badges (Not Editable Here) */}
             <div className="flex flex-wrap gap-2 items-center pt-2">
-               {/* ... badges ... */}
+              {/* ... badges ... */}
             </div>
-
           </div>
         </div>
 
@@ -831,7 +874,15 @@ function AdminTokenDetails({ address }: { address: string }) {
             <div className="mt-6 pt-4 border-t border-autofun-border">
               <h3 className="text-lg font-medium mb-2">Metadata Editor</h3>
               <p className="text-sm text-autofun-text-secondary mb-2">
-                Edit the content of the metadata file located at: <a href={token.url} target="_blank" rel="noopener noreferrer" className="text-autofun-text-highlight hover:underline break-all">{token.url}</a>
+                Edit the content of the metadata file located at:{" "}
+                <a
+                  href={token.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-autofun-text-highlight hover:underline break-all"
+                >
+                  {token.url}
+                </a>
               </p>
               {isLoadingMetadata && <Loader />}
               {metadataError && (
@@ -845,25 +896,35 @@ function AdminTokenDetails({ address }: { address: string }) {
                     value={metadataContent}
                     onChange={(e) => setMetadataContent(e.target.value)}
                     placeholder="Enter valid JSON metadata..."
-                    className={`w-full bg-autofun-background-input p-3 border ${isMetadataJsonValid ? 'border-neutral-800' : 'border-red-700'} text-white font-mono text-sm min-h-[400px] max-h-[600px] resize-y`}
+                    className={`w-full bg-autofun-background-input p-3 border ${isMetadataJsonValid ? "border-neutral-800" : "border-red-700"} text-white font-mono text-sm min-h-[400px] max-h-[600px] resize-y`}
                   />
                   {!isMetadataJsonValid && metadataContent && (
-                      <p className="text-xs text-red-400">Content is not valid JSON.</p>
+                    <p className="text-xs text-red-400">
+                      Content is not valid JSON.
+                    </p>
                   )}
                   <button
                     type="button"
-                    onClick={() => updateMetadataMutation.mutate(metadataContent)}
-                    disabled={isLoadingMetadata || updateMetadataMutation.isPending || !metadataChanged || !isMetadataJsonValid}
+                    onClick={() =>
+                      updateMetadataMutation.mutate(metadataContent)
+                    }
+                    disabled={
+                      isLoadingMetadata ||
+                      updateMetadataMutation.isPending ||
+                      !metadataChanged ||
+                      !isMetadataJsonValid
+                    }
                     className="ml-auto cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-1 flex-row w-fit items-center justify-items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {updateMetadataMutation.isPending ? "Saving Metadata..." : "Save Metadata"}
+                    {updateMetadataMutation.isPending
+                      ? "Saving Metadata..."
+                      : "Save Metadata"}
                   </button>
                 </div>
               )}
             </div>
           )}
           {/* --- End Metadata Editor Section --- */}
-
         </div>
       </div>
 

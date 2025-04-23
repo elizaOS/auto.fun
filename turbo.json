@@ -33,6 +33,9 @@
     },
     "start-server": {
       "dependsOn": ["build"]
+    },
+    "cron": {
+      "cache": false
     }
   }
 }

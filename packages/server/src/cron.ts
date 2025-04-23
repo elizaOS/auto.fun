@@ -60,7 +60,7 @@ const lastProcessedSignature: string | null = null;
 // Define max swaps to keep in Redis list
 const MAX_SWAPS_TO_KEEP = 1000;
 
-function sanitizeTokenForWebSocket(
+export function sanitizeTokenForWebSocket(
   token: Partial<Token>,
   maxBytes = 95000,
 ): Partial<Token> {
@@ -591,126 +591,8 @@ export async function runCronTasks() {
 
 // Main function containing the logic previously in the cron export
 export async function updateTokens() {
-  const db = getDB();
-  const cache = await getGlobalRedisCache();
-  logger.log("Starting updateTokens cron task...");
 
-  // Define batch size for sequential processing
-  const BATCH_SIZE = 20; // Adjust as needed
-
-  // Fetch active tokens with necessary fields
-  let activeTokens: Token[] = [];
-  try {
-    activeTokens = await db
-      .select({
-        mint: tokens.mint,
-        imported: tokens.imported,
-        description: tokens.description,
-        id: tokens.id,
-        name: tokens.name,
-        ticker: tokens.ticker,
-        url: tokens.url,
-        image: tokens.image,
-        twitter: tokens.twitter,
-        telegram: tokens.telegram,
-        website: tokens.website,
-        discord: tokens.discord,
-        farcaster: tokens.farcaster,
-        creator: tokens.creator,
-        nftMinted: tokens.nftMinted,
-        lockId: tokens.lockId,
-        lockedAmount: tokens.lockedAmount,
-        lockedAt: tokens.lockedAt,
-        harvestedAt: tokens.harvestedAt,
-        status: tokens.status,
-        createdAt: tokens.createdAt,
-        lastUpdated: tokens.lastUpdated,
-        completedAt: tokens.completedAt,
-        withdrawnAt: tokens.withdrawnAt,
-        migratedAt: tokens.migratedAt,
-        marketId: tokens.marketId,
-        baseVault: tokens.baseVault,
-        quoteVault: tokens.quoteVault,
-        withdrawnAmount: tokens.withdrawnAmount,
-        reserveAmount: tokens.reserveAmount,
-        reserveLamport: tokens.reserveLamport,
-        virtualReserves: tokens.virtualReserves,
-        liquidity: tokens.liquidity,
-        currentPrice: tokens.currentPrice,
-        marketCapUSD: tokens.marketCapUSD,
-        tokenPriceUSD: tokens.tokenPriceUSD,
-        solPriceUSD: tokens.solPriceUSD,
-        curveProgress: tokens.curveProgress,
-        curveLimit: tokens.curveLimit,
-        priceChange24h: tokens.priceChange24h,
-        price24hAgo: tokens.price24hAgo,
-        volume24h: tokens.volume24h,
-        inferenceCount: tokens.inferenceCount,
-        lastVolumeReset: tokens.lastVolumeReset,
-        lastPriceUpdate: tokens.lastPriceUpdate,
-        holderCount: tokens.holderCount,
-        txId: tokens.txId,
-        migration: tokens.migration,
-        withdrawnAmounts: tokens.withdrawnAmounts,
-        poolInfo: tokens.poolInfo,
-        lockLpTxId: tokens.lockLpTxId,
-        featured: tokens.featured,
-        verified: tokens.verified,
-        hidden: tokens.hidden,
-        tokenSupply: tokens.tokenSupply,
-        tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
-        tokenDecimals: tokens.tokenDecimals,
-        lastSupplyUpdate: tokens.lastSupplyUpdate,
-      })
-      .from(tokens)
-      .where(eq(tokens.status, "active"));
-  } catch (dbError) {
-    logger.error("Cron: Failed to fetch active tokens from DB:", dbError);
-    return; // Stop if we cannot fetch tokens
-  }
-
-
-  logger.log(`Found ${activeTokens.length} active tokens to process.`);
-
-  // --- Step 1: Concurrent Bulk Updates (already batched internally) and Replenish ---
-  logger.log("Cron: Starting bulk price updates and token replenishment...");
-  await Promise.all([
-    // Update Market Data (bulkUpdatePartialTokens is internally batched)
-    (async () => {
-      try {
-        const CHUNK_SIZE = 50; // Keep internal chunking for this specific update
-        const total = activeTokens.length;
-        for (let i = 0; i < total; i += CHUNK_SIZE) {
-          const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
-          const updatedBatch = await bulkUpdatePartialTokens(batch);
-          // Push ephemeral metrics to Redis (TTL 60s)
-          // This Promise.all is likely fine as it's already within a batch
-          await Promise.all(updatedBatch.map(token =>
-            cache.set(
-              `token:stats:${token.mint}`,
-              JSON.stringify({
-                currentPrice: token.currentPrice,
-                tokenPriceUSD: token.tokenPriceUSD,
-                solPriceUSD: token.solPriceUSD,
-                marketCapUSD: token.marketCapUSD,
-                volume24h: token.volume24h,
-                priceChange24h: token.priceChange24h,
-                price24hAgo: token.price24hAgo,
-                curveProgress: token.curveProgress,
-                curveLimit: token.curveLimit,
-              }),
-              60,
-            )
-          ));
-          logger.log(`Cron: Updated prices for batch ${Math.floor(i / CHUNK_SIZE) + 1} (${updatedBatch.length}/${batch.length}) tokens`);
-        }
-        logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
-      } catch (err) {
-        logger.error("Cron: Error during bulkUpdatePartialTokens:", err);
-      }
-    })(),
-
-    // Replenish Pre-Generated Tokens (runs once, less intensive)
+  // Replenish Pre-Generated Tokens (runs once, less intensive)    // Replenish Pre-Generated Tokens (runs once, less intensive)
     (async () => {
       try {
         await checkAndReplenishTokens();
@@ -718,88 +600,209 @@ export async function updateTokens() {
       } catch (err) {
         logger.error("Cron: Error during checkAndReplenishTokens:", err);
       }
-    })(),
-  ]);
-  logger.log("Cron: Finished bulk price updates and token replenishment.");
+    })()
+
+  return;
+
+  // const db = getDB();
+  // const cache = await getGlobalRedisCache();
+  // logger.log("Starting updateTokens cron task...");
+
+  // // Define batch size for sequential processing
+  // const BATCH_SIZE = 20; // Adjust as needed
+
+  // // Fetch active tokens with necessary fields
+  // let activeTokens: Token[] = [];
+  // try {
+  //   activeTokens = await db
+  //     .select({
+  //       mint: tokens.mint,
+  //       imported: tokens.imported,
+  //       description: tokens.description,
+  //       id: tokens.id,
+  //       name: tokens.name,
+  //       ticker: tokens.ticker,
+  //       url: tokens.url,
+  //       image: tokens.image,
+  //       twitter: tokens.twitter,
+  //       telegram: tokens.telegram,
+  //       website: tokens.website,
+  //       discord: tokens.discord,
+  //       farcaster: tokens.farcaster,
+  //       creator: tokens.creator,
+  //       nftMinted: tokens.nftMinted,
+  //       lockId: tokens.lockId,
+  //       lockedAmount: tokens.lockedAmount,
+  //       lockedAt: tokens.lockedAt,
+  //       harvestedAt: tokens.harvestedAt,
+  //       status: tokens.status,
+  //       createdAt: tokens.createdAt,
+  //       lastUpdated: tokens.lastUpdated,
+  //       completedAt: tokens.completedAt,
+  //       withdrawnAt: tokens.withdrawnAt,
+  //       migratedAt: tokens.migratedAt,
+  //       marketId: tokens.marketId,
+  //       baseVault: tokens.baseVault,
+  //       quoteVault: tokens.quoteVault,
+  //       withdrawnAmount: tokens.withdrawnAmount,
+  //       reserveAmount: tokens.reserveAmount,
+  //       reserveLamport: tokens.reserveLamport,
+  //       virtualReserves: tokens.virtualReserves,
+  //       liquidity: tokens.liquidity,
+  //       currentPrice: tokens.currentPrice,
+  //       marketCapUSD: tokens.marketCapUSD,
+  //       tokenPriceUSD: tokens.tokenPriceUSD,
+  //       solPriceUSD: tokens.solPriceUSD,
+  //       curveProgress: tokens.curveProgress,
+  //       curveLimit: tokens.curveLimit,
+  //       priceChange24h: tokens.priceChange24h,
+  //       price24hAgo: tokens.price24hAgo,
+  //       volume24h: tokens.volume24h,
+  //       inferenceCount: tokens.inferenceCount,
+  //       lastVolumeReset: tokens.lastVolumeReset,
+  //       lastPriceUpdate: tokens.lastPriceUpdate,
+  //       holderCount: tokens.holderCount,
+  //       txId: tokens.txId,
+  //       migration: tokens.migration,
+  //       withdrawnAmounts: tokens.withdrawnAmounts,
+  //       poolInfo: tokens.poolInfo,
+  //       lockLpTxId: tokens.lockLpTxId,
+  //       featured: tokens.featured,
+  //       verified: tokens.verified,
+  //       hidden: tokens.hidden,
+  //       tokenSupply: tokens.tokenSupply,
+  //       tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
+  //       tokenDecimals: tokens.tokenDecimals,
+  //       lastSupplyUpdate: tokens.lastSupplyUpdate,
+  //     })
+  //     .from(tokens)
+  //     .where(eq(tokens.status, "active"));
+  // } catch (dbError) {
+  //   logger.error("Cron: Failed to fetch active tokens from DB:", dbError);
+  //   return; // Stop if we cannot fetch tokens
+  // }
 
 
-  // --- Step 2: Sequential Batch Processing for Holders ---
-  logger.log(`Cron: Starting holder cache update loop in batches of ${BATCH_SIZE}...`);
-  for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-    const batch = activeTokens.slice(i, i + BATCH_SIZE);
-    logger.log(`Cron: Processing holder batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-    await Promise.all(batch.map(async (token) => {
-      try {
-        if (token.mint) {
-          await updateHoldersCache(token.mint, token.imported === 1);
-        }
-      } catch (err) {
-        logger.error(
-          `Cron: Error updating holders for token ${token.mint}:`,
-          err,
-        );
-      }
-    }));
-    // Optional: Add a small delay between batches if needed
-    // await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  logger.log("Cron: Finished holder cache update loop.");
+  // logger.log(`Found ${activeTokens.length} active tokens to process.`);
+
+  // // --- Step 1: Concurrent Bulk Updates (already batched internally) and Replenish ---
+  // logger.log("Cron: Starting bulk price updates and token replenishment...");
+  // await Promise.all([
+  //   // Update Market Data (bulkUpdatePartialTokens is internally batched)
+  //   (async () => {
+  //     try {
+  //       const CHUNK_SIZE = 50; // Keep internal chunking for this specific update
+  //       const total = activeTokens.length;
+  //       for (let i = 0; i < total; i += CHUNK_SIZE) {
+  //         const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
+  //         const updatedBatch = await bulkUpdatePartialTokens(batch);
+  //         // Push ephemeral metrics to Redis (TTL 60s)
+  //         // This Promise.all is likely fine as it's already within a batch
+  //         await Promise.all(updatedBatch.map(token =>
+  //           cache.set(
+  //             `token:stats:${token.mint}`,
+  //             JSON.stringify({
+  //               currentPrice: token.currentPrice,
+  //               tokenPriceUSD: token.tokenPriceUSD,
+  //               solPriceUSD: token.solPriceUSD,
+  //               marketCapUSD: token.marketCapUSD,
+  //               volume24h: token.volume24h,
+  //               priceChange24h: token.priceChange24h,
+  //               price24hAgo: token.price24hAgo,
+  //               curveProgress: token.curveProgress,
+  //               curveLimit: token.curveLimit,
+  //             }),
+  //             60,
+  //           )
+  //         ));
+  //         logger.log(`Cron: Updated prices for batch ${Math.floor(i / CHUNK_SIZE) + 1} (${updatedBatch.length}/${batch.length}) tokens`);
+  //       }
+  //       logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
+  //     } catch (err) {
+  //       logger.error("Cron: Error during bulkUpdatePartialTokens:", err);
+  //     }
+  //   })(),
+  // ]);
+  // logger.log("Cron: Finished bulk price updates and token replenishment.");
 
 
-  // --- Step 3: Sequential Batch Processing for Image Checks ---
-  logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
-  const s3Client = getS3Client();
-  const bucketName = process.env.S3_BUCKET_NAME;
-  if (!bucketName) {
-    logger.error("Cron: S3_BUCKET_NAME not configured. Cannot check for generated images.");
-    // Decide whether to skip this step entirely or log per token
-  }
+  // // --- Step 2: Sequential Batch Processing for Holders ---
+  // logger.log(`Cron: Starting holder cache update loop in batches of ${BATCH_SIZE}...`);
+  // for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
+  //   const batch = activeTokens.slice(i, i + BATCH_SIZE);
+  //   logger.log(`Cron: Processing holder batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
+  //   await Promise.all(batch.map(async (token) => {
+  //     try {
+  //       if (token.mint) {
+  //         await updateHoldersCache(token.mint, token.imported === 1);
+  //       }
+  //     } catch (err) {
+  //       logger.error(
+  //         `Cron: Error updating holders for token ${token.mint}:`,
+  //         err,
+  //       );
+  //     }
+  //   }));
+  //   // Optional: Add a small delay between batches if needed
+  //   // await new Promise(resolve => setTimeout(resolve, 100));
+  // }
+  // logger.log("Cron: Finished holder cache update loop.");
 
-  for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-    const batch = activeTokens.slice(i, i + BATCH_SIZE);
-    logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-    await Promise.all(batch.map(async (token) => {
-      if (token.mint && Number(token.imported) === 0) {
-        // Only check S3 if bucketName is configured
-        if (bucketName) {
-          try {
-            // --- NEW S3 CHECK BLOCK START ---
-            const generationImagesPrefix = `generations/${token.mint}/`;
-            const listCmd = new ListObjectsV2Command({
-              Bucket: bucketName,
-              Prefix: generationImagesPrefix,
-              MaxKeys: 1, // We only need to know if at least one exists
-            });
-            const listResponse = await s3Client.send(listCmd);
-            const hasGenerationImages = (listResponse.KeyCount ?? 0) > 0;
 
-            if (!hasGenerationImages) {
-              logger.log(
-                `Cron: Triggering image generation for: ${token.mint}`,
-              );
-              // This function should now use S3 internally
-              await generateAdditionalTokenImages(
-                token.mint,
-                token.description || "",
-              );
-            }
-            // --- NEW S3 CHECK BLOCK END ---
-          } catch (imageCheckError) {
-            logger.error(
-              `Cron: Error checking/generating images for ${token.mint} via S3:`, // Updated log message
-              imageCheckError,
-            );
-          }
-        } else {
-          // Log skipped check if bucket name is missing
-          logger.warn(`Cron: Skipping image check for ${token.mint} as S3_BUCKET_NAME is not set.`);
-        }
-      }
-    }));
-    // Optional: Add a small delay between batches if needed
-    // await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  logger.log("Cron: Finished checking for missing generation images.");
+  // // --- Step 3: Sequential Batch Processing for Image Checks ---
+  // logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
+  // const s3Client = getS3Client();
+  // const bucketName = process.env.S3_BUCKET_NAME;
+  // if (!bucketName) {
+  //   logger.error("Cron: S3_BUCKET_NAME not configured. Cannot check for generated images.");
+  //   // Decide whether to skip this step entirely or log per token
+  // }
 
-  logger.log("Finished updateTokens cron task.");
+  // for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
+  //   const batch = activeTokens.slice(i, i + BATCH_SIZE);
+  //   logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
+  //   await Promise.all(batch.map(async (token) => {
+  //     if (token.mint && Number(token.imported) === 0) {
+  //       // Only check S3 if bucketName is configured
+  //       if (bucketName) {
+  //         try {
+  //           // --- NEW S3 CHECK BLOCK START ---
+  //           const generationImagesPrefix = `generations/${token.mint}/`;
+  //           const listCmd = new ListObjectsV2Command({
+  //             Bucket: bucketName,
+  //             Prefix: generationImagesPrefix,
+  //             MaxKeys: 1, // We only need to know if at least one exists
+  //           });
+  //           const listResponse = await s3Client.send(listCmd);
+  //           const hasGenerationImages = (listResponse.KeyCount ?? 0) > 0;
+
+  //           if (!hasGenerationImages) {
+  //             logger.log(
+  //               `Cron: Triggering image generation for: ${token.mint}`,
+  //             );
+  //             // This function should now use S3 internally
+  //             await generateAdditionalTokenImages(
+  //               token.mint,
+  //               token.description || "",
+  //             );
+  //           }
+  //           // --- NEW S3 CHECK BLOCK END ---
+  //         } catch (imageCheckError) {
+  //           logger.error(
+  //             `Cron: Error checking/generating images for ${token.mint} via S3:`, // Updated log message
+  //             imageCheckError,
+  //           );
+  //         }
+  //       } else {
+  //         // Log skipped check if bucket name is missing
+  //         logger.warn(`Cron: Skipping image check for ${token.mint} as S3_BUCKET_NAME is not set.`);
+  //       }
+  //     }
+  //   }));
+  //   // Optional: Add a small delay between batches if needed
+  //   // await new Promise(resolve => setTimeout(resolve, 100));
+  // }
+  // logger.log("Cron: Finished checking for missing generation images.");
+
+  // logger.log("Finished updateTokens cron task.");
 }

@@ -7,7 +7,6 @@
  * It sends requests to the local Workers scheduled endpoint at configurable intervals.
  */
 
-import { exec } from "child_process";
 import fetch from "node-fetch";
 
 // Configuration (can be overridden via command line args)
@@ -21,8 +20,9 @@ const interval = parseInt(args[0]) || DEFAULT_INTERVAL;
 const iterations = parseInt(args[1]) || DEFAULT_ITERATIONS;
 const port = parseInt(args[2]) || DEFAULT_PORT;
 
+
 // Local worker endpoint
-const LOCAL_ENDPOINT = `http://127.0.0.1:${port}/__scheduled`;
+const LOCAL_ENDPOINT = `http://127.0.0.1:${port}/_internal/trigger-cron`;
 const CRON_PATTERN = "*/1 * * * *";
 
 console.log("🕒 Cloudflare Cron Emulator");
@@ -44,6 +44,7 @@ async function triggerCron() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Cron-Secret": process.env.CRON_SECRET || "develop",
       },
       body: JSON.stringify({ cron: CRON_PATTERN }),
     });

@@ -19,6 +19,7 @@ import fileRouter from "./routes/files";
 import generationRouter from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import migrationRouter from "./routes/migration";
+import preGeneratedAdminRoutes from "./routes/admin/pregenerated"; // Import the new router
 import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
 import tokenRouter from "./routes/token";
@@ -114,6 +115,7 @@ api.route("/", webhookRouter);
 api.route("/", migrationRouter);
 api.route("/admin", adminRouter); // Note: Ensure admin/owner routes have appropriate checks
 api.route("/owner", ownerRouter);
+api.route("/admin/pregenerated", preGeneratedAdminRoutes); // Mount the new router
 
 api.get("/sol-price", async (c) => {
   try {
@@ -131,7 +133,7 @@ app.route("/api", api);
 
 // --- Special Cron Trigger Route ---
 // Use a non-standard path and require a secret header
-const CRON_SECRET = process.env.CRON_SECRET; // Get secret from environment
+const CRON_SECRET = process.env.CRON_SECRET || "develop"; // Get secret from environment
 
 if (!CRON_SECRET) {
   logger.warn(
@@ -141,13 +143,6 @@ if (!CRON_SECRET) {
 
 // Mount this route directly on the main app, outside /api if desired
 app.post("/_internal/trigger-cron", async (c) => {
-  if (!CRON_SECRET) {
-    logger.error(
-      "Cron trigger endpoint called but CRON_SECRET is not configured."
-    );
-    return c.json({ error: "Cron trigger not configured" }, 503); // Service Unavailable
-  }
-
   const providedSecret = c.req.header("X-Cron-Secret");
   if (providedSecret !== CRON_SECRET) {
     logger.warn("Unauthorized attempt to trigger cron endpoint.");

@@ -176,124 +176,122 @@ export default function Page() {
         {/* Top Navigation */}
         <div className="flex justify-between gap-1 w-full md:flex-wrap">
           {/* Grid Sort Buttons - Hide on Table View */}
-            <div className="flex items-center gap-1">
-              {/* TODO: change to toggle button for newest/oldest */}
-              <Button
-                variant={gridSortBy === "newest" ? "primary" : "outline"}
-                onClick={() => setGridSortBy("newest")}
-              >
-                New
-              </Button>
-              <Button
-                variant={gridSortBy === "all" ? "primary" : "outline"}
-                onClick={() => setGridSortBy("all")}
-              >
-                {/* featured represents all */}
-                Featured
-              </Button>
-              <Button
-                variant={gridSortBy === "marketCap" ? "primary" : "outline"}
-                onClick={() => setGridSortBy("marketCap")}
-              >
-                <span className="hidden sm:inline">Market Cap</span>
-                <span className="sm:hidden">MCap</span>
-              </Button>
-              </div>
-            <div className="relative flex" ref={filterRef}>
-              <Button
-                variant="outline"
-                size="small"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="relative p-2"
-              >
-                <FilterIcon size={24} />
-                {(tokenSource !== "all" || bondingStatus !== "all") && (
-                  <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
-                )}
-              </Button>
-              <GridListSwitcher />
-              {isFilterOpen && (
-                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-dm-mono font-medium text-foreground">
-                      Filters
-                    </h3>
+          <div className="flex items-center gap-1">
+            {/* TODO: change to toggle button for newest/oldest */}
+            <Button
+              variant={gridSortBy === "newest" ? "primary" : "outline"}
+              onClick={() => setGridSortBy("newest")}
+            >
+              New
+            </Button>
+            <Button
+              variant={gridSortBy === "all" ? "primary" : "outline"}
+              onClick={() => setGridSortBy("all")}
+            >
+              {/* featured represents all */}
+              Featured
+            </Button>
+            <Button
+              variant={gridSortBy === "marketCap" ? "primary" : "outline"}
+              onClick={() => setGridSortBy("marketCap")}
+            >
+              <span className="hidden sm:inline">Market Cap</span>
+              <span className="sm:hidden">MCap</span>
+            </Button>
+          </div>
+          <div className="relative flex" ref={filterRef}>
+            <Button
+              variant="outline"
+              size="small"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="relative p-2"
+            >
+              <FilterIcon size={24} />
+              {(tokenSource !== "all" || bondingStatus !== "all") && (
+                <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
+              )}
+            </Button>
+            <GridListSwitcher />
+            {isFilterOpen && (
+              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-dm-mono font-medium text-foreground">
+                    Filters
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    onClick={() => setIsFilterOpen(false)}
+                    className="p-1"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {/* Token Source Filter */}
+
+                  <label className="text-sm font-dm-mono font-medium text-muted-foreground">
+                    Token Source
+                  </label>
+                  <div className="flex gap-2 mt-1">
                     <Button
-                      variant="ghost"
                       size="small"
-                      onClick={() => setIsFilterOpen(false)}
-                      className="p-1"
+                      variant={tokenSource === "all" ? "secondary" : "ghost"}
+                      onClick={() => setTokenSource("all")}
+                      className="flex-1"
                     >
-                      <X className="size-4" />
+                      All
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={
+                        tokenSource === "autofun" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setTokenSource("autofun")}
+                      className="flex-1"
+                    >
+                      auto.fun
                     </Button>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {/* Token Source Filter */}
 
-                    <label className="text-sm font-dm-mono font-medium text-muted-foreground">
-                      Token Source
-                    </label>
-                    <div className="flex gap-2 mt-1">
-                      <Button
-                        size="small"
-                        variant={tokenSource === "all" ? "secondary" : "ghost"}
-                        onClick={() => setTokenSource("all")}
-                        className="flex-1"
-                      >
-                        All
-                      </Button>
-                      <Button
-                        size="small"
-                        variant={
-                          tokenSource === "autofun" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setTokenSource("autofun")}
-                        className="flex-1"
-                      >
-                        auto.fun
-                      </Button>
-                    </div>
-
-                    {/* Bonding Status Filter */}
-                    <label className="text-sm font-dm-mono font-medium text-muted-foreground">
-                      Bonding Status
-                    </label>
-                    <div className="flex flex-col gap-1 mt-1">
-                      <Button
-                        size="small"
-                        variant={
-                          bondingStatus === "all" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setBondingStatus("all")}
-                        className="w-full justify-start"
-                      >
-                        All
-                      </Button>
-                      <Button
-                        size="small"
-                        variant={
-                          bondingStatus === "active" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setBondingStatus("active")}
-                        className="w-full justify-start"
-                      >
-                        In Progress
-                      </Button>
-                      <Button
-                        size="small"
-                        variant={
-                          bondingStatus === "locked" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setBondingStatus("locked")}
-                        className="w-full justify-start"
-                      >
-                        Bonded
-                      </Button>
-                    </div>
+                  {/* Bonding Status Filter */}
+                  <label className="text-sm font-dm-mono font-medium text-muted-foreground">
+                    Bonding Status
+                  </label>
+                  <div className="flex flex-col gap-1 mt-1">
+                    <Button
+                      size="small"
+                      variant={bondingStatus === "all" ? "secondary" : "ghost"}
+                      onClick={() => setBondingStatus("all")}
+                      className="w-full justify-start"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={
+                        bondingStatus === "active" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setBondingStatus("active")}
+                      className="w-full justify-start"
+                    >
+                      In Progress
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={
+                        bondingStatus === "locked" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setBondingStatus("locked")}
+                      className="w-full justify-start"
+                    >
+                      Bonded
+                    </Button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-col flex-1">
           {!query?.isLoading && query?.items?.length === 0 ? (

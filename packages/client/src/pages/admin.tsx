@@ -2,6 +2,7 @@ import { Link, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import AdminOverview from "./admin/overview";
 import AdminUsers from "./admin/users";
 import AdminTokens from "./admin/tokens";
+import AdminPregenerated from "./admin/pregenerated";
 import useAuthentication from "@/hooks/use-authentication";
 import { env } from "@/utils/env";
 
@@ -36,7 +37,7 @@ export default function Admin() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
-      <div className="flex items-center gap-2 border-b border-autofun-background-action-primary pb-2">
+      <div className="flex items-center gap-2 border-b border-autofun-background-action-primary pb-2 flex-wrap">
         <Link
           to="/admin"
           className={`px-4 py-2 rounded-t-md ${
@@ -67,6 +68,16 @@ export default function Admin() {
         >
           Tokens
         </Link>
+        <Link
+          to="/admin/pregenerated"
+          className={`px-4 py-2 rounded-t-md ${
+            isActive("/admin/pregenerated")
+              ? "bg-autofun-background-highlight text-black"
+              : "bg-autofun-background-primary hover:bg-autofun-background-action-primary"
+          }`}
+        >
+          Pre-generated
+        </Link>
       </div>
 
       <Routes>
@@ -75,6 +86,7 @@ export default function Admin() {
         <Route path="/users/:address" element={<AdminUsers />} />
         <Route path="/tokens" element={<AdminTokens />} />
         <Route path="/tokens/:address" element={<AdminTokens />} />
+        <Route path="/pregenerated" element={<AdminPregenerated />} />
       </Routes>
     </div>
   );
