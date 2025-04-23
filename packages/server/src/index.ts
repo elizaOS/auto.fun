@@ -171,17 +171,6 @@ app.post("/_internal/trigger-cron", async (c) => {
 // --- Root and Maintenance Routes ---
 app.get("/", (c) => c.json({ status: "ok", message: "Hono server running!" }));
 
-api.get("/sol-price", async (c) => {
-  try {
-    const solPrice = await getSOLPrice(); // Use the global cache service
-    logger.info("(Placeholder) Would fetch SOL price");
-    return c.json({ price: solPrice });
-  } catch (error) {
-    logger.error("Error fetching SOL price:", error);
-    return c.json({ error: "Failed to fetch SOL price" }, 500);
-  }
-});
-
 const MAINTENANCE_MODE_ENABLED = process.env.MAINTENANCE_MODE === "true";
 app.get("/maintenance-mode", (c) => {
   return c.json({ enabled: MAINTENANCE_MODE_ENABLED });
