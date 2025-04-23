@@ -10,6 +10,7 @@ import { RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
+import { getSocket } from "@/utils/socket"; // Import WebSocket utility
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -177,6 +178,9 @@ export default function ChatSection() {
       chatContainer.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  // --- WebSocket Instance --- (NEW)
+  const socket = getSocket();
 
   // --- Fetch Initial Chat Messages --- *REVISED*
   const fetchChatMessages = useCallback(
@@ -404,6 +408,7 @@ export default function ChatSection() {
     isBalanceLoading,
     isAuthenticated,
     eligibleChatTiers,
+    fetchChatMessages,
   ]);
 
   // --- Fetch Older Messages (Upwards Pagination) --- *NEW*
@@ -501,109 +506,115 @@ export default function ChatSection() {
     fetchOlderMessages,
   ]);
 
-  // --- Poll for New Messages --- *REVISED*
-  const pollForNewMessages = useCallback(async () => {
-    if (
-      !tokenMint ||
-      !publicKey ||
-      !selectedChatTier ||
-      !latestTimestamp ||
-      !isAuthenticated ||
-      isSendingMessage ||
-      isChatLoading ||
-      isRefreshingMessages
-    ) {
-      return;
-    }
-
-    try {
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/messages/${tokenMint}/${selectedChatTier}/updates?since=${latestTimestamp}`,
-      );
-
-      if (!response.ok) {
-        console.warn(
-          `Polling failed (${response.status}): ${response.statusText}`,
-        );
-        if (response.status === 401 || response.status === 403) {
-          console.error("Polling auth failed. Stopping?");
-        }
-        return;
-      }
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn("Polling received non-JSON response");
-        return;
-      }
-
-      const data: GetMessagesResponse = await response.json();
-
-      if (data.success && data.messages && data.messages.length > 0) {
-        const newMessages = data.messages.sort(
-          (a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-        );
-
-        const currentMessageIds = new Set(chatMessages.map((m) => m.id));
-        const uniqueNewMessages = newMessages.filter(
-          (nm) => !currentMessageIds.has(nm.id),
-        );
-
-        if (uniqueNewMessages.length > 0) {
-          setChatMessages((prev) => [...prev, ...uniqueNewMessages]);
-          setLatestTimestamp(
-            uniqueNewMessages[uniqueNewMessages.length - 1].timestamp,
-          );
-
-          setTimeout(() => scrollToBottom(false), 50);
-        }
-      }
-    } catch (error) {
-      console.error("Error polling for messages:", error);
-    }
-  }, [
-    tokenMint,
-    publicKey,
-    selectedChatTier,
-    latestTimestamp,
-    isAuthenticated,
-    isSendingMessage,
-    isChatLoading,
-    isRefreshingMessages,
-    chatMessages,
-    scrollToBottom,
-  ]);
-
-  // Setup polling interval
+  // --- WebSocket Subscription --- (NEW)
   useEffect(() => {
     if (
-      isAuthenticated &&
-      tokenMint &&
-      selectedChatTier &&
-      latestTimestamp &&
-      eligibleChatTiers.includes(selectedChatTier)
+      !socket ||
+      !tokenMint ||
+      !selectedChatTier ||
+      !isAuthenticated ||
+      !eligibleChatTiers.includes(selectedChatTier)
     ) {
-      const intervalId = setInterval(pollForNewMessages, 5000);
-      console.log(
-        `Polling started for ${tokenMint} / ${selectedChatTier} since ${latestTimestamp}`,
-      );
-
-      return () => {
-        clearInterval(intervalId);
-        console.log(`Polling stopped for ${tokenMint} / ${selectedChatTier}`);
-      };
+      return; // Don't subscribe if conditions aren't met
     }
-  }, [
-    isAuthenticated,
-    tokenMint,
-    selectedChatTier,
-    latestTimestamp,
-    eligibleChatTiers,
-    pollForNewMessages,
-  ]);
 
-  // --- Send Chat Message --- *REVISED*
+    const subscriptionData = { tokenMint, tier: selectedChatTier };
+
+    console.log("WS: Subscribing to chat room:", subscriptionData);
+    socket.emit("subscribeToChat", subscriptionData);
+
+    // Confirmation listener (optional but good for debugging)
+    const handleSubscribed = (data: any) => {
+      if (data?.room === `chat:${tokenMint}:${selectedChatTier}`) {
+        console.log("WS: Successfully subscribed to", data.room);
+      }
+    };
+    socket.on("subscribedToChat", handleSubscribed);
+
+    // Cleanup function
+    return () => {
+      console.log("WS: Unsubscribing from chat room:", subscriptionData);
+      socket.emit("unsubscribeFromChat", subscriptionData);
+      socket.off("subscribedToChat", handleSubscribed); // Remove listener
+    };
+  }, [socket, tokenMint, selectedChatTier, isAuthenticated, eligibleChatTiers]);
+
+  // --- WebSocket Message Listener --- (NEW)
+  useEffect(() => {
+    if (!socket) return;
+
+    // Define handler with type assertion
+    const handleNewChatMessage = (data: unknown) => {
+      const newMessage = data as ChatMessage; // Assert data is ChatMessage
+      console.log("WS: Received new message:", newMessage);
+
+      // Basic validation
+      if (
+        !newMessage ||
+        !newMessage.id ||
+        !newMessage.tokenMint ||
+        !newMessage.tier
+      ) {
+        console.warn("WS: Received invalid message format.", newMessage);
+        return;
+      }
+
+      // Check if the message belongs to the current context
+      if (
+        newMessage.tokenMint !== tokenMint ||
+        newMessage.tier !== selectedChatTier
+      ) {
+        console.log("WS: Ignoring message from different token/tier.");
+        return;
+      }
+
+      setChatMessages((prevMessages) => {
+        // Check if message already exists (including optimistic ones)
+        if (prevMessages.some((msg) => msg.id === newMessage.id)) {
+          // If it exists and the received one is NOT optimistic, update it
+          // (Handles case where optimistic message is confirmed)
+          if (!newMessage.isOptimistic) {
+            return prevMessages.map((msg) =>
+              msg.id === newMessage.id
+                ? { ...newMessage, isOptimistic: false }
+                : msg,
+            );
+          }
+          // Otherwise, ignore the duplicate (e.g., received optimistic echo)
+          return prevMessages;
+        }
+        // Add the new message if it doesn't exist
+        return [...prevMessages, newMessage];
+      });
+
+      // Update latest timestamp if this message is newer
+      setLatestTimestamp((prevTimestamp) => {
+        if (
+          !prevTimestamp ||
+          new Date(newMessage.timestamp).getTime() >
+            new Date(prevTimestamp).getTime()
+        ) {
+          return newMessage.timestamp;
+        }
+        return prevTimestamp;
+      });
+
+      // Scroll down if near bottom
+      setTimeout(() => scrollToBottom(false), 50);
+    };
+
+    // Register the handler (type now matches expected (data: unknown) => void)
+    socket.on("newChatMessage", handleNewChatMessage);
+    console.log("WS: Registered newChatMessage listener.");
+
+    // Cleanup listener on unmount or socket change
+    return () => {
+      socket.off("newChatMessage", handleNewChatMessage);
+      console.log("WS: Unregistered newChatMessage listener.");
+    };
+  }, [socket, tokenMint, selectedChatTier, scrollToBottom]); // Dependencies needed
+
+  // --- Send Chat Message --- *REVISED* (Optimistic update remains, WS handles confirmation)
   const handleSendMessage = async () => {
     if (
       !chatInput.trim() ||
@@ -625,71 +636,83 @@ export default function ChatSection() {
       tier: selectedChatTier,
       timestamp: new Date().toISOString(),
       isOptimistic: true,
-      hasLiked: false,
+      hasLiked: false, // Assuming default
     };
 
+    // Optimistically add the message
     setChatMessages((prev) => [...prev, optimisticMessage]);
+    const messageToSend = chatInput.trim(); // Store message before clearing input
     setChatInput("");
 
     setTimeout(() => scrollToBottom(true), 50);
 
     try {
+      // Call the API to post the message
       const response = await fetchWithAuth(
         `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            // Consider sending client ID if needed for exclusion on server
+            // 'X-Client-ID': socket?.clientId // Assuming socket wrapper exposes ID
           },
           body: JSON.stringify({
-            message: chatInput.trim(),
+            message: messageToSend, // Use stored message
           }),
         },
       );
 
+      // Handle API response (primarily for errors or immediate feedback)
       if (response.status === 401 || response.status === 403) {
         setChatError(
           `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`,
         );
+        // Remove optimistic message on auth error
         setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
         return;
       }
 
       if (!response.ok) {
-        throw new Error(`Failed to send message: ${response.statusText}`);
-      }
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Invalid response format: Expected JSON");
-      }
-
-      const data: PostMessageResponse = await response.json();
-
-      if (data.success && data.message) {
-        setChatMessages((prev) => {
-          const filtered = prev.filter((msg) => msg.id !== tempId);
-          if (!filtered.some((m) => m.id === data.message!.id)) {
-            return [...filtered, data.message!];
-          }
-          return filtered;
-        });
-        if (
-          !latestTimestamp ||
-          new Date(data.message.timestamp).getTime() >
-            new Date(latestTimestamp).getTime()
-        ) {
-          setLatestTimestamp(data.message.timestamp);
+        // Attempt to parse error from backend
+        let errorMsg = `Failed to send message: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) errorMsg = errorData.error;
+        } catch (_) {
+          // do nothing
         }
-        setTimeout(() => scrollToBottom(true), 50);
-      } else {
-        throw new Error(data.error || "Failed to send message");
+        throw new Error(errorMsg);
       }
+
+      // --- No longer need to handle successful message update here ---
+      // The WebSocket 'newChatMessage' listener will handle adding the confirmed message
+      // and potentially replacing the optimistic one.
+      // We *could* parse the response here to potentially update the optimistic message
+      // with the real ID/timestamp immediately, but the WS listener handles it eventually.
+
+      /* // OLD LOGIC - REMOVED
+      const data: PostMessageResponse = await response.json();
+      if (data.success && data.message) {
+          setChatMessages((prev) => {
+              const filtered = prev.filter((msg) => msg.id !== tempId);
+              if (!filtered.some((m) => m.id === data.message!.id)) {
+                  return [...filtered, data.message!];
+              } return filtered; });
+              if ( !latestTimestamp || new Date(data.message.timestamp).getTime() > new Date(latestTimestamp).getTime() ) {
+                  setLatestTimestamp(data.message.timestamp);
+              }
+              setTimeout(() => scrollToBottom(true), 50);
+          } else {
+              throw new Error(data.error || "Failed to send message");
+          }
+      */
     } catch (error) {
       console.error("Error sending message:", error);
       setChatError(
         error instanceof Error ? error.message : "Could not send message",
       );
+      // Remove optimistic message on general error
       setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
     } finally {
       setIsSendingMessage(false);

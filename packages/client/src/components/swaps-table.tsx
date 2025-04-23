@@ -27,8 +27,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
     hasNextPage,
     totalItems,
     totalPages,
-  } = useTransactions({ tokenId: token.mint, isPaused: paused});
-  
+  } = useTransactions({ tokenId: token.mint, isPaused: paused });
 
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {

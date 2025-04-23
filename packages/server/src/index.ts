@@ -17,7 +17,6 @@ import authRouter from "./routes/auth";
 import chatRouter from "./routes/chat";
 import fileRouter from "./routes/files";
 import generationRouter from "./routes/generation";
-import messagesRouter from "./routes/messages";
 import migrationRouter from "./routes/migration";
 import preGeneratedAdminRoutes from "./routes/admin/pregenerated"; // Import the new router
 import shareRouter from "./routes/share";
@@ -106,7 +105,6 @@ api.route("/", generationRouter);
 api.route("/", tokenRouter);
 api.route("/", agentRouter);
 api.route("/", fileRouter);
-api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
 api.route("/", chatRouter);

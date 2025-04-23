@@ -136,6 +136,8 @@ class WebSocketManager {
                 case 'unsubscribe':
                 case 'subscribeGlobal':
                 case 'unsubscribeGlobal':
+                case 'subscribeToChat':
+                case 'unsubscribeFromChat':
                     await this.handleRoomEvent(clientMetadata, event, data);
                     break;
                 case 'pong':
@@ -185,6 +187,18 @@ class WebSocketManager {
                 break;
             case 'unsubscribeGlobal':
                 roomName = 'global';
+                operation = 'leave';
+                break;
+            case 'subscribeToChat':
+                if (data?.tokenMint && data?.tier && typeof data.tokenMint === 'string' && typeof data.tier === 'string') {
+                    roomName = `chat:${data.tokenMint}:${data.tier}`;
+                }
+                operation = 'join';
+                break;
+            case 'unsubscribeFromChat':
+                if (data?.tokenMint && data?.tier && typeof data.tokenMint === 'string' && typeof data.tier === 'string') {
+                    roomName = `chat:${data.tokenMint}:${data.tier}`;
+                }
                 operation = 'leave';
                 break;
             default: // Should not happen if called correctly
@@ -289,8 +303,9 @@ class WebSocketManager {
             await this.redisCache.sadd(clientRoomsKey, roomName);
             await this.redisCache.sadd(roomClientsKey, client.clientId);
             logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
+            const responseEvent = String(event) === 'subscribeToChat' ? 'subscribedToChat' : (roomName.startsWith('token-') ? 'subscribed' : 'joined');
             client.ws.send(JSON.stringify({
-                event: roomName.startsWith('token-') ? 'subscribed' : 'joined',
+                event: responseEvent,
                 data: { room: roomName }
             }));
         } catch (error) {
@@ -321,8 +336,9 @@ class WebSocketManager {
             await this.redisCache.srem(clientRoomsKey, roomName);
             await this.redisCache.srem(roomClientsKey, client.clientId);
             logger.log(`Client ${client.clientId} left room (local+Redis): ${roomName}`);
+            const responseEvent = String(event) === 'unsubscribeFromChat' ? 'unsubscribedFromChat' : (roomName.startsWith('token-') ? 'unsubscribed' : 'left');
             client.ws.send(JSON.stringify({
-                event: roomName.startsWith('token-') ? 'unsubscribed' : 'left',
+                event: responseEvent,
                 data: { room: roomName }
             }));
         } catch (error) {
