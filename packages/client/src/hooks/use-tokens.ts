@@ -4,7 +4,7 @@ import { getSocket } from "@/utils/socket";
 import { IToken, TokenSchema } from "@/types";
 import { z } from "zod";
 
-export type Token = z.infer<typeof TokenSchema>;
+type Token = z.infer<typeof TokenSchema>;
 export const HomepageTokenSchema = TokenSchema.and(
   z.object({
     numComments: z.number().default(0),

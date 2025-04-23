@@ -691,7 +691,7 @@ const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
 };
 
 // Main Form Component
-export const Create = () => {
+const Create = () => {
   // Define things for our page
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthentication();

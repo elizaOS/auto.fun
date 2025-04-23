@@ -36,7 +36,7 @@ export type UsePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
   "page"
 > & { enabled?: boolean; useUrlState?: boolean };
 
-export type UseInfinitePaginationOptions<
+type UseInfinitePaginationOptions<
   TOutput = object,
   TInput = TOutput,
 > = Omit<PaginationOptions<TOutput, TInput>, "page"> & { enabled?: boolean };

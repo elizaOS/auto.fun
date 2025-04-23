@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { z } from "zod";
 
-export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
+type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
 interface IPagination {
   page: number;
