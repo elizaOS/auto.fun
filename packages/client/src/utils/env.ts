@@ -74,7 +74,7 @@ const unparsedEnv = {
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   appEnv: process.env.NODE_ENV,
   s3PublicUrl:
-    import.meta.env.VITE_S3_PUBLIC_URL || import.meta.env.VITE_S3_PUBLIC_URL,
+    import.meta.env.VITE_S3_PUBLIC_URL || import.meta.env.VITE_R2_PUBLIC_URL,
   metadataBaseUrl: import.meta.env.VITE_METADATA_BASE_URL,
   imageOptimizationUrl: import.meta.env.VITE_IMAGE_OPTIMIZATION_URL,
   exampleImageUrl: import.meta.env.VITE_EXAMPLE_IMAGE_URL,
