@@ -12,6 +12,7 @@
     "build": "turbo run build",
     "build:client": "bun install && turbo run build --filter=@autodotfun/client",
     "start": "turbo run dev",
+    "build:server": "bun install && turbo run build --filter=@autodotfun/server",
     "start:server": "bun run start --filter=@autodotfun/server",
     "lint": "turbo run lint",
     "test": "turbo run test",
