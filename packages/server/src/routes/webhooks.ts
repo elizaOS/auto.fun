@@ -13,7 +13,7 @@ import { getWebSocketClient } from "../websocket-client";
 import { fork } from "child_process";
 import path from "path";
 import { queueJob } from "../workers/processPool";
-import { processTransactionLogs } from "../processTransactionLogs";
+import { processTransactionLogs } from "../cron";
 
 const router = new Hono<{
   Variables: {
