@@ -22,9 +22,9 @@ const SOLUSD_SYMBOL = "Crypto.SOL/USD";
 const MAX_CONCURRENT_TOKENS = 3; // Maximum number of tokens to process concurrently
 
 // Monitoring metrics
-let totalUpdatesProcessed = 0;
+const totalUpdatesProcessed = 0;
 let failedUpdates = 0;
-let lastUpdateTime: Date | null = null;
+const lastUpdateTime: Date | null = null;
 
 /**
  * Get the current SOL price in USD

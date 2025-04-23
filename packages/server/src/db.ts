@@ -211,11 +211,10 @@ export const metadata = pgTable("metadata", {
 });
 
 let dbInstance: ReturnType<typeof drizzle> | null = null;
-let poolInstance: Pool | null = null;
 
 export function getDB() {
   if (!dbInstance) {
-     poolInstance = new Pool({ connectionString: process.env.DATABASE_URL });
+     const poolInstance = new Pool({ connectionString: process.env.DATABASE_URL });
      dbInstance = drizzle(poolInstance, { schema });
   }
   return dbInstance;

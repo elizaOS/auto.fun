@@ -3,6 +3,8 @@ import { Connection, Logs, PublicKey } from '@solana/web3.js';
 import { processTransactionLogs } from '../cron';
 import { logger } from '../logger';
 import { getWebSocketClient } from '../websocket-client';
+import { webSocketManager } from '../websocket-manager';
+import { getGlobalRedisCache } from '../redis';
 
 export async function startLogSubscription(
    connection: Connection,
@@ -10,8 +12,19 @@ export async function startLogSubscription(
    env: any
 ) {
    let subId: number;
+   const redisCache = await getGlobalRedisCache();
+   const isReady = await redisCache.isPoolReady();
+   if (!redisCache) throw new Error("Redis Cache Service not found");
+
+   // Initialize WebSocketManager with Redis
+   if (!webSocketManager.redisCache) {
+      webSocketManager.initialize(redisCache);
+   }
+
+
+
    const wsClient = getWebSocketClient()
-   
+
    async function watch() {
       subId = await connection.onLogs(
          programId,
