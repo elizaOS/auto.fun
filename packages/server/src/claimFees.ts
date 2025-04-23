@@ -3,10 +3,12 @@ import { claim } from "@autodotfun/raydium/src/raydiumVault";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
-import * as raydium_vault_IDL from "@autodotfun/types/idl/raydium_vault.json";
-
+import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.json";
 import dotenv from 'dotenv';
 dotenv.config();
+
+const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
+
 
 export async function claimFees(nftMint: PublicKey, poolId: PublicKey, connection: Connection, claimer: PublicKey): Promise<string> {
    try {

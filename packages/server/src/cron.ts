@@ -1,10 +1,19 @@
 import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
 // import { ExecutionContext } from "@cloudflare/workers-types/experimental"; // Removed CF dependency
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3"; // S3 Import
+import * as idlJson from "@autodotfun/types/idl/autofun.json";
+import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.json";
+import { Autofun } from "@autodotfun/types/types/autofun";
+import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
+import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3"; // S3 Import
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
+import { Buffer } from 'node:buffer'; // Buffer import
+import crypto from "node:crypto"; // Import crypto for lock value
 import { getLatestCandle } from "./chart";
 import { getDB, Token, tokens } from "./db";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
+import { TokenMigrator } from "./migration/migrateToken";
 import { getToken } from "./migration/migrations";
 import { awardGraduationPoints, awardUserPoints } from "./points";
 import { getGlobalRedisCache } from "./redis";
@@ -13,6 +22,7 @@ import {
   generateAdditionalTokenImages, // Assumes this uses S3 uploader internally now
 } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
+import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
   bulkUpdatePartialTokens,
   calculateFeaturedScore,
@@ -21,8 +31,10 @@ import {
   logger,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
-import { Buffer } from 'node:buffer'; // Buffer import
-import crypto from "node:crypto"; // Import crypto for lock value
+
+const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
+const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
+
 
 // S3 Client Helper (copied from uploader.ts, using process.env)
 let s3ClientInstance: S3Client | null = null;
@@ -476,12 +488,49 @@ async function handleCurveComplete(
       return null;
     }
 
+    const tokenData: Partial<TokenData> = {
+      mint: mintAddress,
+      status: "migrating",
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const connection = new Connection(
+      process.env.NETWORK === "devnet"
+        ? process.env.DEVNET_SOLANA_RPC_URL!
+        : process.env.MAINNET_SOLANA_RPC_URL!,
+    );
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+    );
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+    );
+    const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+    );
+    const autofunProgram = new Program<Autofun>(idl as any, provider);
+    const redisCache = await getGlobalRedisCache();
+
+    const tokenMigrator = new TokenMigrator(
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+      redisCache
+    );
+
     await updateTokenInDB(token);
+    await tokenMigrator.migrateToken(token);
     await wsClient.emit(
       "global",
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );
+
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
   } catch (err) {

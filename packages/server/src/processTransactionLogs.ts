@@ -11,7 +11,7 @@ import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./migration/migrateToken";
 import { getToken } from "./migration/migrations";
-import { createRedisCache } from "./redis";
+import { createRedisCache, getGlobalRedisCache } from "./redis";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { createNewTokenData, } from "./util";
 import { getWebSocketClient } from "./websocket-client";
@@ -416,12 +416,15 @@ export async function processTransactionLogs(
             );
             const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
+            const redisCache = await getGlobalRedisCache();
+
             const tokenMigrator = new TokenMigrator(
                connection,
                new Wallet(wallet),
                program,
                autofunProgram,
                provider,
+               redisCache
             );
             const token = await getToken(mintAddress);
             if (!token) {
@@ -548,12 +551,15 @@ export async function migrateTokensFromList(
    );
    const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
+   const redisCache = await getGlobalRedisCache();
+
    const tokenMigrator = new TokenMigrator(
       connection,
       new Wallet(wallet),
       program,
       autofunProgram,
       provider,
+      redisCache
    );
 
 
