@@ -24,7 +24,7 @@ const TransactionSchema = z
       tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
   }));
 
-export type Transaction = z.infer<typeof TransactionSchema>;
+// type Transaction = z.infer<typeof TransactionSchema>;
 
 export const useTransactions = ({
   tokenId,

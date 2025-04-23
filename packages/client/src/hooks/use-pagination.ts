@@ -36,10 +36,10 @@ export type UsePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
   "page"
 > & { enabled?: boolean; useUrlState?: boolean };
 
-export type UseInfinitePaginationOptions<
-  TOutput = object,
-  TInput = TOutput,
-> = Omit<PaginationOptions<TOutput, TInput>, "page"> & { enabled?: boolean };
+type UseInfinitePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
+  PaginationOptions<TOutput, TInput>,
+  "page"
+> & { enabled?: boolean };
 
 const fetchPaginatedData = async <
   TOutput extends Record<string, unknown>,
@@ -94,7 +94,7 @@ const fetchPaginatedData = async <
   };
 };
 
-export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
+const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPageParam = searchParams.get("page");
   const initialPage = initialPageParam

@@ -61,7 +61,12 @@ export class RedisCacheService {
 
   async subscribe(channel: string, handler: (message: string) => void): Promise<void> {
     const subClient = await this.redisPool.getSubscriberClient();
-    await subClient.subscribe(channel, (_, msg) => handler(msg as string));
+    await subClient.subscribe(channel);
+    subClient.on("message", (ch, msg) => {
+      if (ch === channel) {
+        handler(msg);
+      }
+    });
   }
 
   getKey(key: string) {

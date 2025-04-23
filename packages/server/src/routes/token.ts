@@ -2537,7 +2537,7 @@ tokenRouter.post("/search-token", async (c) => {
   }
 });
 
-export async function uploadImportImage(c: Context) {
+async function uploadImportImage(c: Context) {
   try {
     // Require authentication
     const user = c.get("user");

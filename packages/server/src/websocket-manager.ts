@@ -4,6 +4,7 @@ import { logger } from './util';
 // Import the correct type from Hono
 import type { WSContext } from 'hono/ws';
 import { getGlobalRedisCache } from './redis';
+import { j } from 'react-router/dist/development/fog-of-war-D4x86-Xc';
 
 // Interface for our client metadata, not extending WSContext
 interface ClientMetadata {
@@ -36,12 +37,16 @@ class WebSocketManager {
 
         // Listen for cross-cluster pub/sub
         const subClient = await this.redisCache.redisPool.getSubscriberClient();
-        await subClient.subscribe("ws:broadcast", (_, message) => {
+        await subClient.subscribe("ws:broadcast");
+        subClient.on("message", (ch, message) => {
+            logger.info(`📣 Received Redis message on ${ch}:`, message);
             const { room, event, data } = JSON.parse(message as string);
             this.broadcastToRoom(room, event, data);
         });
 
-        await subClient.subscribe("ws:direct", (_, message) => {
+        await subClient.subscribe("ws:direct");
+        subClient.on("message", (ch, message) => {
+            logger.info(`📬 Received Redis direct message on ${ch}:`, message);
             const { clientId, event, data } = JSON.parse(message as string);
             this.sendToClient(clientId, event, data);
         });

@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import "./index.css";
 import Layout from "./layout/root";
 import Homepage from "./pages";
-import { Create } from "./pages/create";
+import Create from "./pages/create";
 import Fees from "./pages/fees";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Profile from "./pages/profile";

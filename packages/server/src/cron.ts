@@ -30,7 +30,7 @@ import {
   getFeaturedMaxValues,
   logger,
 } from "./util";
-import { getWebSocketClient } from "./websocket-client";
+import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -220,20 +220,30 @@ type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
   logs: string[],
   signature: string,
-  wsClient: any = null,
+  wsClient: WebSocketClient,
 ): Promise<ProcessResult> {
   if (!wsClient) {
     wsClient = getWebSocketClient();
   }
-
+  console.log("Processing transaction logs:", logs);
   // Try each handler in sequence and return on first match
-  await handleNewToken(logs, signature, wsClient);
+  try {
+    await handleNewToken(logs, signature, wsClient);
+  } catch (err) {
+    logger.info(`Error in NewToken handler: ${err}`);
+  }
   // if (newTokenResult) return newTokenResult;
-
-  await handleSwap(logs, signature, wsClient);
+  try {
+    await handleSwap(logs, signature, wsClient);
+  } catch (err) {
+    logger.info(`Error in Swap handler: ${err}`);
+  }
   // if (swapResult) return swapResult;
-
-  await handleCurveComplete(logs, signature, wsClient);
+  try {
+    await handleCurveComplete(logs, signature, wsClient);
+  } catch (err) {
+    logger.info(`Error in CurveComplete handler: ${err}`);
+  }
   // if (curveResult) return curveResult;
 
   // Default: no event found
@@ -243,7 +253,7 @@ export async function processTransactionLogs(
 async function handleNewToken(
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: WebSocketClient,
 ): Promise<HandlerResult> {
   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
   if (!newTokenLog) return null;
@@ -285,7 +295,7 @@ async function handleNewToken(
 async function handleSwap(
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: WebSocketClient,
 ): Promise<HandlerResult | null> {
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
@@ -293,183 +303,167 @@ async function handleSwap(
   const feeLog = logs.find((log) => log.includes("fee:"));
   const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
 
-  if (!mintLog || !swapLog || !reservesLog || !feeLog || !swapeventLog) {
-    return null;
-  }
 
-  try {
-    const mintAddress = mintLog.split("Mint:")[1]?.trim().replace(/[",)]/g, "");
-    if (!mintAddress || !/^[1-9A-HJ-NP-Za-km-z]+$/.test(mintAddress)) {
-      throw new Error(`Invalid or malformed mint address: ${mintAddress}`);
-    }
+  if (mintLog || swapLog || reservesLog || feeLog) {
+    try {
+      const mintAddress = mintLog!.split("Mint:")[1].trim().replace(/[",)]/g, '');
+      const [user, direction, amount] = swapLog!.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
+      const [reserveToken, reserveLamport] = reservesLog!.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
+      const feeAmount = feeLog!.split("fee:")[1].trim().replace(/[",)]/g, '');
+      const [usr, dir, amountOut] = swapeventLog!.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
 
-    const swapParts = swapLog.trim().split(" ");
-    const [user, direction, amount] = swapParts
-      .slice(-3)
-      .map((v) => v.replace(/[",)]/g, ""));
-    if (!user || !["0", "1"].includes(direction) || isNaN(Number(amount))) {
-      throw new Error(`Malformed swap data: ${swapLog}`);
-    }
+      // Retrieve token mint info to get decimals.
+      const tokenWithSupply = await getToken(mintAddress);
+      if (!tokenWithSupply) {
+        logger.error(`Token not found: ${mintAddress}`);
+        return null;
+      }
+      const solPrice = await getSOLPrice();
 
-    const [reserveToken, reserveLamport] = reservesLog
-      .trim()
-      .split(" ")
-      .slice(-2)
-      .map((v) => v.replace(/[",)]/g, ""));
-    if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
-      throw new Error(`Malformed reserve data: ${reservesLog}`);
-    }
+      const TOKEN_DECIMALS = tokenWithSupply.tokenDecimals || 6;
+      const tokenAmount = Number(reserveToken) / 10 ** TOKEN_DECIMALS;
+      const solAmount = Number(reserveLamport) / 1e9;
+      const currentPrice = solAmount / tokenAmount;
+      const tokenPriceInSol = currentPrice / 10 ** TOKEN_DECIMALS;
+      const tokenPriceUSD =
+        currentPrice > 0 ? tokenPriceInSol * solPrice * 10 ** TOKEN_DECIMALS : 0;
 
-    const [_usr, _dir, amountOut] = swapeventLog
-      .trim()
-      .split(" ")
-      .slice(-3)
-      .map((v) => v.replace(/[",)]/g, ""));
+      tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
+      tokenWithSupply.currentPrice = currentPrice;
 
-    const solPrice = await getSOLPrice();
-    const tokenWithSupply = await getToken(mintAddress);
-    if (!tokenWithSupply) {
-      logger.error(`Token not found in DB: ${mintAddress}`);
+      const tokenWithMarketData = await calculateTokenMarketData(
+        tokenWithSupply,
+        solPrice,
+      );
+      const marketCapUSD = tokenWithMarketData.marketCapUSD;
+
+      const swapRecord = {
+        id: crypto.randomUUID(),
+        tokenMint: mintAddress,
+        user,
+        type: direction === "0" ? "buy" : "sell",
+        direction: parseInt(direction),
+        amountIn: Number(amount),
+        amountOut: Number(amountOut),
+        price:
+          direction === "1"
+            ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
+            : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS),
+        txId: signature,
+        timestamp: new Date(),
+      };
+
+      const db = getDB();
+      const redisCache = await getGlobalRedisCache();
+      const listKey = `swapsList:${mintAddress}`;
+
+      try {
+        await redisCache.lpush(listKey, JSON.stringify(swapRecord));
+        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+        logger.log(`Saved swap to Redis: ${swapRecord.type} on ${mintAddress}`);
+      } catch (err) {
+        logger.error(`Redis error saving swap:`, err);
+      }
+      await wsClient.emit(`global`, "newSwap", {
+        ...swapRecord,
+        mint: mintAddress,
+        timestamp: swapRecord.timestamp.toISOString(),
+      });
+
+
+      const liquidity =
+        (Number(reserveLamport) / 1e9) * solPrice +
+        (Number(reserveToken) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
+
+      const updatedTokens = await db
+        .update(tokens)
+        .set({
+          reserveAmount: Number(reserveToken),
+          reserveLamport: Number(reserveLamport),
+          currentPrice,
+          liquidity,
+          marketCapUSD,
+          tokenPriceUSD,
+          solPriceUSD: solPrice,
+          curveProgress:
+            ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES)) /
+              (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) *
+            100,
+          txId: signature,
+          lastUpdated: new Date(),
+          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
+            ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+            : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+            }`,
+        })
+        .where(eq(tokens.mint, mintAddress))
+        .returning();
+
+      const newToken = updatedTokens[0];
+      const usdVolume =
+        swapRecord.type === "buy"
+          ? (swapRecord.amountOut / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          : (swapRecord.amountIn / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
+
+      const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
+      await awardUserPoints(swapRecord.user, {
+        type: `${bondStatus}_${swapRecord.type}` as any,
+        usdVolume,
+      });
+      await awardUserPoints(swapRecord.user, {
+        type: "trade_volume_bonus",
+        usdVolume,
+      });
+
+      try {
+        const listLength = await redisCache.llen(listKey);
+        if (swapRecord.type === "buy" && listLength === 1) {
+          await awardUserPoints(swapRecord.user, {
+            type: "first_buyer",
+          });
+          logger.log(`Awarded first_buyer to ${swapRecord.user}`);
+        }
+      } catch (err) {
+        logger.error("Failed to award first_buyer:", err);
+      }
+
+      await updateHoldersCache(mintAddress);
+
+
+      const latestCandle = await getLatestCandle(mintAddress, swapRecord);
+      await wsClient.to(`global`).emit("newCandle", latestCandle);
+
+      const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+      const enrichedToken = {
+        ...newToken,
+        featuredScore: calculateFeaturedScore(newToken, maxVolume, maxHolders),
+      };
+
+      await wsClient
+        .to("global")
+        .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
+
+      return {
+        found: true,
+        tokenAddress: mintAddress,
+        event: "swap",
+      };
+
+    } catch (err) {
+      logger.error(`Error in Swap handler: ${err}`);
       return null;
     }
-
-    const TOKEN_DECIMALS = tokenWithSupply.tokenDecimals || 6;
-    const tokenAmount = Number(reserveToken) / 10 ** TOKEN_DECIMALS;
-    const solAmount = Number(reserveLamport) / 1e9;
-    const currentPrice = solAmount / tokenAmount;
-    const tokenPriceInSol = currentPrice / 10 ** TOKEN_DECIMALS;
-    const tokenPriceUSD =
-      currentPrice > 0 ? tokenPriceInSol * solPrice * 10 ** TOKEN_DECIMALS : 0;
-
-    tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
-    tokenWithSupply.currentPrice = currentPrice;
-
-    const tokenWithMarketData = await calculateTokenMarketData(
-      tokenWithSupply,
-      solPrice,
-    );
-    const marketCapUSD = tokenWithMarketData.marketCapUSD;
-
-    const swapRecord = {
-      id: crypto.randomUUID(),
-      tokenMint: mintAddress,
-      user,
-      type: direction === "0" ? "buy" : "sell",
-      direction: parseInt(direction),
-      amountIn: Number(amount),
-      amountOut: Number(amountOut),
-      price:
-        direction === "1"
-          ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
-          : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS),
-      txId: signature,
-      timestamp: new Date(),
-    };
-
-    const db = getDB();
-    const redisCache = await getGlobalRedisCache();
-    const listKey = `swapsList:${mintAddress}`;
-
-    try {
-      await redisCache.lpush(listKey, JSON.stringify(swapRecord));
-      await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
-      logger.log(`Saved swap to Redis: ${swapRecord.type} on ${mintAddress}`);
-    } catch (err) {
-      logger.error(`Redis error saving swap:`, err);
-    }
-
-    const liquidity =
-      (Number(reserveLamport) / 1e9) * solPrice +
-      (Number(reserveToken) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
-
-    const updatedTokens = await db
-      .update(tokens)
-      .set({
-        reserveAmount: Number(reserveToken),
-        reserveLamport: Number(reserveLamport),
-        currentPrice,
-        liquidity,
-        marketCapUSD,
-        tokenPriceUSD,
-        solPriceUSD: solPrice,
-        curveProgress:
-          ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES)) /
-            (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) *
-          100,
-        txId: signature,
-        lastUpdated: new Date(),
-        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
-          ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          }`,
-      })
-      .where(eq(tokens.mint, mintAddress))
-      .returning();
-
-    const newToken = updatedTokens[0];
-    const usdVolume =
-      swapRecord.type === "buy"
-        ? (swapRecord.amountOut / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-        : (swapRecord.amountIn / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
-
-    const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
-    await awardUserPoints(swapRecord.user, {
-      type: `${bondStatus}_${swapRecord.type}` as any,
-      usdVolume,
-    });
-    await awardUserPoints(swapRecord.user, {
-      type: "trade_volume_bonus",
-      usdVolume,
-    });
-
-    try {
-      const listLength = await redisCache.llen(listKey);
-      if (swapRecord.type === "buy" && listLength === 1) {
-        await awardUserPoints(swapRecord.user, {
-          type: "first_buyer",
-        });
-        logger.log(`Awarded first_buyer to ${swapRecord.user}`);
-      }
-    } catch (err) {
-      logger.error("Failed to award first_buyer:", err);
-    }
-
-    await updateHoldersCache(mintAddress);
-
-    await wsClient.emit(`global`, "newSwap", {
-      ...swapRecord,
-      mint: mintAddress,
-      timestamp: swapRecord.timestamp.toISOString(),
-    });
-
-    const latestCandle = await getLatestCandle(mintAddress, swapRecord);
-    await wsClient.to(`global`).emit("newCandle", latestCandle);
-
-    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-    const enrichedToken = {
-      ...newToken,
-      featuredScore: calculateFeaturedScore(newToken, maxVolume, maxHolders),
-    };
-
-    await wsClient
-      .to("global")
-      .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
-
-    return {
-      found: true,
-      tokenAddress: mintAddress,
-      event: "swap",
-    };
-  } catch (err) {
-    logger.error(`Error in Swap handler: ${err}`);
+  } else {
+    logger.log("Swap log not found or incomplete.");
     return null;
   }
+
 }
 
 async function handleCurveComplete(
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: WebSocketClient,
 ): Promise<HandlerResult> {
   const completeLog = logs.find((log) => log.includes("curve is completed"));
   const mintLog = logs.find((log) => log.includes("Mint:"));

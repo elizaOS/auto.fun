@@ -44,7 +44,7 @@ interface AuthTokenData {
 /**
  * Validates a JWT token
  */
-export async function validateJwtToken(
+async function validateJwtToken(
   token: string,
 ): Promise<AuthTokenData | null> {
   try {
@@ -114,7 +114,7 @@ export async function validateJwtToken(
 }
 
 // Create a JWT token
-export async function createJwtToken(
+async function createJwtToken(
   publicKey: string,
   privileges: string[] = [],
 ): Promise<string> {

@@ -141,12 +141,6 @@ export const FormInput = ({
             {label}
           </div>
         )}
-        {/* {onClick && (
-        <DiceButton
-          onClick={onClick}
-          isLoading={isLoading}
-        />
-      )} */}
       </div>
       <div className="relative flex items-center">
         {inputTag && (
@@ -174,7 +168,7 @@ export const FormInput = ({
   );
 };
 
-export const FormTextArea = ({
+const FormTextArea = ({
   label,
   rightIndicator,
   minRows = 3,
@@ -691,7 +685,7 @@ const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
 };
 
 // Main Form Component
-export const Create = () => {
+export default function Create() {
   // Define things for our page
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthentication();
@@ -3555,5 +3549,4 @@ export const Create = () => {
       )}
     </div>
   );
-};
-export default Create;
+}

@@ -2,7 +2,7 @@
  * Sanitizes a token by removing any surrounding quotes
  * Can be used to clean tokens from localStorage
  */
-export const sanitizeToken = (token: string | null): string | null => {
+const sanitizeToken = (token: string | null): string | null => {
   if (!token) return null;
 
   // Explicitly handle the string "null" or "undefined"

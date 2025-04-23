@@ -131,14 +131,6 @@ export const formatNumberSubscript = (num: number): string => {
   }
 };
 
-export const sleep = (ms: number) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(true);
-    }, ms);
-  });
-};
-
 export const isFromDomain = (url: string, domain: string): boolean => {
   // if url does not have http or https, add it
   if (!url.startsWith("http") && !url.startsWith("https")) {
