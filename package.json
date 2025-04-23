@@ -11,6 +11,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run dev",
+    "start:server": "bun run start --filter=@autodotfun/server",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",
