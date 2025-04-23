@@ -141,12 +141,6 @@ export const FormInput = ({
             {label}
           </div>
         )}
-        {/* {onClick && (
-        <DiceButton
-          onClick={onClick}
-          isLoading={isLoading}
-        />
-      )} */}
       </div>
       <div className="relative flex items-center">
         {inputTag && (
