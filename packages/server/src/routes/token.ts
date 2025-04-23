@@ -1030,7 +1030,15 @@ export async function updateHoldersCache(
   const env = process.env;
   try {
     // Use the utility function to get the RPC URL with proper API key
-    const connection = new Connection(getRpcUrl(imported));
+    const connection = new Connection(process.env.NETWORK! === "devnet" ?
+      process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!,
+      {
+        commitment: "confirmed",
+        confirmTransactionInitialTimeout: 60000, // 60 seconds
+      }
+
+    );
+
     const db = getDB();
     const redisCache = await getGlobalRedisCache(); // Instantiate Redis cache
 
@@ -1092,6 +1100,9 @@ export async function updateHoldersCache(
           percentage: 0, // Will calculate after we have the total
           lastUpdated: new Date(), // Keep track of update time
         });
+
+
+
       } catch (error: any) {
         logger.error(`Error processing account for ${mint}:`, error);
         // Continue with other accounts even if one fails
@@ -1118,10 +1129,8 @@ export async function updateHoldersCache(
       );
     } catch (redisError) {
       logger.error(`Failed to store holders in Redis for ${mint}:`, redisError);
-      // Decide if we should proceed without saving holders (e.g., update token count anyway?)
     }
 
-    // Emit limited set of holders via WebSocket
     try {
       const wsClient = getWebSocketClient();
       const limitedHolders = holders.slice(0, 50); // Emit only top 50
@@ -1130,7 +1139,7 @@ export async function updateHoldersCache(
       logger.error(`WebSocket error when emitting holder update:`, wsError);
     }
 
-    // Update token holder count with the ACTUAL total count
+
     await db
       .update(tokens)
       .set({
@@ -1445,12 +1454,20 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const redisCache = await getGlobalRedisCache();
     const holdersListKey = `holders:${mint}`;
     try {
+
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {
         allHolders = JSON.parse(holdersString);
         logger.log(
           `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`,
         );
+        const ts = await redisCache.get(`${holdersListKey}:lastUpdated`);
+        if (!ts || Date.now() - new Date(ts).getTime() > 5 * 60_000) {
+          // >5 min old (or never set) → refresh in background
+          void updateHoldersCache(mint)
+            .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+            .catch((err) => logger.error(`Async holders refresh failed:`, err));
+        }
       } else {
         logger.log(`No holders found in Redis for key ${holdersListKey}`);
         // Return empty if not found in cache (as updateHoldersCache should populate it)

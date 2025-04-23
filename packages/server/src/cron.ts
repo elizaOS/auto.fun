@@ -413,6 +413,8 @@ async function handleSwap(
         })
         .where(eq(tokens.mint, mintAddress))
         .returning();
+      await updateHoldersCache(mintAddress, false);
+
 
       const newToken = updatedTokens[0];
       const usdVolume =
@@ -442,7 +444,7 @@ async function handleSwap(
         logger.error("Failed to award first_buyer:", err);
       }
 
-      await updateHoldersCache(mintAddress);
+
 
 
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);

@@ -136,17 +136,14 @@ function AdminTokensList() {
                 <td className="p-2">{token.mint.substring(0, 8)}...</td>
                 <td className="p-2">
                   <div className="flex items-center space-x-2">
-                    {token.image && (
+                    {token.image ? (
                       <img
-                        src={token.image}
+                        src={token?.image || "/placeholder.png"}
                         alt={token.name}
                         className="w-6 h-6 rounded-full object-cover"
-                        onError={(e) => {
-                          // Replace broken images with a placeholder
-                          (e.target as HTMLImageElement).src =
-                            "/placeholder.png";
-                        }}
                       />
+                    ) : (
+                      <div className="size-6 bg-autofun-background-disabled" />
                     )}
                     <span>{token.name}</span>
                   </div>
