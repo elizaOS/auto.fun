@@ -300,17 +300,16 @@ async function handleSwap(
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
   const reservesLog = logs.find((log) => log.includes("Reserves:"));
-  const feeLog = logs.find((log) => log.includes("fee:"));
+  const feeLog = logs.find((log) => log.includes("Fee:"));
   const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
 
 
-  if (mintLog || swapLog || reservesLog || feeLog) {
+  if (mintLog && swapLog && reservesLog && swapeventLog) {
     try {
       const mintAddress = mintLog!.split("Mint:")[1].trim().replace(/[",)]/g, '');
-      const [user, direction, amount] = swapLog!.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
-      const [reserveToken, reserveLamport] = reservesLog!.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
-      const feeAmount = feeLog!.split("fee:")[1].trim().replace(/[",)]/g, '');
-      const [usr, dir, amountOut] = swapeventLog!.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
+      const [user, direction, amount] = swapLog.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
+      const [reserveToken, reserveLamport] = reservesLog.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
+      const [usr, dir, amountOut] = swapeventLog.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
 
       // Retrieve token mint info to get decimals.
       const tokenWithSupply = await getToken(mintAddress);
@@ -364,6 +363,7 @@ async function handleSwap(
       await wsClient.emit(`global`, "newSwap", {
         ...swapRecord,
         tokenMint: mintAddress,
+        mint: mintAddress,
         timestamp: swapRecord.timestamp.toISOString(),
       });
 

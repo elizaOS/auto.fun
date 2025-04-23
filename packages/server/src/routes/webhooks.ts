@@ -75,8 +75,8 @@ router.post("/webhook", async (c) => {
     .array()
     .parse(body);
 
-  c.executionCtx.waitUntil(
-    (async () => {
+  (async () => {
+    try {
       await Promise.all(
         events.map((event) =>
           processTransactionLogs(
@@ -85,8 +85,10 @@ router.post("/webhook", async (c) => {
           )
         )
       );
-    })()
-  );
+    } catch (err) {
+      logger.error("Error processing webhook logs:", err);
+    }
+  })();
 
   return c.json({
     message: "Completed",
