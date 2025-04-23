@@ -30,17 +30,23 @@ class WebSocketManager {
     }
 
     // --- Initialization ---
-    initialize(redisCache: RedisCacheService): void {
-        if (this.redisCache) {
-            logger.warn("WebSocketManager RedisCacheService already set.");
-        }
-
-        if (!redisCache) {
-            throw new Error("RedisCacheService not provided to WebSocketManager.");
-        }
-
+    async initialize(redisCache: RedisCacheService): Promise<void> {
+        if (this.redisCache) return;
         this.redisCache = redisCache;
-        logger.info("WebSocketManager initialized with RedisCacheService.");
+
+        // Listen for cross-cluster pub/sub
+        const subClient = await this.redisCache.redisPool.getSubscriberClient();
+        await subClient.subscribe("ws:broadcast", (_, message) => {
+            const { room, event, data } = JSON.parse(message as string);
+            this.broadcastToRoom(room, event, data);
+        });
+
+        await subClient.subscribe("ws:direct", (_, message) => {
+            const { clientId, event, data } = JSON.parse(message as string);
+            this.sendToClient(clientId, event, data);
+        });
+
+        logger.info("WebSocketManager Redis pub/sub listeners registered.");
         this.startHeartbeat();
     }
 
@@ -417,10 +423,10 @@ class WebSocketManager {
             clientMetadata.ws.send(message);
             logger.log(`Sent direct message event ${event} to client ${clientId}`);
             return true;
-            } catch (error) {
-                logger.error(`Failed to stringify or send direct message to client ${clientId}:`, error);
-                return false;
-            }
+        } catch (error) {
+            logger.error(`Failed to stringify or send direct message to client ${clientId}:`, error);
+            return false;
+        }
     }
 
     // --- Graceful Shutdown ---

@@ -39,7 +39,7 @@ export function getSharedRedisPool(): RedisPool {
 }
 
 export class RedisCacheService {
-  constructor(private redisPool: RedisPool) { }
+  constructor(public redisPool: RedisPool) { }
 
   async isPoolReady(): Promise<boolean> {
     try {
@@ -51,6 +51,14 @@ export class RedisCacheService {
       logger.error("Redis pool not ready:", err);
       return false;
     }
+  }
+  async publish(channel: string, message: string): Promise<number> {
+    return this.redisPool.useClient(client => client.publish(channel, message));
+  }
+
+  async subscribe(channel: string, handler: (message: string) => void): Promise<void> {
+    const subClient = await this.redisPool.getSubscriberClient();
+    await subClient.subscribe(channel, (_, msg) => handler(msg as string));
   }
 
   getKey(key: string) {
