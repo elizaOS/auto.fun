@@ -2,7 +2,7 @@ import axios from "axios";
 import { logger } from "./util";
 import { Codex } from "@codex-data/sdk";
 
-export interface CodexTokenEvent {
+interface CodexTokenEvent {
   eventDisplayType: string;
   token1SwapValueUsd: string;
   token1PoolValueUsd: string;
@@ -12,11 +12,6 @@ export interface CodexTokenEvent {
     amount1?: string;
     [key: string]: any;
   };
-}
-
-export interface CodexTokenEventsResponse {
-  cursor: string | null;
-  items: CodexTokenEvent[];
 }
 
 /**

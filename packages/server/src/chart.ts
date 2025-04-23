@@ -38,13 +38,13 @@ interface ChartResponse {
 export const DEV_TEST_TOKEN_ADDRESS =
   "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
 
-export interface PriceFeedInfo {
+interface PriceFeedInfo {
   price: number;
   timestamp: Date;
   volume: number;
 }
 
-export type CandlePrice = {
+type CandlePrice = {
   open: number;
   high: number;
   low: number;
