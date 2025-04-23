@@ -24,6 +24,7 @@
     "@aws-sdk/client-ecs": "^3.772.0",
     "@codex-data/sdk": "^1.0.5",
     "@coral-xyz/anchor": "^0.31.0",
+    "@emnapi/core": "^1.4.3",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@headlessui/react": "^2.2.0",
