@@ -320,7 +320,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.wakeUp();
 
       // Impulse and Torque values - might need tuning
-      const impulseMagnitude = 50 * dieBody.mass; // Scale impulse by mass
+      const impulseMagnitude = 1 * dieBody.mass; // Scale impulse by mass
       const torqueMagnitude = 0.5 * dieBody.mass; // Significantly reduced torque magnitude
 
       // Apply random impulse (linear force)
@@ -449,8 +449,15 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.wakeUp();
 
       // Impulse and Torque values - might need tuning
-      const impulseMagnitude = 50 * dieBody.mass; // Scale impulse by mass
-      const torqueMagnitude = 0.5 * dieBody.mass; // Significantly reduced torque magnitude
+      const impulseMagnitudeFactor = 10 * dieBody.mass; // Scale impulse by mass
+
+      console.log("impulseMagnitudeFactor", impulseMagnitudeFactor);
+
+      const impulseMagnitude = impulseMagnitudeFactor + 100000;
+
+      console.log("impulseMagnitude", impulseMagnitude);
+
+      // const torqueMagnitude = 0.5 * dieBody.mass; // Significantly reduced torque magnitude
 
       // Apply random impulse (linear force)
       const impulseVector = new CANNON.Vec3(
@@ -463,12 +470,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.applyImpulse(impulseVector, dieBody.position);
 
       // Apply random torque (rotational force)
-      const torqueVector = new CANNON.Vec3(
-        (Math.random() - 0.5) * torqueMagnitude,
-        (Math.random() - 0.5) * torqueMagnitude,
-        (Math.random() - 0.5) * torqueMagnitude,
-      );
-      dieBody.applyTorque(torqueVector);
+      // const torqueVector = new CANNON.Vec3(
+      //   (Math.random() - 0.5) * torqueMagnitude,
+      //   (Math.random() - 0.5) * torqueMagnitude,
+      //   (Math.random() - 0.5) * torqueMagnitude,
+      // );
+      // dieBody.applyTorque(torqueVector);
     }
   };
 

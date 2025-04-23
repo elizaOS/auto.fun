@@ -32,6 +32,7 @@ export function getSharedRedisPool(): RedisPool {
       // Consider adding pool configuration options here if your RedisPool supports them
       // e.g., minSize, maxSize, connectionTimeout
     });
+
     logger.info("Shared Redis Pool Initialized");
   }
   return sharedRedisPool;
@@ -39,6 +40,7 @@ export function getSharedRedisPool(): RedisPool {
 
 export class RedisCacheService {
   constructor(private redisPool: RedisPool) { }
+
   async isPoolReady(): Promise<boolean> {
     try {
       return await this.redisPool.useClient(async (client) => {
@@ -252,6 +254,7 @@ export class RedisCacheService {
 export function createRedisCache(): RedisCacheService {
   const pool = getSharedRedisPool();
   const instance = new RedisCacheService(pool);
+  console.log('instance', instance)
   return instance;
 }
 

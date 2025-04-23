@@ -3,6 +3,7 @@ import type { RedisCacheService } from './redis';
 import { logger } from './util';
 // Import the correct type from Hono
 import type { WSContext } from 'hono/ws';
+import { getGlobalRedisCache } from './redis';
 
 // Interface for our client metadata, not extending WSContext
 interface ClientMetadata {
@@ -18,13 +19,12 @@ class WebSocketManager {
     // Local cache of room -> Set<clientId> (for efficient local broadcasting)
     private localRoomClients: Map<string, Set<string>> = new Map();
     private heartbeatInterval: NodeJS.Timeout | null = null;
-    private redisCache: RedisCacheService | null = null;
+    redisCache: RedisCacheService | null = null;
 
     // --- Redis Key Helper ---
-    private redisKey(rawKey: string): string {
+    private async redisKey(rawKey: string): Promise<string> {
         if (!this.redisCache) {
-            logger.error("redisKey called before redisCache initialized!");
-            return rawKey;
+            this.redisCache = await getGlobalRedisCache();
         }
         return this.redisCache.getKey(rawKey);
     }
@@ -66,6 +66,9 @@ class WebSocketManager {
 
     // --- Message Handling (Called by Hono route/adapter or event listener) ---
     public async handleMessage(ws: WSContext, messageData: string | ArrayBuffer | Blob): Promise<void> {
+        if (!this.redisCache) {
+            this.redisCache = await getGlobalRedisCache();
+        }
         let parsedMessage: any;
         let clientIdFromMessage: string | undefined; // Variable to store clientId from payload
         let messageString: string = '(unable to convert messageData to string)';
@@ -142,6 +145,9 @@ class WebSocketManager {
 
     // Helper for room events to avoid repetition
     private async handleRoomEvent(client: ClientMetadata, event: string, data: any): Promise<void> {
+        if (!this.redisCache) {
+            this.redisCache = await getGlobalRedisCache();
+        }
         let roomName: string | undefined;
         let operation: 'join' | 'leave';
 
@@ -258,14 +264,16 @@ class WebSocketManager {
 
     // --- Room Management ---
     private async joinRoom(client: ClientMetadata, roomName: string): Promise<void> {
-        if (!this.redisCache) throw new Error("Redis cache not initialized for joinRoom");
+        if (!this.redisCache) {
+            this.redisCache = await getGlobalRedisCache();
+        }
         if (!this.localRoomClients.has(roomName)) {
             this.localRoomClients.set(roomName, new Set<string>());
         }
         this.localRoomClients.get(roomName)?.add(client.clientId);
         client.rooms.add(roomName);
-        const clientRoomsKey = this.redisKey(`client:${client.clientId}:rooms`);
-        const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
+        const clientRoomsKey = await this.redisKey(`client:${client.clientId}:rooms`);
+        const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
         try {
             await this.redisCache.sadd(clientRoomsKey, roomName);
             await this.redisCache.sadd(roomClientsKey, client.clientId);
@@ -288,14 +296,16 @@ class WebSocketManager {
     }
 
     private async leaveRoom(client: ClientMetadata, roomName: string): Promise<void> {
-        if (!this.redisCache) throw new Error("Redis cache not initialized for leaveRoom");
+        if (!this.redisCache) {
+            this.redisCache = await getGlobalRedisCache();
+        }
         this.localRoomClients.get(roomName)?.delete(client.clientId);
         if (this.localRoomClients.get(roomName)?.size === 0) {
             this.localRoomClients.delete(roomName);
         }
         client.rooms.delete(roomName);
-        const clientRoomsKey = this.redisKey(`client:${client.clientId}:rooms`);
-        const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
+        const clientRoomsKey = await this.redisKey(`client:${client.clientId}:rooms`);
+        const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
         try {
             await this.redisCache.srem(clientRoomsKey, roomName);
             await this.redisCache.srem(roomClientsKey, client.clientId);
@@ -339,10 +349,10 @@ class WebSocketManager {
 
         // 2. Remove client from Redis
         if (this.redisCache) {
-            const clientRoomsKey = this.redisKey(`client:${clientId}:rooms`);
+            const clientRoomsKey = await this.redisKey(`client:${clientId}:rooms`);
             try {
                 for (const roomName of roomsClientWasIn) {
-                    const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
+                    const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
                     await this.redisCache.srem(roomClientsKey, clientId);
                 }
                 await this.redisCache.del(clientRoomsKey);
@@ -358,10 +368,9 @@ class WebSocketManager {
     // --- Broadcasting ---
     public async broadcastToRoom(roomName: string, event: string, data: any, excludeClientId?: string): Promise<void> {
         if (!this.redisCache) {
-            logger.error("Cannot broadcast: Redis cache not available.");
-            return;
+            this.redisCache = await getGlobalRedisCache();
         }
-        const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
+        const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
         let clientIdsInRoom: string[] = [];
         try {
             clientIdsInRoom = await this.redisCache.smembers(roomClientsKey);
@@ -396,7 +405,6 @@ class WebSocketManager {
     // --- Send Direct Message to Client ---
     public sendToClient(clientId: string, event: string, data: any): boolean {
         const clientMetadata = this.clients.get(clientId);
-        if (clientMetadata && clientMetadata.ws.readyState === 1) {
             try {
                 const message = JSON.stringify({ event, data });
                 clientMetadata.ws.send(message);
@@ -406,9 +414,6 @@ class WebSocketManager {
                 logger.error(`Failed to stringify or send direct message to client ${clientId}:`, error);
                 return false;
             }
-        } else {
-            return false;
-        }
     }
 
     // --- Graceful Shutdown ---

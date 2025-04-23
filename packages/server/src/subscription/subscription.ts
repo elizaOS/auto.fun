@@ -1,21 +1,24 @@
 // src/subscription.ts
-import { Connection, PublicKey, Logs } from '@solana/web3.js';
+import { Connection, Logs, PublicKey } from '@solana/web3.js';
 import { processTransactionLogs } from '../cron';
 import { logger } from '../logger';
+import { getWebSocketClient } from '../websocket-client';
 
-export function startLogSubscription(
+export async function startLogSubscription(
    connection: Connection,
    programId: PublicKey,
    env: any
 ) {
    let subId: number;
+   const wsClient = getWebSocketClient()
+   
    async function watch() {
       subId = await connection.onLogs(
          programId,
          async (logs: Logs) => {
             if (logs.err) return logger.warn('⚠️ tx errored', logs.err);
             try {
-               await processTransactionLogs(logs.logs, logs.signature);
+               await processTransactionLogs(logs.logs, logs.signature, wsClient);
             } catch (err) {
                logger.error('❌ onLogs handler error:', err);
             }

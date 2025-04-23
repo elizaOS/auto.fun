@@ -223,18 +223,19 @@ app.onError((err, c) => {
   logger.info("Redis Cache Service Retrieved.");
   const isReady = await redisCache.isPoolReady();
 
-  if (!isReady) {
-    logger.error("Redis pool is not ready. Exiting...");
-    process.exit(1);
-  } else {
-    logger.info("Redis pool is ready.");
-  }
+  console.log("isReady", isReady)
+
+  if (!redisCache) throw new Error("Redis Cache Service not found");
+
   // Initialize WebSocketManager with Redis
-  webSocketManager.initialize(redisCache);
-  logger.info("WebSocket Manager Initialized.");
+  if(!webSocketManager.redisCache) {
+    webSocketManager.initialize(redisCache);
+  }
 
-
-  logger.info("Bun WebSocket handlers created.");
+  if(!webSocketManager.redisCache) {
+    throw new Error("WebSocket Manager not initialized");
+  }
+  
 })().catch((err) => {
   logger.error("Error during initialization:", err);
 

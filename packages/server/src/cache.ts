@@ -17,15 +17,20 @@ export class CacheService {
 
   }
   async onModuleStart() {
-    // Initialize the database connection and Redis cache
-
     this.redisCache = await getGlobalRedisCache();
+  }
+
+  async initialize() {
+    if (!this.redisCache) {
+      await this.onModuleStart();
+    }
   }
 
   /**
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
+    await this.initialize();
     const cacheKey = "solPrice";
     try {
       if (!this.redisCache) {
@@ -57,6 +62,7 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
+    await this.initialize();
     const cacheKey = "solPrice";
     try {
       if (!this.redisCache) {
