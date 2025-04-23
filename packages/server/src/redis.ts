@@ -4,14 +4,17 @@ import IORedis, { Redis } from "ioredis";
 import { logger } from "./util";
 dotenv.config();
 
-let globalRedisCache: RedisCacheService | null = null;
+let globalRedisCachePromise: Promise<RedisCacheService> | null = null;
 
-export function getGlobalRedisCache(): RedisCacheService {
-   if (!globalRedisCache) {
-      globalRedisCache = createRedisCache();
+export async function getGlobalRedisCache(): Promise<RedisCacheService> {
+  if (!globalRedisCachePromise) {
+    globalRedisCachePromise = (async () => {
+      const instance = createRedisCache();
       console.log("[Redis] Global Redis Cache initialized.");
-   }
-   return globalRedisCache;
+      return instance;
+    })();
+  }
+  return globalRedisCachePromise;
 }
 
 
@@ -35,7 +38,7 @@ export function getSharedRedisPool(): RedisPool {
 }
 
 export class RedisCacheService {
-  constructor(private redisPool: RedisPool) {}
+  constructor(private redisPool: RedisPool) { }
 
   getKey(key: string) {
     // Avoid double-prefixing if key already includes network
@@ -165,14 +168,14 @@ export class RedisCacheService {
       );
       const acquired = result === "OK";
       if (acquired) {
-          logger.info(`Successfully acquired lock: ${keyWithPrefix}`);
+        logger.info(`Successfully acquired lock: ${keyWithPrefix}`);
       } else {
-          logger.warn(`Failed to acquire lock (already held?): ${keyWithPrefix}`);
+        logger.warn(`Failed to acquire lock (already held?): ${keyWithPrefix}`);
       }
       return acquired;
     } catch (error) {
-        logger.error(`Error acquiring lock ${keyWithPrefix}:`, error);
-        return false; // Assume lock not acquired on error
+      logger.error(`Error acquiring lock ${keyWithPrefix}:`, error);
+      return false; // Assume lock not acquired on error
     }
   }
 
@@ -189,22 +192,22 @@ export class RedisCacheService {
   private async defineReleaseLockScript(client: Redis): Promise<void> {
     // Check if script already defined to avoid redefining on every call
     if (!(client as any).releaseLockScript) { // Check if command name exists
-        try {
-            // Define the script command
-            (client as any).defineCommand("releaseLockScript", {
-                numberOfKeys: 1,
-                lua: this.releaseLockScript,
-            });
-            logger.info("Defined releaseLockScript Lua script for Redis client.");
-        } catch (err: any) {
-            // Handle cases where command might already be defined (e.g., across pool clients)
-            if (err.message.includes('Command name already specified')) {
-                logger.warn("releaseLockScript Lua script already defined for this client.");
-            } else {
-                logger.error("Failed to define releaseLockScript Lua script:", err);
-                throw err; // Rethrow if it's a different error
-            }
+      try {
+        // Define the script command
+        (client as any).defineCommand("releaseLockScript", {
+          numberOfKeys: 1,
+          lua: this.releaseLockScript,
+        });
+        logger.info("Defined releaseLockScript Lua script for Redis client.");
+      } catch (err: any) {
+        // Handle cases where command might already be defined (e.g., across pool clients)
+        if (err.message.includes('Command name already specified')) {
+          logger.warn("releaseLockScript Lua script already defined for this client.");
+        } else {
+          logger.error("Failed to define releaseLockScript Lua script:", err);
+          throw err; // Rethrow if it's a different error
         }
+      }
     }
   }
 
@@ -222,14 +225,14 @@ export class RedisCacheService {
 
       const released = result === 1;
       if (released) {
-          logger.info(`Successfully released lock: ${keyWithPrefix}`);
+        logger.info(`Successfully released lock: ${keyWithPrefix}`);
       } else {
-          logger.warn(`Failed to release lock (value mismatch or key expired?): ${keyWithPrefix}`);
+        logger.warn(`Failed to release lock (value mismatch or key expired?): ${keyWithPrefix}`);
       }
       return released;
     } catch (error) {
-        logger.error(`Error releasing lock ${keyWithPrefix}:`, error);
-        return false; // Indicate failure on error
+      logger.error(`Error releasing lock ${keyWithPrefix}:`, error);
+      return false; // Indicate failure on error
     }
   }
   // --- END DISTRIBUTED LOCK METHODS ---
@@ -369,50 +372,3 @@ export class RedisPool {
   }
 }
 
-const connection: Redis = new IORedis(process.env.REDIS_URL as string, {
-  lazyConnect: true,
-  connectTimeout: 5000,
-  maxRetriesPerRequest: 5,
-  retryStrategy(times) {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  commandTimeout: 5000,
-  enableReadyCheck: true,
-  keepAlive: 10000,
-  reconnectOnError(err) {
-    const targetError = "READONLY";
-    if (err.message.includes(targetError)) {
-      // Only reconnect when the error contains "READONLY"
-      return true;
-    }
-    return false;
-  },
-});
-
-// Add event listeners for connection status
-connection.on("connect", () => {
-  logger.info("Redis connection established");
-});
-
-connection.on("ready", () => {
-  logger.info("Redis connection ready to accept commands");
-});
-
-connection.on("error", (err) => {
-  logger.error(`Redis connection error: ${err.message}`);
-});
-
-connection.on("close", () => {
-  logger.warn("Redis connection closed");
-});
-
-connection.on("reconnecting", () => {
-  logger.info("Redis attempting to reconnect");
-});
-
-connection.on("end", () => {
-  logger.warn("Redis connection ended");
-});
-
-export default connection;

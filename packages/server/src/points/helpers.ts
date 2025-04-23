@@ -131,7 +131,7 @@ export async function awardGraduationPoints(
   mint: string,
 ): Promise<void> {
   const db = getDB();
-  const redisCache = getGlobalRedisCache();
+  const redisCache = await getGlobalRedisCache();
 
   // Last swap user
   let lastSwapUser: string | null = null;

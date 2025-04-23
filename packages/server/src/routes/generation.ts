@@ -180,7 +180,7 @@ export async function checkTokenOwnership(
 
     // Access the database
     const db = getDB();
-    const redisCache = getGlobalRedisCache(); // Instantiate Redis
+    const redisCache = await getGlobalRedisCache(); // Instantiate Redis
 
     try {
       // First check if user is the token creator (creators always have access)
@@ -739,9 +739,8 @@ app.post("/:mint/generate", async (c) => {
             error: "Rate limit exceeded. Please try again later.",
             limit: RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY,
             cooldown: RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
-            message: `You can generate up to ${
-              RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
-            } ${validatedData.type}s per day`,
+            message: `You can generate up to ${RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
+              } ${validatedData.type}s per day`,
           },
           429
         );
@@ -907,16 +906,16 @@ app.get("/:mint/history", async (c) => {
       remaining: type
         ? RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - counts[type]
         : {
-            [MediaType.IMAGE]:
-              RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
-              counts[MediaType.IMAGE],
-            [MediaType.VIDEO]:
-              RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
-              counts[MediaType.VIDEO],
-            [MediaType.AUDIO]:
-              RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
-              counts[MediaType.AUDIO],
-          },
+          [MediaType.IMAGE]:
+            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
+            counts[MediaType.IMAGE],
+          [MediaType.VIDEO]:
+            RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
+            counts[MediaType.VIDEO],
+          [MediaType.AUDIO]:
+            RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
+            counts[MediaType.AUDIO],
+        },
       resetTime: new Date(
         Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
       ).toISOString(),
@@ -941,7 +940,7 @@ app.post("/generate-metadata", async (c) => {
   // get the body parameter
   const body = await c.req.json();
 
-  const {prompt} = body;
+  const { prompt } = body;
 
   console.log("generate-metadata");
   try {
@@ -1019,7 +1018,7 @@ app.post("/generate-metadata", async (c) => {
             `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`
           );
 
-          const systemPromptContent = await createTokenPrompt({prompt: prompt}); // Removed validatedData argument
+          const systemPromptContent = await createTokenPrompt({ prompt: prompt }); // Removed validatedData argument
           const falInput = {
             model: "gemini-2.0-flash-001",
             // Combine messages into prompt/system_prompt for fal
@@ -1211,7 +1210,7 @@ app.post("/generate", async (c) => {
     // Parse request body
     const body = await c.req.json();
 
-    const {prompt} = body;
+    const { prompt } = body;
 
     // Create simplified schema for direct generation
     const GenerateRequestSchema = z.object({
@@ -2261,9 +2260,8 @@ app.post("/enhance-and-generate", async (c) => {
           error: "Rate limit exceeded. Please try again later.",
           limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
           cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
-          message: `You can generate up to ${
-            RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
-          } ${mediaType}s per day.`,
+          message: `You can generate up to ${RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
+            } ${mediaType}s per day.`,
           remaining: rateLimit.remaining,
         },
         429

@@ -217,17 +217,23 @@ app.onError((err, c) => {
   return c.json({ error: "Internal Server Error" }, 500);
 });
 
-// --- Initialize Services ---
-const redisCache = getGlobalRedisCache(); // Use the global instance
-logger.info("Redis Cache Service Retrieved.");
+(async () => {
+  // --- Initialize Services ---
+  const redisCache = await getGlobalRedisCache();
+  logger.info("Redis Cache Service Retrieved.");
 
-// Initialize WebSocketManager with Redis
-webSocketManager.initialize(redisCache);
-logger.info("WebSocket Manager Initialized.");
+  // Initialize WebSocketManager with Redis
+  webSocketManager.initialize(redisCache);
+  logger.info("WebSocket Manager Initialized.");
 
+
+  logger.info("Bun WebSocket handlers created.");
+})().catch((err) => {
+  logger.error("Error during initialization:", err);
+
+});
 // --- Create Bun WebSocket handlers ---
 const { upgradeWebSocket, websocket } = createBunWebSocket();
-
 // --- Add WebSocket Upgrade Route ---
 app.get(
   "/ws",

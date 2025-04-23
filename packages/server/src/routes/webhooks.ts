@@ -167,7 +167,7 @@ router.post("/codex-webhook", async (c) => {
     timestamp: new Date(swap.timestamp * 1000), // Store as Date object
   };
 
-  const redisCache = getGlobalRedisCache();
+  const redisCache = await getGlobalRedisCache();
   const listKey = `swapsList:${tokenMint}`;
   try {
     // Pipeline push + trim to reduce RTT
