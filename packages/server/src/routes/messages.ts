@@ -80,7 +80,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
       return { messages: [], total: 0 };
     })) as { messages: any[]; total: number };
 
-    let messagesWithLikes = result.messages;
+    const messagesWithLikes = result.messages;
 
     const totalPages = Math.ceil(result.total / limit);
 
@@ -120,7 +120,7 @@ messagesRouter.get("/messages/:messageId/replies", async (c) => {
       .where(eq(messages.parentId, messageId))
       .orderBy(desc(messages.timestamp));
 
-    let repliesWithLikes = repliesResult;
+    const repliesWithLikes = repliesResult;
 
     return c.json(repliesWithLikes);
   } catch (error) {
@@ -157,8 +157,8 @@ messagesRouter.get("/messages/:messageId/thread", async (c) => {
       .orderBy(desc(messages.timestamp));
 
     // If user is logged in, add hasLiked field
-    let parentWithLikes = parentResult;
-    let repliesWithLikes = repliesResult;
+    const parentWithLikes = parentResult;
+    const repliesWithLikes = repliesResult;
 
     return c.json({
       parent: parentWithLikes[0],
