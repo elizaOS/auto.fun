@@ -74,13 +74,13 @@
     "@eslint/js": "^9.23.0",
     "@preact/preset-vite": "^2.10.1",
     "@types/bn.js": "^5.1.6",
-    "@types/three": "^0.174.0",
     "@types/bs58": "^4.0.4",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.1",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@types/react-helmet": "^6.1.11",
+    "@types/three": "^0.174.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.23.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -95,7 +95,8 @@
     "vite": "^6.2.6",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-node-polyfills": "^0.23.0",
-    "vite-plugin-sitemap": "^0.7.1"
+    "vite-plugin-sitemap": "^0.7.1",
+    "wrangler": "^4.13.0"
   },
   "peerDependencies": {
     "@solana/spl-token": "^0.4.13",
