@@ -12,6 +12,7 @@ import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { fork } from "child_process";
 import path from "path";
+import { queueJob } from "../subscription/processPool";
 
 const router = new Hono<{
   Variables: {
@@ -51,23 +52,22 @@ const WebhookTokenPairEvent = z.object({
 
 
 router.post("/codex-webhook", async (c) => {
-  // const body = await c.req.json();
-  // const swapEvent = WebhookTokenPairEvent.parse(body).data.event;
+  const body = await c.req.json();
+  const swapEvent = WebhookTokenPairEvent.parse(body).data.event;
 
-  // const child = fork(path.join(__dirname, "../subscription/processWebhook.ts"), {
-  //   execArgv: ["--loader", "ts-node/esm"], // if using TypeScript
-  //   env: process.env,
-  // });
+  const token0IsSol =
+    swapEvent.token0Address === "So11111111111111111111111111111111111111112";
+  const tokenMint = token0IsSol ? swapEvent.token1Address : swapEvent.token0Address;
+  const rediscache = await getGlobalRedisCache();
+  const throttleKey = `codex:throttle:${tokenMint}`;
+  const recentlyProcessed = await rediscache.get(throttleKey);
+  if (recentlyProcessed) {
+    logger.log(`Skipping ${tokenMint} – throttled (processed < 10s ago).`);
+    return c.json({ message: "Throttled, token recently processed" }, 200);
+  }
 
-  // child.send(swapEvent);
-
-  // // Optional: log on exit
-  // child.on("exit", (code) => {
-  //   if (code !== 0) {
-  //     console.error(`Child process failed for ${swapEvent.transactionHash}`);
-  //   }
-  // });
-
+  queueJob(swapEvent);
+  await rediscache.set(throttleKey, tokenMint, 10);
   return c.json({ message: "Accepted" });
 });
 

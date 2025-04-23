@@ -1,5 +1,3 @@
-import { parentPort } from "worker_threads";
-import { WebSocket } from "ws";
 import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { eq } from "drizzle-orm";
@@ -11,7 +9,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import crypto from "node:crypto";
 import { webSocketManager } from '../websocket-manager';
 
-parentPort?.on("message", async (data: any) => {
+process.on("message", async (data: any) => {
    try {
       const swap = data;
       const token0IsSol =
@@ -62,18 +60,12 @@ parentPort?.on("message", async (data: any) => {
       const isReady = await redisCache.isPoolReady();
       if (!redisCache) throw new Error("Redis Cache Service not found");
 
-      // Initialize WebSocketManager with Redis
       if (!webSocketManager.redisCache) {
-         webSocketManager.initialize(redisCache);
+         await webSocketManager.initialize(redisCache);
       }
 
       const listKey = `swapsList:${tokenMint}`;
-
-      await redisCache.lpushTrim(
-         listKey,
-         JSON.stringify(swapRecord),
-         1000 // Max swaps
-      );
+      await redisCache.lpushTrim(listKey, JSON.stringify(swapRecord), 1000);
 
       let token = null;
       const cachedToken = await redisCache.get(`codex-webhook:${tokenMint}`);
@@ -94,12 +86,10 @@ parentPort?.on("message", async (data: any) => {
          }
       }
 
-      if (!token) {
-         return;
-      }
+      if (!token) return;
 
       const ext = new ExternalToken(tokenMint);
-      await ext.updateLatestSwapData(20);
+      await ext.updateLatestSwapData(5);
       const latestCandle = await getLatestCandle(tokenMint, swap, token);
       await ext.updateMarketAndHolders();
 
@@ -111,9 +101,9 @@ parentPort?.on("message", async (data: any) => {
       });
       await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
 
-      process.exit(0); // Done successfully
+      process.exit(0);
    } catch (e) {
       logger.error("Webhook child error", e);
-      process.exit(1); // Fail
+      process.exit(1);
    }
 });
