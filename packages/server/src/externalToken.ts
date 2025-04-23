@@ -60,9 +60,9 @@ export class ExternalToken {
 
   // Public static async factory method
   public static async create(mint: string, redisClient?: RedisCache): Promise<ExternalToken> {
-      // Await the global cache only if no client is provided
-      const resolvedRedisClient = redisClient || await getGlobalRedisCache();
-      return new ExternalToken(mint, resolvedRedisClient);
+    // Await the global cache only if no client is provided
+    const resolvedRedisClient = redisClient || await getGlobalRedisCache();
+    return new ExternalToken(mint, resolvedRedisClient);
   }
 
   public async registerWebhook() {
@@ -139,7 +139,7 @@ export class ExternalToken {
           const cachedDetails = JSON.parse(cachedDetailsRaw) as TokenDetails;
           // Check if cache is recent enough
           if (now - cachedDetails.lastUpdated < MARKET_HOLDER_REFRESH_INTERVAL * 1000) {
-            logger.info(`ExternalToken: Using cached market/holder details for ${this.mint} (updated ${Math.round((now - cachedDetails.lastUpdated)/1000)}s ago)`);
+            logger.info(`ExternalToken: Using cached market/holder details for ${this.mint} (updated ${Math.round((now - cachedDetails.lastUpdated) / 1000)}s ago)`);
             return cachedDetails;
           }
           logger.info(`ExternalToken: Cached market/holder details for ${this.mint} are stale. Refreshing.`);
@@ -259,7 +259,7 @@ export class ExternalToken {
 
       const top50Holders = allHolders.slice(0, 50);
       return top50Holders;
-    } catch(error) {
+    } catch (error) {
       logger.error(`ExternalToken: Error fetching holder data for ${this.mint}:`, error);
       return []; // Return empty array on error
     }
@@ -442,7 +442,7 @@ export class ExternalToken {
   }
 
   // save the processed swaps to the database
-  private async insertProcessedSwaps(
+  public async insertProcessedSwaps(
     processedSwaps: ProcessedSwap[],
   ): Promise<void> {
     if (processedSwaps.length === 0) return;

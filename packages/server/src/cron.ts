@@ -31,6 +31,7 @@ import {
   logger,
 } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
+import { ExternalToken } from "./externalToken";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -341,8 +342,8 @@ async function handleSwap(
         id: crypto.randomUUID(),
         tokenMint: mintAddress,
         user,
-        type: direction === "0" ? "buy" : "sell",
-        direction: parseInt(direction),
+        type: direction === "0" ? "buy" : "sell" as any,
+        direction: parseInt(direction) as 1 | 0,
         amountIn: Number(amount),
         amountOut: Number(amountOut),
         price:
@@ -357,16 +358,13 @@ async function handleSwap(
       const redisCache = await getGlobalRedisCache();
       const listKey = `swapsList:${mintAddress}`;
 
-      try {
-        await redisCache.lpush(listKey, JSON.stringify(swapRecord));
-        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
-        logger.log(`Saved swap to Redis: ${swapRecord.type} on ${mintAddress}`);
-      } catch (err) {
-        logger.error(`Redis error saving swap:`, err);
-      }
+
+      const ext = await ExternalToken.create(mintAddress, redisCache);
+      await ext.insertProcessedSwaps([swapRecord]);
+
       await wsClient.emit(`global`, "newSwap", {
         ...swapRecord,
-        mint: mintAddress,
+        tokenMint: mintAddress,
         timestamp: swapRecord.timestamp.toISOString(),
       });
 
