@@ -264,21 +264,21 @@ export default {
 };
 
 
-function startLogWorker() {
+// function startLogWorker() {
 
-  const child = fork(path.join(__dirname, "subscription/logWorker"), [], {
-    env: process.env,
-  });
+//   const child = fork(path.join(__dirname, "subscription/logWorker"), [], {
+//     env: process.env,
+//   });
 
-  logger.info("🚀 Started log subscription worker with PID", child.pid);
+//   logger.info("🚀 Started log subscription worker with PID", child.pid);
 
-  child.on("exit", (code) => {
-    logger.error(`❌ Log subscription worker exited with code ${code}. Restarting...`);
-    setTimeout(startLogWorker, 1000); // Restart after 1s
-  });
+//   child.on("exit", (code) => {
+//     logger.error(`❌ Log subscription worker exited with code ${code}. Restarting...`);
+//     setTimeout(startLogWorker, 1000); // Restart after 1s
+//   });
 
-  child.on("error", (err) => {
-    logger.error("❌ Error in log subscription worker:", err);
-  });
-}
-startLogWorker();
+//   child.on("error", (err) => {
+//     logger.error("❌ Error in log subscription worker:", err);
+//   });
+// }
+// startLogWorker();

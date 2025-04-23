@@ -5,6 +5,7 @@ import { logger } from '../logger';
 import { getWebSocketClient } from '../websocket-client';
 import { webSocketManager } from '../websocket-manager';
 import { getGlobalRedisCache } from '../redis';
+import { ConsoleLogWriter } from 'drizzle-orm';
 
 export async function startLogSubscription(
    connection: Connection,

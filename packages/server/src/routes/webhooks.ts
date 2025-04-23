@@ -12,6 +12,8 @@ import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { fork } from "child_process";
 import path from "path";
+import { queueJob } from "../workers/processPool";
+import { processTransactionLogs } from "../cron";
 
 const router = new Hono<{
   Variables: {
@@ -50,24 +52,73 @@ const WebhookTokenPairEvent = z.object({
 });
 
 
+router.post("/webhook", async (c) => {
+  console.log("helius webhook received");
+  // value is configured in helius webhook dashboard
+  const authorization = c.req.header("Authorization");
+  console.log("Authorization", authorization);
+  console.log(
+    "HELUS_WEBHOOK_AUTH_TOKEN",
+    process.env.HELIUS_WEBHOOK_AUTH_TOKEN
+  );
+
+  if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
+    return c.json(
+      {
+        message: "Unauthorized",
+      },
+      401
+    );
+  }
+
+  const body = await c.req.json();
+  const events = z
+    .object({
+      meta: z.object({
+        logMessages: z.string().array(),
+      }),
+      transaction: z.object({
+        signatures: z.string().array(),
+      }),
+    })
+    .array()
+    .parse(body);
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      await Promise.all(
+        events.map((event) =>
+          processTransactionLogs(
+            event.meta.logMessages,
+            event.transaction.signatures[0]
+          )
+        )
+      );
+    })()
+  );
+
+  return c.json({
+    message: "Completed",
+  });
+});
+
 router.post("/codex-webhook", async (c) => {
   const body = await c.req.json();
   const swapEvent = WebhookTokenPairEvent.parse(body).data.event;
 
-  const child = fork(path.join(__dirname, "subscription/processWebhook.ts"), {
-    execArgv: ["--loader", "ts-node/esm"], // if using TypeScript
-    env: process.env,
-  });
+  const token0IsSol =
+    swapEvent.token0Address === "So11111111111111111111111111111111111111112";
+  const tokenMint = token0IsSol ? swapEvent.token1Address : swapEvent.token0Address;
+  const rediscache = await getGlobalRedisCache();
+  const throttleKey = `codex:throttle:${tokenMint}`;
+  const recentlyProcessed = await rediscache.get(throttleKey);
+  if (recentlyProcessed) {
+    logger.log(`Skipping ${tokenMint} – throttled (processed < 10s ago).`);
+    return c.json({ message: "Throttled, token recently processed" }, 200);
+  }
 
-  child.send(swapEvent);
-
-  // Optional: log on exit
-  child.on("exit", (code) => {
-    if (code !== 0) {
-      console.error(`Child process failed for ${swapEvent.transactionHash}`);
-    }
-  });
-
+  queueJob(swapEvent);
+  await rediscache.set(throttleKey, tokenMint, 10);
   return c.json({ message: "Accepted" });
 });
 
