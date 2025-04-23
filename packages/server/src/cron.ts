@@ -305,7 +305,7 @@ async function handleSwap(
   const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
 
 
-  if (mintLog || swapLog || reservesLog) {
+  if (mintLog && swapLog && reservesLog) {
     try {
       const mintAddress = mintLog!.split("Mint:")[1].trim().replace(/[",)]/g, '');
       const [user, direction, amount] = swapLog!.split(" ").slice(-3).map(s => s.replace(/[",)]/g, ''));
