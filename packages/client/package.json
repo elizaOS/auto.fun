@@ -10,7 +10,8 @@
     "ci": "bun install --force && bun install --force @rollup/rollup-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu @tailwindcss/oxide-linux-x64-musl @tailwindcss/oxide-linux-arm64-musl lightningcss-linux-x64-gnu lightningcss-linux-x64-musl lightningcss-linux-arm64-musl && bun run build",
     "lint": "prettier --cache --write \"src/**/*.{ts,tsx}\" && eslint ./src --fix",
     "preview": "vite preview",
-    "deploy": "wrangler pages deploy dist"
+    "deploy": "wrangler pages deploy dist",
+    "knip": "knip"
   },
   "dependencies": {
     "@autodotfun/types": "workspace:*",
@@ -118,7 +119,7 @@
     "@types/bn.js": "^5.1.6",
     "@types/bs58": "^4.0.4",
     "@types/lodash": "^4.17.16",
-    "@types/node": "^22.13.11",
+    "@types/node": "^22.14.1",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@types/react-helmet": "^6.1.11",
@@ -131,11 +132,12 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "knip": "^5.50.5",
     "localtunnel": "^2.0.2",
     "postcss": "^8.5.3",
     "serve": "^14.2.4",
     "tailwindcss": "^4.1.4",
-    "typescript": "~5.8.2",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.27.0",
     "url": "^0.11.4",
     "vite": "^6.2.6",
