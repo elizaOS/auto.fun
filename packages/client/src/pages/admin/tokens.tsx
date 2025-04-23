@@ -26,7 +26,7 @@ export default function AdminTokens() {
 
 function AdminTokensList() {
   const [sortBy, setSortBy] = useState<keyof IToken | "all" | "oldest">(
-    "createdAt"
+    "createdAt",
   );
   const [hideImported, setHideImported] = useState(false);
   const queryClient = useQueryClient(); // Get query client instance
@@ -56,7 +56,7 @@ function AdminTokensList() {
     mutationFn: async (tokenAddress: string) => {
       // Find the token in the current list to determine the current hidden status
       const token = tokensPagination?.items?.find(
-        (t) => t.mint === tokenAddress
+        (t) => t.mint === tokenAddress,
       );
       const currentHiddenStatus = token ? !!(token as any).hidden : false;
       return await fetcher(`/api/admin/tokens/${tokenAddress}/hidden`, "POST", {
@@ -65,18 +65,18 @@ function AdminTokensList() {
     },
     onSuccess: (_, tokenAddress) => {
       const token = tokensPagination?.items?.find(
-        (t) => t.mint === tokenAddress
+        (t) => t.mint === tokenAddress,
       );
       const currentHiddenStatus = token ? !!(token as any).hidden : false; // Ensure boolean
       toast.success(
-        `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`
+        `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`,
       );
       // Invalidate the tokens query to refetch the list
       queryClient.invalidateQueries({ queryKey: ["tokens", sortBy] });
     },
     onError: (error, tokenAddress) => {
       toast.error(
-        `Failed to update hidden status for token ${tokenAddress}: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update hidden status for token ${tokenAddress}: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -325,7 +325,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           const response = await fetch(tokenQuery.data.url);
           if (!response.ok) {
             throw new Error(
-              `Failed to fetch metadata: ${response.status} ${response.statusText}`
+              `Failed to fetch metadata: ${response.status} ${response.statusText}`,
             );
           }
           const textContent = await response.text();
@@ -344,7 +344,7 @@ function AdminTokenDetails({ address }: { address: string }) {
         } catch (error) {
           console.error("Error fetching metadata content:", error);
           setMetadataError(
-            error instanceof Error ? error.message : "Failed to load metadata"
+            error instanceof Error ? error.message : "Failed to load metadata",
           );
           setIsMetadataJsonValid(false);
         } finally {
@@ -405,7 +405,7 @@ function AdminTokenDetails({ address }: { address: string }) {
       return await fetcher(
         `/api/admin/tokens/${address}/social`,
         "POST",
-        links
+        links,
       );
     },
     onSuccess: () => {
@@ -414,7 +414,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -428,13 +428,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`
+        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -448,13 +448,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`
+        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -468,13 +468,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.hidden ? "unhidden" : "hidden"} successfully`
+        `Token ${tokenQuery.data?.hidden ? "unhidden" : "hidden"} successfully`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update hidden status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update hidden status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -492,7 +492,7 @@ function AdminTokenDetails({ address }: { address: string }) {
       return await fetcher(
         `/api/admin/tokens/${address}/details`,
         "PUT", // Use PUT method
-        details
+        details,
       );
     },
     onSuccess: (data) => {
@@ -511,7 +511,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update token details: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update token details: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -536,7 +536,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           headers,
           body: newMetadataString, // Send the raw string
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -544,7 +544,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           .json()
           .catch(() => ({ error: `HTTP error ${response.status}` }));
         throw new Error(
-          errorData.error || `Failed to update metadata (${response.status})`
+          errorData.error || `Failed to update metadata (${response.status})`,
         );
       }
       return response.json(); // Contains { success, message, metadataUrl }
@@ -565,7 +565,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update metadata"
+        error instanceof Error ? error.message : "Failed to update metadata",
       );
     },
   });
