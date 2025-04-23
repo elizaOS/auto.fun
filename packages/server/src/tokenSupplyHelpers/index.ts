@@ -166,7 +166,7 @@ async function processSwapLog(
         txId: signature,
         timestamp: new Date(),
       };
-      const redisCache = getGlobalRedisCache();
+      const redisCache = await getGlobalRedisCache();
       const listKey = `swapsList:${mintAddress}`;
       try {
         await redisCache.lpush(listKey, JSON.stringify(swapRecord));

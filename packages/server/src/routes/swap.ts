@@ -78,7 +78,7 @@ router.get("/swaps/:mint", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    const redisCache = getGlobalRedisCache();
+    const redisCache = await getGlobalRedisCache();
     const listKey = `swapsList:${mint}`;
     let totalSwaps = 0;
     let swapsResultRaw: any[] = []; // Use any[] for initial parsed data

@@ -27,19 +27,19 @@ import crypto from "node:crypto"; // Import crypto for lock value
 // S3 Client Helper (copied from uploader.ts, using process.env)
 let s3ClientInstance: S3Client | null = null;
 function getS3Client(): S3Client {
-    if (s3ClientInstance) return s3ClientInstance;
-    const accountId = process.env.S3_ACCOUNT_ID;
-    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-        logger.error("Missing R2 S3 API environment variables.");
-        throw new Error("Missing required R2 S3 API environment variables.");
-    }
-    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-    s3ClientInstance = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
-    logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
-    return s3ClientInstance;
+  if (s3ClientInstance) return s3ClientInstance;
+  const accountId = process.env.S3_ACCOUNT_ID;
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+  const bucketName = process.env.S3_BUCKET_NAME;
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+    logger.error("Missing R2 S3 API environment variables.");
+    throw new Error("Missing required R2 S3 API environment variables.");
+  }
+  const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+  s3ClientInstance = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
+  logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
+  return s3ClientInstance;
 }
 
 // Store the last processed signature to avoid duplicate processing
@@ -355,7 +355,7 @@ async function handleSwap(
     };
 
     const db = getDB();
-    const redisCache = getGlobalRedisCache();
+    const redisCache = await getGlobalRedisCache();
     const listKey = `swapsList:${mintAddress}`;
 
     try {
@@ -497,20 +497,20 @@ const CRON_LOCK_TTL_MS = 10 * 60 * 1000; // 10 minutes TTL for safety
 
 // Renamed to be the primary export for cron tasks
 export async function runCronTasks() {
-  const redisCache = getGlobalRedisCache();
+  const redisCache = await getGlobalRedisCache();
   const lockValue = crypto.randomUUID(); // Unique value for this attempt
 
   logger.log(`Cron: Attempting to acquire lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
 
   const lockAcquired = await redisCache.acquireLock(
-      CRON_LOCK_KEY,
-      lockValue,
-      CRON_LOCK_TTL_MS
+    CRON_LOCK_KEY,
+    lockValue,
+    CRON_LOCK_TTL_MS
   );
 
   if (!lockAcquired) {
-      logger.log("Cron: Lock not acquired (already held or error), skipping run.");
-      return; // Exit if lock couldn't be acquired
+    logger.log("Cron: Lock not acquired (already held or error), skipping run.");
+    return; // Exit if lock couldn't be acquired
   }
 
   logger.log("Cron: Lock acquired. Starting scheduled tasks...");
@@ -523,11 +523,11 @@ export async function runCronTasks() {
     logger.error("Cron: Error during scheduled tasks execution:", error);
     // Error is logged, lock will be released in finally
   } finally {
-      logger.log(`Cron: Releasing lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
-      const released = await redisCache.releaseLock(CRON_LOCK_KEY, lockValue);
-      if (!released) {
-          logger.warn(`Cron: Failed to release lock '${CRON_LOCK_KEY}'. It might have expired or been taken by another process.`);
-      }
+    logger.log(`Cron: Releasing lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
+    const released = await redisCache.releaseLock(CRON_LOCK_KEY, lockValue);
+    if (!released) {
+      logger.warn(`Cron: Failed to release lock '${CRON_LOCK_KEY}'. It might have expired or been taken by another process.`);
+    }
   }
 }
 
@@ -543,7 +543,7 @@ export async function updateTokens() {
   // Fetch active tokens with necessary fields
   let activeTokens: Token[] = [];
   try {
-     activeTokens = await db
+    activeTokens = await db
       .select({
         mint: tokens.mint,
         imported: tokens.imported,
@@ -607,8 +607,8 @@ export async function updateTokens() {
       .from(tokens)
       .where(eq(tokens.status, "active"));
   } catch (dbError) {
-      logger.error("Cron: Failed to fetch active tokens from DB:", dbError);
-      return; // Stop if we cannot fetch tokens
+    logger.error("Cron: Failed to fetch active tokens from DB:", dbError);
+    return; // Stop if we cannot fetch tokens
   }
 
 
@@ -693,53 +693,53 @@ export async function updateTokens() {
   const s3Client = getS3Client();
   const bucketName = process.env.S3_BUCKET_NAME;
   if (!bucketName) {
-      logger.error("Cron: S3_BUCKET_NAME not configured. Cannot check for generated images.");
-      // Decide whether to skip this step entirely or log per token
+    logger.error("Cron: S3_BUCKET_NAME not configured. Cannot check for generated images.");
+    // Decide whether to skip this step entirely or log per token
   }
 
   for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-      const batch = activeTokens.slice(i, i + BATCH_SIZE);
-      logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-      await Promise.all(batch.map(async (token) => {
-          if (token.mint && Number(token.imported) === 0) {
-              // Only check S3 if bucketName is configured
-              if (bucketName) {
-                  try {
-                      // --- NEW S3 CHECK BLOCK START ---
-                      const generationImagesPrefix = `generations/${token.mint}/`;
-                      const listCmd = new ListObjectsV2Command({
-                          Bucket: bucketName,
-                          Prefix: generationImagesPrefix,
-                          MaxKeys: 1, // We only need to know if at least one exists
-                      });
-                      const listResponse = await s3Client.send(listCmd);
-                      const hasGenerationImages = (listResponse.KeyCount ?? 0) > 0;
+    const batch = activeTokens.slice(i, i + BATCH_SIZE);
+    logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
+    await Promise.all(batch.map(async (token) => {
+      if (token.mint && Number(token.imported) === 0) {
+        // Only check S3 if bucketName is configured
+        if (bucketName) {
+          try {
+            // --- NEW S3 CHECK BLOCK START ---
+            const generationImagesPrefix = `generations/${token.mint}/`;
+            const listCmd = new ListObjectsV2Command({
+              Bucket: bucketName,
+              Prefix: generationImagesPrefix,
+              MaxKeys: 1, // We only need to know if at least one exists
+            });
+            const listResponse = await s3Client.send(listCmd);
+            const hasGenerationImages = (listResponse.KeyCount ?? 0) > 0;
 
-                      if (!hasGenerationImages) {
-                          logger.log(
-                              `Cron: Triggering image generation for: ${token.mint}`,
-                          );
-                          // This function should now use S3 internally
-                          await generateAdditionalTokenImages(
-                              token.mint,
-                              token.description || "",
-                          );
-                      }
-                      // --- NEW S3 CHECK BLOCK END ---
-                  } catch (imageCheckError) {
-                      logger.error(
-                          `Cron: Error checking/generating images for ${token.mint} via S3:`, // Updated log message
-                          imageCheckError,
-                      );
-                  }
-              } else {
-                  // Log skipped check if bucket name is missing
-                  logger.warn(`Cron: Skipping image check for ${token.mint} as S3_BUCKET_NAME is not set.`);
-              }
+            if (!hasGenerationImages) {
+              logger.log(
+                `Cron: Triggering image generation for: ${token.mint}`,
+              );
+              // This function should now use S3 internally
+              await generateAdditionalTokenImages(
+                token.mint,
+                token.description || "",
+              );
+            }
+            // --- NEW S3 CHECK BLOCK END ---
+          } catch (imageCheckError) {
+            logger.error(
+              `Cron: Error checking/generating images for ${token.mint} via S3:`, // Updated log message
+              imageCheckError,
+            );
           }
-      }));
-      // Optional: Add a small delay between batches if needed
-      // await new Promise(resolve => setTimeout(resolve, 100));
+        } else {
+          // Log skipped check if bucket name is missing
+          logger.warn(`Cron: Skipping image check for ${token.mint} as S3_BUCKET_NAME is not set.`);
+        }
+      }
+    }));
+    // Optional: Add a small delay between batches if needed
+    // await new Promise(resolve => setTimeout(resolve, 100));
   }
   logger.log("Cron: Finished checking for missing generation images.");
 

@@ -36,7 +36,7 @@ async function checkUserTokenBalance(
   tokenMint: string,
 ): Promise<number> {
   console.log(`Checking balance for user ${userPublicKey}, token ${tokenMint}`);
-  const redisCache = getGlobalRedisCache(); // Instantiate Redis
+  const redisCache = await getGlobalRedisCache(); // Instantiate Redis
 
   // First check Redis cache
   let cachedBalance = 0;

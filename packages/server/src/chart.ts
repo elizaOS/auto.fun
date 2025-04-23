@@ -129,7 +129,7 @@ export async function fetchPriceChartData(
     // Load price histories from DB
     let swapRecordsRaw: any[] = [];
     try {
-      const redisCache = getGlobalRedisCache();
+      const redisCache = await getGlobalRedisCache();
       const listKey = `swapsList:${tokenMint}`;
       const swapStrings = await redisCache.lrange(listKey, 0, -1); // Fetch all swaps
       swapRecordsRaw = swapStrings.map((s) => JSON.parse(s));
