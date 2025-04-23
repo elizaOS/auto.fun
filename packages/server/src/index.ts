@@ -89,10 +89,6 @@ app.use(
   })
 );
 
-// Authentication Middleware (from original index.ts)
-// Ensure verifyAuth correctly reads JWT from headers and sets c.set('user', ...)
-app.use("*", verifyAuth);
-
 // --- API Routes ---
 
 // Create a sub-router for API endpoints

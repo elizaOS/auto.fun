@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { createPool, Pool } from "generic-pool";
-import IORedis, { Redis } from "ioredis";
+import { Redis } from "ioredis";
 import { logger } from "./util";
 dotenv.config();
 
@@ -37,6 +37,9 @@ export function getSharedRedisPool(): RedisPool {
   }
   return sharedRedisPool;
 }
+
+// Export the type for use in other modules
+export type RedisCache = RedisCacheService;
 
 export class RedisCacheService {
   constructor(public redisPool: RedisPool) { }
@@ -102,10 +105,15 @@ export class RedisCacheService {
   }
 
   // --- START NEW LIST METHODS ---
-  async lpush(key: string, value: string): Promise<number> {
-    logger.info(`LPUSH to ${this.getKey(key)}`);
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    if (values.length === 0) {
+      // Handle case where no values are provided, perhaps return 0 or throw error
+      logger.warn(`LPUSH called with no values for key: ${this.getKey(key)}`);
+      return 0;
+    }
+    logger.info(`LPUSH ${values.length} values to ${this.getKey(key)}`);
     return this.redisPool.useClient((client) =>
-      client.lpush(this.getKey(key), value)
+      client.lpush(this.getKey(key), ...values) // Spread the values array
     );
   }
 

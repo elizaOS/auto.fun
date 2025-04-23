@@ -56,13 +56,10 @@ async function uploadToR2(buffer: Buffer, options: { contentType: string, key: s
         await s3Client.send(putCmd);
         logger.log(`Successfully uploaded to R2: ${options.key}`);
 
-        // Construct the public URL (adjust if you have a custom domain)
-        const accountId = process.env.S3_ACCOUNT_ID;
         // If you have a public bucket URL configured (e.g., via CNAME or R2 Public Bucket setting) use that:
         // const publicUrl = `https://your-public-bucket-url.com/${options.key}`;
         // Otherwise, construct the standard R2 URL:
-         const publicUrl = `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${options.key}`;
-
+         const publicUrl = `${process.env.S3_PUBLIC_URL || process.env.R2_PUBLIC_URL}/${options.key}`;
 
         // Alternatively, return a URL that routes through your API if you want to proxy image/metadata access
         // Example: return `/api/image/${options.key.split('/').pop()}`; // (Needs adjustment based on key structure)

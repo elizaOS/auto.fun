@@ -1360,7 +1360,6 @@ tokenRouter.get("/tokens", async (c) => {
     tokensResult = []; // Ensure it's an empty array on error
     total = 0;
   }
-  // ... (Rest of handler: totalPages, responseData, logging, return) ...
 
   // --- Process and Return ---
   const totalPages = Math.ceil(total / limit);
@@ -1650,16 +1649,6 @@ tokenRouter.get("/token/:mint", async (c) => {
     }
 
     const token = tokenData[0];
-
-    // Get fresh SOL price
-
-    // Only refresh holder data if explicitly requested
-    // const refreshHolders = c.req.query("refresh_holders") === "true";
-    // if (refreshHolders) {
-    // const imported = Number(token.imported) === 1;
-    // logger.log(`Refreshing holders data for token ${mint}`);
-    // c.executionCtx.waitUntil(updateHoldersCache(mint, imported));
-    // }
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
