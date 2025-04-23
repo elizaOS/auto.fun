@@ -194,14 +194,14 @@ export async function processTransactionLogs(
   }
 
   // Try each handler in sequence and return on first match
-  const newTokenResult = await handleNewToken(logs, signature, wsClient);
-  if (newTokenResult) return newTokenResult;
+  await handleNewToken(logs, signature, wsClient);
+  // if (newTokenResult) return newTokenResult;
 
-  const swapResult = await handleSwap(logs, signature, wsClient);
-  if (swapResult) return swapResult;
+  await handleSwap(logs, signature, wsClient);
+  // if (swapResult) return swapResult;
 
-  const curveResult = await handleCurveComplete(logs, signature, wsClient);
-  if (curveResult) return curveResult;
+  await handleCurveComplete(logs, signature, wsClient);
+  // if (curveResult) return curveResult;
 
   // Default: no event found
   return { found: false };
@@ -656,18 +656,18 @@ export async function updateTokens() {
   // --- Step 3: Sequential Batch Processing for Image Checks ---
   logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
   for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-      const batch = activeTokens.slice(i, i + BATCH_SIZE);
-      logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-      await Promise.all(batch.map(async (token) => {
-          if (token.mint && Number(token.imported) === 0) {
-              try {
-                  if (R2) {
-                      const generationImagesPrefix = `generations/${token.mint}/`;
-                      const objects = await R2.list({
-                          prefix: generationImagesPrefix,
-                          limit: 1,
-                      });
-                      const hasGenerationImages = objects.objects.length > 0;
+    const batch = activeTokens.slice(i, i + BATCH_SIZE);
+    logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
+    await Promise.all(batch.map(async (token) => {
+      if (token.mint && Number(token.imported) === 0) {
+        try {
+          if (R2) {
+            const generationImagesPrefix = `generations/${token.mint}/`;
+            const objects = await R2.list({
+              prefix: generationImagesPrefix,
+              limit: 1,
+            });
+            const hasGenerationImages = objects.objects.length > 0;
 
             if (!hasGenerationImages) {
               logger.log(
