@@ -16,21 +16,45 @@ import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
 import Pagination from "./pagination";
+import { useQuery } from "@tanstack/react-query";
+import { Codex } from "@codex-data/sdk";
+import { RankingDirection } from "@codex-data/sdk/dist/resources/graphql";
+import { EventType } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import { networkId } from "@/utils";
+
+const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
-  const {
-    items: data,
-    goToPage,
-    isLoading,
-    currentPage,
-    hasNextPage,
-    totalItems,
-    totalPages,
-  } = useTransactions({ tokenId: token.mint, isPaused: paused});
-  
+  // const {
+  //   items: data,
+  //   goToPage,
+  //   isLoading,
+  //   currentPage,
+  //   hasNextPage,
+  //   totalItems,
+  //   totalPages,
+  // } = useTransactions({ tokenId: token.mint, isPaused: paused });
 
-  // Helper to format swap amounts based on type
+  const query = useQuery({
+    queryKey: ["token", token.mint, "swaps"],
+    queryFn: async () => {
+      const data = await codex.queries.getTokenEvents({
+        query: {
+          address: token.mint,
+          networkId,
+          eventType: EventType.Swap,
+        },
+        direction: RankingDirection.Desc,
+        limit: 50,
+      });
+
+      const items = data?.getTokenEvents?.items;
+      return items;
+    },
+    refetchInterval: 15_000,
+  });
+
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
     const numericAmount =
       typeof amount === "string" ? parseFloat(amount) : amount;
@@ -50,6 +74,8 @@ export default function SwapsTable({ token }: { token: IToken }) {
       return numericAmount.toFixed(4);
     }
   };
+
+  const items = query?.data || [];
 
   return (
     <div
@@ -72,7 +98,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isLoading ? (
+          {query?.isPending ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center py-8">
                 <div className="flex flex-col items-center gap-2">
@@ -83,57 +109,57 @@ export default function SwapsTable({ token }: { token: IToken }) {
                 </div>
               </TableCell>
             </TableRow>
-          ) : data.length > 0 ? (
-            data
-              .sort(
-                (a, b) =>
-                  new Date(b.timestamp).getTime() -
-                  new Date(a.timestamp).getTime(),
-              )
-              .map((swap, _) => {
-                const isBuy = swap.type === "Buy";
-                return (
-                  <TableRow
-                    className="hover:bg-white/5"
-                    key={`${swap?.txId}_${_}`}
-                  >
-                    <TableCell className="text-left">
-                      <Link
-                        to={env.getAccountUrl(swap?.user)}
-                        target="_blank"
-                        className="hover:text-autofun-text-highlight"
-                      >
-                        {shortenAddress(swap?.user)}
-                      </Link>
-                    </TableCell>
-                    <TableCell
-                      className={twMerge([
-                        "text-left",
-                        isBuy ? "text-[#03FF24]" : "text-[#EF5350]",
-                      ])}
+          ) : items?.length > 0 ? (
+            items?.map((swap, _) => {
+              console.log(swap);
+              const account = swap?.maker || "";
+              const swapType = swap?.eventDisplayType || "Buy";
+              const solana = swap?.data?.priceBaseTokenTotal || "0";
+              const token = swap?.data?.amountNonLiquidityToken || "0";
+              const transactionHash = swap?.transactionHash || "";
+              const timestamp = swap?.timestamp * 1000 || 0;
+              return (
+                <TableRow
+                  className="hover:bg-white/5"
+                  key={`${transactionHash}_${_}`}
+                >
+                  <TableCell className="text-left">
+                    <Link
+                      to={env.getAccountUrl(account)}
+                      target="_blank"
+                      className="hover:text-autofun-text-highlight"
                     >
-                      {swap.type}
-                    </TableCell>
-                    <TableCell className="text-left">
-                      {formatSwapAmount(swap.solAmount, !isBuy)}
-                    </TableCell>
-                    <TableCell className="text-left">
-                      {formatSwapAmount(swap.tokenAmount, true)}
-                    </TableCell>
-                    <TableCell className="text-left">
-                      {fromNow(swap?.timestamp, true)}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={env.getTransactionUrl(swap.txId)}
-                        target="_blank"
-                      >
-                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+                      {shortenAddress(account)}
+                    </Link>
+                  </TableCell>
+                  <TableCell
+                    className={twMerge([
+                      "text-left",
+                      swapType === "Buy" ? "text-[#03FF24]" : "text-[#EF5350]",
+                    ])}
+                  >
+                    {swapType}
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {formatSwapAmount(solana, true)}
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {formatSwapAmount(token, true)}
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {fromNow(timestamp, true)}
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      to={env.getTransactionUrl(transactionHash)}
+                      target="_blank"
+                    >
+                      <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           ) : (
             <TableRow>
               <TableCell
@@ -156,7 +182,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           )}
         </TableBody>
       </Table>
-      <div className="grid place-content-center">
+      {/* <div className="grid place-content-center">
         <Pagination
           pagination={{
             hasMore: hasNextPage,
@@ -169,7 +195,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             goToPage(pageNumber);
           }}
         />
-      </div>
+      </div> */}
     </div>
   );
 }

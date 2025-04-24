@@ -229,9 +229,7 @@ export default function Page() {
   return (
     <Fragment>
       <Helmet>
-        <title>
-          {`${token?.name} (${token?.ticker})`} - auto.fun
-        </title>
+        <title>{`${token?.name} (${token?.ticker})`} - auto.fun</title>
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}
@@ -503,7 +501,7 @@ export default function Page() {
                 {activeTab === "chart" && (
                   <>
                     <Chart
-                      mint={token.mint}
+                      token={token}
                       isImported={token.imported ? true : false}
                     />
 

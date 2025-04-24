@@ -15,15 +15,17 @@ import {
   TokenPairStatisticsType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { QuoteToken } from "@codex-data/sdk/dist/resources/graphql";
+import { networkId, useCodex } from "@/utils";
+import { IToken } from "@/types";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 interface ChartProps {
-  mint: string;
+  mint: IToken;
   isImported: boolean;
 }
 
-export default function Chart({ mint, isImported }: ChartProps) {
+export default function Chart({ token, isImported }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<any>(null);
   const chartRef = useRef<any>(null);
@@ -32,16 +34,18 @@ export default function Chart({ mint, isImported }: ChartProps) {
     to: number;
   } | null>(null);
 
-  const useCodex = isImported;
-  const networkId = 1399811149;
+  const mint = token.mint;
+
+  const isCodex = useCodex(token);
   const pairId = `${mint}:${networkId}`;
+
   const { data: chartData, isLoading } = useQuery({
-    queryKey: ["chart", mint, useCodex],
+    queryKey: ["token", mint, "chart", useCodex],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
       const from = to - 21600; // 6 hours
 
-      if (useCodex) {
+      if (isCodex) {
         const { getBars } = await codex.queries.getBars({
           currencyCode: "USD",
           from,
@@ -81,8 +85,9 @@ export default function Chart({ mint, isImported }: ChartProps) {
       }
     },
     staleTime: 60 * 1000,
-    refetchInterval: 15_000, // Since chart is always 1 minute, we can refresh every 30 seconds
-    refetchOnWindowFocus: false,
+    refetchInterval: 2_000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
     refetchOnReconnect: false,
   });
 
@@ -149,106 +154,10 @@ export default function Chart({ mint, isImported }: ChartProps) {
     window.addEventListener("resize", handleResize);
 
     let socket: Socket | undefined;
-    let cleanup: any;
+
     /** Handle Websockets for improts and bonded tokens */
-    if (useCodex) {
-      console.log(`useCodex => ${useCodex} SUBSCRIBE TO CHART WEBSOCKET`);
-      const sink = {
-        next: (data) => {
-          console.log("Got subscription data", data);
-          // Check if data contains bars information
-          if (data?.data?.onBarsUpdated) {
-            const barData = data.data.onBarsUpdated;
-            // Process the bar data and update the chart
-            if (candlestickSeriesRef.current && barData) {
-              // Format the data as needed by your chart library
-              const newCandle = {
-                time: barData.time,
-                open: barData.open,
-                high: barData.high,
-                low: barData.low,
-                close: barData.close,
-                volume: barData.volume,
-              };
-              candlestickSeriesRef.current.update(newCandle);
-            }
-          }
-        },
-        error: (err) => {
-          console.log("Got subscription error", err);
-        },
-        complete: () => {
-          console.log("Got subscription complete");
-        },
-      };
-
-      cleanup = codex.subscriptions.onBarsUpdated(
-        {
-          // address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH WORKS
-          pairId,
-          quoteToken: QuoteToken.Token1,
-          statsType: TokenPairStatisticsType.Unfiltered,
-          // pairId,
-          // tokenId:
-          // networkId: 1,
-        },
-        sink
-      );
-
-      codex.subscribe(
-        `subscription OnBarsUpdated($pairId: String, $quoteToken: QuoteToken) {
-  onBarsUpdated(pairId: $pairId, quoteToken: $quoteToken) {
-    eventSortKey
-    networkId
-    pairAddress
-    pairId
-    timestamp
-    quoteToken
-    aggregates {
-      r1 {
-        t
-        usd {
-          t
-          o
-          h
-          l
-          c
-          volume
-        }
-        token {
-          t
-          o
-          h
-          l
-          c
-          volume
-        }
-      }
-    }
-  }
-}`,
-        {
-          pairId,
-          quoteToken: QuoteToken.Token1,
-        },
-        sink
-      );
-
-      // codex.subscriptions.onPriceUpdated(
-      //   {
-      //     address: mint,
-      //     networkId,
-      //   },
-      //   sink
-      // );
-
-      // codex.subscriptions.onBarsUpdated(
-      //   {
-      //     pairId,
-      //     quoteToken: QuoteToken.Token1,
-      //   },
-      //   sink
-      // );
+    if (isCodex) {
+      // TODO - Implement websockets once we know how
     } else {
       /** Handle incoming data for non-bonded tokens */
       socket = getSocket();
@@ -269,15 +178,15 @@ export default function Chart({ mint, isImported }: ChartProps) {
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      if (useCodex) {
+      if (isCodex) {
+        // TODO - Implement websockets once we know how
       } else if (socket) {
         socket.off("newCandle");
       }
       chart.remove();
     };
-  }, [mint, useCodex]);
+  }, [mint, isCodex]);
 
-  // Update chart data when it's available from useQuery
   useEffect(() => {
     if (chartData && chartData.length > 0 && candlestickSeriesRef.current) {
       // Set the initial data
