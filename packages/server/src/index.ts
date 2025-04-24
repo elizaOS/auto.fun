@@ -273,11 +273,6 @@ function startMigrationWorker(network?: string) {
 
   logger.info(`🚀 Started migration worker${network ? ` (${network})` : ""} with PID`, child.pid);
 
-  child.on("exit", (code) => {
-    logger.error(`❌ Migration worker${network ? ` (${network})` : ""} exited with code ${code}. Restarting...`);
-    setTimeout(() => startMigrationWorker(network), 1_000);
-  });
-
   child.on("error", (err) => {
     logger.error(`❌ Migration worker${network ? ` (${network})` : ""} failed:`, err);
   });
