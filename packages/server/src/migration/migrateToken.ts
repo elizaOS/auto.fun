@@ -101,13 +101,11 @@ export class TokenMigrator {
     for (const lockKey of lockKeys) {
       const isLocked = await this.redisCache.get(lockKey);
       if (isLocked !== "true") continue;
-      console.log({ lockKey })
 
       const [, , mint] = lockKey.split(":");
       console.log(`[Migrate] Found locked token: ${mint}`);
       logger.log(`[Migrate] Resuming migration for token ${mint}`);
 
-      // load the token from DB (or skip if missing)
       const token = await getToken(mint);
       if (!token) {
         logger.error(`[Migrate] Token ${mint} not found in DB. Skipping.`);
@@ -115,10 +113,10 @@ export class TokenMigrator {
       }
 
       try {
+        await this.redisCache.set(lockKey, "false");
         await this.migrateToken(token);
       } catch (err) {
         logger.error(`[Migrate] Error resuming migration for ${mint}:`, err);
-        // ensure we clear the lock so it can be retried next startup
         await this.redisCache.set(lockKey, "false");
       }
     }
@@ -223,13 +221,13 @@ export class TokenMigrator {
     ];
   }
 
-  async migrateToken(token: TokenData): Promise<void> {
+  async migrateToken(token: TokenData,): Promise<void> {
     const mint = token.mint;
     try {
       const lockKey = `migration:${mint}:lock`;
       const lock = await this.redisCache.get(lockKey);
       if (lock === "true") {
-        logger.log(`[Migrate] Token ${mint} is locked. Skipping.`);
+        logger.log(`[Migrate] Token ${token.mint} is locked. Skipping.`);
         return;
       }
 
