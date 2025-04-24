@@ -17,6 +17,7 @@ import {
   HoldersSortAttribute,
   RankingDirection,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import Loader from "./loader";
 
 function getPercentageOfTotal(value: number, total: number): string | number {
   if (total === 0) {
@@ -52,6 +53,10 @@ export default function HoldersTable({ token }: { token: IToken }) {
   const supply = token?.tokenSupplyUiAmount;
   const data = query?.data || [];
 
+  if (isLoading) {
+    return <Loader className="h-40" />;
+  }
+
   return (
     <Table className="border-0 !rounded-0 !border-spacing-y-0">
       <TableHeader className="relative">
@@ -64,18 +69,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {isLoading ? (
-          <TableRow>
-            <TableCell colSpan={4} className="text-center py-8">
-              <div className="flex flex-col items-center gap-2">
-                <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
-                <p className="text-autofun-text-secondary">
-                  Fetching holders from blockchain...
-                </p>
-              </div>
-            </TableCell>
-          </TableRow>
-        ) : data?.length > 0 ? (
+        {data?.length > 0 ? (
           data.map((holder) => {
             const formattedAmount: number =
               (Number(holder?.balance) ? Number(holder.balance) : 0) /

@@ -29,6 +29,7 @@ import { Tooltip } from "react-tooltip";
 import dayjs from "dayjs";
 import Interval from "./interval";
 import Triangle from "./triangle";
+import Loader from "./loader";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
@@ -157,6 +158,10 @@ export default function SwapsTable({ token }: { token: IToken }) {
     return { account, swapType, solana, token, transactionHash, timestamp };
   };
 
+  if (!isCodex ? isLoading : query?.isPending) {
+    return <Loader className="h-40" />;
+  }
+
   return (
     <div
       className="space-y-12 h-fit overflow-y-hidden overflow-x-none relative"
@@ -180,18 +185,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(!isCodex ? isLoading : query?.isPending) ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
-                <div className="flex flex-col items-center gap-2">
-                  <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
-                  <p className="text-autofun-text-secondary">
-                    Fetching transactions from blockchain...
-                  </p>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : (items || [])?.length > 0 ? (
+          {(items || [])?.length > 0 ? (
             items?.map((swap, _) => {
               const {
                 account,
