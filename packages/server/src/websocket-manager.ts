@@ -303,7 +303,7 @@ class WebSocketManager {
             await this.redisCache.sadd(clientRoomsKey, roomName);
             await this.redisCache.sadd(roomClientsKey, client.clientId);
             logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
-            const responseEvent = String(event) === 'subscribeToChat' ? 'subscribedToChat' : (roomName.startsWith('token-') ? 'subscribed' : 'joined');
+            const responseEvent = event && String(event) === 'subscribeToChat' ? 'subscribedToChat' : (roomName.startsWith('token-') ? 'subscribed' : 'joined');
             client.ws.send(JSON.stringify({
                 event: responseEvent,
                 data: { room: roomName }

@@ -2155,4 +2155,95 @@ export async function generateAdditionalTokenImages(
   }
 }
 
+
+// Get a random pre-generated token endpoint
+app.get("/pre-generated-token", async (c) => {
+  try {
+    const db = getDB();
+
+    // Get a random unused token
+    const randomToken = await db
+      .select()
+      .from(preGeneratedTokens)
+      .where(eq(preGeneratedTokens.used, 0))
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
+
+    if (!randomToken || randomToken.length === 0) {
+      logger.log(
+        "No pre-generated tokens available. Generating one on demand..."
+      );
+
+      // Generate a token on the fly
+      const result = await generateTokenOnDemand();
+
+      if (!result.success) {
+        return c.json({ error: result.error }, 500);
+      }
+
+      return c.json({
+        success: true,
+        token: result.token,
+      });
+    }
+
+    return c.json({
+      success: true,
+      token: randomToken[0],
+    });
+  } catch (error) {
+    logger.error("Error getting pre-generated token:", error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+// Mark token as used endpoint
+app.post("/mark-token-used", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { id, name, ticker } = body;
+
+    if (!id) {
+      return c.json({ error: "Token ID is required" }, 400);
+    }
+
+    const db = getDB();
+
+    // Mark the token as used
+    await db
+      .update(preGeneratedTokens)
+      .set({ used: 1 })
+      .where(eq(preGeneratedTokens.id, id));
+
+    // Delete any other tokens with the same name or ticker
+    if (name || ticker) {
+      await db
+        .delete(preGeneratedTokens)
+        .where(
+          or(
+            name ? eq(preGeneratedTokens.name, name) : undefined,
+            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined
+          )
+        );
+    }
+
+    return c.json({
+      success: true,
+      message: "Token marked as used and duplicates removed",
+    });
+  } catch (error) {
+    logger.error("Error marking token as used:", error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
 export default app;
