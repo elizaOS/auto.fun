@@ -24,7 +24,7 @@ export async function resumeMigrationsOnStart(
       TTL_MS
    );
    if (!gotLock) {
-      console.log("[Resume] Another instance is already doing the resume. Skipping.");
+      console.log("[Resume] - Another instance is already doing the resume. Skipping.");
       return;
    }
 
