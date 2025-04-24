@@ -14,8 +14,8 @@ const JOB_QUEUE_KEY = "webhook:jobs";
 const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 2000;
 const MAX_JOBS_PER_SECOND = Number(process.env.MAX_JOBS_PER_SECOND) || 5;
 // only do holders/swaps updates once per TOKEN_UPDATE_WINDOW seconds
-const TOKEN_UPDATE_WINDOW = Number(process.env.TOKEN_UPDATE_WINDOW) || 60;
-
+const TOKEN_UPDATE_WINDOW = Number(process.env.TOKEN_UPDATE_WINDOW) || 10;
+import { sanitizeTokenForWebSocket } from "../cron";
 async function sleep(ms: number) {
    return new Promise((r) => setTimeout(r, ms));
 }
@@ -100,27 +100,24 @@ async function workerLoop() {
             continue;
          }
 
-         try {
-            const latestCandle = await getLatestCandle(tokenMint, swap, token);
-            await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
-         } catch (e) {
-            logger.error("Error sending candle:", e);
-         }
 
          if (doHeavyWork) {
             try {
                const ext = await ExternalToken.create(tokenMint, redisCache);
-               await ext.updateMarketAndHolders();
+               const result = await ext.fetchMarketData();
+               const newTokenData = result?.newTokenData;
+               if (!newTokenData) {
+                  logger.warn(`No new token data for ${tokenMint}, skipping`);
+                  continue;
+               }
+               wsClient.to(`token-${tokenMint}`).emit("updateToken",
+                  sanitizeTokenForWebSocket(newTokenData)
+               )
             } catch (e) {
                logger.error("Error updating market & holders:", e);
             }
-            try {
-               const ext = await ExternalToken.create(tokenMint, redisCache);
-               await ext.updateLatestSwapData(10);
-            } catch (e) {
-               logger.error("Error updating latest swap data:", e);
-            }
          }
+
 
          await sleep(JOB_DELAY_MS);
 

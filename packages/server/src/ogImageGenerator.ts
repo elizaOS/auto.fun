@@ -221,7 +221,7 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
 
         const [leftBuffer, rightBuffer] = await Promise.all([leftBg.toBuffer(), rightBg.toBuffer()]);
 
-        let baseCanvas = sharp({ create: { width: width, height: height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
+        const baseCanvas = sharp({ create: { width: width, height: height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
 
         const compositeOperations = [
             // Background layers first

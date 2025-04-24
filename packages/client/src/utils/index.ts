@@ -1,6 +1,7 @@
 import relativeTime from "dayjs/plugin/relativeTime";
 import dayjs from "dayjs";
 import { env } from "./env";
+import { IToken } from "@/types";
 
 dayjs.extend(relativeTime);
 
@@ -154,4 +155,14 @@ export const resizeImage = (url: string, width: number, height: number) => {
   } else {
     return `${env.imageOptimizationUrl}/width=${width},height=${height},format=auto/${url}`;
   }
+};
+
+export const networkId = 1399811149;
+
+export const useCodex = (token: IToken) => {
+  if (token?.imported === 1 || token?.status === "locked") {
+    return true;
+  }
+
+  return false;
 };

@@ -240,3 +240,21 @@ button {
     animation: fade-in 350ms ease-in-out forwards;
   }
 }
+
+@layer utilities {
+  .clip-path-triangle-up {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+
+  .clip-path-triangle-down {
+    clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+  }
+
+  .clip-path-triangle-left {
+    clip-path: polygon(100% 0%, 100% 100%, 0% 50%);
+  }
+
+  .clip-path-triangle-right {
+    clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
+  }
+}

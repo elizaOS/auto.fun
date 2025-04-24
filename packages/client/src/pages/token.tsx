@@ -35,6 +35,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
+import Chart from "@/components/chart";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;
@@ -239,26 +240,7 @@ export default function Page() {
   return (
     <Fragment>
       <Helmet>
-        <title>{title}</title>
-        <meta property="og:title" content={title} />
-        <meta
-          property="og:description"
-          content={token?.description || defaultDescription}
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content={ogImageUrl} />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={title} />
-        <meta
-          name="twitter:description"
-          content={token?.description || defaultDescription}
-        />
-        <meta name="twitter:image" content={ogImageUrl} />
-        {/* Add other meta tags like site name, favicon links etc. if not in Layout */}
+        <title>{`${token?.name} (${token?.ticker})`} - auto.fun</title>
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}
@@ -471,7 +453,7 @@ export default function Page() {
           {/* Middle Column - 50% - Tabs for Chart and AI Create */}
           <div className="w-full lg:w-1/2 flex flex-col gap-3 order-3 lg:order-2">
             <div className="overflow-hidden relative">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1">
                 {/* Green stroke above tab section */}
                 <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
@@ -558,9 +540,7 @@ export default function Page() {
                 {/* Tab Content */}
                 {activeTab === "chart" && (
                   <>
-                    <div className="w-full h-[50vh] bg-autofun-background-primary">
-                      <TradingViewChart name={token.name} token={token.mint} />
-                    </div>
+                    <Chart token={token} />
 
                     <TransactionsAndHolders token={token} />
                   </>

@@ -18,13 +18,11 @@ Press the fun button. Auto.fun is a platform featuring a Solana-based program fo
 This monorepo contains the following packages:
 
 *   `packages/autodoc`: Automatic repository documentation generation.
-*   `packages/charts`: Charting views for token data (potentially consolidated with `udf`).
 *   `packages/client`: The Vite + React frontend application.
 *   `packages/docs`: Project documentation.
 *   `packages/program`: Solana programs (Anchor framework) for the core Auto.fun logic and Raydium Vault interactions.
 *   `packages/server`: The Hono backend server handling API requests, authentication, and off-chain logic.
 *   `packages/types`: Shared TypeScript types, constants, and IDLs across the frontend, server, and program interactions.
-*   `packages/udf`: UDF-compatible data feed for charting libraries (potentially consolidated with `charts`).
 
 ## Technology Stack
 
