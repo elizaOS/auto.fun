@@ -57,10 +57,10 @@ export default function HoldersTable({ token }: { token: IToken }) {
       <TableHeader className="relative">
         {/* <PausedIndicator show={paused} /> */}
         <TableRow className="bg-transparent">
-          <TableHead>Account</TableHead>
+          <TableHead className="text-left w-[200px]">Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
           <TableHead className="text-right">%</TableHead>
-          <TableHead className="text-right">View</TableHead>
+          <TableHead className="text-right w-[50px]" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -82,7 +82,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
               10 ** (token.tokenDecimals || 6);
             return (
               <TableRow className="hover:bg-white/5" key={holder?.address}>
-                <TableCell className="text-left">
+                <TableCell className="text-left text-sm">
                   <Link
                     to={env.getWalletUrl(holder.address)}
                     target="_blank"
@@ -94,13 +94,13 @@ export default function HoldersTable({ token }: { token: IToken }) {
                       : shortenAddress(holder?.address)}
                   </Link>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right text-sm">
                   {formattedAmount.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right text-sm">
                   {getPercentageOfTotal(formattedAmount, supply)}%
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-sm">
                   <Link to={env.getWalletUrl(holder.address)} target="_blank">
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                   </Link>

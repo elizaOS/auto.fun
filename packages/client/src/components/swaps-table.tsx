@@ -32,10 +32,10 @@ export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
   const isCodex = useCodex(token);
   const queryClient = useQueryClient();
-  const {
-    items: data,
-    isLoading,
-  } = useTransactions({ tokenId: token.mint, isPaused: paused || isCodex });
+  const { items: data, isLoading } = useTransactions({
+    tokenId: token.mint,
+    isPaused: paused || isCodex,
+  });
 
   const queryKey = ["token", token.mint, "swaps"];
   const query = useQuery({
@@ -197,10 +197,10 @@ export default function SwapsTable({ token }: { token: IToken }) {
               } = dataExtractor(swap);
               return (
                 <TableRow
-                  className="hover:bg-white/5"
+                  className="hover:bg-white/5 animate-fade-in"
                   key={`${transactionHash}_${_}`}
                 >
-                  <TableCell className="text-left">
+                  <TableCell className="text-left text-sm">
                     <Link
                       to={env.getAccountUrl(account)}
                       target="_blank"
@@ -211,22 +211,22 @@ export default function SwapsTable({ token }: { token: IToken }) {
                   </TableCell>
                   <TableCell
                     className={twMerge([
-                      "text-left",
+                      "text-left text-sm",
                       swapType === "Buy" ? "text-[#03FF24]" : "text-[#EF5350]",
                     ])}
                   >
                     {swapType}
                   </TableCell>
-                  <TableCell className="text-left">
+                  <TableCell className="text-left text-sm">
                     {formatSwapAmount(solana, true)}
                   </TableCell>
-                  <TableCell className="text-left">
+                  <TableCell className="text-left text-sm">
                     {formatSwapAmount(token, true)}
                   </TableCell>
-                  <TableCell className="text-left">
+                  <TableCell className="text-left text-sm">
                     {fromNow(timestamp, true)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm">
                     <Link
                       to={env.getTransactionUrl(transactionHash)}
                       target="_blank"
