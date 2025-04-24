@@ -1,10 +1,10 @@
 import { Link, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import AdminOverview from "./admin/overview";
-import AdminUsers from "./admin/users";
-import AdminTokens from "./admin/tokens";
-import AdminPregenerated from "./admin/pregenerated";
-import AdminModerators from "./admin/moderators";
+import AdminOverview from "../components/admin/overview";
+import AdminUsers from "../components/admin/users";
+import AdminTokens from "../components/admin/tokens";
+import AdminPregenerated from "../components/admin/pregenerated";
+import AdminModerators from "../components/admin/moderators";
 import useAuthentication from "@/hooks/use-authentication";
 import { env } from "@/utils/env";
 import { fetcher } from "@/utils/api";

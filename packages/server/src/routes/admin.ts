@@ -1174,6 +1174,61 @@ adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) =>
 });
 // --- END METADATA UPDATE ROUTE ---
 
+// --- NEW: Route to DELETE a token --- 
+adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB();
+
+    // Check if token exists before attempting delete (optional but good practice)
+    const tokenData = await db
+      .select({ id: tokens.id })
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      // Return success even if not found, as the desired state (deleted) is achieved
+      logger.warn(`Admin attempt to delete non-existent token ${mint}`);
+      return c.json({ success: true, message: "Token not found or already deleted" });
+      // Alternatively, return 404: return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Delete the token
+    const deleteResult = await db
+      .delete(tokens)
+      .where(eq(tokens.mint, mint))
+      .returning({ deletedId: tokens.id }); // Optional: confirm which ID was deleted
+
+    if (deleteResult.length === 0) {
+      // Should not happen if the select check passed, but handle just in case
+      logger.error(`Failed to delete token ${mint} after existence check.`);
+      return c.json({ error: "Failed to delete token" }, 500);
+    }
+
+    logger.log(`Admin deleted token ${mint} (ID: ${deleteResult[0].deletedId})`);
+
+    // Optionally: Add logic here to delete associated data (e.g., holders, S3 assets) if needed
+
+    return c.json({
+      success: true,
+      message: `Token ${mint} deleted successfully`,
+    });
+
+  } catch (error) {
+    logger.error(`Error deleting token ${c.req.param("mint")}:`, error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error deleting token" },
+      500
+    );
+  }
+});
+// --- END DELETE TOKEN ROUTE ---
+
 // Routes for managing moderators (only accessible by full admins)
 // Get list of current moderators
 adminRouter.get("/moderators", requireAdminOrModerator, async (c) => {
