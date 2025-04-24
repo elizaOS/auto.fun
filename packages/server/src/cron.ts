@@ -29,6 +29,7 @@ import {
   logger
 } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
+import { PointEvent } from "./points";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -454,22 +455,30 @@ async function handleSwap(
 
       const newToken = updatedTokens[0];
       const usdVolume =
-        swapRecord.type === "buy"
-          ? (swapRecord.amountOut / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          : (swapRecord.amountIn / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
+        direction === "1"
+          ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
 
       const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
       console.log("awarding user points",
         swapRecord.user,
       );
-      await awardUserPoints(swapRecord.user, {
-        type: `${bondStatus}_${swapRecord.type}` as any,
-        usdVolume,
-      });
-      await awardUserPoints(swapRecord.user, {
-        type: "trade_volume_bonus",
-        usdVolume,
-      });
+      try {
+        await awardUserPoints(swapRecord.user, {
+          type: `${bondStatus}_${swapRecord.type}` as any,
+          usdVolume,
+        });
+      } catch (err) {
+        logger.error("Failed to award user points:", err);
+      }
+      try {
+        await awardUserPoints(swapRecord.user, {
+          type: "trade_volume_bonus",
+          usdVolume,
+        });
+      } catch (err) {
+        logger.error("Failed to award trade volume bonus:", err);
+      }
 
       try {
         const listLength = await redisCache.llen(listKey);
