@@ -1,0 +1,17 @@
+# nixpacks.toml - Configuration for Railway builds via Nixpacks
+
+[phases.setup]
+# Installs system packages needed before dependencies are installed.
+# Add other required packages to this list if necessary.
+nixPkgs = ["fontconfig"]
+
+# Add other phases like install, build, start as needed below
+# Example:
+[phases.install]
+cmds = ["bun install"]
+
+[phases.build]
+cmds = ["bun run build:server"]
+
+[start]
+cmd = "bun run start:server"
