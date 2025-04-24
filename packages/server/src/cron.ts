@@ -506,7 +506,7 @@ async function handleSwap(
       };
 
       await wsClient
-        .to("global")
+        .to(`token-${mintAddress}`)
         .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
       console.log("updated the token in DB", mintAddress);
       return {
@@ -586,7 +586,7 @@ async function handleCurveComplete(
     await updateTokenInDB(tokenData);
     await tokenMigrator.migrateToken(token);
     await wsClient.emit(
-      "global",
+      `token-${mintAddress}`,
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );

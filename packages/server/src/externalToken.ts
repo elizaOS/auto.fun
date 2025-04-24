@@ -157,7 +157,7 @@ export class ExternalToken {
     // 2. Fetch fresh data if cache is missing, stale, or forced
     logger.info(`ExternalToken: Fetching fresh market/holder details for ${this.mint}.`);
     try {
-      const marketResult = await this._fetchMarketData(); // Use internal fetch method
+      const marketResult = await this.fetchMarketData(); // Use internal fetch method
       if (!marketResult) {
         logger.error(`ExternalToken: Failed to fetch market data for ${this.mint}. Aborting update.`);
         return null; // Or return previously cached data if available?
@@ -191,7 +191,7 @@ export class ExternalToken {
   }
 
   // Internal method to fetch market data, returns data without saving to Redis
-  private async _fetchMarketData(): Promise<{ newTokenData: any; tokenSupply: number } | null> {
+  async fetchMarketData(): Promise<{ newTokenData: any; tokenSupply: number } | null> {
     try {
       const { filterTokens } = await this.sdk.queries.filterTokens({
         tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
@@ -236,12 +236,14 @@ export class ExternalToken {
       );
 
       const db = await getDB();
-      await db
+      const updateToken = await db
         .update(tokens)
         .set(filtered)
         .where(eq(tokens.mint, this.mint))
+        .returning()
+      const tokenToReturn = updateToken[0];
 
-      return { newTokenData, tokenSupply };
+      return { newTokenData: tokenToReturn, tokenSupply };
     } catch (error) {
       logger.error(`ExternalToken: Error fetching market data for ${this.mint}:`, error);
       return null;
