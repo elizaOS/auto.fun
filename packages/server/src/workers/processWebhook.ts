@@ -1,4 +1,3 @@
-// processWebhook.ts
 import crypto from "crypto";
 import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
@@ -7,144 +6,105 @@ import { ExternalToken } from "../externalToken";
 import { getLatestCandle } from "../chart";
 import { getWebSocketClient } from "../websocket-client";
 import { logger } from "../util";
-import { webSocketManager } from '../websocket-manager';
+import { webSocketManager } from "../websocket-manager";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const JOB_QUEUE_KEY = "webhook:jobs";
-const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 2000;
-const MAX_JOBS_PER_SECOND = Number(process.env.MAX_JOBS_PER_SECOND) || 5;
+const PROCESSING_QUEUE = JOB_QUEUE_KEY + ":processing";
+const MAX_JOBS_PER_SEC = Number(process.env.MAX_JOBS_PER_SECOND) || 10;
+const SOL_ADDRESS = "So11111111111111111111111111111111111111112";
 
-async function sleep(ms: number) {
-   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function workerLoop() {
-   const redisCache = await getGlobalRedisCache();
-   if (!(await redisCache.isPoolReady())) {
+; (async function workerLoop() {
+   const cache = await getGlobalRedisCache();
+   if (!(await cache.isPoolReady())) {
       throw new Error("Redis pool is not ready");
    }
 
-   // single blocking client for BLPOP
-   const blockingClient = await redisCache.redisPool.acquire();
+   const blockingClient = await cache.redisPool.acquire();
+   const runWithClient = <T>(fn: (c: any) => Promise<T>) =>
+      cache.redisPool.useClient(fn);
 
-   // init WS once
    if (!webSocketManager.redisCache) {
-      await webSocketManager.initialize(redisCache);
+      await webSocketManager.initialize(cache);
    }
-   const wsClient = getWebSocketClient();
+   const ws = getWebSocketClient();
 
    while (true) {
-      let rawJob: string;
       try {
-         // 1) pop next job
-         const result = await blockingClient.blpop(JOB_QUEUE_KEY, 0);
-         if (!result) {
-            await sleep(JOB_DELAY_MS);
+         const rawJob = await blockingClient.brpoplpush(
+            JOB_QUEUE_KEY,
+            PROCESSING_QUEUE,
+            0
+         );
+         if (rawJob === null) {
             continue;
          }
-         [, rawJob] = result;
          const swap = JSON.parse(rawJob);
 
-         // 2) figure out mint
-         const token0IsSol =
-            swap.token0Address === "So11111111111111111111111111111111111111112";
-         const tokenMint = token0IsSol ? swap.token1Address : swap.token0Address;
 
-         //  per‐token lock 
-         const lockKey = `processing:${tokenMint}`;
-         const lockId = crypto.randomUUID();
-         const gotLock = await redisCache.acquireLock(
-            lockKey,
-            lockId,
-            30_000
-         );
-         if (!gotLock) {
-            await blockingClient.rpush(JOB_QUEUE_KEY, rawJob);
-            logger.log(`Re-queued ${tokenMint} because it’s locked`);
-            await sleep(JOB_DELAY_MS);
+         const nowSec = Math.floor(Date.now() / 1000);
+         const rateKey = `webhook:rate:${nowSec}`;
+         const count = await runWithClient(c => c.incr(rateKey)) as number;
+         if (count === 1) {
+            await runWithClient(c => c.expire(rateKey, 1));
+         }
+         if (count > MAX_JOBS_PER_SEC) {
+            await runWithClient(c => c.rpush(JOB_QUEUE_KEY, rawJob));
+            continue;
+         }
+
+         const token0IsSol = swap.token0Address === SOL_ADDRESS;
+         const mint = token0IsSol ? swap.token1Address : swap.token0Address;
+
+         const cacheKey = `codex-webhook:${mint}`;
+         let tokenJson = await cache.get(cacheKey);
+         let token = tokenJson ? JSON.parse(tokenJson) : null;
+         if (!token) {
+            const rows = await getDB()
+               .select()
+               .from(tokens)
+               .where(eq(tokens.mint, mint))
+               .limit(1)
+               .execute();
+            if (rows[0]) {
+               token = rows[0];
+               // cache for 1h
+               await cache.set(cacheKey, JSON.stringify(token), 3600);
+            }
+         }
+
+         if (!token) {
+            await runWithClient(c => c.lrem(PROCESSING_QUEUE, 1, rawJob));
             continue;
          }
 
          try {
-            // 3) global rate‐limit
-            const nowSec = Math.floor(Date.now() / 1000);
-            const rateKey = `webhook:rate:${nowSec}`;
-            const count = await redisCache.redisPool.useClient((c) => c.incr(rateKey));
-            if (count === 1) {
-               await redisCache.redisPool.useClient((c) => c.expire(rateKey, 1));
-            }
-            if (count > MAX_JOBS_PER_SECOND) {
-               await blockingClient.rpush(JOB_QUEUE_KEY, rawJob);
-               await sleep(JOB_DELAY_MS * 5);
-               continue;
-            }
-
-            const dedupeKey = `codex:throttle:${tokenMint}`;
-            const seen = await redisCache.redisPool.useClient((c) =>
-               c.set(dedupeKey, "1", "EX", 1, "NX")
-            );
-            if (seen === null) {
-               await sleep(JOB_DELAY_MS);
-               continue;
-            }
-
-            let token: any = null;
-            const cacheKey = `codex-webhook:${tokenMint}`;
-            const cached = await redisCache.get(cacheKey);
-            if (cached) {
-               token = JSON.parse(cached);
-            } else {
-               const db = getDB();
-               const rows = await db
-                  .select()
-                  .from(tokens)
-                  .where(eq(tokens.mint, tokenMint))
-                  .limit(1)
-                  .execute();
-               if (rows[0]) {
-                  token = rows[0];
-                  await redisCache.set(cacheKey, JSON.stringify(token), 60 * 60);
-               }
-            }
-            if (!token) {
-               await sleep(JOB_DELAY_MS);
-               continue;
-            }
-
-            try {
-               const latestCandle = await getLatestCandle(tokenMint, swap, token);
-               await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
-            } catch (e) {
-               logger.error("Error sending candle:", e);
-            }
-
-            try {
-               const ext = await ExternalToken.create(tokenMint, redisCache);
-               await ext.updateMarketAndHolders();
-            } catch (e) {
-               logger.error("Error updating market & holders:", e);
-            }
-
-            try {
-               const ext = await ExternalToken.create(tokenMint, redisCache);
-               await ext.updateLatestSwapData(10);
-            } catch (e) {
-               logger.error("Error updating latest swap data:", e);
-            }
-
-         } finally {
-            await redisCache.releaseLock(lockKey, lockId);
+            const candle = await getLatestCandle(mint, swap, token);
+            ws.to(`token-${mint}`).emit("newCandle", candle);
+         } catch (e) {
+            logger.error(`Error sending candle for ${mint}:`, e);
          }
 
-         await sleep(JOB_DELAY_MS);
+         try {
+            const ext = await ExternalToken.create(mint, cache);
+            await ext.updateMarketAndHolders();
+         } catch (e) {
+            logger.error(`Error updating market/holders for ${mint}:`, e);
+         }
 
+         try {
+            const ext = await ExternalToken.create(mint, cache);
+            await ext.updateLatestSwapData(10);
+         } catch (e) {
+            logger.error(`Error updating swaps for ${mint}:`, e);
+         }
+
+         await runWithClient(c => c.lrem(PROCESSING_QUEUE, 1, rawJob));
       } catch (err) {
-         logger.error("❌ Webhook worker error", err);
-         await sleep(JOB_DELAY_MS * 2);
+         logger.error("❌ Webhook worker error:", err);
       }
    }
-}
-
-workerLoop().catch((err) => {
-   logger.error("Fatal error in webhook worker:", err);
+})().catch(err => {
+   logger.error("Fatal in webhook worker:", err);
    process.exit(1);
 });
