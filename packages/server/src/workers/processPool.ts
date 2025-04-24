@@ -3,10 +3,12 @@ import { fork } from "child_process";
 import path from "path";
 import { getGlobalRedisCache, RedisCacheService } from "../redis";
 import { Redis } from "ioredis";
+import { logger } from "../util";
 
 const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 8;
 const JOB_QUEUE_KEY = "webhook:jobs";
 const WORKER_SCRIPT = path.join(__dirname, "processWebhook.ts");
+const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
 let enqueuer: RedisCacheService;
 
@@ -42,7 +44,39 @@ getGlobalRedisCache()
             console.error("Worker crashed:", err);
          });
       }
+
+      setInterval(async () => {
+         const now = Date.now();
+         const client = await enqueuer.redisPool.acquire();
+         try {
+            while (true) {
+               const head = await client.lindex(JOB_QUEUE_KEY, 0);
+               if (!head) break;
+               let job: { enqueuedAt: number; payload: any };
+               try {
+                  job = JSON.parse(head);
+               } catch {
+                  // malformed — drop it
+                  await client.lpop(JOB_QUEUE_KEY);
+                  continue;
+               }
+               if (now - job.enqueuedAt > STALE_THRESHOLD) {
+                  await client.lpop(JOB_QUEUE_KEY);
+                  logger.log(
+                     `[processPool] Purged stale job enqueued at ${new Date(
+                        job.enqueuedAt
+                     ).toISOString()}`
+                  );
+               } else {
+                  break;
+               }
+            }
+         } finally {
+            await enqueuer.redisPool.release(client);
+         }
+      }, 60 * 1000);
    })
+
    .catch((err) => {
       console.error("Failed to initialize Redis cache for queueing:", err);
       process.exit(1);
