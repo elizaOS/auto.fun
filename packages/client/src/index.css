@@ -227,21 +227,6 @@ button {
 }
 
 @layer utilities {
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .animate-fade-in {
-    animation: fade-in 350ms ease-in-out forwards;
-  }
-}
-
-@layer utilities {
   .clip-path-triangle-up {
     clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
   }
@@ -257,4 +242,25 @@ button {
   .clip-path-triangle-right {
     clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
   }
+}
+
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: black;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #03FF24;
+  border-radius: 0;
+  border: none;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #03FF24 #212121;
 }

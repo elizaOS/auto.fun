@@ -55,6 +55,8 @@
     "react-toastify": "^11.0.5",
     "react-tooltip": "^5.28.0",
     "tailwind-merge": "^3.0.2",
+    "tailwindcss-animate": "^1.0.7",
+    "tailwindcss-animated": "^2.0.0",
     "three": "^0.174.0",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
