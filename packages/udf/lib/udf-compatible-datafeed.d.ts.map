@@ -1,1 +1,0 @@
-{"version":3,"file":"udf-compatible-datafeed.d.ts","sourceRoot":"","sources":["../src/udf-compatible-datafeed.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,yBAAyB,EAAE,MAAM,gCAAgC,CAAC;AAG3E,OAAO,EAAE,4BAA4B,EAAE,MAAM,oBAAoB,CAAC;AAElE,qBAAa,qBAAsB,SAAQ,yBAAyB;gBAElE,WAAW,EAAE,MAAM,EACnB,eAAe,GAAE,MAAkB,EACnC,qBAAqB,CAAC,EAAE,4BAA4B;CAMrD"}
