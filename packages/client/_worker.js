@@ -30,6 +30,7 @@ export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         console.log(`[Worker v3] Request: ${url.pathname}`);
+        console.log(`[Worker v3] Full URL received: ${url.href}`);
 
         // Let API requests pass through to be handled by the backend/functions
         if (url.pathname.startsWith('/api/')) {
@@ -41,6 +42,7 @@ export default {
         // Fetch the asset AS IS from the Pages platform first.
         // This handles static assets AND the index.html for SPA routes correctly.
         console.log(`[Worker v3] Fetching asset/page via env.ASSETS.fetch for: ${url.pathname}`);
+        console.log(`[Worker v3] Original request URL passed to ASSETS.fetch: ${request.url}`);
         let response = await env.ASSETS.fetch(request);
 
         // Clone the response so we can read headers and still use the body
@@ -59,13 +61,14 @@ export default {
             const defaultDescription = 'press the fun button';
             // Use url.origin which correctly reflects the current domain (pages.dev or custom)
             const siteBaseUrl = url.origin;
+            const serverUrl = env.SERVER_URL || 'https://api.auto.fun';
 
             if (match && match[1]) {
                 // --- Dynamic Token Route ---
                 const mint = match[1];
                 console.log(`[Worker v3] Matched token route: ${mint}`);
                 // Point og:image to the API endpoint that generates the image
-                const dynamicImageUrl = `${siteBaseUrl}/api/og-image/${mint}.png`;
+                const dynamicImageUrl = `${serverUrl}/api/og-image/${mint}.png`;
                 ogTags['og:title'] = `Token ${mint.substring(0, 4)}...${mint.substring(mint.length - 4)} - ${defaultTitle}`;
                 ogTags['og:description'] = `View ${mint.substring(0,4)}...${mint.substring(mint.length - 4)} on ${defaultTitle}.`; // More concise
                 ogTags['og:url'] = url.toString(); // Current full URL
