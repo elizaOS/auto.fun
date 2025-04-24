@@ -6,11 +6,13 @@ import useAuthentication, { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { RefreshCw, Send } from "lucide-react";
+import { RefreshCw, Send, Image as ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 import { getSocket } from "@/utils/socket"; // Import WebSocket utility
+import { ChatImage } from '../chat/ChatImage';
+import { getAuthToken } from "@/utils/auth";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -615,9 +617,9 @@ export default function ChatSection() {
   }, [socket, tokenMint, selectedChatTier, scrollToBottom]); // Dependencies needed
 
   // --- Send Chat Message --- *REVISED* (Optimistic update remains, WS handles confirmation)
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (imageUrl?: string) => {
     if (
-      !chatInput.trim() ||
+      (!chatInput.trim() && !imageUrl) ||
       !tokenMint ||
       !publicKey ||
       !eligibleChatTiers.includes(selectedChatTier)
@@ -632,17 +634,18 @@ export default function ChatSection() {
       id: tempId,
       author: publicKey.toBase58(),
       tokenMint: tokenMint,
-      message: chatInput.trim(),
+      message: imageUrl || chatInput.trim(),
       tier: selectedChatTier,
       timestamp: new Date().toISOString(),
       isOptimistic: true,
-      hasLiked: false, // Assuming default
+      hasLiked: false,
     };
 
     // Optimistically add the message
     setChatMessages((prev) => [...prev, optimisticMessage]);
-    const messageToSend = chatInput.trim(); // Store message before clearing input
-    setChatInput("");
+    if (!imageUrl) {
+      setChatInput("");
+    }
 
     setTimeout(() => scrollToBottom(true), 50);
 
@@ -658,7 +661,7 @@ export default function ChatSection() {
             // 'X-Client-ID': socket?.clientId // Assuming socket wrapper exposes ID
           },
           body: JSON.stringify({
-            message: messageToSend, // Use stored message
+            message: imageUrl || chatInput.trim(), // Use stored message
           }),
         },
       );
@@ -775,246 +778,382 @@ export default function ChatSection() {
     );
   };
 
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageCaption, setImageCaption] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      console.log('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      console.log('Image size should be less than 5MB');
+      return;
+    }
+
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadImage = async () => {
+    if (!selectedImage) return;
+
+    setIsUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedImage);
+      reader.onloadend = async () => {
+        const base64Image = reader.result as string;
+        const authToken = getAuthToken();
+
+        const response = await fetch(`${env.apiUrl}/api/uploadImage`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({
+            image: base64Image,
+            caption: imageCaption,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to upload image');
+        }
+
+        const data = await response.json();
+        if (data.success && data.imageUrl) {
+          await handleSendMessage(data.imageUrl);
+          setSelectedImage(null);
+          setImagePreview(null);
+          setImageCaption('');
+        } else {
+          console.log('Failed to upload image');
+        }
+      };
+    } catch (error) {
+      console.log('Error uploading image:', error);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Add this useEffect to listen for shared images
+  useEffect(() => {
+    const handleShareToChat = (event: CustomEvent) => {
+      const { imageUrl } = event.detail;
+      setSelectedImage(imageUrl);
+      setImagePreview(imageUrl);
+      // Switch to chat tab (this assumes there's a way to switch tabs in the parent)
+      window.dispatchEvent(new CustomEvent('switchToChat'));
+    };
+
+    window.addEventListener('shareToChat', handleShareToChat as EventListener);
+    return () => {
+      window.removeEventListener('shareToChat', handleShareToChat as EventListener);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col my-2">
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Content Area */}
-        <div className="flex flex-col grow w-full">
-          <div className="flex flex-col h-[70vh] bg-black border-t-1 border-gray-700">
-            {/* Tier Selection Header */}
-            <div className="flex justify-between items-center p-2">
-              <div className="flex gap-2">
-                {CHAT_TIERS.map((tier) => {
-                  const isEligible = eligibleChatTiers.includes(tier);
-                  const isSelected = selectedChatTier === tier;
-                  return (
-                    <button
-                      key={tier}
-                      onClick={() => setSelectedChatTier(tier)}
-                      disabled={
-                        !isEligible || isChatLoading || isLoadingOlderMessages
-                      }
-                      className={`px-3 py-1 text-sm font-medium transition-colors
-                          ${isSelected ? "bg-[#03FF24] text-black" : "text-gray-300"}
-                          ${!isEligible ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700"}
-                          ${isChatLoading && isSelected ? "animate-pulse" : ""}
-                        `}
-                    >
-                      {formatTierLabel(tier)}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="small"
-                  variant="outline"
-                  onClick={() => {
-                    setOldestTimestamp(null);
-                    setHasOlderMessages(true);
-                    fetchChatMessages(selectedChatTier, false);
-                  }}
-                  disabled={
-                    isRefreshingMessages ||
-                    isChatLoading ||
-                    isLoadingOlderMessages
-                  }
-                  className="p-1"
-                >
-                  <RefreshCw
-                    size={16}
-                    className={
-                      isRefreshingMessages ||
-                      (isChatLoading && !isRefreshingMessages)
-                        ? "animate-spin"
-                        : ""
-                    }
-                  />
-                </Button>
-              </div>
-            </div>
-
-            {/* Message Display Area */}
-            <div
-              ref={chatContainerRef}
-              className="chat-scroll-container flex-grow overflow-y-auto p-2 space-y-3"
-            >
-              {/* --- Top Sentinel for Upward Pagination --- */}
-              <div ref={topSentinelRef} style={{ height: "1px" }} />
-
-              {/* Loading indicator for older messages */}
-              {isLoadingOlderMessages && (
-                <div className="flex items-center justify-center py-2">
-                  <Loader />
+    <div className="flex flex-col h-full">
+      <div className="flex flex-col my-2">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Content Area */}
+          <div className="flex flex-col grow w-full">
+            <div className="flex flex-col h-[70vh] bg-black border-t-1 border-gray-700">
+              {/* Tier Selection Header */}
+              <div className="flex justify-between items-center p-2">
+                <div className="flex gap-2">
+                  {CHAT_TIERS.map((tier) => {
+                    const isEligible = eligibleChatTiers.includes(tier);
+                    const isSelected = selectedChatTier === tier;
+                    return (
+                      <button
+                        key={tier}
+                        onClick={() => setSelectedChatTier(tier)}
+                        disabled={
+                          !isEligible || isChatLoading || isLoadingOlderMessages
+                        }
+                        className={`px-3 py-1 text-sm font-medium transition-colors
+                            ${isSelected ? "bg-[#03FF24] text-black" : "text-gray-300"}
+                            ${!isEligible ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700"}
+                            ${isChatLoading && isSelected ? "animate-pulse" : ""}
+                          `}
+                      >
+                        {formatTierLabel(tier)}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
 
-              {/* No More Older Messages Indicator */}
-              {!hasOlderMessages &&
-                chatMessages.length > 0 &&
-                !isLoadingOlderMessages && (
-                  <div className="text-center text-gray-500 text-xs py-2">
-                    Beginning of chat history
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="small"
+                    variant="outline"
+                    onClick={() => {
+                      setOldestTimestamp(null);
+                      setHasOlderMessages(true);
+                      fetchChatMessages(selectedChatTier, false);
+                    }}
+                    disabled={
+                      isRefreshingMessages ||
+                      isChatLoading ||
+                      isLoadingOlderMessages
+                    }
+                    className="p-1"
+                  >
+                    <RefreshCw
+                      size={16}
+                      className={
+                        isRefreshingMessages ||
+                        (isChatLoading && !isRefreshingMessages)
+                          ? "animate-spin"
+                          : ""
+                      }
+                    />
+                  </Button>
+                </div>
+              </div>
 
-              {(isBalanceLoading ||
-                (isChatLoading && chatMessages.length === 0)) &&
-                !isLoadingOlderMessages && (
-                  <div className="flex items-center justify-center w-full h-full">
+              {/* Message Display Area */}
+              <div
+                ref={chatContainerRef}
+                className="chat-scroll-container flex-grow overflow-y-auto p-2 space-y-3"
+              >
+                {/* --- Top Sentinel for Upward Pagination --- */}
+                <div ref={topSentinelRef} style={{ height: "1px" }} />
+
+                {/* Loading indicator for older messages */}
+                {isLoadingOlderMessages && (
+                  <div className="flex items-center justify-center py-2">
                     <Loader />
                   </div>
                 )}
 
-              {!isBalanceLoading &&
-                chatError &&
-                !isChatLoading &&
-                !isLoadingOlderMessages && (
-                  <div className="text-center py-8">
-                    <p className="text-red-500 mb-2">{chatError}</p>
-                    <Button
-                      size="small"
-                      variant="outline"
-                      onClick={() => fetchChatMessages(selectedChatTier)}
-                      disabled={isChatLoading}
-                    >
-                      Try Again
-                    </Button>
-                  </div>
-                )}
+                {/* No More Older Messages Indicator */}
+                {!hasOlderMessages &&
+                  chatMessages.length > 0 &&
+                  !isLoadingOlderMessages && (
+                    <div className="text-center text-gray-500 text-xs py-2">
+                      Beginning of chat history
+                    </div>
+                  )}
 
-              {!isBalanceLoading &&
-                !isChatLoading &&
-                chatMessages.length === 0 &&
-                !chatError &&
-                !isLoadingOlderMessages && (
-                  <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                    <p className="text-gray-500 mb-2">
-                      No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
-                      chat.
-                    </p>
-                    {!canChatInSelectedTier && publicKey && (
-                      <p className="text-yellow-500 text-sm">
-                        You need{" "}
-                        {getTierThreshold(selectedChatTier).toLocaleString()}+
-                        tokens to chat here.
-                      </p>
-                    )}
-                    {!publicKey && (
-                      <p className="text-yellow-500 text-sm">
-                        Connect your wallet to chat.
-                      </p>
-                    )}
-                  </div>
-                )}
+                {(isBalanceLoading ||
+                  (isChatLoading && chatMessages.length === 0)) &&
+                  !isLoadingOlderMessages && (
+                    <div className="flex items-center justify-center w-full h-full">
+                      <Loader />
+                    </div>
+                  )}
 
-              {!isBalanceLoading &&
-                chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
-                  >
+                {!isBalanceLoading &&
+                  chatError &&
+                  !isChatLoading &&
+                  !isLoadingOlderMessages && (
+                    <div className="text-center py-8">
+                      <p className="text-red-500 mb-2">{chatError}</p>
+                      <Button
+                        size="small"
+                        variant="outline"
+                        onClick={() => fetchChatMessages(selectedChatTier)}
+                        disabled={isChatLoading}
+                      >
+                        Try Again
+                      </Button>
+                    </div>
+                  )}
+
+                {!isBalanceLoading &&
+                  !isChatLoading &&
+                  chatMessages.length === 0 &&
+                  !chatError &&
+                  !isLoadingOlderMessages && (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                      <p className="text-gray-500 mb-2">
+                        No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
+                        chat.
+                      </p>
+                      {!canChatInSelectedTier && publicKey && (
+                        <p className="text-yellow-500 text-sm">
+                          You need{" "}
+                          {getTierThreshold(selectedChatTier).toLocaleString()}+
+                          tokens to chat here.
+                        </p>
+                      )}
+                      {!publicKey && (
+                        <p className="text-yellow-500 text-sm">
+                          Connect your wallet to chat.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                {!isBalanceLoading &&
+                  chatMessages.map((msg) => (
                     <div
-                      className={`p-3 max-w-[95%] rounded-lg shadow-md ${
-                        msg.isOptimistic
-                          ? "bg-gray-700/50 animate-pulse"
-                          : msg.author === publicKey?.toBase58()
-                            ? "bg-[#03FF24]/10 border border-[#03FF24]/30"
-                            : "bg-gray-700"
-                      }`}
+                      key={msg.id}
+                      className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
                     >
-                      <div className="flex justify-between items-start mb-1">
-                        {renderMessageAvatar(msg.author)}{" "}
-                        <span className="ml-2 text-xs text-gray-500">
-                          {formatTimestamp(msg.timestamp)}
-                        </span>
-                      </div>
+                      <div
+                        className={`p-3 max-w-[95%] ${
+                          msg.isOptimistic
+                            ? "bg-gray-700/50 animate-pulse"
+                            : msg.author === publicKey?.toBase58()
+                              ? "bg-[#03FF24]/10 border-2 border-[#03FF24]"
+                              : "bg-gray-700"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          {renderMessageAvatar(msg.author)}{" "}
+                          <span className="ml-2 text-xs text-gray-500">
+                            {formatTimestamp(msg.timestamp)}
+                          </span>
+                        </div>
 
-                      <p className="text-sm break-words whitespace-pre-wrap my-1">
-                        {msg.message}
-                      </p>
+                        {msg.message.startsWith('http') ? (
+                          <div className="relative w-full max-w-[500px] aspect-square border-2 border-[#03FF24] my-2 flex items-center justify-center bg-black">
+                            <img 
+                              src={msg.message} 
+                              alt="Chat image" 
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm break-words whitespace-pre-wrap my-1">
+                            {msg.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Chat input */}
+              <div className="p-4 pt-8 border-t-2 border-[#03FF24]/30 relative">
+                {selectedImage && (
+                  <div className="absolute -top-[380px] left-4 w-full z-10">
+                    <div className="relative w-full aspect-square max-w-[400px] border-4 border-[#03FF24] flex items-center justify-center bg-black">
+                      <img 
+                        src={imagePreview || ''} 
+                        alt="Preview" 
+                        className="w-full h-full object-contain"
+                      />
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                          <button
+                            className="w-8 h-8 bg-black/80 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all"
+                            title="Replace image"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                          </button>
+                        </label>
+                        <button
+                          onClick={() => {
+                            setSelectedImage(null);
+                            setImagePreview(null);
+                            setImageCaption('');
+                          }}
+                          className="w-8 h-8 bg-black/80 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all"
+                          title="Remove image"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                ))}
-            </div>
-
-            {/* Message Input Area */}
-            <div className="p-2 border-t border-gray-700">
-              {/* Scroll to bottom button */}
-              {showScrollButton && (
-                <button
-                  onClick={() => scrollToBottom(true)}
-                  className="fixed bottom-24 right-4 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                </button>
-              )}
-
-              {!canChatInSelectedTier && publicKey && (
-                <p className="text-center text-yellow-500 text-sm mb-2">
-                  You need {getTierThreshold(selectedChatTier).toLocaleString()}
-                  + tokens to chat here.
-                </p>
-              )}
-              {!publicKey && (
-                <p className="text-center text-yellow-500 text-sm mb-2">
-                  Connect your wallet to chat.
-                </p>
-              )}
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      !e.shiftKey &&
-                      !isSendingMessage &&
-                      canChatInSelectedTier
-                    ) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder={
-                    !isAuthenticated
-                      ? "Connect wallet to chat"
-                      : !eligibleChatTiers.includes(selectedChatTier)
-                        ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens`
-                        : `Message in ${formatTierLabel(selectedChatTier)} chat...`
-                  }
-                  disabled={!canChatInSelectedTier || isSendingMessage}
-                  className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm rounded-md disabled:opacity-60 disabled:cursor-not-allowed"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={
-                    !canChatInSelectedTier ||
-                    isSendingMessage ||
-                    !chatInput.trim()
-                  }
-                  className="p-2 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-md flex items-center justify-center w-10 h-10"
-                >
-                  {isSendingMessage ? (
-                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <Send size={20} />
-                  )}
-                </button>
+                )}
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder={selectedImage 
+                        ? `Add a message with your image to ${formatTierLabel(selectedChatTier)} chat`
+                        : `Message in ${formatTierLabel(selectedChatTier)} chat`}
+                      value={selectedImage ? imageCaption : chatInput}
+                      onChange={(e) => selectedImage ? setImageCaption(e.target.value) : setChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !isSendingMessage && canChatInSelectedTier) {
+                          e.preventDefault();
+                          if (selectedImage) {
+                            uploadImage();
+                          } else {
+                            handleSendMessage();
+                          }
+                        }
+                      }}
+                      className="w-full h-10 border-2 border-[#03FF24] bg-black text-white focus:outline-none focus:border-[#03FF24] px-3 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <div className="w-10 h-10 border-2 border-[#03FF24]/30 hover:border-[#03FF24] flex items-center justify-center transition-all">
+                        <ImageIcon className="w-5 h-5 text-[#03FF24]" />
+                      </div>
+                    </label>
+                    <button
+                      onClick={() => selectedImage ? uploadImage() : handleSendMessage()}
+                      disabled={selectedImage ? isUploadingImage : !chatInput.trim()}
+                      className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 transition-all flex items-center justify-center"
+                    >
+                      {isUploadingImage ? (
+                        <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin"></div>
+                      ) : (
+                        'Post'
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

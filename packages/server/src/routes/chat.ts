@@ -10,6 +10,7 @@ import {
 } from "../db";
 import { logger } from "../logger";
 import { getRpcUrl } from "../util";
+import { uploadWithS3 } from "../uploader";
 
 // ---=== Database Schema and Drizzle ===---
 import { Context } from "hono"; // Import Context type
@@ -664,6 +665,65 @@ chatRouter.post("/chat/:mint", async (c) => {
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
     );
+  }
+});
+
+// Add new endpoint for uploading chat images
+chatRouter.post("/chat/:tokenMint/:tier/upload-image", async (c) => {
+  try {
+    const user = c.get("user");
+    const { tokenMint, tier } = c.req.param();
+    const { imageBase64 } = await c.req.json();
+
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    if (!imageBase64) {
+      return c.json({ error: "No image data provided" }, 400);
+    }
+
+    // Validate tier
+    if (!["1k", "10k", "100k", "1M"].includes(tier)) {
+      return c.json({ error: "Invalid tier" }, 400);
+    }
+
+    // Extract content type and base64 data
+    const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+    if (!imageMatch) {
+      return c.json({ error: "Invalid image data URI format" }, 400);
+    }
+
+    const contentType = imageMatch[1];
+    const base64Data = imageMatch[2];
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    // Determine file extension
+    let extension = ".jpg";
+    if (contentType.includes("png")) extension = ".png";
+    else if (contentType.includes("gif")) extension = ".gif";
+    else if (contentType.includes("svg")) extension = ".svg";
+    else if (contentType.includes("webp")) extension = ".webp";
+
+    // Generate filename with wallet ID and timestamp
+    const timestamp = Date.now();
+    const filename = `${user.publicKey}-${timestamp}${extension}`;
+    const imageKey = `generations/tokens/${tokenMint}/${tier}/${filename}`;
+
+    // Upload using the uploader function
+    const imageUrl = await uploadWithS3(
+      imageBuffer,
+      { 
+        filename,
+        contentType,
+        basePath: `generations/tokens/${tokenMint}/${tier}`
+      }
+    );
+
+    return c.json({ success: true, imageUrl });
+  } catch (error) {
+    console.error("Error uploading chat image:", error);
+    return c.json({ error: "Failed to upload image" }, 500);
   }
 });
 
