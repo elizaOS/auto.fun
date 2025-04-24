@@ -99,7 +99,7 @@ parentPort?.on("message", async (data: any) => {
       }
 
       const ext = await ExternalToken.create(tokenMint, redisCache);
-      await ext.updateLatestSwapData(20);
+      await ext.updateLatestSwapData(5);
       const latestCandle = await getLatestCandle(tokenMint, swap, token);
       await ext.updateMarketAndHolders();
 

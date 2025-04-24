@@ -456,7 +456,7 @@ export async function processSwapEvent(
     }
 
     // Emit to token-specific room
-    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
+    await wsClient.emit(`global`, "newSwap", enrichedSwap);
 
     // Only log in debug mode or for significant events
     // Check for process is not ideal in Cloudflare Workers, use env var instead
