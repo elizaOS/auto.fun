@@ -14,7 +14,7 @@ import Verified from "@/components/verified";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
-import Helmet from "react-helmet";
+import { Helmet } from 'react-helmet-async';
 import {
   abbreviateNumber,
   formatNumber,
@@ -88,7 +88,7 @@ function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
 }
 
 export default function Page() {
-  const params = useParams();
+  const params = useParams<{ address: string }>();
   const address = params?.address;
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
@@ -226,12 +226,31 @@ export default function Page() {
     );
   }
 
+  // --- Helmet Setup --- Add this block
+  const apiBaseUrl = env.apiUrl || ''; // Use env helper
+  const ogImageUrl = address ? `${apiBaseUrl}/api/og-image/${address}.png` : `${apiBaseUrl}/default-og-image.png`; // Use API base URL and default
+  const pageUrl = window.location.href; // Or construct canonical URL
+  const defaultDescription = `View ${token?.name || 'token'} details, price, and market cap on auto.fun.`;
+  const title = `${token?.name || 'Token'} (${token?.ticker || '--'}) - auto.fun`;
+  // --- End Helmet Setup ---
+
   return (
     <Fragment>
       <Helmet>
-        <title>
-          {token?.name} ({token?.ticker}) - auto.fun
-        </title>
+        <title>{title}</title>
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={token?.description || defaultDescription} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={token?.description || defaultDescription} />
+        <meta name="twitter:image" content={ogImageUrl} />
+        {/* Add other meta tags like site name, favicon links etc. if not in Layout */}
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}

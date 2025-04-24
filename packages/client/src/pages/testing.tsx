@@ -1,5 +1,6 @@
 import { env } from "@/utils/env";
 import { useCallback, useEffect, useState, useRef } from "react"; // Added useRef
+import Button from "@/components/button"; // Import Button component
 // --- Vanity Generator Logic ---
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline";
@@ -63,6 +64,14 @@ export default function TwitterSharePage() {
   const startTimeRef = useRef<number | null>(null);
   const logUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const attemptBatchRef = useRef<number>(0); // Batch attempts for smoother rate update
+
+  // --- OG Image Test State ---
+  const [ogTestMint, setOgTestMint] = useState<string>("8btUuvx2Bu4zTd8g1tN5wCKMULyPgqiPaDiJbFbWkFUN"); // <<< Set default mint
+  const [ogPreviewUrl, setOgPreviewUrl] = useState<string | null>(null);
+  const [ogIsLoading, setOgIsLoading] = useState<boolean>(false);
+  const [ogError, setOgError] = useState<string | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null); // Ref for image load/error events
+  // --- End OG Image Test State ---
 
   // --- Helper to add logs ---
   const addVanityLog = useCallback((message: string) => {
@@ -450,6 +459,55 @@ export default function TwitterSharePage() {
     }
   }, [vanitySuffix, isGenerating, addVanityLog, stopVanityGeneration]); // Removed totalAttempts from deps
 
+  // --- OG Image Test Logic ---
+  const generateOgImageUrl = (mint: string, refresh: boolean = false) => {
+    if (!mint.trim()) {
+      setOgError("Please enter a token mint address.");
+      setOgPreviewUrl(null);
+      return null;
+    }
+    let imageUrl = `${env.apiUrl}/api/og-image/${mint.trim()}.png?timestamp=${Date.now()}`;
+    if (refresh) {
+      imageUrl += '&refresh=true';
+    }
+    return imageUrl;
+  };
+
+  const handleOgTestGenerate = () => {
+    const imageUrl = generateOgImageUrl(ogTestMint);
+    if (!imageUrl) return;
+
+    setOgError(null);
+    setOgIsLoading(true);
+    setOgPreviewUrl(null); // Clear previous image before setting new one
+    console.log(`Setting OG image preview URL to: ${imageUrl}`);
+    setOgPreviewUrl(imageUrl);
+  };
+
+  const handleOgRefresh = () => {
+    const imageUrl = generateOgImageUrl(ogTestMint, true); // Pass refresh=true
+    if (!imageUrl) return;
+
+    setOgError(null);
+    setOgIsLoading(true);
+    setOgPreviewUrl(null); // Clear previous image before setting new one
+    console.log(`Setting REFRESHED OG image preview URL to: ${imageUrl}`);
+    setOgPreviewUrl(imageUrl);
+  };
+
+  const handleImageLoad = () => {
+    console.log("OG Image loaded successfully.");
+    setOgIsLoading(false);
+    setOgError(null);
+  };
+
+  const handleImageError = () => {
+    console.error("Failed to load OG Image from generated URL.");
+    setOgIsLoading(false);
+    setOgError("Failed to load image. Check the mint address or server logs.");
+    setOgPreviewUrl(null); // Clear the broken image link
+  };
+
   // Cleanup workers on component unmount
   useEffect(() => {
     // Store the ref value in a variable before returning the cleanup function
@@ -477,9 +535,9 @@ export default function TwitterSharePage() {
 
   // --- Render ---
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white divide-y divide-gray-700">
       {/* --- Twitter Share Section --- */}
-      <div className="w-full max-w-md mb-12">
+      <div className="w-full max-w-md py-12">
         <h1 className="text-4xl font-bold mb-8 text-[#00FF04] text-center">
           Twitter Share Demo
         </h1>
@@ -578,7 +636,7 @@ export default function TwitterSharePage() {
       </div>
 
       {/* --- Solana Vanity Address Generator Section --- */}
-      <div className="w-full max-w-xl mt-12 border-t border-gray-700 pt-12">
+      <div className="w-full max-w-xl py-12">
         <h2 className="text-3xl font-bold mb-6 text-[#00FF04] text-center">
           Solana Vanity Address Generator
         </h2>
@@ -664,6 +722,74 @@ export default function TwitterSharePage() {
           hardware wallets. Handle generated secret keys with extreme care.
         </div>
       </div>
+
+      {/* --- OG Image Generator Test Section --- */}
+      <div className="w-full max-w-2xl py-12">
+        <h2 className="text-3xl font-bold mb-6 text-[#00FF04] text-center">
+          OG Image Generator Test
+        </h2>
+        <p className="text-center text-gray-400 mb-6 text-sm">
+          Enter a token mint address to preview its generated Open Graph image.
+        </p>
+
+        <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4 rounded-lg">
+          <label htmlFor="ogMint" className="text-gray-300 font-medium shrink-0">
+            Token Mint:
+          </label>
+          <input
+            type="text"
+            id="ogMint"
+            value={ogTestMint}
+            onChange={(e) => setOgTestMint(e.target.value)}
+            placeholder="Enter token mint address..."
+            className="flex-grow bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-[#00FF04]"
+          />
+          <Button
+            onClick={handleOgTestGenerate}
+            disabled={ogIsLoading}
+            className="shrink-0"
+            variant="secondary" // Or your preferred style
+          >
+            {ogIsLoading ? "Loading..." : "Preview OG Image"}
+          </Button>
+          {/* Add Refresh Button */}
+          <Button
+            onClick={handleOgRefresh}
+            disabled={ogIsLoading}
+            className="shrink-0"
+            variant="secondary" // Or your preferred style
+          >
+            {ogIsLoading ? "Refreshing..." : "Refresh Preview"}
+          </Button>
+        </div>
+
+        {/* Preview Area */}
+        <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700 min-h-[315px] flex items-center justify-center">
+          {ogPreviewUrl && (
+            <img
+              ref={imageRef}
+              key={ogPreviewUrl} // Force re-render when URL changes
+              src={ogPreviewUrl}
+              alt={`OG Preview for ${ogTestMint}`}
+              className="max-w-full h-auto border border-gray-600"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              style={{ width: '600px', height: '315px' }} // Standard OG aspect ratio
+            />
+          )}
+          {ogIsLoading && !ogPreviewUrl && (
+            <p className="text-gray-400">Loading preview...</p>
+          )}
+          {!ogIsLoading && !ogPreviewUrl && !ogError && (
+             <p className="text-gray-500">Enter a mint and click preview.</p>
+          )}
+          {ogError && (
+            <p className="text-red-400">Error: {ogError}</p>
+          )}
+        </div>
+      </div>
+      {/* --- End OG Image Test Section --- */}
+
     </div>
   );
 }
