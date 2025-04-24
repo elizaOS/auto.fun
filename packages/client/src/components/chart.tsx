@@ -7,7 +7,7 @@ import {
   DeepPartial,
   ChartOptions as LightweightChartOptions,
 } from "lightweight-charts";
-import { getSocket } from "@/utils/socket";
+import { getSocket, Socket } from "@/utils/socket";
 import { getChartTable } from "@/utils/api";
 import { Codex } from "@codex-data/sdk";
 import { SymbolType } from "@codex-data/sdk/dist/sdk/generated/graphql";
@@ -26,14 +26,17 @@ export default function Chart({ mint, isImported }: ChartProps) {
     to: number;
   } | null>(null);
 
+  const useCodex = isImported;
+
   const { data: chartData, isLoading } = useQuery({
-    queryKey: ["chart", mint, isImported],
+    queryKey: ["chart", mint, useCodex],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
       const from = to - 21600; // 6 hours
 
-      if (isImported) {
+      if (useCodex) {
         const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
+
         const { getBars } = await codex.queries.getBars({
           currencyCode: "USD",
           from,
@@ -111,7 +114,6 @@ export default function Chart({ mint, isImported }: ChartProps) {
 
     if (!chartElement) return;
 
-    const socket = getSocket();
     const chart = createChart(chartElement, chartOptions);
     chartRef.current = chart;
 
@@ -141,25 +143,33 @@ export default function Chart({ mint, isImported }: ChartProps) {
 
     window.addEventListener("resize", handleResize);
 
-    socket.on("newCandle", (data: any) => {
-      console.log({ newCandle: data });
+    let socket: Socket | undefined;
+    /** Handle Websockets for improts and bonded tokens */
+    if (useCodex) {
+    } else {
+      /** Handle incoming data for non-bonded tokens */
+      socket = getSocket();
+      socket.on("newCandle", (data: any) => {
+        if (data.token === mint && candlestickSeriesRef.current) {
+          const newCandle = {
+            time: data.time * 1000,
+            open: data.open,
+            high: data.high,
+            low: data.low,
+            close: data.close,
+          };
 
-      if (data.token === mint && candlestickSeriesRef.current) {
-        const newCandle = {
-          time: data.time * 1000,
-          open: data.open,
-          high: data.high,
-          low: data.low,
-          close: data.close,
-        };
-
-        candlestickSeriesRef.current.update(newCandle);
-      }
-    });
+          candlestickSeriesRef.current.update(newCandle);
+        }
+      });
+    }
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      socket.off("newCandle");
+      if (useCodex) {
+      } else if (socket) {
+        socket.off("newCandle");
+      }
       chart.remove();
     };
   }, [mint]);
