@@ -101,9 +101,10 @@ export class TokenMigrator {
     for (const lockKey of lockKeys) {
       const isLocked = await this.redisCache.get(lockKey);
       if (isLocked !== "true") continue;
+      console.log({ lockKey })
 
-      // extract the mint from "migration:<mint>:lock"
-      const [, mint] = lockKey.split(":");
+      const [, , mint] = lockKey.split(":");
+      console.log(`[Migrate] Found locked token: ${mint}`);
       logger.log(`[Migrate] Resuming migration for token ${mint}`);
 
       // load the token from DB (or skip if missing)
