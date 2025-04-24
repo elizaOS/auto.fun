@@ -38,6 +38,16 @@ export interface MigrationStep {
   eventName?: string;
 }
 
+function safeParse<T>(raw: string | null | undefined, defaultValue: T): T {
+  if (!raw) return defaultValue;
+  try {
+    return JSON.parse(raw) as T;
+  } catch (err) {
+    logger.error(`Failed to JSON.parse Redis field: ${raw}`, err);
+    return defaultValue;
+  }
+}
+
 export async function getToken(
   mint: string,
 ): Promise<TokenData | null> {
@@ -63,7 +73,10 @@ export async function getToken(
       tokenDecimals = supplyResult.tokenDecimals;
       lastSupplyUpdate = new Date(supplyResult.lastSupplyUpdate);
     }
-
+    const withdrawnAmounts = safeParse<{ withdrawnSol: number; withdrawnTokens: number } | "">(
+      tokenDb.withdrawnAmounts,
+      ""
+    )
     const token: TokenData = {
       id: tokenDb.id,
       name: tokenDb.name,
@@ -110,14 +123,11 @@ export async function getToken(
       lastPriceUpdate: tokenDb.lastPriceUpdate ?? undefined,
       holderCount: tokenDb.holderCount ?? undefined,
       txId: tokenDb.txId ?? undefined,
-      withdrawnAmounts: tokenDb.withdrawnAmounts
-        ? JSON.parse(tokenDb.withdrawnAmounts)
-        : undefined,
-      poolInfo: tokenDb.poolInfo ? JSON.parse(tokenDb.poolInfo) : undefined,
-      migration:
-        typeof tokenDb.migration === "string"
-          ? JSON.parse(tokenDb.migration)
-          : (tokenDb.migration ?? {}),
+      withdrawnAmounts: withdrawnAmounts ?? undefined,
+      poolInfo: safeParse<any>(tokenDb.poolInfo, undefined),
+      migration: typeof tokenDb.migration === "string"
+        ? safeParse<Record<string, any>>(tokenDb.migration, {})
+        : (tokenDb.migration ?? {}),
       tokenSupply: tokenDb.tokenSupply ?? undefined,
       tokenSupplyUiAmount: tokenDb.tokenSupplyUiAmount ?? undefined,
       tokenDecimals: tokenDb.tokenDecimals ?? undefined,
