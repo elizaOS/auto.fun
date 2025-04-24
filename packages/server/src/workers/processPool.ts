@@ -1,4 +1,3 @@
-// processPool.ts
 import { fork } from "child_process";
 import path from "path";
 import { getGlobalRedisCache, RedisCacheService } from "../redis";
@@ -12,12 +11,10 @@ const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
 let enqueuer: RedisCacheService;
 
-// 1) initialize Redis, flush the queue, then spawn workers
 getGlobalRedisCache()
    .then(async (c) => {
       enqueuer = c;
 
-      // clear any leftover jobs from previous runs
       await enqueuer.redisPool.useClient((client: Redis) =>
          client.del(JOB_QUEUE_KEY)
       );
