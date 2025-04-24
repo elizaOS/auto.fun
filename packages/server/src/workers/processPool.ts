@@ -1,59 +1,91 @@
+// processPool.ts
 import { fork } from "child_process";
 import path from "path";
+import { getGlobalRedisCache, RedisCacheService } from "../redis";
+import { Redis } from "ioredis";
+import { logger } from "../util";
 
-const MAX_WORKERS = 4;
-const workerPath = path.join(__dirname, "processWebhook.ts");
+const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 8;
+const JOB_QUEUE_KEY = "webhook:jobs";
+const WORKER_SCRIPT = path.join(__dirname, "processWebhook.ts");
+const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
-type Job = { data: any };
+let enqueuer: RedisCacheService;
 
-const jobQueue: Job[] = [];
-const workers: (ReturnType<typeof fork> | null)[] = Array(MAX_WORKERS).fill(null);
-const busy: boolean[] = Array(MAX_WORKERS).fill(false);
+// 1) initialize Redis, flush the queue, then spawn workers
+getGlobalRedisCache()
+   .then(async (c) => {
+      enqueuer = c;
 
-function startWorker(index: number, job: Job) {
-   busy[index] = true;
+      // clear any leftover jobs from previous runs
+      await enqueuer.redisPool.useClient((client: Redis) =>
+         client.del(JOB_QUEUE_KEY)
+      );
+      console.log(`[processPool] Cleared Redis queue key "${JOB_QUEUE_KEY}"`);
 
-   const child = fork(workerPath, {
-      execArgv: ["--loader", "ts-node/esm"],
-      env: process.env,
-   });
+      // now spawn N workers
+      for (let i = 0; i < MAX_WORKERS; i++) {
+         const child = fork(WORKER_SCRIPT, {
+            execArgv: ["--loader", "ts-node/esm"],
+            env: process.env,
+         });
 
-   workers[index] = child;
+         child.on("exit", (code) => {
+            console.error(`Worker exited with code ${code}, restarting…`);
+            setTimeout(() => {
+               fork(WORKER_SCRIPT, {
+                  execArgv: ["--loader", "ts-node/esm"],
+                  env: process.env,
+               });
+            }, 1_000);
+         });
 
-   child.send(job.data);
-
-   child.on("exit", (code) => {
-      busy[index] = false;
-      workers[index] = null;
-      if (code !== 0) {
-         console.error("❌ Worker exited with error");
+         child.on("error", (err) => {
+            console.error("Worker crashed:", err);
+         });
       }
-      runQueue();
+
+      setInterval(async () => {
+         const now = Date.now();
+         const client = await enqueuer.redisPool.acquire();
+         try {
+            while (true) {
+               const head = await client.lindex(JOB_QUEUE_KEY, 0);
+               if (!head) break;
+               let job: { enqueuedAt: number; payload: any };
+               try {
+                  job = JSON.parse(head);
+               } catch {
+                  // malformed — drop it
+                  await client.lpop(JOB_QUEUE_KEY);
+                  continue;
+               }
+               if (now - job.enqueuedAt > STALE_THRESHOLD) {
+                  await client.lpop(JOB_QUEUE_KEY);
+                  logger.log(
+                     `[processPool] Purged stale job enqueued at ${new Date(
+                        job.enqueuedAt
+                     ).toISOString()}`
+                  );
+               } else {
+                  break;
+               }
+            }
+         } finally {
+            await enqueuer.redisPool.release(client);
+         }
+      }, 60 * 1000);
+   })
+
+   .catch((err) => {
+      console.error("Failed to initialize Redis cache for queueing:", err);
+      process.exit(1);
    });
 
-   child.on("error", (err) => {
-      console.error("❌ Worker crashed:", err);
-      busy[index] = false;
-      workers[index] = null;
-      runQueue();
-   });
-}
-
-function runQueue() {
-   const nextJob = jobQueue.shift();
-   if (!nextJob) return;
-
-   const freeIndex = busy.findIndex((b) => !b);
-   if (freeIndex !== -1) {
-      startWorker(freeIndex, nextJob);
-   } else {
-      // back at the front of the queue
-      jobQueue.unshift(nextJob);
-      console.log("Job re-queued:", nextJob);
-   }
-}
-
-export function queueJob(data: any) {
-   jobQueue.push({ data });
-   runQueue();
+// 2) job enqueuer
+export function queueJob(data: any): Promise<number> {
+   const payload = JSON.stringify(data);
+   return enqueuer.redisPool.useClient((client: Redis) =>
+      client.rpush(JOB_QUEUE_KEY, payload)
+   );
 }

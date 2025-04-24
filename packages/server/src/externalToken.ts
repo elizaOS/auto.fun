@@ -353,7 +353,7 @@ export class ExternalToken {
       );
       for (const swap of sortedSwaps) {
         await this.wsClient
-          .to(`global`)
+          .to(`token-${this.mint}`)
           .emit("newSwap", {
             ...swap,
             tokenMint: this.mint,
@@ -492,7 +492,7 @@ export class ExternalToken {
     // Instantiate Redis client
     const redisCache = await getGlobalRedisCache();
     const listKey = `swapsList:${this.mint}`;
-
+    const seenKey = `swapsSeen:${this.mint}`;
     // Sort swaps by ascending timestamp (oldest first)
     // Important: We push to the START of the list (lpush),
     // so processing oldest first ensures the list maintains newest-at-the-start order.
@@ -517,9 +517,27 @@ export class ExternalToken {
               ? swap.timestamp.toISOString()
               : swap.timestamp,
         };
-        await redisCache.lpush(listKey, JSON.stringify(swapToStore));
+        const isNew = await redisCache.sadd(seenKey, swap.txId);
+        if (isNew === 0) {
+          logger.info(`Skipping duplicate tx ${swap.txId}`);
+          continue;
+        }
+        await redisCache.lpushTrim(listKey, JSON.stringify(swapToStore), MAX_SWAPS_TO_KEEP);
         // Trim after each push to keep the list size controlled
-        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+        const rawList = await redisCache.lrange(listKey, 0, -1);
+        const currentTxIds = rawList
+          .map((raw) => {
+            try {
+              return (JSON.parse(raw) as ProcessedSwap).txId;
+            } catch {
+              return null;
+            }
+          })
+          .filter((txId): txId is string => !!txId);
+        const tmpKey = `${seenKey}:tmp`;
+        await redisCache.redisPool.useClient((c) =>
+          c.sadd(tmpKey, ...currentTxIds)
+        );
         insertedCount++;
       } catch (redisError) {
         logger.error(

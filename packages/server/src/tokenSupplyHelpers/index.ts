@@ -229,7 +229,7 @@ async function processSwapLog(
         ),
       };
       // Emit event to all clients via WebSocket
-      await wsClient.emit(`global`, "newSwap", {
+      await wsClient.emit(`token-${mintAddress}`, "newSwap", {
         ...swapRecord,
         mint: mintAddress, // Add mint field for compatibility
         timestamp: swapRecord.timestamp.toISOString(), // Emit ISO string

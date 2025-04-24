@@ -497,7 +497,7 @@ async function handleSwap(
 
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);
       console.log("fetched latest candle", latestCandle);
-      await wsClient.to(`global`).emit("newCandle", latestCandle);
+      await wsClient.to(`token-${mintAddress}`).emit("newCandle", latestCandle);
 
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
       const enrichedToken = {
