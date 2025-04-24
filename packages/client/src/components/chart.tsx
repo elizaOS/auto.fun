@@ -136,6 +136,8 @@ export default function Chart({ token }: ChartProps) {
           const decimalsLength = String(price)?.split(".")?.[1];
           return new Intl.NumberFormat("en-US", {
             notation: "standard",
+            style: "currency",
+            currency: 'USD',
             maximumFractionDigits:
               Number(decimalsLength || "1") > 8
                 ? 8
@@ -218,8 +220,8 @@ export default function Chart({ token }: ChartProps) {
     >
       <div
         className={twMerge([
-          "size-full absolute left-0 top-0 z-50 transition-opacity duration-300",
-          !query?.isPending ? "opacity-0" : "opacity-100",
+          "size-full absolute left-0 top-0 transition-opacity duration-300",
+          !query?.isPending ? "opacity-0 z-0" : "opacity-100 z-10",
         ])}
       >
         <Loader className="h-full bg-autofun-background-primary" />
