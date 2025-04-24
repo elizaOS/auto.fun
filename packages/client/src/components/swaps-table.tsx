@@ -230,7 +230,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                   </TableCell>
                   <TableCell className="text-right text-sm text-autofun-text-secondary">
                     <Interval
-                      ms={1000}
+                      ms={800}
                       resolver={() => fromNow(timestamp, true)}
                     />
                   </TableCell>
