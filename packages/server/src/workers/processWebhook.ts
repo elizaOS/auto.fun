@@ -11,7 +11,7 @@ import crypto from "node:crypto";
 import { webSocketManager } from '../websocket-manager';
 
 const JOB_QUEUE_KEY = "webhook:jobs";
-
+const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 500;
 async function workerLoop() {
    const redisCache = await getGlobalRedisCache();
    if (!await redisCache.isPoolReady()) {
@@ -92,9 +92,11 @@ async function workerLoop() {
          } catch (e) {
             logger.error("Error updating latest swap data", e);
          }
+         await new Promise((resolve) => setTimeout(resolve, JOB_DELAY_MS));
       } catch (err) {
          logger.error("❌ Webhook worker error", err);
          // continue;
+         await new Promise((resolve) => setTimeout(resolve, JOB_DELAY_MS));
       }
    }
 }
