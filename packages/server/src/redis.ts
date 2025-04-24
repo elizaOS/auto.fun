@@ -97,7 +97,10 @@ export class RedisCacheService {
   async del(key: string): Promise<number> {
     return this.redisPool.useClient((client) => client.del(this.getKey(key)));
   }
-
+  async keys(pattern: string): Promise<string[]> {
+    const p = this.getKey(pattern);
+    return this.redisPool.useClient(client => client.keys(p));
+  }
   async exists(key: string): Promise<boolean> {
     return this.redisPool.useClient(async (client) => {
       const result = await client.exists(this.getKey(key));
