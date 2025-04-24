@@ -34,6 +34,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
+import Chart from "@/components/chart";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;
@@ -368,7 +369,7 @@ export default function Page() {
                   ];
 
                   const availableLinks = socialLinks.filter(
-                    (link) => !!link.url,
+                    (link) => !!link.url
                   );
 
                   if (availableLinks.length === 0) {
@@ -502,7 +503,7 @@ export default function Page() {
                 {activeTab === "chart" && (
                   <>
                     <div className="w-full h-[50vh] bg-autofun-background-primary">
-                      <TradingViewChart name={token.name} token={token.mint} />
+                      <Chart mint={token.mint} />
                     </div>
 
                     <TransactionsAndHolders token={token} />
@@ -547,7 +548,7 @@ export default function Page() {
                     {formatNumber(
                       tokenBalance * currentPrice * solanaPrice,
                       true,
-                      false,
+                      false
                     )}
                   </span>
                 </div>
@@ -610,7 +611,7 @@ export default function Page() {
                         (token?.reserveLamport - token?.virtualReserves) /
                           LAMPORTS_PER_SOL,
                         true,
-                        true,
+                        true
                       )}{" "}
                       SOL in the bonding curve.
                     </p>

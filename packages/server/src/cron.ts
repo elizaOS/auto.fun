@@ -446,6 +446,8 @@ async function handleSwap(
 
 
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);
+
+      // TODO - Joey ask Malibu whether this global should actually be token-mint
       await wsClient.to(`global`).emit("newCandle", latestCandle);
 
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
