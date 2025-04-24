@@ -16,7 +16,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
     pending: "Pending",
     withdrawn: "Withdrawn",
     partner_import: "Imported",
-    imported: "Imported"
+    imported: "Imported",
   };
 
   const variantStatus: Record<IToken["status"] | "imported", TVariant> = {

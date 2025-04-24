@@ -46,7 +46,7 @@ export default function Page() {
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
-    "all",
+    "autofun",
   );
   const [bondingStatus, setBondingStatus] =
     useUrlSearchParams<BondingStatusType>("status", "all");
@@ -174,31 +174,35 @@ export default function Page() {
           </div>
         )}
         {/* Top Navigation */}
-        <div className="flex justify-between gap-1 w-full md:flex-wrap">
+        <div
+          className={`flex gap-1 w-full md:flex-wrap ${activeTab === "grid" ? "justify-between" : "justify-end"}`}
+        >
           {/* Grid Sort Buttons - Hide on Table View */}
-          <div className="flex items-center gap-1">
-            {/* TODO: change to toggle button for newest/oldest */}
-            <Button
-              variant={gridSortBy === "newest" ? "primary" : "outline"}
-              onClick={() => setGridSortBy("newest")}
-            >
-              New
-            </Button>
-            <Button
-              variant={gridSortBy === "all" ? "primary" : "outline"}
-              onClick={() => setGridSortBy("all")}
-            >
-              {/* featured represents all */}
-              Featured
-            </Button>
-            <Button
-              variant={gridSortBy === "marketCap" ? "primary" : "outline"}
-              onClick={() => setGridSortBy("marketCap")}
-            >
-              <span className="hidden sm:inline">Market Cap</span>
-              <span className="sm:hidden">MCap</span>
-            </Button>
-          </div>
+          {activeTab === "grid" && (
+            <div className="flex items-center gap-1">
+              {/* TODO: change to toggle button for newest/oldest */}
+              <Button
+                variant={gridSortBy === "newest" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("newest")}
+              >
+                New
+              </Button>
+              <Button
+                variant={gridSortBy === "all" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("all")}
+              >
+                {/* featured represents all */}
+                Featured
+              </Button>
+              <Button
+                variant={gridSortBy === "marketCap" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("marketCap")}
+              >
+                <span className="hidden sm:inline">Market Cap</span>
+                <span className="sm:hidden">MCap</span>
+              </Button>
+            </div>
+          )}
           <div className="relative flex" ref={filterRef}>
             <Button
               variant="outline"

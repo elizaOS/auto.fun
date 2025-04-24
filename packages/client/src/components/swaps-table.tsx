@@ -52,16 +52,15 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   return (
-    <div
-      className="space-y-12 h-fit overflow-y-hidden overflow-x-none relative"
-    >
+    <div className="space-y-12 h-fit overflow-y-hidden overflow-x-none relative">
       <div
         onMouseEnter={() => {
-          setPause(true)
+          setPause(true);
         }}
         onMouseLeave={() => {
-          setPause(false)
-        }}>
+          setPause(false);
+        }}
+      >
         <div className="absolute right-0 top-1 transform">
           <PausedIndicator show={paused} />
         </div>

@@ -63,11 +63,16 @@ export const useTokens = (params: UseTokensParams) => {
     const handleUpdate = (token: unknown) => {
       try {
         const updatedToken = validationSchema.parse(token);
-        infiniteQuery.setItems((items) =>
-          items.map((item) =>
-            item.mint === updatedToken.mint ? updatedToken : item,
-          ),
-        );
+        // Only update if token has a ticker
+        if (updatedToken.ticker) {
+          infiniteQuery.setItems((items) =>
+            items.map((item) =>
+              item.mint === updatedToken.mint ? updatedToken : item,
+            ),
+          );
+        } else {
+          console.log("Token has no ticker:", updatedToken);
+        }
       } catch (error) {
         console.error("Failed to parse token update:", error);
       }

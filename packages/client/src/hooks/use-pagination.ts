@@ -177,7 +177,6 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
     queryFn: async () => {
       if (page < 1 || !enabled) return null;
 
-
       const result = await fetchPaginatedData<TOutput, TInput>({
         endpoint,
         limit,
