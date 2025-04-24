@@ -122,6 +122,7 @@ export const users = pgTable("users", {
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
   suspended: integer("suspended").notNull().default(0),
+  isModerator: integer("is_moderator").notNull().default(0),
 });
 
 // MediaGenerations schema

@@ -29,11 +29,46 @@ const requireAdmin = async (c: any, next: Function) => {
   await next();
 };
 
+// New middleware that checks for admin OR moderator status
+const requireAdminOrModerator = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const isAdmin = adminAddresses.includes(user.publicKey);
+  
+  if (isAdmin) {
+    // Set a context variable to indicate this is a full admin
+    c.set('isFullAdmin', true);
+    await next();
+    return;
+  }
+  
+  // Check if user is a moderator
+  const db = getDB();
+  const moderatorCheck = await db
+    .select({ isModerator: users.isModerator })
+    .from(users)
+    .where(eq(users.address, user.publicKey))
+    .limit(1);
+  
+  const isModerator = moderatorCheck.length > 0 && moderatorCheck[0].isModerator === 1;
+  
+  if (!isModerator) {
+    return c.json({ error: "Admin or moderator privileges required" }, 403);
+  }
+  
+  // Mark this user as a moderator but not a full admin
+  c.set('isFullAdmin', false);
+  await next();
+};
+
 // Apply authentication middleware to all routes
 adminRouter.use("*", verifyAuth);
 
 // Route to update a token's social links
-adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/social", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -93,7 +128,7 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
 });
 
 // Route to set featured flag on tokens
-adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/featured", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -152,7 +187,7 @@ adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
 });
 
 // Route to set verified flag on tokens
-adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/verified", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -211,7 +246,7 @@ adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
 });
 
 // Route to set hidden flag on tokens
-adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/hidden", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -271,7 +306,7 @@ adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
 });
 
 // Route to set a user to suspended
-adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
+adminRouter.post("/users/:address/suspended", requireAdminOrModerator, async (c) => {
   try {
     const address = c.req.param("address");
     if (!address || address.length < 32 || address.length > 44) {
@@ -337,7 +372,7 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
 });
 
 // Route to get a single user by address
-adminRouter.get("/users/:address", requireAdmin, async (c) => {
+adminRouter.get("/users/:address", requireAdminOrModerator, async (c) => {
   try {
     const address = c.req.param("address");
     if (!address || address.length < 32 || address.length > 44) {
@@ -391,7 +426,7 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
 });
 
 // Route to get admin statistics
-adminRouter.get("/stats", requireAdmin, async (c) => {
+adminRouter.get("/stats", requireAdminOrModerator, async (c) => {
   try {
     const db = getDB();
 
@@ -431,7 +466,7 @@ adminRouter.get("/stats", requireAdmin, async (c) => {
 });
 
 // Route to retrieve users in a paginated way
-adminRouter.get("/users", requireAdmin, async (c) => {
+adminRouter.get("/users", requireAdminOrModerator, async (c) => {
   try {
     const queryParams = c.req.query();
     const isSearching = !!queryParams.search;
@@ -751,7 +786,7 @@ function buildAdminTokensCountBaseQuery(
 }
 
 // --- NEW: Route to retrieve ALL tokens (including hidden) for Admin Panel ---
-adminRouter.get("/tokens", requireAdmin, async (c) => {
+adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
   // --- Parameter Reading (similar to /api/tokens) ---
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
@@ -888,7 +923,7 @@ adminRouter.get("/tokens", requireAdmin, async (c) => {
 // --- END NEW ADMIN GET TOKENS ROUTE ---
 
 // --- Route to update core token details (name, ticker, image, url, description) ---
-adminRouter.put("/tokens/:mint/details", requireAdmin, async (c) => {
+adminRouter.put("/tokens/:mint/details", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -1011,7 +1046,7 @@ function getAdminS3Client(): S3Client {
 // --- End S3 imports and helpers ---
 
 // --- NEW: Route to update metadata JSON ---
-adminRouter.post("/tokens/:mint/metadata", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) => {
     try {
         const mint = c.req.param("mint");
         if (!mint || mint.length < 32 || mint.length > 44) {
@@ -1138,5 +1173,143 @@ adminRouter.post("/tokens/:mint/metadata", requireAdmin, async (c) => {
     }
 });
 // --- END METADATA UPDATE ROUTE ---
+
+// Routes for managing moderators (only accessible by full admins)
+// Get list of current moderators
+adminRouter.get("/moderators", requireAdminOrModerator, async (c) => {
+  try {
+    const db = getDB();
+    
+    // Get all moderator users
+    const moderators = await db
+      .select()
+      .from(users)
+      .where(eq(users.isModerator, 1));
+    
+    return c.json({
+      moderators: moderators.map(mod => ({
+        ...mod,
+        isAdmin: adminAddresses.includes(mod.address)
+      })),
+    });
+  } catch (error) {
+    logger.error("Error fetching moderators:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add a new moderator
+adminRouter.post("/moderators", requireAdmin, async (c) => {
+  try {
+    const body = await c.req.json();
+    const { address } = body;
+    
+    if (!address || address.length < 32 || address.length > 44) {
+      return c.json({ error: "Invalid wallet address" }, 400);
+    }
+
+    const db = getDB();
+    
+    // Check if user exists
+    let userData = await db
+      .select()
+      .from(users)
+      .where(eq(users.address, address))
+      .limit(1);
+    
+    // If user doesn't exist, create them
+    if (!userData || userData.length === 0) {
+      await db.insert(users).values({
+        address,
+        isModerator: 1,
+      });
+      
+      // Get the newly created user
+      userData = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, address))
+        .limit(1);
+    } else {
+      // Update existing user to be a moderator
+      await db
+        .update(users)
+        .set({ isModerator: 1 })
+        .where(eq(users.address, address));
+      
+      // Get updated user data
+      userData = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, address))
+        .limit(1);
+    }
+    
+    logger.log(`Admin set ${address} as a moderator`);
+    
+    return c.json({
+      success: true,
+      message: `User ${address} is now a moderator`,
+      moderator: userData[0],
+    });
+  } catch (error) {
+    logger.error("Error adding moderator:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Remove a moderator
+adminRouter.delete("/moderators/:address", requireAdmin, async (c) => {
+  try {
+    const address = c.req.param("address");
+    
+    if (!address || address.length < 32 || address.length > 44) {
+      return c.json({ error: "Invalid wallet address" }, 400);
+    }
+    
+    // Don't allow removing admins from moderator status
+    if (adminAddresses.includes(address)) {
+      return c.json({ error: "Cannot remove admin from moderator status" }, 403);
+    }
+
+    const db = getDB();
+    
+    // Check if user exists and is a moderator
+    const userData = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.address, address), eq(users.isModerator, 1)))
+      .limit(1);
+    
+    if (!userData || userData.length === 0) {
+      return c.json({ error: "User not found or not a moderator" }, 404);
+    }
+    
+    // Update user to remove moderator status
+    await db
+      .update(users)
+      .set({ isModerator: 0 })
+      .where(eq(users.address, address));
+    
+    logger.log(`Admin removed moderator status from ${address}`);
+    
+    return c.json({
+      success: true,
+      message: `User ${address} is no longer a moderator`,
+    });
+  } catch (error) {
+    logger.error("Error removing moderator:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
 
 export { adminRouter, ownerRouter };
