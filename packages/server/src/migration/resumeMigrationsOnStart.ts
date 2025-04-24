@@ -16,7 +16,7 @@ export async function resumeMigrationsOnStart(
    const redisCache = await getGlobalRedisCache();
    const RESUME_LOCK_KEY = "migration:resume:lock";
    const lockValue = process.pid.toString();
-   const TTL_MS = 1 * 60 * 1000; // 1 minute
+   const TTL_MS = 1 * 60 * 1000; // 1 minutes
 
    const gotLock = await redisCache.acquireLock(
       RESUME_LOCK_KEY,
@@ -73,7 +73,7 @@ export async function resumeMigrationsOnStart(
    } finally {
 
       // wait for 5 minutes 
-      await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
       await redisCache.releaseLock(RESUME_LOCK_KEY, lockValue);
       console.log("[Resume] Released resume lock.");
    }
