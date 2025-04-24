@@ -114,7 +114,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink
+        sink,
       );
     }
 
@@ -166,7 +166,9 @@ export default function SwapsTable({ token }: { token: IToken }) {
     return (
       <div className="flex flex-col items-center gap-2">
         <img className="w-auto grayscale size-16" src="/dice.svg" alt="logo" />
-        <p className="text-sm font-dm-mono text-autofun-text-secondary">No trades were found.</p>
+        <p className="text-sm font-dm-mono text-autofun-text-secondary">
+          No trades were found.
+        </p>
       </div>
     );
   }
