@@ -46,7 +46,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -89,7 +89,7 @@ export default function Trade({ token }: { token: IToken }) {
       const scaleFactor = 10 ** decimalPlaces;
       const amountBN = new BN(Math.round(amount * scaleFactor));
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).div(new BN(scaleFactor)).toNumber()
@@ -112,7 +112,7 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
 
       const SCALE_FACTOR = Math.max(1000000, decimals.toNumber());
@@ -193,7 +193,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -368,16 +368,16 @@ export default function Trade({ token }: { token: IToken }) {
           {/* Swap Button - Now in the left column below Min Received */}
           <div className="flex justify-center items-center">
             <button
-              disabled={
+              onClick={onSwap}
+              className={twMerge([
+                "w-full mx-2 cursor-pointer mt-2 transition-opacity duration-200",
                 isStatusDisabled ||
                 insufficientBalance ||
                 isExecutingSwap ||
                 !sellAmount ||
                 sellAmount === 0
-              }
-              onClick={onSwap}
-              className={twMerge([
-                "w-full mx-2 cursor-pointer mt-2 !disabled:cursor-not-allowed !disabled:opacity-50",
+                  ? "opacity-50 !cursor-not-allowed"
+                  : "",
               ])}
             >
               <img
