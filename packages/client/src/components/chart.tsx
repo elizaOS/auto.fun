@@ -42,8 +42,9 @@ export default function Chart({ token }: ChartProps) {
     queryKey: ["token", mint, "chart", isCodex],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
-      const from = to - 21600; // 6 hours
+      const from = isCodex ? to - 21600 : to - 21600 * 2; // Codex = 6 hours, Prebonded = 12h
 
+      /** If codex we use its own way to fetch the chart */
       if (isCodex) {
         const { getBars } = await codex.queries.getBars({
           currencyCode: "USD",
@@ -80,14 +81,18 @@ export default function Chart({ token }: ChartProps) {
           token: mint,
         });
 
+        console.log(data);
+
+        /** If nothing was returned for the specified date range we should try to fetch the last valid candle */
         if (!data?.table?.length) {
+          const lastKnownPrice = token?.tokenPriceUSD || 0;
           return [
             {
               time: Math.floor(Date.now() / 1000) * 1000,
-              open: 0,
-              high: 0,
-              low: 0,
-              close: 0,
+              open: lastKnownPrice,
+              high: lastKnownPrice,
+              low: lastKnownPrice,
+              close: lastKnownPrice,
               volume: 0,
             },
           ];
@@ -133,11 +138,16 @@ export default function Chart({ token }: ChartProps) {
       },
       localization: {
         // priceFormatter: (price: number) => formatNumber(price, true, false),
-        priceFormatter: (price: number) =>
-          new Intl.NumberFormat("en-US", {
+        priceFormatter: (price: number) => {
+          const decimalsLength = String(price)?.split(".")?.[1];
+          return new Intl.NumberFormat("en-US", {
             notation: "standard",
-            maximumFractionDigits: 7,
-          }).format(price),
+            maximumFractionDigits:
+              Number(decimalsLength || "1") > 8
+                ? 8
+                : Number(decimalsLength || "1"),
+          }).format(price);
+        },
       },
     };
 
