@@ -258,3 +258,24 @@ button {
     clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
   }
 }
+
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: black;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #03FF24;
+  border-radius: 0;
+  border: none;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #03FF24 #212121;
+}
