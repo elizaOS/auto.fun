@@ -17,9 +17,10 @@ import authRouter from "./routes/auth";
 import chatRouter from "./routes/chat";
 import fileRouter from "./routes/files";
 import generationRouter from "./routes/generation";
-import messagesRouter from "./routes/messages";
 import migrationRouter from "./routes/migration";
+import preGeneratedAdminRoutes from "./routes/admin/pregenerated"; // Import the new router
 import shareRouter from "./routes/share";
+import userRouter from "./routes/user";
 import swapRouter from "./routes/swap";
 import tokenRouter from "./routes/token";
 import webhookRouter from "./routes/webhooks";
@@ -31,6 +32,8 @@ import { fork } from "node:child_process";
 import path from "node:path";
 import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
+import { resumeMigrationsOnStart } from "./migration/resumeMigrationsOnStart";
+
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
@@ -44,13 +47,6 @@ const app = new Hono<{ Variables: AppVariables }>();
 // Ensure necessary env vars are loaded (dotenv should have done this)
 // You might want to validate required env vars here (like REDIS_HOST etc.)
 const env = process.env as unknown as Env; // Cast process.env, ensure Env type matches
-if (!env.REDIS_HOST || !env.REDIS_PORT) {
-  // Add checks for other required env vars
-  logger.error(
-    "Missing required environment variables (e.g., REDIS_HOST, REDIS_PORT)"
-  );
-  process.exit(1);
-}
 
 // Setup Solana connection
 const RPC_URL = (
@@ -105,15 +101,16 @@ api.route("/", generationRouter);
 api.route("/", tokenRouter);
 api.route("/", agentRouter);
 api.route("/", fileRouter);
-api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
 api.route("/", chatRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
+api.route("/users", userRouter);
 api.route("/admin", adminRouter); // Note: Ensure admin/owner routes have appropriate checks
 api.route("/owner", ownerRouter);
+api.route("/admin/pregenerated", preGeneratedAdminRoutes); // Mount the new router
 
 api.get("/sol-price", async (c) => {
   try {
@@ -131,7 +128,7 @@ app.route("/api", api);
 
 // --- Special Cron Trigger Route ---
 // Use a non-standard path and require a secret header
-const CRON_SECRET = process.env.CRON_SECRET; // Get secret from environment
+const CRON_SECRET = process.env.CRON_SECRET || "develop"; // Get secret from environment
 
 if (!CRON_SECRET) {
   logger.warn(
@@ -140,14 +137,8 @@ if (!CRON_SECRET) {
 }
 
 // Mount this route directly on the main app, outside /api if desired
-app.post("/_internal/trigger-cron", async (c) => {
-  if (!CRON_SECRET) {
-    logger.error(
-      "Cron trigger endpoint called but CRON_SECRET is not configured."
-    );
-    return c.json({ error: "Cron trigger not configured" }, 503); // Service Unavailable
-  }
-
+app.post("/trigger-cron", async (c) => {
+  console.log("Triggering cron");
   const providedSecret = c.req.header("X-Cron-Secret");
   if (providedSecret !== CRON_SECRET) {
     logger.warn("Unauthorized attempt to trigger cron endpoint.");
@@ -160,12 +151,10 @@ app.post("/_internal/trigger-cron", async (c) => {
 
   // Run tasks asynchronously (fire and forget). Do NOT await here.
   // The lock mechanism inside runCronTasks will prevent overlaps.
-  runCronTasks().catch((err) => {
-    logger.error("Caught error from background cron task execution:", err);
-  });
+  await runCronTasks();
 
   // Return immediately to the cron runner
-  return c.json({ success: true, message: "Cron tasks initiated." });
+  return c.json({ success: true, message: "Cron tasks finished." });
 });
 
 // --- Root and Maintenance Routes ---
@@ -271,3 +260,27 @@ export default {
 //   });
 // }
 // startLogWorker();
+
+
+function startMigrationWorker(network?: string) {
+  const workerEnv = {
+    ...process.env,
+    ...(network ? { NETWORK: network } : {}),
+  };
+
+  const script = path.join(__dirname, "workers/migrationWorker.ts");
+  const child = fork(script, [], { env: workerEnv });
+
+  logger.info(`🚀 Started migration worker${network ? ` (${network})` : ""} with PID`, child.pid);
+
+  child.on("exit", (code) => {
+    logger.error(`❌ Migration worker${network ? ` (${network})` : ""} exited with code ${code}. Restarting...`);
+    setTimeout(() => startMigrationWorker(network), 1_000);
+  });
+
+  child.on("error", (err) => {
+    logger.error(`❌ Migration worker${network ? ` (${network})` : ""} failed:`, err);
+  });
+}
+
+startMigrationWorker();

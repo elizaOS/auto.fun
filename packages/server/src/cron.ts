@@ -3,7 +3,7 @@ import * as idlJson from "@autodotfun/types/idl/autofun.json";
 import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/types/types/autofun";
 import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
-import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3"; // S3 Import
+import { S3Client } from "@aws-sdk/client-s3"; // S3 Import
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
@@ -11,26 +11,25 @@ import { Buffer } from 'node:buffer'; // Buffer import
 import crypto from "node:crypto"; // Import crypto for lock value
 import { getLatestCandle } from "./chart";
 import { getDB, Token, tokens } from "./db";
+import { ExternalToken } from "./externalToken";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./migration/migrateToken";
 import { getToken } from "./migration/migrations";
 import { awardGraduationPoints, awardUserPoints } from "./points";
-import { getGlobalRedisCache } from "./redis";
+import { getGlobalRedisCache, RedisCacheService } from "./redis";
 import {
-  checkAndReplenishTokens,
-  generateAdditionalTokenImages, // Assumes this uses S3 uploader internally now
+  checkAndReplenishTokens
 } from "./routes/generation";
-import { updateHoldersCache } from "./routes/token";
+import { updateHoldersCache } from "./tokenSupplyHelpers";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
-  bulkUpdatePartialTokens,
   calculateFeaturedScore,
   createNewTokenData,
   getFeaturedMaxValues,
-  logger,
+  logger
 } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
-import { ExternalToken } from "./externalToken";
+import { PointEvent } from "./points";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -60,7 +59,7 @@ const lastProcessedSignature: string | null = null;
 // Define max swaps to keep in Redis list
 const MAX_SWAPS_TO_KEEP = 1000;
 
-function sanitizeTokenForWebSocket(
+export function sanitizeTokenForWebSocket(
   token: Partial<Token>,
   maxBytes = 95000,
 ): Partial<Token> {
@@ -216,6 +215,30 @@ type ProcessResult = {
   event?: string;
 };
 
+async function pushSwapToRedis(
+  redis: RedisCacheService,
+  key: string,
+  record: any,
+  maxLength = 100
+) {
+  // 1) fetch raw
+  const raw = await redis.get(key);
+  let list: any[];
+  try {
+    list = raw ? JSON.parse(raw) : [];
+  } catch {
+    console.warn(`[Swap] invalid JSON in ${key}, resetting to []`);
+    list = [];
+  }
+
+  // 2) prepend and trim
+  list.unshift(record);
+  if (list.length > maxLength) list = list.slice(0, maxLength);
+
+  // 3) write back
+  await redis.set(key, JSON.stringify(list));
+}
+
 type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
   logs: string[],
@@ -316,6 +339,15 @@ async function handleSwap(
       const reserveMatch = reservesLog?.match(/Reserves:\s*(\d+)\s+(\d+)/);
       const reserveToken = reserveMatch?.[1];
       const reserveLamport = reserveMatch?.[2];
+      console.log("found swap log", {
+        mintAddress,
+        swapMatch,
+        user,
+        direction,
+        amount,
+        amountOut,
+        reserveMatch,
+      });
       if (
         !mintAddress ||
         !swapMatch ||
@@ -330,12 +362,15 @@ async function handleSwap(
       }
 
       // Retrieve token mint info to get decimals.
+      console.log("fetching token mint info", mintAddress);
       const tokenWithSupply = await getToken(mintAddress);
+      console.log("fetched token mint info", tokenWithSupply);
       if (!tokenWithSupply) {
         logger.error(`Token not found: ${mintAddress}`);
         return null;
       }
       const solPrice = await getSOLPrice();
+      console.log("fetched sol price", solPrice);
 
       const TOKEN_DECIMALS = tokenWithSupply.tokenDecimals || 6;
       const tokenAmount = Number(reserveToken) / 10 ** TOKEN_DECIMALS;
@@ -352,6 +387,7 @@ async function handleSwap(
         tokenWithSupply,
         solPrice,
       );
+      console.log("fetched token market data", tokenWithMarketData);
       const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
       const swapRecord = {
@@ -413,22 +449,36 @@ async function handleSwap(
         })
         .where(eq(tokens.mint, mintAddress))
         .returning();
+      console.log("updating the holder cache", mintAddress);
+      await updateHoldersCache(mintAddress, false);
+
 
       const newToken = updatedTokens[0];
       const usdVolume =
-        swapRecord.type === "buy"
-          ? (swapRecord.amountOut / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          : (swapRecord.amountIn / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
+        direction === "1"
+          ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
 
       const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
-      await awardUserPoints(swapRecord.user, {
-        type: `${bondStatus}_${swapRecord.type}` as any,
-        usdVolume,
-      });
-      await awardUserPoints(swapRecord.user, {
-        type: "trade_volume_bonus",
-        usdVolume,
-      });
+      console.log("awarding user points",
+        swapRecord.user,
+      );
+      try {
+        await awardUserPoints(swapRecord.user, {
+          type: `${bondStatus}_${swapRecord.type}` as any,
+          usdVolume,
+        });
+      } catch (err) {
+        logger.error("Failed to award user points:", err);
+      }
+      try {
+        await awardUserPoints(swapRecord.user, {
+          type: "trade_volume_bonus",
+          usdVolume,
+        });
+      } catch (err) {
+        logger.error("Failed to award trade volume bonus:", err);
+      }
 
       try {
         const listLength = await redisCache.llen(listKey);
@@ -442,14 +492,12 @@ async function handleSwap(
         logger.error("Failed to award first_buyer:", err);
       }
 
-      await updateHoldersCache(mintAddress);
+
 
 
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);
-
-      // TODO - Joey ask Malibu whether this global should actually be token-mint
-      await wsClient.to(`global`).emit("newCandle", latestCandle);
-
+      console.log("fetched latest candle", latestCandle);
+      await wsClient.to(`token-${mintAddress}`).emit("newCandle", latestCandle);
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
       const enrichedToken = {
         ...newToken,
@@ -459,7 +507,7 @@ async function handleSwap(
       await wsClient
         .to("global")
         .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
-
+      console.log("updated the token in DB", mintAddress);
       return {
         found: true,
         tokenAddress: mintAddress,
@@ -534,7 +582,7 @@ async function handleCurveComplete(
       redisCache
     );
 
-    await updateTokenInDB(token);
+    await updateTokenInDB(tokenData);
     await tokenMigrator.migrateToken(token);
     await wsClient.emit(
       "global",
@@ -550,258 +598,7 @@ async function handleCurveComplete(
   }
 }
 
-// --- Cron Execution Logic ---
-// let isCronRunning = false; // Replaced by distributed lock
-const CRON_LOCK_KEY = "cron:runCronTasks:lock";
-const CRON_LOCK_TTL_MS = 10 * 60 * 1000; // 10 minutes TTL for safety
-
 // Renamed to be the primary export for cron tasks
 export async function runCronTasks() {
-  const redisCache = await getGlobalRedisCache();
-  const lockValue = crypto.randomUUID(); // Unique value for this attempt
-
-  logger.log(`Cron: Attempting to acquire lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
-
-  const lockAcquired = await redisCache.acquireLock(
-    CRON_LOCK_KEY,
-    lockValue,
-    CRON_LOCK_TTL_MS
-  );
-
-  if (!lockAcquired) {
-    logger.log("Cron: Lock not acquired (already held or error), skipping run.");
-    return; // Exit if lock couldn't be acquired
-  }
-
-  logger.log("Cron: Lock acquired. Starting scheduled tasks...");
-
-  try {
-    await updateTokens();
-    // Add other cron tasks here if needed in the future
-    logger.log("Cron: Finished scheduled tasks successfully.");
-  } catch (error) {
-    logger.error("Cron: Error during scheduled tasks execution:", error);
-    // Error is logged, lock will be released in finally
-  } finally {
-    logger.log(`Cron: Releasing lock '${CRON_LOCK_KEY}' with value ${lockValue}...`);
-    const released = await redisCache.releaseLock(CRON_LOCK_KEY, lockValue);
-    if (!released) {
-      logger.warn(`Cron: Failed to release lock '${CRON_LOCK_KEY}'. It might have expired or been taken by another process.`);
-    }
-  }
-}
-
-// Main function containing the logic previously in the cron export
-export async function updateTokens() {
-  const db = getDB();
-  const cache = await getGlobalRedisCache();
-  logger.log("Starting updateTokens cron task...");
-
-  // Define batch size for sequential processing
-  const BATCH_SIZE = 20; // Adjust as needed
-
-  // Fetch active tokens with necessary fields
-  let activeTokens: Token[] = [];
-  try {
-    activeTokens = await db
-      .select({
-        mint: tokens.mint,
-        imported: tokens.imported,
-        description: tokens.description,
-        id: tokens.id,
-        name: tokens.name,
-        ticker: tokens.ticker,
-        url: tokens.url,
-        image: tokens.image,
-        twitter: tokens.twitter,
-        telegram: tokens.telegram,
-        website: tokens.website,
-        discord: tokens.discord,
-        farcaster: tokens.farcaster,
-        creator: tokens.creator,
-        nftMinted: tokens.nftMinted,
-        lockId: tokens.lockId,
-        lockedAmount: tokens.lockedAmount,
-        lockedAt: tokens.lockedAt,
-        harvestedAt: tokens.harvestedAt,
-        status: tokens.status,
-        createdAt: tokens.createdAt,
-        lastUpdated: tokens.lastUpdated,
-        completedAt: tokens.completedAt,
-        withdrawnAt: tokens.withdrawnAt,
-        migratedAt: tokens.migratedAt,
-        marketId: tokens.marketId,
-        baseVault: tokens.baseVault,
-        quoteVault: tokens.quoteVault,
-        withdrawnAmount: tokens.withdrawnAmount,
-        reserveAmount: tokens.reserveAmount,
-        reserveLamport: tokens.reserveLamport,
-        virtualReserves: tokens.virtualReserves,
-        liquidity: tokens.liquidity,
-        currentPrice: tokens.currentPrice,
-        marketCapUSD: tokens.marketCapUSD,
-        tokenPriceUSD: tokens.tokenPriceUSD,
-        solPriceUSD: tokens.solPriceUSD,
-        curveProgress: tokens.curveProgress,
-        curveLimit: tokens.curveLimit,
-        priceChange24h: tokens.priceChange24h,
-        price24hAgo: tokens.price24hAgo,
-        volume24h: tokens.volume24h,
-        inferenceCount: tokens.inferenceCount,
-        lastVolumeReset: tokens.lastVolumeReset,
-        lastPriceUpdate: tokens.lastPriceUpdate,
-        holderCount: tokens.holderCount,
-        txId: tokens.txId,
-        migration: tokens.migration,
-        withdrawnAmounts: tokens.withdrawnAmounts,
-        poolInfo: tokens.poolInfo,
-        lockLpTxId: tokens.lockLpTxId,
-        featured: tokens.featured,
-        verified: tokens.verified,
-        hidden: tokens.hidden,
-        tokenSupply: tokens.tokenSupply,
-        tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
-        tokenDecimals: tokens.tokenDecimals,
-        lastSupplyUpdate: tokens.lastSupplyUpdate,
-      })
-      .from(tokens)
-      .where(eq(tokens.status, "active"));
-  } catch (dbError) {
-    logger.error("Cron: Failed to fetch active tokens from DB:", dbError);
-    return; // Stop if we cannot fetch tokens
-  }
-
-
-  logger.log(`Found ${activeTokens.length} active tokens to process.`);
-
-  // --- Step 1: Concurrent Bulk Updates (already batched internally) and Replenish ---
-  logger.log("Cron: Starting bulk price updates and token replenishment...");
-  await Promise.all([
-    // Update Market Data (bulkUpdatePartialTokens is internally batched)
-    (async () => {
-      try {
-        const CHUNK_SIZE = 50; // Keep internal chunking for this specific update
-        const total = activeTokens.length;
-        for (let i = 0; i < total; i += CHUNK_SIZE) {
-          const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
-          const updatedBatch = await bulkUpdatePartialTokens(batch);
-          // Push ephemeral metrics to Redis (TTL 60s)
-          // This Promise.all is likely fine as it's already within a batch
-          await Promise.all(updatedBatch.map(token =>
-            cache.set(
-              `token:stats:${token.mint}`,
-              JSON.stringify({
-                currentPrice: token.currentPrice,
-                tokenPriceUSD: token.tokenPriceUSD,
-                solPriceUSD: token.solPriceUSD,
-                marketCapUSD: token.marketCapUSD,
-                volume24h: token.volume24h,
-                priceChange24h: token.priceChange24h,
-                price24hAgo: token.price24hAgo,
-                curveProgress: token.curveProgress,
-                curveLimit: token.curveLimit,
-              }),
-              60,
-            )
-          ));
-          logger.log(`Cron: Updated prices for batch ${Math.floor(i / CHUNK_SIZE) + 1} (${updatedBatch.length}/${batch.length}) tokens`);
-        }
-        logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
-      } catch (err) {
-        logger.error("Cron: Error during bulkUpdatePartialTokens:", err);
-      }
-    })(),
-
-    // Replenish Pre-Generated Tokens (runs once, less intensive)
-    (async () => {
-      try {
-        await checkAndReplenishTokens();
-        logger.log("Cron: Checked and replenished pre-generated tokens.");
-      } catch (err) {
-        logger.error("Cron: Error during checkAndReplenishTokens:", err);
-      }
-    })(),
-  ]);
-  logger.log("Cron: Finished bulk price updates and token replenishment.");
-
-
-  // --- Step 2: Sequential Batch Processing for Holders ---
-  logger.log(`Cron: Starting holder cache update loop in batches of ${BATCH_SIZE}...`);
-  for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-    const batch = activeTokens.slice(i, i + BATCH_SIZE);
-    logger.log(`Cron: Processing holder batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-    await Promise.all(batch.map(async (token) => {
-      try {
-        if (token.mint) {
-          await updateHoldersCache(token.mint, token.imported === 1);
-        }
-      } catch (err) {
-        logger.error(
-          `Cron: Error updating holders for token ${token.mint}:`,
-          err,
-        );
-      }
-    }));
-    // Optional: Add a small delay between batches if needed
-    // await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  logger.log("Cron: Finished holder cache update loop.");
-
-
-  // --- Step 3: Sequential Batch Processing for Image Checks ---
-  logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
-  const s3Client = getS3Client();
-  const bucketName = process.env.S3_BUCKET_NAME;
-  if (!bucketName) {
-    logger.error("Cron: S3_BUCKET_NAME not configured. Cannot check for generated images.");
-    // Decide whether to skip this step entirely or log per token
-  }
-
-  for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-    const batch = activeTokens.slice(i, i + BATCH_SIZE);
-    logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-    await Promise.all(batch.map(async (token) => {
-      if (token.mint && Number(token.imported) === 0) {
-        // Only check S3 if bucketName is configured
-        if (bucketName) {
-          try {
-            // --- NEW S3 CHECK BLOCK START ---
-            const generationImagesPrefix = `generations/${token.mint}/`;
-            const listCmd = new ListObjectsV2Command({
-              Bucket: bucketName,
-              Prefix: generationImagesPrefix,
-              MaxKeys: 1, // We only need to know if at least one exists
-            });
-            const listResponse = await s3Client.send(listCmd);
-            const hasGenerationImages = (listResponse.KeyCount ?? 0) > 0;
-
-            if (!hasGenerationImages) {
-              logger.log(
-                `Cron: Triggering image generation for: ${token.mint}`,
-              );
-              // This function should now use S3 internally
-              await generateAdditionalTokenImages(
-                token.mint,
-                token.description || "",
-              );
-            }
-            // --- NEW S3 CHECK BLOCK END ---
-          } catch (imageCheckError) {
-            logger.error(
-              `Cron: Error checking/generating images for ${token.mint} via S3:`, // Updated log message
-              imageCheckError,
-            );
-          }
-        } else {
-          // Log skipped check if bucket name is missing
-          logger.warn(`Cron: Skipping image check for ${token.mint} as S3_BUCKET_NAME is not set.`);
-        }
-      }
-    }));
-    // Optional: Add a small delay between batches if needed
-    // await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  logger.log("Cron: Finished checking for missing generation images.");
-
-  logger.log("Finished updateTokens cron task.");
+  await checkAndReplenishTokens();
 }

@@ -42,6 +42,8 @@
     "nanoid": "^5.1.5",
     "p-queue": "^8.1.0",
     "pg": "^8.14.1",
+    "random-animal-name": "^0.1.1",
+    "random-animal-name-generator": "^0.1.1",
     "tweetnacl": "^1.0.3",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"

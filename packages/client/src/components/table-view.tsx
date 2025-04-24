@@ -104,7 +104,7 @@ export function TableView({
               <SortIcon columnKey="curveProgress" />
             </button>
           </TableHead>
-          <TableHead className="text-right">
+          <TableHead className="text-right mr-2">
             <button
               className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto uppercase"
               onClick={() => handleSort("createdAt")}
@@ -179,7 +179,7 @@ export function TableView({
                   )}
                 </div>
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right pr-4">
                 {fromNow(token.createdAt, true)}
               </TableCell>
             </TableRow>

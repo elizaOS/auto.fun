@@ -6,6 +6,9 @@ import { getDB, tokens, users, Token } from "../db";
 import { logger } from "../logger";
 import { adminAddresses } from "./adminAddresses";
 import { getFeaturedMaxValues, applyFeaturedSort } from "../util";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Buffer } from "node:buffer";
+import { getS3Client } from "../s3Client"; // Import shared S3 client
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -29,11 +32,46 @@ const requireAdmin = async (c: any, next: Function) => {
   await next();
 };
 
+// New middleware that checks for admin OR moderator status
+const requireAdminOrModerator = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const isAdmin = adminAddresses.includes(user.publicKey);
+  
+  if (isAdmin) {
+    // Set a context variable to indicate this is a full admin
+    c.set('isFullAdmin', true);
+    await next();
+    return;
+  }
+  
+  // Check if user is a moderator
+  const db = getDB();
+  const moderatorCheck = await db
+    .select({ isModerator: users.isModerator })
+    .from(users)
+    .where(eq(users.address, user.publicKey))
+    .limit(1);
+  
+  const isModerator = moderatorCheck.length > 0 && moderatorCheck[0].isModerator === 1;
+  
+  if (!isModerator) {
+    return c.json({ error: "Admin or moderator privileges required" }, 403);
+  }
+  
+  // Mark this user as a moderator but not a full admin
+  c.set('isFullAdmin', false);
+  await next();
+};
+
 // Apply authentication middleware to all routes
 adminRouter.use("*", verifyAuth);
 
 // Route to update a token's social links
-adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/social", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -93,7 +131,7 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
 });
 
 // Route to set featured flag on tokens
-adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/featured", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -152,7 +190,7 @@ adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
 });
 
 // Route to set verified flag on tokens
-adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/verified", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -211,7 +249,7 @@ adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
 });
 
 // Route to set hidden flag on tokens
-adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/hidden", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -271,7 +309,7 @@ adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
 });
 
 // Route to set a user to suspended
-adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
+adminRouter.post("/users/:address/suspended", requireAdminOrModerator, async (c) => {
   try {
     const address = c.req.param("address");
     if (!address || address.length < 32 || address.length > 44) {
@@ -337,7 +375,7 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
 });
 
 // Route to get a single user by address
-adminRouter.get("/users/:address", requireAdmin, async (c) => {
+adminRouter.get("/users/:address", requireAdminOrModerator, async (c) => {
   try {
     const address = c.req.param("address");
     if (!address || address.length < 32 || address.length > 44) {
@@ -391,7 +429,7 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
 });
 
 // Route to get admin statistics
-adminRouter.get("/stats", requireAdmin, async (c) => {
+adminRouter.get("/stats", requireAdminOrModerator, async (c) => {
   try {
     const db = getDB();
 
@@ -431,7 +469,7 @@ adminRouter.get("/stats", requireAdmin, async (c) => {
 });
 
 // Route to retrieve users in a paginated way
-adminRouter.get("/users", requireAdmin, async (c) => {
+adminRouter.get("/users", requireAdminOrModerator, async (c) => {
   try {
     const queryParams = c.req.query();
     const isSearching = !!queryParams.search;
@@ -751,7 +789,7 @@ function buildAdminTokensCountBaseQuery(
 }
 
 // --- NEW: Route to retrieve ALL tokens (including hidden) for Admin Panel ---
-adminRouter.get("/tokens", requireAdmin, async (c) => {
+adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
   // --- Parameter Reading (similar to /api/tokens) ---
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
@@ -888,7 +926,7 @@ adminRouter.get("/tokens", requireAdmin, async (c) => {
 // --- END NEW ADMIN GET TOKENS ROUTE ---
 
 // --- Route to update core token details (name, ticker, image, url, description) ---
-adminRouter.put("/tokens/:mint/details", requireAdmin, async (c) => {
+adminRouter.put("/tokens/:mint/details", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -975,43 +1013,8 @@ adminRouter.put("/tokens/:mint/details", requireAdmin, async (c) => {
 });
 // --- END PUT ROUTE ---
 
-// --- Add S3 imports and helpers ---
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { Buffer } from "node:buffer";
-
-// Define the fixed public base URL used for constructing URLs (should match uploader.ts)
-const PUBLIC_STORAGE_BASE_URL = "https://storage.autofun.tech";
-
-// Singleton S3 Client instance for admin routes
-let adminS3ClientInstance: S3Client | null = null;
-
-// Helper function to create/get S3 client instance using process.env (specific to admin routes)
-function getAdminS3Client(): S3Client {
-    if (adminS3ClientInstance) {
-        return adminS3ClientInstance;
-    }
-    // Reuse environment variables logic from uploader/token routes
-    const accountId = process.env.S3_ACCOUNT_ID;
-    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-        logger.error("Missing R2 S3 API environment variables in admin route.");
-        throw new Error("Missing required R2 S3 API environment variables.");
-    }
-    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-    adminS3ClientInstance = new S3Client({
-        region: "auto",
-        endpoint: endpoint,
-        credentials: { accessKeyId, secretAccessKey },
-    });
-    logger.log(`Admin S3 Client initialized for endpoint: ${endpoint}`);
-    return adminS3ClientInstance;
-}
-// --- End S3 imports and helpers ---
-
 // --- NEW: Route to update metadata JSON ---
-adminRouter.post("/tokens/:mint/metadata", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) => {
     try {
         const mint = c.req.param("mint");
         if (!mint || mint.length < 32 || mint.length > 44) {
@@ -1055,51 +1058,51 @@ adminRouter.post("/tokens/:mint/metadata", requireAdmin, async (c) => {
 
         // --- Extract S3 Object Key from URL ---
         let objectKey = "";
-        const expectedStoragePrefix = "token-metadata/";
-        const localApiPrefix = "/api/metadata/";
+        // Get public base URL from shared client to help parse
+        const { publicBaseUrl } = await getS3Client(); 
+        
+        // Define potential prefixes
+        const expectedR2Prefix = "https://storage.autofun.tech/"; // Hardcode for now, or get dynamically
+        const expectedMinioPrefixPattern = /^http:\/\/localhost:9000\/[^\/]+\//; // Matches http://localhost:9000/bucketname/
+        const localApiPrefix = "/api/metadata/"; // Assuming API route is consistent
 
-        if (token.url.startsWith(PUBLIC_STORAGE_BASE_URL + "/")) {
-            objectKey = token.url.substring((PUBLIC_STORAGE_BASE_URL + "/").length);
-            // Optional: Double-check if the extracted key starts with the expected storage prefix
-            if (!objectKey.startsWith(expectedStoragePrefix)) {
-                logger.warn(`Extracted key "${objectKey}" from public URL for ${mint} does not start with expected prefix "${expectedStoragePrefix}".`);
-                // Decide whether to proceed or error out
-            }
+        if (token.url.startsWith(publicBaseUrl + "/")) { // Check primary case: starts with current base URL
+            objectKey = new URL(token.url).pathname.substring(publicBaseUrl.length + 1);
+        } else if (token.url.startsWith(expectedR2Prefix)) { // Check legacy/hardcoded R2 prefix
+             objectKey = token.url.substring(expectedR2Prefix.length);
+             logger.warn(`[Admin Metadata Update] URL ${token.url} used R2 prefix directly.`);
+        } else if (expectedMinioPrefixPattern.test(token.url)) { // Check if it looks like a MinIO path URL
+             objectKey = new URL(token.url).pathname.substring(1); // Get path after hostname (includes bucket)
+             logger.warn(`[Admin Metadata Update] URL ${token.url} matched MinIO pattern.`);
         } else {
-            // Handle other URLs (like local http://localhost:8787/api/metadata/...)
-            try {
+             // Fallback for local API path or other unknowns
+             try {
                 const parsedUrl = new URL(token.url);
                 const path = parsedUrl.pathname;
-
                 if (path.startsWith(localApiPrefix)) {
-                    // Extract the filename part after /api/metadata/
                     const filename = path.substring(localApiPrefix.length);
-                    // Construct the correct S3 key
-                    objectKey = `${expectedStoragePrefix}${filename}`;
-                    logger.log(`Parsed local API URL for ${mint}. Constructed S3 key: ${objectKey}`);
+                    // Attempt to construct a likely S3 key (assuming token-metadata prefix)
+                    objectKey = `token-metadata/${filename}`; 
+                    logger.log(`[Admin Metadata Update] Parsed local API URL. Constructed S3 key: ${objectKey}`);
                 } else {
-                     // Log a warning if the path doesn't match expected local or public formats
-                     logger.error(`Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`);
+                     logger.error(`[Admin Metadata Update] Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`);
                      return c.json({ error: "Cannot determine storage key from token metadata URL format" }, 500);
                 }
-            } catch (urlParseError) {
-                 logger.error(`Failed to parse metadata URL to get object key for ${mint}: ${token.url}`, urlParseError);
+             } catch (urlParseError) {
+                 logger.error(`[Admin Metadata Update] Failed to parse metadata URL to get object key for ${mint}: ${token.url}`, urlParseError);
                  return c.json({ error: "Could not determine storage key from token metadata URL" }, 500);
-            }
+             }
         }
 
         if (!objectKey) {
-             // This condition might be redundant now if the above logic handles all cases or errors out
-             logger.error(`Failed to extract a valid object key for ${mint} from URL: ${token.url}`);
+             logger.error(`[Admin Metadata Update] Failed to extract a valid object key for ${mint} from URL: ${token.url}`);
              return c.json({ error: "Failed to extract valid storage key from metadata URL" }, 500);
         }
+        logger.log(`[Admin Metadata Update] Determined object key: ${objectKey}`);
 
-        // --- Upload updated metadata to S3 ---
-        const s3Client = getAdminS3Client();
-        const bucketName = process.env.S3_BUCKET_NAME;
-        if (!bucketName) {
-            throw new Error("S3_BUCKET_NAME environment variable is not set.");
-        }
+        // --- Upload updated metadata to S3 --- 
+        // Use shared client
+        const { client: s3Client, bucketName } = await getS3Client(); 
 
         const metadataBuffer = Buffer.from(JSON.stringify(updatedMetadata, null, 2), 'utf8'); // Pretty print JSON
 
@@ -1138,5 +1141,198 @@ adminRouter.post("/tokens/:mint/metadata", requireAdmin, async (c) => {
     }
 });
 // --- END METADATA UPDATE ROUTE ---
+
+// --- NEW: Route to DELETE a token --- 
+adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB();
+
+    // Check if token exists before attempting delete (optional but good practice)
+    const tokenData = await db
+      .select({ id: tokens.id })
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      // Return success even if not found, as the desired state (deleted) is achieved
+      logger.warn(`Admin attempt to delete non-existent token ${mint}`);
+      return c.json({ success: true, message: "Token not found or already deleted" });
+      // Alternatively, return 404: return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Delete the token
+    const deleteResult = await db
+      .delete(tokens)
+      .where(eq(tokens.mint, mint))
+      .returning({ deletedId: tokens.id }); // Optional: confirm which ID was deleted
+
+    if (deleteResult.length === 0) {
+      // Should not happen if the select check passed, but handle just in case
+      logger.error(`Failed to delete token ${mint} after existence check.`);
+      return c.json({ error: "Failed to delete token" }, 500);
+    }
+
+    logger.log(`Admin deleted token ${mint} (ID: ${deleteResult[0].deletedId})`);
+
+    // Optionally: Add logic here to delete associated data (e.g., holders, S3 assets) if needed
+
+    return c.json({
+      success: true,
+      message: `Token ${mint} deleted successfully`,
+    });
+
+  } catch (error) {
+    logger.error(`Error deleting token ${c.req.param("mint")}:`, error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error deleting token" },
+      500
+    );
+  }
+});
+// --- END DELETE TOKEN ROUTE ---
+
+// Routes for managing moderators (only accessible by full admins)
+// Get list of current moderators
+adminRouter.get("/moderators", requireAdminOrModerator, async (c) => {
+  try {
+    const db = getDB();
+    
+    // Get all moderator users
+    const moderators = await db
+      .select()
+      .from(users)
+      .where(eq(users.isModerator, 1));
+    
+    return c.json({
+      moderators: moderators.map(mod => ({
+        ...mod,
+        isAdmin: adminAddresses.includes(mod.address)
+      })),
+    });
+  } catch (error) {
+    logger.error("Error fetching moderators:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add a new moderator
+adminRouter.post("/moderators", requireAdmin, async (c) => {
+  try {
+    const body = await c.req.json();
+    const { address } = body;
+    
+    if (!address || address.length < 32 || address.length > 44) {
+      return c.json({ error: "Invalid wallet address" }, 400);
+    }
+
+    const db = getDB();
+    
+    // Check if user exists
+    let userData = await db
+      .select()
+      .from(users)
+      .where(eq(users.address, address))
+      .limit(1);
+    
+    // If user doesn't exist, create them
+    if (!userData || userData.length === 0) {
+      await db.insert(users).values({
+        address,
+        isModerator: 1,
+      });
+      
+      // Get the newly created user
+      userData = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, address))
+        .limit(1);
+    } else {
+      // Update existing user to be a moderator
+      await db
+        .update(users)
+        .set({ isModerator: 1 })
+        .where(eq(users.address, address));
+      
+      // Get updated user data
+      userData = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, address))
+        .limit(1);
+    }
+    
+    logger.log(`Admin set ${address} as a moderator`);
+    
+    return c.json({
+      success: true,
+      message: `User ${address} is now a moderator`,
+      moderator: userData[0],
+    });
+  } catch (error) {
+    logger.error("Error adding moderator:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Remove a moderator
+adminRouter.delete("/moderators/:address", requireAdmin, async (c) => {
+  try {
+    const address = c.req.param("address");
+    
+    if (!address || address.length < 32 || address.length > 44) {
+      return c.json({ error: "Invalid wallet address" }, 400);
+    }
+    
+    // Don't allow removing admins from moderator status
+    if (adminAddresses.includes(address)) {
+      return c.json({ error: "Cannot remove admin from moderator status" }, 403);
+    }
+
+    const db = getDB();
+    
+    // Check if user exists and is a moderator
+    const userData = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.address, address), eq(users.isModerator, 1)))
+      .limit(1);
+    
+    if (!userData || userData.length === 0) {
+      return c.json({ error: "User not found or not a moderator" }, 404);
+    }
+    
+    // Update user to remove moderator status
+    await db
+      .update(users)
+      .set({ isModerator: 0 })
+      .where(eq(users.address, address));
+    
+    logger.log(`Admin removed moderator status from ${address}`);
+    
+    return c.json({
+      success: true,
+      message: `User ${address} is no longer a moderator`,
+    });
+  } catch (error) {
+    logger.error("Error removing moderator:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
 
 export { adminRouter, ownerRouter };

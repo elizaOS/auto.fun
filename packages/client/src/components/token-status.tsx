@@ -6,7 +6,7 @@ type TVariant = "info" | "destructive" | "warning" | "imported";
 export default function TokenStatus({ token }: { token: IToken }) {
   const status = token?.status;
 
-  const labels: Record<IToken["status"] | "imported", string> = {
+  const labels: Record<IToken["status"] | "imported", string | undefined> = {
     active: "Active",
     harvested: "Harvested",
     locked: "Bonded",

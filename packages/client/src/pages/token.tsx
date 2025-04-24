@@ -22,6 +22,7 @@ import {
   fromNow,
   LAMPORTS_PER_SOL,
   resizeImage,
+  shortenAddress,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { getAuthToken } from "@/utils/auth";
@@ -332,6 +333,35 @@ export default function Page() {
                   </div>
                 )}
               </div>
+
+              {/* Creator Profile Section - at the bottom of the left column */}
+              {/* Only show if NOT imported AND creator profile exists */}
+              {token?.imported === 0 && token.creatorProfile && (
+                <div className="mt-3 overflow-hidden border border-autofun-stroke-primary">
+                  <div className="px-3 py-2 bg-autofun-background-input border-b border-autofun-stroke-primary">
+                    <h3 className="text-autofun-text-primary text-sm font-bold font-dm-mono uppercase tracking-widest">
+                      Creator
+                    </h3>
+                  </div>
+                  <div className="p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      {/* Display creator's name if available, otherwise the shortened address */}
+                      <div className="text-autofun-text-secondary text-sm font-dm-mono truncate">
+                        {token.creatorProfile.displayName ||
+                          shortenAddress(token.creator)}
+                      </div>
+                      {/* Copy button still uses the raw creator address */}
+                      <CopyButton text={token.creator} />
+                    </div>
+                    <Link
+                      to={`/profiles/${token.creator}`}
+                      className="text-center text-autofun-text-highlight hover:bg-autofun-background-action-highlight hover:text-black border-2 border-autofun-background-action-highlight py-2 font-medium transition-colors duration-200"
+                    >
+                      View Profile
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               {/* Agents Section */}
               <AgentsSection isCreator={token?.creator === normalizedWallet} />

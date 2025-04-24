@@ -37,89 +37,6 @@ export const useSwap = () => {
   const [speed] = useTransactionSpeed();
   const [isProtectionEnabled] = useMevProtection();
 
-  const createSwapIx = async ({
-    style,
-    amount,
-    tokenAddress,
-    token,
-    reserveToken,
-    reserveLamport,
-  }: SwapParams) => {
-    if (!program || !wallet.publicKey) {
-      throw new Error("Wallet not connected or missing required methods");
-    }
-
-    // Convert percentage to basis points (1% = 100 bps)
-    const slippageBps = slippagePercentage * 100;
-
-    // Convert SOL to lamports (1 SOL = 1e9 lamports)
-    const amountLamports = Math.floor(amount * 1e9);
-    const amountTokens = Math.floor(
-      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6),
-    );
-
-    // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
-    const numericStyle = style === "buy" ? 0 : 1;
-
-    const ixs = [];
-    if (token?.status === "locked") {
-      const mainnetConnection = new Connection(env.rpcUrlMainnet, "confirmed"); // this is always mainnet
-      // Use Jupiter API when tokens are locked
-      const ixsJupiterSwap = await getJupiterSwapIx(
-        wallet.publicKey,
-        new PublicKey(tokenAddress),
-        style === "buy" ? amountLamports : amountTokens,
-        numericStyle,
-        slippageBps,
-        mainnetConnection,
-      );
-
-      ixs.push(...ixsJupiterSwap);
-    } else {
-      // Use the internal swap function otherwise
-      const ix = await swapIx(
-        wallet.publicKey,
-        new PublicKey(tokenAddress),
-        style === "buy" ? amountLamports : amountTokens,
-        numericStyle,
-        slippageBps,
-        program,
-        reserveToken,
-        reserveLamport,
-        await getConfigAccount(program),
-      );
-
-      ixs.push(ix);
-
-      // Define SOL fee amounts based on speed
-      let solFee;
-      switch (speed) {
-        case "fast":
-          solFee = 0.00005;
-          break;
-        case "turbo":
-          solFee = 0.0005;
-          break;
-        case "ultra":
-          solFee = 0.005;
-          break;
-        default:
-          solFee = 0.00005;
-      }
-      // Convert SOL fee to lamports (1 SOL = 1e9 lamports)
-      const feeLamports = Math.floor(solFee * 1e9);
-
-      // Create a transaction instruction to apply the fee
-      const feeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: feeLamports,
-      });
-
-      ixs.push(feeInstruction);
-    }
-
-    return ixs;
-  };
-
   const executeSwap = async ({
     style,
     amount,
@@ -129,83 +46,193 @@ export const useSwap = () => {
     if (!wallet.publicKey || !wallet.signTransaction || !program) {
       throw new Error("Wallet not connected or missing required methods");
     }
-    let curve;
-    if (token?.status !== "locked") {
-      const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(SEED_BONDING_CURVE),
-          new PublicKey(tokenAddress).toBytes(),
-        ],
-        program.programId,
-      );
-      curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+    if (!token) {
+      throw new Error("Token data is required for swapping.");
     }
 
-    const ixs = await createSwapIx({
-      style,
-      amount,
-      tokenAddress,
-      reserveLamport: curve ? curve.reserveLamport.toNumber() : 0,
-      reserveToken: curve ? curve.reserveToken.toNumber() : 0,
-      token,
-    });
+    setIsExecuting(true);
+    let signature: string | undefined;
+    let ixs: any[] = [];
+    let useJupiter = false;
 
-    console.log("Instructions being added:", ixs);
+    const slippageBps = slippagePercentage * 100;
+    const amountLamports = Math.floor(amount * 1e9);
+    const amountTokens = Math.floor(amount * 10 ** (token.tokenDecimals ?? 6));
+    const numericStyle = style === "buy" ? 0 : 1;
+    const swapAmount = style === "buy" ? amountLamports : amountTokens;
 
-    const tx = new Transaction().add(...(Array.isArray(ixs) ? ixs : [ixs]));
-    const { blockhash } = await connection.getLatestBlockhash();
-    tx.feePayer = wallet.publicKey;
-    tx.recentBlockhash = blockhash;
+    try {
+      if (token.imported === 1 || token.status === "locked") {
+        console.log(`Swap initiated for imported/locked token: ${token.mint}`);
+        if (token.isToken2022 === 1) {
+          console.warn(
+            `Token ${token.mint} is Token-2022. Jupiter swap is not supported.`,
+          );
+          toast.error(
+            "Swapping Token-2022 tokens is not supported via this interface.",
+          );
+          throw new Error("Token-2022 swaps not supported.");
+        } else {
+          console.log(
+            `Attempting Jupiter swap for standard SPL token: ${token.mint}`,
+          );
+          useJupiter = true;
+          try {
+            const mainnetConnection = new Connection(
+              env.rpcUrlMainnet,
+              "confirmed",
+            );
+            const jupiterIxs = await getJupiterSwapIx(
+              wallet.publicKey,
+              new PublicKey(tokenAddress),
+              swapAmount,
+              numericStyle,
+              slippageBps,
+              mainnetConnection,
+            );
+            ixs = jupiterIxs;
+            console.log(
+              `Successfully got Jupiter instructions for ${token.mint}`,
+            );
+          } catch (jupiterError) {
+            console.error(
+              `Jupiter swap instruction fetch failed for ${token.mint}:`,
+              jupiterError,
+            );
+            const errorMsg =
+              jupiterError instanceof Error
+                ? jupiterError.message
+                : String(jupiterError);
+            toast.error(
+              `Jupiter routing failed: ${errorMsg}. Unable to complete swap.`,
+            );
+            throw new Error(`Jupiter swap failed: ${errorMsg}`);
+          }
+        }
+      } else {
+        console.log(`Using internal bonding curve swap for ${token.mint}`);
+        useJupiter = false;
+        const [bondingCurvePda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from(SEED_BONDING_CURVE),
+            new PublicKey(tokenAddress).toBytes(),
+          ],
+          program.programId,
+        );
+        const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+        const config = await getConfigAccount(program);
 
-    // TODO - @deprecated — Instead, call simulateTransaction with * VersionedTransaction and SimulateTransactionConfig parameters
-    const simulation = await connection.simulateTransaction(tx);
+        const internalIx = await swapIx(
+          wallet.publicKey,
+          new PublicKey(tokenAddress),
+          swapAmount,
+          numericStyle,
+          slippageBps,
+          program,
+          curve.reserveToken.toNumber(),
+          curve.reserveLamport.toNumber(),
+          config,
+        );
+        ixs = [internalIx];
 
-    if (simulation.value.err) {
-      throw new Error(
-        `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
-      );
-    }
-
-    const versionedTx = new VersionedTransaction(tx.compileMessage());
-
-    // If protection is enabled, use Jito to send the transaction
-    if (isProtectionEnabled) {
-      try {
-        const jitoResponse = await sendTxUsingJito({
-          serializedTx: versionedTx.serialize(),
-          region: "mainnet",
-        });
-        return { signature: jitoResponse.result, confirmation: null };
-      } catch (error) {
-        console.error("Failed to send through Jito:", error);
-        const signature = await wallet.sendTransaction(versionedTx, connection);
-        return { signature, confirmation: null };
+        let solFee;
+        switch (speed) {
+          case "fast":
+            solFee = 0.00005;
+            break;
+          case "turbo":
+            solFee = 0.0005;
+            break;
+          case "ultra":
+            solFee = 0.005;
+            break;
+          default:
+            solFee = 0.00005;
+        }
+        const feeLamports = Math.floor(solFee * 1e9);
+        ixs.push(
+          ComputeBudgetProgram.setComputeUnitPrice({
+            microLamports: feeLamports,
+          }),
+        );
+        console.log(`Using internal swap with priority fee: ${solFee} SOL`);
       }
+
+      if (ixs.length === 0) {
+        throw new Error("No swap instructions were generated.");
+      }
+
+      const tx = new Transaction().add(...ixs);
+      const { blockhash } = await connection.getLatestBlockhash();
+      tx.feePayer = wallet.publicKey;
+      tx.recentBlockhash = blockhash;
+
+      console.log("Simulating transaction...");
+      const simulation = await connection.simulateTransaction(tx);
+      if (simulation.value.err) {
+        console.error("Transaction simulation failed:", simulation.value.err);
+        console.error("Simulation Logs:", simulation.value.logs);
+        throw new Error(
+          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
+        );
+      }
+      console.log("Transaction simulation successful.");
+
+      const versionedTx = new VersionedTransaction(tx.compileMessage());
+
+      if (useJupiter && isProtectionEnabled) {
+        console.log("Sending transaction via Jito...");
+        try {
+          const jitoResponse = await sendTxUsingJito({
+            serializedTx: versionedTx.serialize(),
+            region: "mainnet",
+          });
+          signature = jitoResponse.result;
+          console.log(`Jito transaction sent, signature: ${signature}`);
+        } catch (jitoError) {
+          console.error(
+            "Failed to send through Jito, falling back to standard send:",
+            jitoError,
+          );
+          signature = await wallet.sendTransaction(versionedTx, connection);
+          console.log(
+            `Standard transaction sent after Jito fail, signature: ${signature}`,
+          );
+        }
+      } else {
+        console.log(
+          `Sending standard transaction (Jupiter=${useJupiter}, Internal=${!useJupiter}, JitoEnabled=${isProtectionEnabled})...`,
+        );
+        signature = await wallet.sendTransaction(versionedTx, connection);
+        console.log(`Standard transaction sent, signature: ${signature}`);
+      }
+
+      if (signature) {
+        toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
+      } else {
+        toast.warning(
+          "Transaction potentially sent, but signature was not received.",
+        );
+      }
+    } catch (error) {
+      console.error("Swap execution failed:", error);
+      const errorMsg =
+        error instanceof Error ? error.message : "Unknown swap error";
+      if (
+        !errorMsg.includes("Jupiter swap failed") &&
+        !errorMsg.includes("Token-2022")
+      ) {
+        toast.error(`Swap failed: ${errorMsg}`);
+      }
+    } finally {
+      setIsExecuting(false);
     }
 
-    const signature = await wallet.sendTransaction(versionedTx, connection);
-    return { signature, confirmation: null };
+    return { signature };
   };
 
   return {
-    executeSwap: async (...params: Parameters<typeof executeSwap>) => {
-      let signature: string | undefined;
-      try {
-        setIsExecuting(true);
-        const res = await executeSwap(...params);
-        signature = res.signature;
-        if (signature) {
-          toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
-        } else {
-          toast.warning(
-            "Transaction potentially sent, but signature was not received.",
-          );
-        }
-      } finally {
-        setIsExecuting(false);
-      }
-      return { signature };
-    },
+    executeSwap,
     isExecuting,
   };
 };

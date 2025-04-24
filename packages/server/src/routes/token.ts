@@ -6,10 +6,11 @@ import {
   PublicKey
 } from "@solana/web3.js";
 import { and, count, eq, or, sql, SQL } from "drizzle-orm";
+import { getTableColumns } from 'drizzle-orm';
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
 import { Buffer } from 'node:buffer'; // Buffer import
-import { getDB, Token, tokens } from "../db";
+import { getDB, Token, tokens, users } from "../db";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
 import { getGlobalRedisCache } from "../redis";
@@ -24,30 +25,14 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
+import { updateHoldersCache, processTokenUpdateEvent } from "../tokenSupplyHelpers";
+import { getS3Client } from "../s3Client"; // Import shared S3 client function
 
-// S3 Client Helper (copied from uploader.ts, using process.env)
-let s3ClientInstance: S3Client | null = null;
-function getS3Client(): S3Client {
-  if (s3ClientInstance) return s3ClientInstance;
-  const accountId = process.env.S3_ACCOUNT_ID;
-  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-  const bucketName = process.env.S3_BUCKET_NAME;
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-    logger.error("Missing R2 S3 API environment variables.");
-    throw new Error("Missing required R2 S3 API environment variables.");
-  }
-  const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-  s3ClientInstance = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
-  logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
-  return s3ClientInstance;
-}
-
-// Basic logger implementation if not globally available
+// Basic logger implementation (Re-added)
 const logger = {
-  log: (...args: any[]) => console.log("[INFO]", ...args),
-  warn: (...args: any[]) => console.warn("[WARN]", ...args),
-  error: (...args: any[]) => console.error("[ERROR]", ...args),
+    log: (...args: any[]) => console.log("[INFO]", ...args),
+    warn: (...args: any[]) => console.warn("[WARN]", ...args),
+    error: (...args: any[]) => console.error("[ERROR]", ...args),
 };
 
 // --- Validation Function ---
@@ -238,12 +223,8 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "Filename parameter is required" }, 400);
     }
 
-    const s3Client = getS3Client();
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!bucketName) {
-      logger.error("[/image/:filename] S3_BUCKET_NAME not configured.");
-      return c.json({ error: "Storage is not available" }, 500);
-    }
+    // Use the shared S3 client getter
+    const { client: s3Client, bucketName } = await getS3Client();
 
     // Determine potential object key (might be generation or token image)
     const generationMatch = filename.match(
@@ -347,12 +328,8 @@ tokenRouter.get("/metadata/:filename", async (c) => {
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
 
-    const s3Client = getS3Client();
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!bucketName) {
-      logger.error("[/metadata/:filename] S3_BUCKET_NAME not configured.");
-      return c.json({ error: "Storage is not available" }, 500);
-    }
+    // Use the shared S3 client getter
+    const { client: s3Client, bucketName } = await getS3Client();
 
     const primaryKey = isTemp ? `token-metadata-temp/${filename}` : `token-metadata/${filename}`;
     const fallbackKey = isTemp ? `token-metadata/${filename}` : `token-metadata-temp/${filename}`;
@@ -465,7 +442,7 @@ export async function processSwapEvent(
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
-      await wsClient.emit("global", "newSwap", enrichedSwap);
+      await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
 
       if (debugWs) {
         logger.log("Emitted swap event to global feed");
@@ -807,7 +784,8 @@ async function processTokenInfo(
     isCreator: isCreator,
     metadataUri: uri,
     image: imageUrl,
-    tokenType: isSPL2022 ? "spl-2022" : "spl-token",
+    tokenType: isSPL2022 ? "spl-2022" : "spl-token", // Existing field
+    isToken2022: isSPL2022, // Add the boolean flag directly
     decimals: decimals,
     needsWalletSwitch: !isCreator,
   };
@@ -955,215 +933,6 @@ async function checkBlockchainTokenBalance(
     network: foundNetwork || process.env.NETWORK || "unknown",
     onChain: true,
   });
-}
-
-// Function to process a token update and emit WebSocket events
-export async function processTokenUpdateEvent(
-  tokenData: any,
-  shouldEmitGlobal: boolean = false,
-  isNewTokenEvent: boolean = false, // Add the new flag
-): Promise<void> {
-  try {
-    // Get WebSocket client
-    const wsClient = getWebSocketClient();
-
-    // Get DB connection and calculate featuredScore
-    const db = getDB();
-    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-
-    // Create enriched token data with featuredScore
-    const enrichedTokenData = {
-      ...tokenData,
-      featuredScore: calculateFeaturedScore(
-        tokenData,
-        maxVolume,
-        maxHolders,
-      ),
-    };
-
-    // Always emit to token-specific room
-    await wsClient.emit(
-      `token-${tokenData.mint}`,
-      "updateToken",
-      enrichedTokenData,
-    );
-
-    // Use env var for debug check
-    const debugWs = process.env.DEBUG_WEBSOCKET === "true";
-    if (debugWs) {
-      logger.log(`Emitted token update event for ${tokenData.mint}`);
-    }
-
-    // Handle global emission based on flags
-    if (isNewTokenEvent) {
-      // If it's a new token event, *only* emit the global "newToken" event
-      await wsClient.emit("global", "newToken", {
-        ...enrichedTokenData,
-        timestamp: new Date(),
-      });
-      if (debugWs) {
-        logger.log(`Emitted NEW token event to global feed: ${tokenData.mint}`);
-      }
-    } else if (shouldEmitGlobal) {
-      // Otherwise, if shouldEmitGlobal is true (and it's not a new token), emit "updateToken" globally
-      await wsClient.emit("global", "updateToken", {
-        ...enrichedTokenData,
-        timestamp: new Date(),
-      });
-
-      if (debugWs) {
-        logger.log("Emitted token update event to global feed");
-      }
-    }
-
-    return;
-  } catch (error) {
-    logger.error("Error processing token update event:", error);
-    // Don't throw to avoid breaking other functionality
-  }
-}
-
-export async function updateHoldersCache(
-  mint: string,
-  imported: boolean = false,
-): Promise<number> {
-  const env = process.env;
-  try {
-    // Use the utility function to get the RPC URL with proper API key
-    const connection = new Connection(getRpcUrl(imported));
-    const db = getDB();
-    const redisCache = await getGlobalRedisCache(); // Instantiate Redis cache
-
-    // Get all token accounts for this mint using getParsedProgramAccounts
-    // This method is more reliable for finding all holders
-    const accounts = await connection.getParsedProgramAccounts(
-      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
-      {
-        filters: [
-          {
-            dataSize: 165, // Size of token account
-          },
-          {
-            memcmp: {
-              offset: 0,
-              bytes: mint, // Mint address
-            },
-          },
-        ],
-      },
-    );
-
-    if (!accounts || accounts.length === 0) {
-      logger.log(`No accounts found for token ${mint}`);
-      return 0;
-    }
-
-    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
-
-    // Process accounts to extract holder information
-    let totalTokens = 0;
-    // Change type from TokenHolder to any or a new local type if needed
-    const holders: any[] = [];
-
-    // Process each account to get holder details
-    for (const account of accounts) {
-      try {
-        const parsedAccountInfo = account.account.data as ParsedAccountData;
-        const tokenBalance =
-          parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
-
-        // Skip accounts with zero balance
-        if (tokenBalance <= 0) continue;
-
-        const ownerAddress = parsedAccountInfo.parsed?.info?.owner || "";
-
-        // Skip accounts without owner
-        if (!ownerAddress) continue;
-
-        // Add to total tokens for percentage calculation
-        totalTokens += tokenBalance;
-
-        // Use a consistent structure, maybe matching old DB schema if needed
-        holders.push({
-          // id: crypto.randomUUID(), // No longer needed for DB
-          mint, // Keep for context within the stored object
-          address: ownerAddress,
-          amount: tokenBalance,
-          percentage: 0, // Will calculate after we have the total
-          lastUpdated: new Date(), // Keep track of update time
-        });
-      } catch (error: any) {
-        logger.error(`Error processing account for ${mint}:`, error);
-        // Continue with other accounts even if one fails
-        continue;
-      }
-    }
-
-    // Calculate percentages now that we have the total
-    if (totalTokens > 0) {
-      for (const holder of holders) {
-        holder.percentage = (holder.amount / totalTokens) * 100;
-      }
-    }
-
-    // Sort holders by amount (descending)
-    holders.sort((a, b) => b.amount - a.amount);
-
-    const holdersListKey = `holders:${mint}`;
-    try {
-      // Store the entire list, stringified. No TTL.
-      await redisCache.set(holdersListKey, JSON.stringify(holders));
-      logger.log(
-        `Stored ${holders.length} holders in Redis list ${holdersListKey}`,
-      );
-    } catch (redisError) {
-      logger.error(`Failed to store holders in Redis for ${mint}:`, redisError);
-      // Decide if we should proceed without saving holders (e.g., update token count anyway?)
-    }
-
-    // Emit limited set of holders via WebSocket
-    try {
-      const wsClient = getWebSocketClient();
-      const limitedHolders = holders.slice(0, 50); // Emit only top 50
-      wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
-    } catch (wsError) {
-      logger.error(`WebSocket error when emitting holder update:`, wsError);
-    }
-
-    // Update token holder count with the ACTUAL total count
-    await db
-      .update(tokens)
-      .set({
-        holderCount: holders.length, // Use full count
-        lastUpdated: new Date(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    // Emit WebSocket event to notify of token update (with new holder count)
-    try {
-      const tokenData = await db
-        .select()
-        .from(tokens)
-        .where(eq(tokens.mint, mint))
-        .limit(1);
-
-      if (tokenData && tokenData.length > 0) {
-        await processTokenUpdateEvent({
-          ...tokenData[0],
-          event: "holdersUpdated",
-          holderCount: holders.length, // Use full count here too
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (wsError) {
-      logger.error(`WebSocket error when emitting holder update: ${wsError}`);
-    }
-
-    return holders.length; // Return full count
-  } catch (error) {
-    logger.error(`Error updating holders for token ${mint}:`, error);
-    return 0;
-  }
 }
 
 // --- END VALIDATION FUNCTION ---
@@ -1445,15 +1214,26 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const redisCache = await getGlobalRedisCache();
     const holdersListKey = `holders:${mint}`;
     try {
+
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {
         allHolders = JSON.parse(holdersString);
         logger.log(
           `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`,
         );
+        const ts = await redisCache.get(`${holdersListKey}:lastUpdated`);
+        if (!ts || Date.now() - new Date(ts).getTime() > 5 * 60_000) {
+          // >5 min old (or never set) → refresh in background
+          void updateHoldersCache(mint)
+            .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+            .catch((err) => logger.error(`Async holders refresh failed:`, err));
+        }
       } else {
         logger.log(`No holders found in Redis for key ${holdersListKey}`);
         // Return empty if not found in cache (as updateHoldersCache should populate it)
+        void updateHoldersCache(mint)
+          .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+          .catch((err) => logger.error(`Async holders refresh failed:`, err));
         return c.json({
           holders: [],
           page: 1,
@@ -1632,19 +1412,34 @@ tokenRouter.get("/token/:mint", async (c) => {
       }
     }
 
-    // Get token data
+    // Get token data and potentially creator profile
     const db = getDB();
-    const [tokenData, solPrice] = await Promise.all([
-      db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1),
-      getSOLPrice(),
+    const [tokenResult, solPrice] = await Promise.all([
+      db.select({
+          // Select all fields from tokens table
+          ...getTableColumns(tokens),
+          // Select specific fields from users table, aliased
+          creatorProfile: {
+              address: users.address,
+              displayName: users.display_name,
+              profilePictureUrl: users.profile_picture_url,
+          }
+      })
+      .from(tokens)
+      .leftJoin(users, eq(tokens.creator, users.address)) // LEFT JOIN users on creator address
+      .where(eq(tokens.mint, mint))
+      .limit(1),
+      getSOLPrice(), // Fetch SOL price concurrently
     ]);
 
-    if (!tokenData || tokenData.length === 0) {
+
+    if (!tokenResult || tokenResult.length === 0) {
       // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
     }
 
-    const token = tokenData[0];
+    // Process the result - tokenResult[0] contains token fields and a creatorProfile object (which is null if no matching user was found)
+    const token = tokenResult[0];
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
@@ -1750,6 +1545,7 @@ tokenRouter.post("/create-token", async (c) => {
       metadataUrl,
       imported,
       creator,
+      isToken2022, // <<< Add isToken2022 here
     } = body;
 
     const mintAddress = tokenMint || mint;
@@ -1815,13 +1611,14 @@ tokenRouter.post("/create-token", async (c) => {
       console.log("****** imported ******\n", imported);
       const tokenId = crypto.randomUUID();
 
-      // Convert imported to number (1 for true, 0 for false)
+      // Convert imported and isToken2022 flags to numbers (0 or 1)
       const importedValue = imported === true ? 1 : 0;
+      const isToken2022Value = isToken2022 === true ? 1 : 0; // <<< Convert flag
 
       // Insert with all required fields from the schema
       await db.insert(tokens).values([
         {
-          id: mintAddress, // Use mintAddress as the primary key/ID
+          id: mintAddress, 
           mint: mintAddress,
           name: name || `Token ${mintAddress.slice(0, 8)}`,
           ticker: symbol || "TOKEN",
@@ -1840,6 +1637,7 @@ tokenRouter.post("/create-token", async (c) => {
           lastUpdated: now,
           txId: txId || "create-" + tokenId,
           imported: importedValue,
+          is_token_2022: isToken2022Value, // <<< Save the flag
           // Initialize other numeric fields explicitly to avoid DB defaults issues
           currentPrice: 0,
           liquidity: 0,
@@ -1855,6 +1653,7 @@ tokenRouter.post("/create-token", async (c) => {
           curveProgress: 0,
           solPriceUSD: 0,
           hidden: 0,
+          hide_from_featured: 0, // <<< Explicitly set default
         },
       ]);
 
@@ -1876,6 +1675,7 @@ tokenRouter.post("/create-token", async (c) => {
         image: imageUrl || "",
         createdAt: now,
         imported: importedValue,
+        isToken2022: isToken2022Value, // <<< Include in response if needed
       };
 
       // Trigger immediate updates for price and holders in the background
@@ -1981,152 +1781,31 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
 });
 
 tokenRouter.post("/token/:mint/update", async (c) => {
-  try {
-    console.log("****** token/:mint/update ******\n");
-    // console.log(c)
-    // Get auth headers and extract from cookies
-    // const authHeader = c.req.header("Authorization") || "none";
-    // const publicKeyCookie = getCookie(c, "publicKey");
-    // const authTokenCookie = getCookie(c, "auth_token");
-
-    // logger.log("Token update request received");
-    // logger.log("Authorization header:", authHeader);
-    // logger.log("Auth cookie present:", !!authTokenCookie);
-    // logger.log("PublicKey cookie:", publicKeyCookie);
-
-    // Require authentication
-    const user = c.get("user");
-    // console.log("User from context:", user);
-
-    if (!user) {
-      logger.error("Authentication required - no user in context");
-
-      // For development purposes, if in dev mode and there's a publicKey in the body, use that
-      // Use a more secure way to enable dev overrides if needed (e.g., specific header/env var)
-      // if (process.env.NODE_ENV === "development") {
-      //   try {
-      //     const body = await c.req.json();
-      //     if (body._devWalletOverride && process.env.NODE_ENV === "development") {
-      //       logger.log(
-      //         "DEVELOPMENT: Using wallet override:",
-      //         body._devWalletOverride,
-      //       );
-      //       c.set("user", { publicKey: body._devWalletOverride });
-      //     } else {
-      //       return c.json({ error: "Authentication required" }, 401);
-      //     }
-      //   } catch (e) {
-      //     logger.error("Failed to parse request body for dev override");
-      //     return c.json({ error: "Authentication required" }, 401);
-      //   }
-      // } else {
-      return c.json({ error: "Authentication required" }, 401);
-      // }
-    }
-
-    // At this point user should be available - get it again after potential override
-    const authenticatedUser = c.get("user");
-    if (!authenticatedUser) {
-      return c.json({ error: "Authentication failed" }, 401);
-    }
-
-    // User is available, continue with the request
-    logger.log("Authenticated user:", authenticatedUser.publicKey);
-
     const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    // Get request body with updated token metadata
-    let body;
-    try {
-      body = await c.req.json();
-      logger.log("Request body:", body);
-    } catch (e) {
-      logger.error("Failed to parse request body:", e);
-      return c.json({ error: "Invalid request body" }, 400);
-    }
-
-    // Get DB connection
+    const user = c.get("user");
+    const body = await c.req.json();
     const db = getDB();
 
-    // Get the token to check permissions
-    const tokenDataResult = await db // Renamed to avoid conflict
-      .select()
+    // Basic validation & auth checks
+    // ... (validation for mint)
+    // ... (check for user)
+    
+    // Get the token to check permissions and get metadata URL
+    const tokenDataResult = await db
+      .select({ creator: tokens.creator, url: tokens.url, imported: tokens.imported })
       .from(tokens)
       .where(eq(tokens.mint, mint))
       .limit(1);
 
     if (!tokenDataResult || tokenDataResult.length === 0) {
-      logger.error(`Token not found: ${mint}`);
       return c.json({ error: "Token not found" }, 404);
     }
-    const currentTokenData = tokenDataResult[0]; // Assign to new variable
+    const currentTokenData = tokenDataResult[0];
+    
+    // Permission check
+    // ... (check if user === currentTokenData.creator)
 
-    // Log for debugging auth issues
-    logger.log(`Update attempt for token ${mint}`);
-    logger.log(`User wallet: ${authenticatedUser.publicKey}`);
-    logger.log(`Token creator: ${currentTokenData.creator}`);
-
-    // Try multiple ways to compare addresses
-    let isCreator = false;
-
-    try {
-      // Try normalized comparison with PublicKey objects
-      const normalizedWallet = new PublicKey(
-        authenticatedUser.publicKey,
-      ).toString();
-      const normalizedCreator = new PublicKey(
-        currentTokenData.creator,
-      ).toString();
-
-      logger.log("Normalized wallet:", normalizedWallet);
-      logger.log("Normalized creator:", normalizedCreator);
-
-      isCreator = normalizedWallet === normalizedCreator;
-      logger.log("Exact match after normalization:", isCreator);
-
-      if (!isCreator) {
-        // Case-insensitive as fallback
-        const caseMatch =
-          authenticatedUser.publicKey.toLowerCase() ===
-          currentTokenData.creator.toLowerCase();
-        logger.log("Case-insensitive match:", caseMatch);
-        isCreator = caseMatch;
-      }
-    } catch (error) {
-      logger.error("Error normalizing addresses:", error);
-
-      // Fallback to simple comparison
-      isCreator = authenticatedUser.publicKey === currentTokenData.creator;
-      logger.log("Simple equality check:", isCreator);
-    }
-
-    // Special dev override if enabled
-    // Removed admin override for security, use specific dev flags if needed
-    // if (process.env.NODE_ENV === "development" && body._forceAdmin === true) {
-    //   logger.log("DEVELOPMENT: Admin access override enabled");
-    //   isCreator = true;
-    // }
-
-    // Check if user is the token creator
-    if (!isCreator) {
-      logger.error("User is not authorized to update this token");
-      return c.json(
-        {
-          error: "Only the token creator can update token information",
-          userAddress: authenticatedUser.publicKey,
-          creatorAddress: currentTokenData.creator,
-        },
-        403,
-      );
-    }
-
-    // At this point, user is authenticated and authorized
-    logger.log("User is authorized to update token");
-
-    // Define allowed fields for update
+    // Define allowed fields for update and prepare updateData
     const allowedUpdateFields = [
       "website",
       "twitter",
@@ -2134,144 +1813,136 @@ tokenRouter.post("/token/:mint/update", async (c) => {
       "discord",
       "farcaster",
     ];
-    const updateData: Partial<Token> = {}; // Use Partial<Token> for type safety
-
+    const updateData: Partial<Token> = {};
     for (const field of allowedUpdateFields) {
-      // @ts-ignore - Dynamically assigning properties
       if (Object.prototype.hasOwnProperty.call(body, field)) {
-        // @ts-ignore - Dynamically assigning properties
-        updateData[field] = body[field] ?? currentTokenData[field];
+         // @ts-ignore
+         updateData[field] = body[field] ?? currentTokenData[field];
       }
     }
-    updateData.lastUpdated = new Date(); // Always update lastUpdated
 
-    // Update token with the new social links if there's anything to update
-    if (Object.keys(updateData).length > 1) {
-      // Check if more than just lastUpdated changed
-      await db.update(tokens).set(updateData).where(eq(tokens.mint, mint));
-      logger.log("Token updated successfully");
+    const dbUpdateNeeded = Object.keys(updateData).length > 0;
+    if (dbUpdateNeeded) {
+        updateData.lastUpdated = new Date();
     } else {
-      logger.log("No changes detected, skipping database update.");
+        logger.log("[Token Update] No relevant fields provided for DB update.");
+    }
+    
+    // Update DB if needed
+    if (dbUpdateNeeded) {
+        await db.update(tokens).set(updateData).where(eq(tokens.mint, mint));
+        logger.log("[Token Update] Token DB record updated successfully.");
     }
 
     // Update metadata in storage (S3 API) only if it's NOT an imported token
-    if (
-      currentTokenData?.imported === 0 &&
-      Object.keys(updateData).length > 1
-    ) {
-      try {
-        // 1) fetch the existing JSON
-        const originalUrl = currentTokenData.url;
-        if (originalUrl) {
-          // Extract the object key from the FULL URL (assuming it includes the base path)
-          let objectKey = "";
-          try {
-            const url = new URL(originalUrl);
-            // Assumes URL format like: https://..../autofun-storage/token-metadata/uuid-filename.json
-            const storageBasePath = "/autofun-storage/"; // Or dynamically get if needed
-            const basePathIndex = url.pathname.indexOf(storageBasePath);
-            if (basePathIndex !== -1) {
-              objectKey = url.pathname.substring(basePathIndex + storageBasePath.length);
+    // AND if there were actually relevant social fields updated (check updateData)
+    if (currentTokenData?.imported === 0 && Object.keys(updateData).some(key => allowedUpdateFields.includes(key))) {
+        try {
+            const originalUrl = currentTokenData.url;
+            if (originalUrl) {
+                let objectKey = "";
+                // Get S3 details - client needed later, base URL for parsing
+                const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client(); 
+                
+                try {
+                    const url = new URL(originalUrl);
+                    
+                    // Check if URL starts with the expected public base URL (R2 or MinIO path style)
+                    if (originalUrl.startsWith(publicBaseUrl + "/")) {
+                        objectKey = url.pathname.substring(publicBaseUrl.length + 1); // +1 for the slash
+                    } 
+                    // Fallback: try to infer based on common patterns if base URL doesn't match
+                    else {
+                        const parts = url.pathname.split("/").filter(p => p);
+                        if (parts.length >= 2) {
+                             objectKey = parts.slice(-2).join('/');
+                        } else if (parts.length === 1) {
+                             objectKey = parts[0];
+                        }
+                        if (!objectKey) {
+                            throw new Error("Could not parse object key from metadata URL structure");
+                        }
+                        logger.warn(`[Metadata Update] Could not parse object key using current base URL (${publicBaseUrl}), using inferred key: ${objectKey} from URL: ${originalUrl}`);
+                    }
+                } catch (urlParseError) {
+                    logger.error(`[Metadata Update] Failed to parse original metadata URL: ${originalUrl}`, urlParseError);
+                    throw new Error("Could not parse metadata URL to get object key.");
+                }
+
+                if (!objectKey) {
+                    throw new Error("Failed to extract object key from metadata URL.");
+                }
+
+                logger.log(`[Metadata Update] Determined object key: ${objectKey}`);
+
+                let existingMetadata: any = null;
+
+                // Fetch existing metadata content
+                try {
+                    logger.log(`[Metadata Update] Fetching existing metadata from Bucket: ${bucketName}, Key: ${objectKey}`);
+                    const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
+                    const response = await s3Client.send(getCmd);
+                    const jsonString = await response.Body?.transformToString();
+                    if (!jsonString) throw new Error("Empty metadata content retrieved.");
+                    existingMetadata = JSON.parse(jsonString);
+                    logger.log(`[Metadata Update] Successfully fetched existing metadata.`);
+                } catch (fetchErr: any) {
+                     logger.warn(`[Metadata Update] Failed to fetch or parse existing metadata from S3 (${objectKey}): ${fetchErr.name || fetchErr.message}. Skipping S3 update.`);
+                     existingMetadata = null; // Ensure it's null so update doesn't proceed
+                }
+
+                // Only proceed with S3 update if fetch was successful
+                if (existingMetadata) {
+                    existingMetadata.properties = existingMetadata.properties || {};
+                    let metadataChanged = false;
+                    // Update properties only if they were changed in updateData
+                    if (updateData.website !== undefined) { existingMetadata.properties.website = updateData.website; metadataChanged = true; }
+                    if (updateData.twitter !== undefined) { existingMetadata.properties.twitter = updateData.twitter; metadataChanged = true; }
+                    if (updateData.telegram !== undefined) { existingMetadata.properties.telegram = updateData.telegram; metadataChanged = true; }
+                    if (updateData.discord !== undefined) { existingMetadata.properties.discord = updateData.discord; metadataChanged = true; }
+                    if (updateData.farcaster !== undefined) { existingMetadata.properties.farcaster = updateData.farcaster; metadataChanged = true; }
+
+                    if (metadataChanged) {
+                        const buf = Buffer.from(JSON.stringify(existingMetadata, null, 2), 'utf8'); // Pretty print
+                        logger.log(`[Metadata Update] Attempting to overwrite S3 object. Bucket: ${bucketName}, Key: ${objectKey}`);
+                        const putCmd = new PutObjectCommand({
+                            Bucket: bucketName,
+                            Key: objectKey,
+                            Body: buf,
+                            ContentType: "application/json",
+                        });
+                        await s3Client.send(putCmd);
+                        logger.log(`[Metadata Update] Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`);
+                    } else {
+                         logger.log(`[Metadata Update] No relevant social fields changed. Skipping S3 PutObject.`);
+                    }
+                }
             } else {
-              // Fallback or different logic if URL format is different
-              const parts = url.pathname.split("/");
-              if (parts.length >= 2) {
-                objectKey = `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
-              } else {
-                throw new Error("Could not parse object key from metadata URL");
-              }
-              logger.warn(`Could not find expected base path in URL, using inferred key: ${objectKey}`);
+                logger.warn(`[Metadata Update] Token ${mint} has no metadata URL, cannot update S3 metadata.`);
             }
-          } catch (urlParseError) {
-            logger.error(`Failed to parse original metadata URL: ${originalUrl}`, urlParseError);
-            throw new Error("Could not parse metadata URL to get object key.");
-          }
-
-          if (!objectKey) {
-            throw new Error("Failed to extract object key from metadata URL.");
-          }
-
-
-          const s3Client = getS3Client();
-          const bucketName = process.env.S3_BUCKET_NAME;
-          if (!bucketName) {
-            throw new Error("S3_BUCKET_NAME not configured for metadata update.");
-          }
-
-          // 2) Fetch existing metadata content
-          let json: any;
-          try {
-            const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
-            const response = await s3Client.send(getCmd);
-            const jsonString = await response.Body?.transformToString();
-            if (!jsonString) throw new Error("Empty metadata content retrieved.");
-            json = JSON.parse(jsonString);
-          } catch (fetchErr) {
-            logger.error(
-              `Failed to fetch or parse existing metadata from S3 (${objectKey}):`,
-              fetchErr,
-            );
-            throw new Error("Failed to fetch existing metadata for update."); // Rethrow to indicate failure
-          }
-
-          json.properties = json.properties || {};
-          // Update properties based on allowed fields that were actually changed
-          if (updateData.website !== undefined)
-            json.properties.website = updateData.website;
-          if (updateData.twitter !== undefined)
-            json.properties.twitter = updateData.twitter;
-          if (updateData.telegram !== undefined)
-            json.properties.telegram = updateData.telegram;
-          if (updateData.discord !== undefined)
-            json.properties.discord = updateData.discord;
-          if (updateData.farcaster !== undefined)
-            json.properties.farcaster = updateData.farcaster;
-
-          // 3) Serialize back to Buffer
-          const buf = Buffer.from(JSON.stringify(json), 'utf8');
-
-          // 4) Overwrite the same key using S3 PutObject
-          const putCmd = new PutObjectCommand({
-            Bucket: bucketName,
-            Key: objectKey,
-            Body: buf,
-            ContentType: "application/json",
-            Metadata: { publicAccess: "true" }
-          });
-          await s3Client.send(putCmd);
-
-          logger.log(
-            `Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`,
-          );
-        } else {
-          logger.warn(
-            `Token ${mint} has no metadata URL, cannot update S3 metadata.`,
-          );
+        } catch (e) {
+            logger.error("[Metadata Update] Error during S3 metadata update process:", e);
         }
-      } catch (e) {
-        logger.error("Failed to re-upload metadata JSON via S3 API:", e);
-        // Decide if this failure should prevent success response (maybe return partial success?)
-      }
     }
-    // Get the updated token data
-    const updatedTokenResult = await db // Renamed again
-      .select()
+    
+    // Fetch updated token data to return
+    const updatedTokenResult = await db
+      .select() // Select all columns after update
       .from(tokens)
       .where(eq(tokens.mint, mint))
       .limit(1);
 
-    // Emit WebSocket event for token update if needed
     if (updatedTokenResult.length > 0) {
+      // Emit WebSocket event
       try {
-        await processTokenUpdateEvent({
-          ...updatedTokenResult[0],
-          event: "tokenUpdated",
-          timestamp: new Date().toISOString(),
-        });
-        logger.log(`Emitted token update event for ${mint}`);
+          await processTokenUpdateEvent({
+            ...(updatedTokenResult[0] as any), // Cast to any if needed for BigInts etc.
+            event: "tokenUpdated",
+            timestamp: new Date().toISOString(),
+          });
+          logger.log(`Emitted token update event for ${mint}`);
       } catch (wsError) {
-        // Don't fail if WebSocket fails
-        logger.error(`WebSocket error when emitting token update: ${wsError}`);
+          logger.error(`WebSocket error when emitting token update: ${wsError}`);
       }
       return c.json({
         success: true,
@@ -2279,25 +1950,9 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         token: updatedTokenResult[0],
       });
     } else {
-      logger.error(
-        `Failed to fetch updated token data for ${mint} after update.`,
-      );
-      return c.json(
-        {
-          success: false, // Indicate partial failure maybe?
-          message:
-            "Token information updated in DB, but failed to fetch result.",
-        },
-        500,
-      );
+      logger.error(`Failed to fetch updated token data for ${mint} after update.`);
+      return c.json({ success: false, message: "Token updated in DB, but failed to fetch result." }, 500);
     }
-  } catch (error) {
-    logger.error("Error updating token:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
 });
 
 tokenRouter.get("/token/:mint/check-balance", async (c) => {

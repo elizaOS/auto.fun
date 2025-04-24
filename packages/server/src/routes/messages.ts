@@ -107,6 +107,54 @@ messagesRouter.get("/messages/:mint", async (c) => {
   }
 });
 
+// Get new messages since a timestamp for a specific tier
+messagesRouter.get("/messages/:mint/:tier/updates", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    const tier = c.req.param("tier");
+    const since = c.req.query("since");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    if (!since) {
+      return c.json({ error: "Missing 'since' parameter" }, 400);
+    }
+
+    if (!tier || !["1k", "100k", "1M"].includes(tier)) {
+      return c.json({ error: "Invalid tier" }, 400);
+    }
+
+    const db = getDB();
+
+    // Get messages newer than the specified timestamp
+    const messagesResult = await db
+      .select()
+      .from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.tokenMint, mint),
+          eq(messagesTable.tier, tier),
+          sql`${messagesTable.timestamp} > ${new Date(since)}`
+        )
+      )
+      .orderBy(desc(messagesTable.timestamp))
+      .limit(50);
+
+    return c.json({
+      success: true,
+      messages: messagesResult || []
+    });
+  } catch (error) {
+    logger.error("Error fetching message updates:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
 // Get replies for a specific message
 messagesRouter.get("/messages/:messageId/replies", async (c) => {
   try {

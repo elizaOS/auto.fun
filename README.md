@@ -108,7 +108,7 @@ This monorepo contains the following packages:
 ## Running Locally
 
 1.  **Start Development Servers**
-    *   This command starts the frontend, backend server, and potentially the mock webhook server (see step 2). It also copies the root `.env` to `packages/server/.env`.
+    *   This command starts the frontend, backend server, and potentially the proxy webhook server (see step 2). It also copies the root `.env` to `packages/server/.env`.
         ```bash
         bun run dev
         ```
@@ -116,9 +116,9 @@ This monorepo contains the following packages:
     *   The backend server will run on the port specified in its configuration (often 3000 or 8787 via wrangler).
 
 2.  **Configure Helius Webhooks (for Real Events)**
-    *   The default `bun run dev` command may use a mock webhook server (`mock-helius-webhook.js`).
+    *   The default `bun run dev` command may use a proxy webhook server (`proxy-webhooks.js`).
     *   To use real Helius webhooks for development:
-        *   Modify the `dev` script in the root `package.json` to run `setup-webhook.js` instead of `mock-helius-webhook.js`.
+        *   Modify the `dev` script in the root `package.json` to run `setup-webhook.js` instead of `proxy-webhooks.js`.
         *   Ensure your `HELIUS_API_KEY` is correctly set in your `.env` file.
         *   Run `bun run dev`. This will:
             *   Use `localtunnel` to expose your local server via a public HTTPS URL.
@@ -152,9 +152,6 @@ Fill in the following variables in your root `.env` file:
 *   `DATABASE_URL`: PostgreSQL connection string (should match `docker-compose.yml` for local dev).
     *   Format: `postgresql://<user>:<password>@<host>:<port>/<database>`
     *   Local Default: `postgresql://autofun_owner:npg_2PDZgJfEtrh6@localhost:5432/autofun`
-*   `REDIS_URL`: Redis connection string.
-    *   Format: `redis://:<password>@<host>:<port>`
-    *   Local Default: `redis://:MDikUKnhRHlURlnORexvVztDTrNCUBze@localhost:6379`
 *   `REDIS_HOST`: Redis host (e.g., `localhost`).
 *   `REDIS_PORT`: Redis port (e.g., `6379`).
 *   `REDIS_PASSWORD`: Redis password.

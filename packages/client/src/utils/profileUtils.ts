@@ -8,6 +8,25 @@ import { env } from "./env";
 import { BN } from "@coral-xyz/anchor";
 import { calculateAmountOutSell } from "./swapUtils";
 
+// --- Types for User Profile Data ---
+export interface UserProfileData {
+  id: string;
+  address: string;
+  displayName: string;
+  profilePictureUrl: string | null;
+  points: number;
+  rewardPoints: number;
+  createdAt: string;
+  suspended: number;
+}
+
+export interface ProfileApiResponse {
+  user: UserProfileData;
+  transactions: any[];
+  tokensCreated: ProfileToken[];
+}
+// --- End Types ---
+
 // TODO: update after mainnet launch
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
@@ -360,25 +379,99 @@ const useCreatedTokens = () => {
   return fetchTokens;
 };
 
+// --- New Hook: useUserProfile ---
+// Fetches public user data (info, created tokens) for a given address
+export const useUserProfile = (address: string | undefined | null) => {
+  const [profileData, setProfileData] = useState<ProfileApiResponse | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchUserProfile = useCallback(async () => {
+    if (!address) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${env.apiUrl}/api/users/${address}`);
+
+      if (!response.ok) {
+        // Log the status text before throwing
+        const statusText = response.statusText;
+        console.error(
+          `API Error (${response.status}): ${statusText} for ${address}`,
+        );
+        throw new Error(`Failed to fetch user profile: ${statusText}`);
+      }
+
+      const data = (await response.json()) as ProfileApiResponse;
+      console.log(
+        `[useUserProfile] Raw data received for ${address}:`,
+        JSON.stringify(data),
+      );
+      if (!data.user) {
+        console.warn(
+          `[useUserProfile] User object is null or missing in API response for ${address}`,
+        );
+      }
+      setProfileData(data);
+    } catch (err) {
+      console.error("[useUserProfile] Error fetching user profile:", err);
+      setError(
+        err instanceof Error
+          ? err
+          : new Error("Unknown error fetching user profile"),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [address]);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
+  return {
+    profileData,
+    isLoading,
+    error,
+    refetch: fetchUserProfile,
+  };
+};
+// --- End useUserProfile Hook ---
+
 export const useProfile = () => {
   const [data, setData] = useState<{
+    user: UserProfileData | null;
     tokensHeld: ProfileToken[];
     tokensCreated: ProfileToken[];
-  }>({ tokensHeld: [], tokensCreated: [] });
+  }>({ user: null, tokensHeld: [], tokensCreated: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
   const { publicKey } = useWallet();
   const { connection } = useConnection();
+  const walletAddress = publicKey?.toBase58();
+
+  // Use our new hook to fetch user profile data
+  const {
+    profileData,
+    isLoading: isLoadingProfile,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useUserProfile(walletAddress);
+
   const getOwnedTokens = useOwnedTokens();
-  const getCreatedTokens = useCreatedTokens();
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
 
     let tokensHeld: ProfileToken[] = [];
-    let tokensCreated: ProfileToken[] = [];
 
     try {
       tokensHeld = await getOwnedTokens();
@@ -386,28 +479,160 @@ export const useProfile = () => {
       console.error("getOwnedTokens failed:", err);
     }
 
-    try {
-      tokensCreated = await getCreatedTokens();
-    } catch (err) {
-      console.error("getCreatedTokens failed:", err);
-    }
+    // Get tokensCreated from the profileData
+    const tokensCreated = profileData?.tokensCreated || [];
+    const user = profileData?.user || null;
+
     // always update the state even if one fails
-    setData({ tokensHeld, tokensCreated });
+    setData({ user, tokensHeld, tokensCreated });
     setIsLoading(false);
-  }, [getOwnedTokens, getCreatedTokens]);
+  }, [getOwnedTokens, profileData]);
 
   useEffect(() => {
-    if (!publicKey) return;
+    if (!publicKey) {
+      setData({ user: null, tokensHeld: [], tokensCreated: [] });
+      setIsLoading(false);
+      return;
+    }
 
     // update profile automatically when the user's wallet account changes
-    const id = connection.onAccountChange(publicKey, fetchProfile);
+    const id = connection.onAccountChange(publicKey, () => {
+      refetchProfile();
+      fetchProfile();
+    });
 
     fetchProfile();
 
     return () => {
       connection.removeAccountChangeListener(id);
     };
-  }, [connection, fetchProfile, getCreatedTokens, getOwnedTokens, publicKey]);
+  }, [connection, fetchProfile, publicKey, refetchProfile]);
 
-  return { data, isLoading, isError };
+  // Combine loading states
+  const combinedIsLoading = isLoading || isLoadingProfile;
+  // Set error if either operation fails
+  const combinedIsError = isError || !!profileError;
+
+  return {
+    data,
+    isLoading: combinedIsLoading,
+    isError: combinedIsError,
+    refetch: refetchProfile,
+  };
+};
+
+// Function to update user profile
+export const updateUserProfile = async (
+  displayName?: string,
+  profilePictureUrl?: string | null,
+) => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) {
+    throw new Error("Authentication required to update profile");
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${JSON.parse(authToken)}`,
+  };
+
+  const response = await fetch(`${env.apiUrl}/api/users/profile`, {
+    method: "PUT",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({
+      displayName,
+      profilePictureUrl,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update profile");
+  }
+
+  return await response.json();
+};
+
+// Function to upload a new profile picture
+export const uploadProfilePicture = async (
+  file: File,
+): Promise<UserProfileData> => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) {
+    throw new Error("Authentication required to upload profile picture");
+  }
+
+  // Basic client-side validation (optional, as backend also validates)
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Invalid file type. Please select an image.");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    // 5MB limit
+    throw new Error("Image file size exceeds 5MB limit.");
+  }
+
+  const formData = new FormData();
+  formData.append("profilePicture", file); // Key must match backend expectation
+
+  const headers: Record<string, string> = {
+    // Content-Type is set automatically by browser for FormData
+    Authorization: `Bearer ${JSON.parse(authToken)}`,
+  };
+
+  const response = await fetch(`${env.apiUrl}/api/users/profile/picture`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: formData,
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(responseData.error || "Failed to upload profile picture");
+  }
+
+  if (!responseData.user) {
+    throw new Error("API response did not include updated user profile.");
+  }
+
+  // Return the updated user data from the response
+  return responseData.user as UserProfileData;
+};
+
+// Function to trigger profile picture generation (placeholder)
+export const generateProfilePicture = async (): Promise<UserProfileData> => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) {
+    throw new Error("Authentication required to generate profile picture");
+  }
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${JSON.parse(authToken)}`,
+  };
+
+  const response = await fetch(
+    `${env.apiUrl}/api/users/profile/picture/generate`,
+    {
+      method: "POST",
+      headers,
+      credentials: "include",
+      // body: JSON.stringify({ prompt: "Optional prompt here" }) // Optional: Add if backend supports it
+    },
+  );
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(responseData.error || "Failed to generate profile picture");
+  }
+
+  if (!responseData.user) {
+    throw new Error(
+      "API response did not include updated user profile after generation.",
+    );
+  }
+
+  return responseData.user as UserProfileData;
 };

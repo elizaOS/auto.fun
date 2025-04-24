@@ -88,55 +88,40 @@ export class TokenMigrator {
   }
 
   async resumeMigrationsOnStart(): Promise<void> {
-    try {
-      const db = getDB();
-      const migratingTokens = await db
-        .select()
-        .from(tokens)
-        .where(eq(tokens.status, "migrating"))
-        .execute();
+    logger.log("[Migrate] Scanning for ongoing migrations on startup...");
 
-      if (migratingTokens.length === 0) {
-        logger.log("[Migrate] No tokens to resume on startup.");
-        return;
-      }
+    // find all keys like "migration:<mint>:lock"
+    const lockKeys: string[] = await this.redisCache.keys("migration:*:lock");
 
-      logger.log(`[Migrate] Resuming ${migratingTokens.length} token(s)...`);
-
-      for (const dbToken of migratingTokens) {
-        const mint = dbToken.mint;
-
-        // Prevent multiple resumes
-        const lockKey = `migration:${mint}:lock`;
-        const isLocked = await this.redisCache.get(lockKey);
-        if (isLocked === "true") {
-          logger.log(`[Migrate] Token ${mint} is locked. Skipping resume.`);
-          continue;
-        }
-
-        const newToken = await getToken(mint);
-        if (!newToken) {
-          logger.error(`[Migrate] Token ${mint} not found in DB.`);
-          continue;
-        }
-
-        const lastUpdated = new Date(newToken.lastUpdated);
-        const stale = Date.now() - lastUpdated.getTime() > 60 * 60 * 1000;
-
-        if (!stale) {
-          logger.log(`[Migrate] Token ${mint} updated recently. Skipping.`);
-          continue;
-        }
-
-        logger.log(`[Migrate] Token ${mint} is stale. Resuming migration.`);
-        await this.migrateToken(newToken);
-      }
-
-      logger.log("[Migrate] Resume complete.");
-    } catch (error) {
-      logger.error("[Migrate] Failed to resume migrations on startup:");
-      console.error(error);
+    if (lockKeys.length === 0) {
+      logger.log("[Migrate] No in-flight migrations found.");
+      return;
     }
+
+    for (const lockKey of lockKeys) {
+      const isLocked = await this.redisCache.get(lockKey);
+      if (isLocked !== "true") continue;
+
+      const [, , mint] = lockKey.split(":");
+      console.log(`[Migrate] Found locked token: ${mint}`);
+      logger.log(`[Migrate] Resuming migration for token ${mint}`);
+
+      const token = await getToken(mint);
+      if (!token) {
+        logger.error(`[Migrate] Token ${mint} not found in DB. Skipping.`);
+        continue;
+      }
+
+      try {
+        await this.redisCache.set(lockKey, "false");
+        await this.migrateToken(token);
+      } catch (err) {
+        logger.error(`[Migrate] Error resuming migration for ${mint}:`, err);
+        await this.redisCache.set(lockKey, "false");
+      }
+    }
+
+    logger.log("[Migrate] Resume complete.");
   }
 
   async printMigrationState(mint: string): Promise<void> {
@@ -177,13 +162,23 @@ export class TokenMigrator {
         name: "lockPrimaryLP",
         eventName: "lpPrimaryLocked",
         fn: (token: any) =>
-          this.lockPrimaryLPTransaction.bind(this)(token.raydium, token.poolInfo, token.poolKeys, token.lpAccount.amount).then((result) => result),
+          this.lockPrimaryLPTransaction(
+            token.raydium,
+            token.poolInfo,
+            token.poolKeys,
+            token.primaryAmount,      // ← use the saved BN
+          ).then((result) => result),
       },
       {
         name: "lockSecondaryLP",
         eventName: "lpSecondaryLocked",
         fn: (token: any) =>
-          this.lockSecondaryLPTransaction.bind(this)(token.raydium, token.poolInfo, token.poolKeys, token.lpAccount.amount).then((result) => result),
+          this.lockSecondaryLPTransaction(
+            token.raydium,
+            token.poolInfo,
+            token.poolKeys,
+            token.secondaryAmount,    // ← use the saved BN
+          ).then((result) => result),
       },
       {
         name: "finalizeLockLP",
@@ -236,13 +231,13 @@ export class TokenMigrator {
     ];
   }
 
-  async migrateToken(token: TokenData): Promise<void> {
+  async migrateToken(token: TokenData,): Promise<void> {
     const mint = token.mint;
     try {
       const lockKey = `migration:${mint}:lock`;
       const lock = await this.redisCache.get(lockKey);
       if (lock === "true") {
-        logger.log(`[Migrate] Token ${mint} is locked. Skipping.`);
+        logger.log(`[Migrate] Token ${token.mint} is locked. Skipping.`);
         return;
       }
 
@@ -284,6 +279,12 @@ export class TokenMigrator {
       if (step.name !== "withdraw" && step.name !== "createPool") {
         token.status = "locked";
       }
+      (token.migration as Record<string, any>)[step.name] = {
+        status: "success",
+        txId: result.txId,
+        updatedAt: new Date().toISOString(),
+      };
+
       // Save to DB
       Object.assign(token, result.extraData);
       await safeUpdateTokenInDB({
@@ -339,6 +340,7 @@ export class TokenMigrator {
       tx,
       this.connection,
       this.wallet,
+      token.mint,
     );
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
 
@@ -489,78 +491,16 @@ export class TokenMigrator {
     };
   }
 
-  async lockPrimaryLP(
-    raydium: any,
-    poolInfo: any,
-    poolKeys: any,
-    primaryAmount: any,
-  ): Promise<{ txId: string; nftMint: string }> {
-    console.log("Performing primary LP lock", primaryAmount.toString());
-    const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
-      await raydium.cpmm.lockLp({
-        poolInfo,
-        lpAmount: primaryAmount,
-        withMetadata: true,
-        txVersion,
-        computeBudgetConfig: {
-          units: 300000,
-          microLamports: 0.0001 * 1e9,
-        },
-      });
-    const { txId: lockTxIdPrimary } = (await retryOperation(
-      () => lockExecutePrimary({ skipPreflight: false }),
-      5,
-      4000,
-    )) as LockResult;
-    const nftMintPrimary = lockExtInfoPrimary.nftMint.toString();
-    logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`);
-
-    return { txId: lockTxIdPrimary, nftMint: nftMintPrimary };
-  }
-
-  async lockSecondaryLP(
-    raydium: any,
-    poolInfo: any,
-    poolKeys: any,
-    secondaryAmount: any,
-  ): Promise<{ txId: string; nftMint: string }> {
-    console.log("Performing Secondat LP lock", secondaryAmount.toString());
-
-    const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
-      await raydium.cpmm.lockLp({
-        poolInfo,
-        // poolKeys,
-        lpAmount: secondaryAmount,
-        withMetadata: true,
-        txVersion,
-        computeBudgetConfig: {
-          units: 300000,
-          microLamports: 0.0001 * 1e9,
-        },
-        // programId:
-        //   raydium.cluster === "devnet"
-        //     ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
-        //     : CREATE_CPMM_POOL_PROGRAM,
-        // authProgram:
-        //   raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
-      });
-    const { txId: lockTxIdSecondary } = (await retryOperation(
-      () => lockExecuteSecondary({ skipPreflight: false }),
-      5,
-      4000,
-    )) as LockResult;
-    const nftMintSecondary = lockExtInfoSecondary.nftMint.toString();
-    logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`);
-
-    return { txId: lockTxIdSecondary, nftMint: nftMintSecondary };
-  }
 
   async initRaydiumSdkAndFetchPoolInfo(token: TokenData): Promise<{
     txId: string,
-    extraDate: {
+    extraData: {
       poolInfo: any;
       poolKeys: any;
       lpAccount: any;
+      primaryAmount: BN;
+      secondaryAmount: BN;
+      totalAmount: BN;
     }
   }> {
     const raydium = await initSdk({
@@ -582,14 +522,19 @@ export class TokenMigrator {
     const lpAccount = raydium.account.tokenAccounts.find(
       (a: any) => a.mint.toBase58() === lpMintStr,
     );
-
-    if (!lpAccount) throw new Error(`No LP balance found for pool: ${token.marketId}`);
+    if (!lpAccount) throw new Error(`No LP balance found for pool: ${poolId}`);
+    const totalLP = lpAccount.amount as BN;
+    const primaryAmount = totalLP.muln(Number(process.env.PRIMARY_LOCK_PERCENTAGE ?? 90)).divn(100);
+    const secondaryAmount = totalLP.sub(primaryAmount);
     return {
       txId: "",
-      extraDate: {
+      extraData: {
         poolInfo: poolInfoResult.poolInfo,
         poolKeys: poolInfoResult.poolKeys,
         lpAccount,
+        primaryAmount,
+        secondaryAmount,
+        totalAmount: totalLP,
       },
     }
 
@@ -642,8 +587,9 @@ export class TokenMigrator {
     raydium: any,
     poolInfo: any,
     poolKeys: any,
-    primaryAmount: any
-  ): Promise<{ txId: string; nftMint: string }> {
+    primaryAmount: BN
+  ): Promise<{ txId: string; extraData: { primary: { txId: string; nftMint: string } } }> {
+    console.log("Performing primary LP lock", primaryAmount.toString());
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
       lpAmount: primaryAmount,
@@ -655,21 +601,30 @@ export class TokenMigrator {
       },
     });
 
-    const { txId } = await retryOperation(
+    const { txId } = (await retryOperation(
       () => execute({ skipPreflight: false }),
       5,
       4000
-    ) as LockResult;
+    )) as LockResult;
 
-    return { txId, nftMint: extInfo.nftMint.toString() };
+    const nftMint = extInfo.nftMint.toString();
+    logger.log(`[Lock] Primary LP lock txId: ${txId}, nftMint: ${nftMint}`);
+
+    return {
+      txId,
+      extraData: {
+        primary: { txId, nftMint },
+      },
+    };
   }
 
   async lockSecondaryLPTransaction(
     raydium: any,
     poolInfo: any,
     poolKeys: any,
-    secondaryAmount: any
-  ): Promise<{ txId: string; nftMint: string }> {
+    secondaryAmount: BN
+  ): Promise<{ txId: string; extraData: { secondary: { txId: string; nftMint: string } } }> {
+    console.log("Performing secondary LP lock", secondaryAmount.toString());
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
       lpAmount: secondaryAmount,
@@ -681,15 +636,22 @@ export class TokenMigrator {
       },
     });
 
-    const { txId } = await retryOperation(
+    const { txId } = (await retryOperation(
       () => execute({ skipPreflight: false }),
       5,
       4000
-    ) as LockResult;
+    )) as LockResult;
 
-    return { txId, nftMint: extInfo.nftMint.toString() };
+    const nftMint = extInfo.nftMint.toString();
+    logger.log(`[Lock] Secondary LP lock txId: ${txId}, nftMint: ${nftMint}`);
+
+    return {
+      txId,
+      extraData: {
+        secondary: { txId, nftMint },
+      },
+    };
   }
-
 
 
   // send the 10% to the manager multisig
@@ -730,7 +692,7 @@ export class TokenMigrator {
     logger.log(
       `[Send] Sending NFT to manager multisig for token ${token.mint} with NFT ${nftMinted}`,
     );
-    return { txId: txSignature, extraData: {} };
+    return { txId: txSignature, extraData: { sentNftMint: nftMinted } };
   }
   // send the 90% to our raydium vault
   async depositNftToRaydiumVault(
@@ -776,7 +738,7 @@ export class TokenMigrator {
     logger.log(
       `[Deposit] Depositing NFT to Raydium vault for token ${token.mint} with NFT ${nftMinted}`,
     );
-    return { txId: txSignature, extraData: {} };
+    return { txId: txSignature, extraData: { depositedNftMint: nftMinted } };
   }
 
   async finalizeMigration(token: any): Promise<{ txId: string }> {

@@ -10,6 +10,8 @@ import { getSOLPrice } from "./mcap";
 import { getGlobalRedisCache, RedisCache } from "./redis";
 import { logger } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
+import { getDB, tokens } from "./db";
+import { eq } from "drizzle-orm";
 
 const SOLANA_NETWORK_ID = 1399811149;
 
@@ -128,6 +130,7 @@ export class ExternalToken {
   // Updated method to fetch/update market and holder data with caching and time check
   public async updateMarketAndHolders(forceUpdate = false): Promise<TokenDetails | null> {
     const detailsKey = `token:details:${this.mint}`;
+    const holdersListKey = `holders:${this.mint}`;
     const now = Date.now();
 
     // 1. Try to get cached details
@@ -161,6 +164,7 @@ export class ExternalToken {
       }
 
       const holderResult = await this._fetchHolderData(marketResult.tokenSupply); // Use internal fetch method
+      console.log(`ExternalToken: Fetched ${holderResult.length} holders for ${this.mint}.`);
 
       const combinedDetails: TokenDetails = {
         marketData: marketResult.newTokenData,
@@ -170,6 +174,8 @@ export class ExternalToken {
 
       // 3. Store combined data in Redis
       await this.redisCache.set(detailsKey, JSON.stringify(combinedDetails), MARKET_HOLDER_REFRESH_INTERVAL * 2); // Cache for double the interval?
+      // add holders to a separate list
+      await this.redisCache.set(holdersListKey, JSON.stringify(holderResult));
       logger.log(`ExternalToken: Stored updated market/holder details in Redis for ${this.mint}`);
 
       // 4. Emit WebSocket updates (consider doing this outside if possible)
@@ -223,6 +229,17 @@ export class ExternalToken {
         tokenDecimals: tokenDecimals,
         createdAt: creationTime,
       };
+      const filtered = Object.fromEntries(
+        Object.entries(newTokenData).filter(
+          ([, value]) => value !== 0 && value !== undefined && value !== null,
+        ),
+      );
+
+      const db = await getDB();
+      await db
+        .update(tokens)
+        .set(filtered)
+        .where(eq(tokens.mint, this.mint))
 
       return { newTokenData, tokenSupply };
     } catch (error) {
@@ -327,11 +344,24 @@ export class ExternalToken {
       })
       .filter((swap): swap is NonNullable<typeof swap> => !!swap);
 
+
     if (processedSwaps.length > 0) {
       await this.insertProcessedSwaps(processedSwaps);
-      await this.wsClient
-        .to(`token-${this.mint}`)
-        .emit("newSwap", processedSwaps);
+      const sortedSwaps = processedSwaps.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+      for (const swap of sortedSwaps) {
+        await this.wsClient
+          .to(`token-${this.mint}`)
+          .emit("newSwap", {
+            ...swap,
+            tokenMint: this.mint,
+            mint: this.mint,
+            timestamp: new Date(swap.timestamp).toISOString(),
+          });
+      }
+
     }
 
     console.log(
@@ -428,9 +458,22 @@ export class ExternalToken {
 
       if (processedSwaps.length > 0) {
         await this.insertProcessedSwaps(processedSwaps);
+        const sortedSwaps = processedSwaps.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        );
+        const lastProcessedSwap = sortedSwaps[0];
+
         await this.wsClient
           .to(`token-${this.mint}`)
-          .emit("newSwap", processedSwaps);
+          .emit("newSwap", {
+            ...lastProcessedSwap,
+            tokenMint: this.mint,
+            mint: this.mint,
+            timestamp: new Date(lastProcessedSwap.timestamp).toISOString(),
+          });
+
+
       }
 
       // Update the cursor for the next batch
@@ -449,7 +492,7 @@ export class ExternalToken {
     // Instantiate Redis client
     const redisCache = await getGlobalRedisCache();
     const listKey = `swapsList:${this.mint}`;
-
+    const seenKey = `swapsSeen:${this.mint}`;
     // Sort swaps by ascending timestamp (oldest first)
     // Important: We push to the START of the list (lpush),
     // so processing oldest first ensures the list maintains newest-at-the-start order.
@@ -474,9 +517,27 @@ export class ExternalToken {
               ? swap.timestamp.toISOString()
               : swap.timestamp,
         };
-        await redisCache.lpush(listKey, JSON.stringify(swapToStore));
+        const isNew = await redisCache.sadd(seenKey, swap.txId);
+        if (isNew === 0) {
+          logger.info(`Skipping duplicate tx ${swap.txId}`);
+          continue;
+        }
+        await redisCache.lpushTrim(listKey, JSON.stringify(swapToStore), MAX_SWAPS_TO_KEEP);
         // Trim after each push to keep the list size controlled
-        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+        const rawList = await redisCache.lrange(listKey, 0, -1);
+        const currentTxIds = rawList
+          .map((raw) => {
+            try {
+              return (JSON.parse(raw) as ProcessedSwap).txId;
+            } catch {
+              return null;
+            }
+          })
+          .filter((txId): txId is string => !!txId);
+        const tmpKey = `${seenKey}:tmp`;
+        await redisCache.redisPool.useClient((c) =>
+          c.sadd(tmpKey, ...currentTxIds)
+        );
         insertedCount++;
       } catch (redisError) {
         logger.error(

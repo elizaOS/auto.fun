@@ -73,6 +73,8 @@ export const tokens = pgTable("tokens", {
   featured: integer("featured").default(0),
   verified: integer("verified").default(0),
   hidden: integer("hidden").default(0),
+  is_token_2022: integer("is_token_2022").default(0),
+  hide_from_featured: integer("hide_from_featured").default(0),
   tokenSupply: text("token_supply").default("1000000000000000"),
   tokenSupplyUiAmount: real("token_supply_ui_amount").default(1000000000),
   tokenDecimals: integer("token_decimals").default(6),
@@ -114,12 +116,15 @@ export const users = pgTable("users", {
     .default(sql`gen_random_uuid()`),
   name: text("name"),
   address: text("address").notNull().unique(),
+  display_name: text("display_name"),
+  profile_picture_url: text("profile_picture_url"),
   points: integer("points").notNull().default(0),
   rewardPoints: integer("reward_points").notNull().default(0),
   createdAt: timestamp("created_at")
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
   suspended: integer("suspended").notNull().default(0),
+  isModerator: integer("is_moderator").notNull().default(0),
 });
 
 // MediaGenerations schema
@@ -212,9 +217,15 @@ export const metadata = pgTable("metadata", {
 
 let dbInstance: ReturnType<typeof drizzle> | null = null;
 
+// Default local database connection string
+const DEFAULT_DATABASE_URL = "postgresql://autofun_owner:npg_2PDZgJfEtrh6@localhost:5432/autofun";
+
 export function getDB() {
   if (!dbInstance) {
-     const poolInstance = new Pool({ connectionString: process.env.DATABASE_URL });
+     // Use DATABASE_URL from environment or the default local URL
+     const connectionString = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
+     console.log(`[DB] Connecting to database: ${connectionString === DEFAULT_DATABASE_URL ? 'DEFAULT LOCAL DB' : 'ENV VAR DB'}`);
+     const poolInstance = new Pool({ connectionString });
      dbInstance = drizzle(poolInstance, { schema });
   }
   return dbInstance;

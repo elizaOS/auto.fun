@@ -2,15 +2,34 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { Trash2 } from "lucide-react"; // Import for delete button
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"; // Import icons
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
 import { usePagination, UsePaginationOptions } from "@/hooks/use-pagination";
 import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
 import { IToken } from "@/types";
-import { formatNumber } from "@/utils";
+import { formatNumber, fromNow, resizeImage } from "@/utils"; // Add fromNow and resizeImage
 import { env } from "@/utils/env"; // Import env
+import BondingCurveBar from "../bonding-curve-bar"; // Import BondingCurveBar
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table"; // Import table components
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@radix-ui/react-dialog";
+import Button from "../button";
+
+type SortOrderType = "asc" | "desc";
 
 export default function AdminTokens() {
   const { address } = useParams();
@@ -25,24 +44,22 @@ export default function AdminTokens() {
 }
 
 function AdminTokensList() {
-  const [sortBy, setSortBy] = useState<keyof IToken | "all" | "oldest">(
-    "createdAt",
-  );
+  // State for sorting
+  const [sortBy, setSortBy] = useState<keyof IToken | null>("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrderType>("desc");
   const [hideImported, setHideImported] = useState(false);
   const queryClient = useQueryClient(); // Get query client instance
 
+  // State for delete confirmation modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [tokenToDelete, setTokenToDelete] = useState<IToken | null>(null);
+
   // Prepare options for usePagination
   const paginationOptions: UsePaginationOptions<IToken> = {
-    endpoint: "/api/admin/tokens",
+    endpoint: "/api/admin/tokens", // Keep the admin endpoint
     limit: 50,
-    // Map frontend sort key to backend sort key
-    sortBy:
-      sortBy === "all"
-        ? "featured"
-        : sortBy === "oldest"
-          ? "createdAt"
-          : sortBy,
-    sortOrder: sortBy === "oldest" ? "asc" : "desc",
+    sortBy: sortBy || "createdAt", // Default to createdAt if null
+    sortOrder: sortOrder,
     itemsPropertyName: "tokens",
     useUrlState: true, // Keep URL state for admin page
     ...(hideImported && { hideImported: 1 }),
@@ -51,28 +68,49 @@ function AdminTokensList() {
   // Use the standard usePagination hook
   const tokensPagination = usePagination<IToken, IToken>(paginationOptions);
 
+  // Sorting handler
+  const handleSort = (columnKey: keyof IToken) => {
+    if (sortBy === columnKey) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(columnKey);
+      setSortOrder("desc"); // Default to desc when changing column
+    }
+  };
+
+  // Sort icon component
+  const SortIcon = ({ columnKey }: { columnKey: keyof IToken }) => {
+    if (sortBy !== columnKey) return null;
+    return sortOrder === "asc" ? (
+      <ArrowUp className="ml-1 h-3 w-3" />
+    ) : (
+      <ArrowDown className="ml-1 h-3 w-3" />
+    );
+  };
+
   // Mutation for toggling hidden status for a specific token
   const toggleHiddenMutation = useMutation({
     mutationFn: async (tokenAddress: string) => {
-      // Find the token in the current list to determine the current hidden status
       const token = tokensPagination?.items?.find(
         (t) => t.mint === tokenAddress,
       );
       const currentHiddenStatus = token ? !!(token as any).hidden : false;
       return await fetcher(`/api/admin/tokens/${tokenAddress}/hidden`, "POST", {
-        hidden: !currentHiddenStatus, // Toggle the boolean status
+        hidden: !currentHiddenStatus,
       });
     },
     onSuccess: (_, tokenAddress) => {
       const token = tokensPagination?.items?.find(
         (t) => t.mint === tokenAddress,
       );
-      const currentHiddenStatus = token ? !!(token as any).hidden : false; // Ensure boolean
+      const currentHiddenStatus = token ? !!(token as any).hidden : false;
       toast.success(
         `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`,
       );
-      // Invalidate the tokens query to refetch the list
-      queryClient.invalidateQueries({ queryKey: ["tokens", sortBy] });
+      queryClient.invalidateQueries({
+        queryKey: [paginationOptions.endpoint],
+        refetchType: "active",
+      });
     },
     onError: (error, tokenAddress) => {
       toast.error(
@@ -80,6 +118,44 @@ function AdminTokensList() {
       );
     },
   });
+
+  // --- NEW: Mutation for deleting a token ---
+  const deleteTokenMutation = useMutation({
+    mutationFn: async (tokenAddress: string) => {
+      return await fetcher(`/api/admin/tokens/${tokenAddress}`, "DELETE");
+    },
+    onSuccess: (_, tokenAddress) => {
+      toast.success(
+        `Token ${tokenAddress.substring(0, 6)}... deleted successfully`,
+      );
+      queryClient.invalidateQueries({
+        queryKey: [paginationOptions.endpoint],
+        refetchType: "active",
+      });
+      setIsDeleteModalOpen(false);
+      setTokenToDelete(null);
+    },
+    onError: (error, tokenAddress) => {
+      toast.error(
+        `Failed to delete token ${tokenAddress.substring(0, 6)}...: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      setIsDeleteModalOpen(false);
+      setTokenToDelete(null);
+    },
+  });
+
+  // Function to open delete modal
+  const openDeleteModal = (token: IToken) => {
+    setTokenToDelete(token);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Function to handle confirmed delete
+  const handleConfirmDelete = () => {
+    if (tokenToDelete) {
+      deleteTokenMutation.mutate(tokenToDelete.mint);
+    }
+  };
 
   if (tokensPagination?.isLoading) {
     return <Loader />;
@@ -90,17 +166,6 @@ function AdminTokensList() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Tokens</h2>
         <div className="flex space-x-4">
-          <select
-            className="bg-autofun-background-primary text-autofun-text-primary px-3 py-2 "
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-          >
-            <option value="all">Featured</option>
-            <option value="marketCap">Market Cap</option>
-            <option value="createdAt">Newest</option>
-            <option value="oldest">Oldest</option>
-          </select>
-
           <label className="flex items-center space-x-2 text-autofun-text-primary">
             <input
               type="checkbox"
@@ -114,27 +179,61 @@ function AdminTokensList() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <Table>
+          <TableHeader>
             <tr className="border-b border-autofun-background-primary">
-              <th className="text-left p-2">ID</th>
-              <th className="text-left p-2">Name</th>
-              <th className="text-left p-2">Ticker</th>
-              <th className="text-left p-2">Created</th>
-              <th className="text-left p-2">Price (SOL)</th>
-              <th className="text-left p-2">Volume (24h)</th>
-              <th className="text-left p-2">Status</th>
-              <th className="text-left p-2">Actions</th>
+              <TableHead className="text-left p-2">ID</TableHead>
+              <TableHead className="text-left p-2">Name</TableHead>
+              <TableHead className="text-left p-2">
+                <button
+                  className="flex items-center gap-1 hover:text-autofun-text-primary transition-colors uppercase"
+                  onClick={() => handleSort("marketCapUSD")}
+                >
+                  MCap
+                  <SortIcon columnKey="marketCapUSD" />
+                </button>
+              </TableHead>
+              <TableHead className="text-left p-2">
+                <button
+                  className="flex items-center gap-1 hover:text-autofun-text-primary transition-colors uppercase"
+                  onClick={() => handleSort("volume24h")}
+                >
+                  24H Vol
+                  <SortIcon columnKey="volume24h" />
+                </button>
+              </TableHead>
+              <TableHead className="text-left p-2">
+                <button
+                  className="flex items-center gap-1 hover:text-autofun-text-primary transition-colors uppercase"
+                  onClick={() => handleSort("curveProgress")}
+                >
+                  Bonding
+                  <SortIcon columnKey="curveProgress" />
+                </button>
+              </TableHead>
+              <TableHead className="text-left p-2">
+                <button
+                  className="flex items-center gap-1 hover:text-autofun-text-primary transition-colors uppercase"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  Created
+                  <SortIcon columnKey="createdAt" />
+                </button>
+              </TableHead>
+              <TableHead className="text-left p-2">Status</TableHead>
+              <TableHead className="text-left p-2">Actions</TableHead>
             </tr>
-          </thead>
-          <tbody>
+          </TableHeader>
+          <TableBody>
             {tokensPagination?.items?.map((token: IToken) => (
-              <tr
+              <TableRow
                 key={token.mint}
                 className="border-b border-autofun-background-primary"
               >
-                <td className="p-2">{token.mint.substring(0, 8)}...</td>
-                <td className="p-2">
+                <TableCell className="p-2 font-mono text-xs">
+                  {token.mint.substring(0, 8)}...
+                </TableCell>
+                <TableCell className="p-2">
                   <div className="flex items-center space-x-2">
                     {token.image ? (
                       <img
@@ -146,17 +245,28 @@ function AdminTokensList() {
                       <div className="size-6 bg-autofun-background-disabled" />
                     )}
                     <span>{token.name}</span>
+                    <span className="text-xs text-autofun-text-secondary">
+                      (${token.ticker})
+                    </span>
                   </div>
-                </td>
-                <td className="p-2">{token.ticker}</td>
-                <td className="p-2">
+                </TableCell>
+                <TableCell className="p-2 text-left">
+                  {formatNumber(token.marketCapUSD)}
+                </TableCell>
+                <TableCell className="p-2 text-left">
+                  {formatNumber(token.volume24h)}
+                </TableCell>
+                <TableCell className="p-2 text-left">
+                  {token.imported === 0 && (
+                    <BondingCurveBar progress={token.curveProgress} />
+                  )}
+                </TableCell>
+                <TableCell className="p-2">
                   {token.createdAt
                     ? new Date(token.createdAt).toLocaleDateString()
                     : "-"}
-                </td>
-                <td className="p-2">{token.currentPrice?.toFixed(8) ?? "-"}</td>
-                <td className="p-2">{formatNumber(token.volume24h)}</td>
-                <td className="p-2">
+                </TableCell>
+                <TableCell className="p-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs ${
                       token.status === "active"
@@ -178,11 +288,11 @@ function AdminTokensList() {
                   >
                     {token.status}
                   </span>
-                </td>
-                <td className="p-2 flex items-center space-x-2">
+                </TableCell>
+                <TableCell className="p-2 flex items-center space-x-2 justify-end">
                   <Link
                     to={`/admin/tokens/${token.mint}`}
-                    className="text-autofun-text-highlight hover:underline"
+                    className="text-autofun-text-highlight hover:underline p-2"
                   >
                     View
                   </Link>
@@ -205,11 +315,23 @@ function AdminTokensList() {
                         ? "Unhide"
                         : "Hide"}
                   </button>
-                </td>
-              </tr>
+                  {/* --- NEW: Delete Button --- */}
+                  <button
+                    className="p-1 text-red-500 hover:text-red-400 disabled:opacity-50"
+                    onClick={() => openDeleteModal(token)}
+                    disabled={
+                      deleteTokenMutation.isPending &&
+                      deleteTokenMutation.variables === token.mint
+                    }
+                    title="Delete Token"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}
@@ -230,6 +352,66 @@ function AdminTokensList() {
           />
         )}
       </div>
+
+      {/* --- NEW: Delete Confirmation Modal --- */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center">
+          <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-autofun-background-primary border-autofun-border p-4">
+              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to permanently delete this token? This
+                action cannot be undone.
+              </DialogDescription>
+              {tokenToDelete && (
+                <div className="flex items-center space-x-3 my-4 p-3 bg-autofun-background-input rounded">
+                  <img
+                    src={
+                      tokenToDelete.image
+                        ? resizeImage(tokenToDelete.image, 40, 40)
+                        : "/placeholder.png"
+                    }
+                    alt={tokenToDelete.name}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.png";
+                    }}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate">
+                      {tokenToDelete.name}
+                    </span>
+                    <span className="text-xs text-autofun-text-secondary truncate">
+                      (${tokenToDelete.ticker})
+                    </span>
+                    <span className="text-xs text-autofun-text-secondary font-mono truncate">
+                      {tokenToDelete.mint}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2">
+                <DialogClose asChild>
+                  <Button
+                    variant="outline"
+                    onClick={() => setTokenToDelete(null)}
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  onClick={handleConfirmDelete}
+                  disabled={deleteTokenMutation.isPending}
+                >
+                  {deleteTokenMutation.isPending
+                    ? "Deleting..."
+                    : "Delete Token"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
     </div>
   );
 }
@@ -816,31 +998,6 @@ function AdminTokenDetails({ address }: { address: string }) {
                 placeholder="Token description..."
                 rows={3}
               />
-            </div>
-
-            {/* --- MOVE Save Details Button HERE --- */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleSaveDetails}
-                disabled={
-                  updateTokenDetailsMutation.isPending || !detailsChanged
-                }
-                className="ml-auto cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updateTokenDetailsMutation.isPending
-                  ? "Saving..."
-                  : "Save Details"}
-              </button>
-            </div>
-            {/* --- END MOVE --- */}
-
-            {/* Created Date (Not Editable) */}
-            <div>{/* ... content ... */}</div>
-
-            {/* Status Badges (Not Editable Here) */}
-            <div className="flex flex-wrap gap-2 items-center pt-2">
-              {/* ... badges ... */}
             </div>
           </div>
         </div>

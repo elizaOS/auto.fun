@@ -4,7 +4,6 @@ import { logger } from './util';
 // Import the correct type from Hono
 import type { WSContext } from 'hono/ws';
 import { getGlobalRedisCache } from './redis';
-import { j } from 'react-router/dist/development/fog-of-war-D4x86-Xc';
 
 // Interface for our client metadata, not extending WSContext
 interface ClientMetadata {
@@ -38,17 +37,17 @@ class WebSocketManager {
         // Listen for cross-cluster pub/sub
         const subClient = await this.redisCache.redisPool.getSubscriberClient();
         await subClient.subscribe("ws:broadcast");
-        subClient.on("message", (ch, message) => {
-            logger.info(`📣 Received Redis message on ${ch}:`, message);
-            const { room, event, data } = JSON.parse(message as string);
-            this.broadcastToRoom(room, event, data);
-        });
-
         await subClient.subscribe("ws:direct");
+
         subClient.on("message", (ch, message) => {
-            logger.info(`📬 Received Redis direct message on ${ch}:`, message);
-            const { clientId, event, data } = JSON.parse(message as string);
-            this.sendToClient(clientId, event, data);
+            // logger.info(`📣 Received Redis message on ${ch}:`, message);
+            const { clientId, room, event, data } = JSON.parse(message as string);
+            if (room) {
+                this.broadcastToRoom(room, event, data);
+            }
+            if (clientId) {
+                this.sendToClient(clientId, event, data);
+            }
         });
 
         logger.info("WebSocketManager Redis pub/sub listeners registered.");
@@ -136,6 +135,8 @@ class WebSocketManager {
                 case 'unsubscribe':
                 case 'subscribeGlobal':
                 case 'unsubscribeGlobal':
+                case 'subscribeToChat':
+                case 'unsubscribeFromChat':
                     await this.handleRoomEvent(clientMetadata, event, data);
                     break;
                 case 'pong':
@@ -187,6 +188,18 @@ class WebSocketManager {
                 roomName = 'global';
                 operation = 'leave';
                 break;
+            case 'subscribeToChat':
+                if (data?.tokenMint && data?.tier && typeof data.tokenMint === 'string' && typeof data.tier === 'string') {
+                    roomName = `chat:${data.tokenMint}:${data.tier}`;
+                }
+                operation = 'join';
+                break;
+            case 'unsubscribeFromChat':
+                if (data?.tokenMint && data?.tier && typeof data.tokenMint === 'string' && typeof data.tier === 'string') {
+                    roomName = `chat:${data.tokenMint}:${data.tier}`;
+                }
+                operation = 'leave';
+                break;
             default: // Should not happen if called correctly
                 logger.error('Invalid event type passed to handleRoomEvent');
                 return;
@@ -194,9 +207,9 @@ class WebSocketManager {
 
         if (roomName) {
             if (operation === 'join') {
-                await this.joinRoom(client, roomName);
+                await this.joinRoom(event, client, roomName);
             } else {
-                await this.leaveRoom(client, roomName);
+                await this.leaveRoom(event, client, roomName);
             }
         } else {
             logger.warn(`Invalid format for event '${event}' from ${client.clientId}:`, data);
@@ -274,7 +287,7 @@ class WebSocketManager {
     }
 
     // --- Room Management ---
-    private async joinRoom(client: ClientMetadata, roomName: string): Promise<void> {
+    private async joinRoom(event: string, client: ClientMetadata, roomName: string): Promise<void> {
         if (!this.redisCache) {
             this.redisCache = await getGlobalRedisCache();
         }
@@ -285,28 +298,18 @@ class WebSocketManager {
         client.rooms.add(roomName);
         const clientRoomsKey = await this.redisKey(`client:${client.clientId}:rooms`);
         const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
-        try {
-            await this.redisCache.sadd(clientRoomsKey, roomName);
-            await this.redisCache.sadd(roomClientsKey, client.clientId);
-            logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
-            client.ws.send(JSON.stringify({
-                event: roomName.startsWith('token-') ? 'subscribed' : 'joined',
-                data: { room: roomName }
-            }));
-        } catch (error) {
-            logger.error(`Redis error joining room ${roomName} for client ${client.clientId}:`, error);
-            this.localRoomClients.get(roomName)?.delete(client.clientId);
-            client.rooms.delete(roomName);
-            try {
-                client.ws.send(JSON.stringify({ event: 'join_error', data: { room: roomName, error: 'Failed to update subscription' } }));
-            } catch {
-                // do nothing
-            }
-            throw error;
-        }
+        await this.redisCache.sadd(clientRoomsKey, roomName);
+        await this.redisCache.sadd(roomClientsKey, client.clientId);
+
+        logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
+        const responseEvent = event && String(event) === 'subscribeToChat' ? 'subscribedToChat' : (roomName.startsWith('token-') ? 'subscribed' : 'joined');
+        client.ws.send(JSON.stringify({
+            event: responseEvent,
+            data: { room: roomName }
+        }));
     }
 
-    private async leaveRoom(client: ClientMetadata, roomName: string): Promise<void> {
+    private async leaveRoom(event: string, client: ClientMetadata, roomName: string): Promise<void> {
         if (!this.redisCache) {
             this.redisCache = await getGlobalRedisCache();
         }
@@ -317,23 +320,14 @@ class WebSocketManager {
         client.rooms.delete(roomName);
         const clientRoomsKey = await this.redisKey(`client:${client.clientId}:rooms`);
         const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
-        try {
-            await this.redisCache.srem(clientRoomsKey, roomName);
-            await this.redisCache.srem(roomClientsKey, client.clientId);
-            logger.log(`Client ${client.clientId} left room (local+Redis): ${roomName}`);
-            client.ws.send(JSON.stringify({
-                event: roomName.startsWith('token-') ? 'unsubscribed' : 'left',
-                data: { room: roomName }
-            }));
-        } catch (error) {
-            logger.error(`Redis error leaving room ${roomName} for client ${client.clientId}:`, error);
-            try {
-                client.ws.send(JSON.stringify({ event: 'leave_error', data: { room: roomName, error: 'Failed to update subscription' } }));
-            } catch {
-                // do nothing
-            }
-            throw error;
-        }
+        await this.redisCache.srem(clientRoomsKey, roomName);
+        await this.redisCache.srem(roomClientsKey, client.clientId);
+        logger.log(`Client ${client.clientId} left room (local+Redis): ${roomName}`);
+        const responseEvent = String(event) === 'unsubscribeFromChat' ? 'unsubscribedFromChat' : (roomName.startsWith('token-') ? 'unsubscribed' : 'left');
+        client.ws.send(JSON.stringify({
+            event: responseEvent,
+            data: { room: roomName }
+        }));
     }
 
     // --- Client Cleanup (Internal, handles local and Redis state) ---
