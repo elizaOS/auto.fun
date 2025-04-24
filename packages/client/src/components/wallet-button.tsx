@@ -212,11 +212,10 @@ const WalletButton = () => {
         </Button>
 
         {menuOpen && (
-          <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
+          <div className="select-none absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
-              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-centerjustofy-between gap-2">
-                <SkeletonImage
-                  parentClassName="w-4 h-4"
+              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
+                <img
                   src="/solana.svg"
                   width={32}
                   height={32}
