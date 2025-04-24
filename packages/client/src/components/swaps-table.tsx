@@ -114,7 +114,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink,
+        sink
       );
     }
 
@@ -162,6 +162,15 @@ export default function SwapsTable({ token }: { token: IToken }) {
     return <Loader className="h-40" />;
   }
 
+  if ((items || [])?.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <img className="w-auto grayscale size-16" src="/dice.svg" alt="logo" />
+        <p className="text-sm font-dm-mono text-autofun-text-secondary">No trades were found.</p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="space-y-12 h-fit overflow-y-hidden overflow-x-none relative"
@@ -185,82 +194,63 @@ export default function SwapsTable({ token }: { token: IToken }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(items || [])?.length > 0 ? (
-            items?.map((swap, _) => {
-              const {
-                account,
-                swapType,
-                solana,
-                token,
-                transactionHash,
-                timestamp,
-              } = dataExtractor(swap);
-              return (
-                <TableRow
-                  className="hover:bg-white/5"
-                  key={`${transactionHash}_${_}`}
-                >
-                  <TableCell className="text-left text-sm">
-                    <Link
-                      to={env.getAccountUrl(account)}
-                      target="_blank"
-                      className="hover:text-autofun-text-highlight"
-                    >
-                      {shortenAddress(account)}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-center text-sm">
-                    <Triangle
-                      color={
-                        swapType === "Buy"
-                          ? "bg-[#03FF24] m-auto"
-                          : "bg-[#EF5350] rotate-180 m-auto"
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-left text-sm">
-                    {formatSwapAmount(solana, true)}
-                  </TableCell>
-                  <TableCell className="text-left text-sm">
-                    {formatSwapAmount(token, true)}
-                  </TableCell>
-                  <TableCell className="text-right text-sm text-autofun-text-secondary">
-                    <Interval
-                      ms={800}
-                      resolver={() => fromNow(timestamp, true)}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <Link
-                      to={env.getTransactionUrl(transactionHash)}
-                      target="_blank"
-                    >
-                      <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={6}
-                className="text-center py-8 text-autofun-text-secondary"
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <p>No transaction data available from blockchain.</p>
-                  <Link
-                    to={`https://solscan.io/token/${token?.mint}#trades`}
-                    target="_blank"
-                    className="text-autofun-text-highlight hover:underline flex items-center gap-1"
+          {(items || [])?.length > 0
+            ? items?.map((swap, _) => {
+                const {
+                  account,
+                  swapType,
+                  solana,
+                  token,
+                  transactionHash,
+                  timestamp,
+                } = dataExtractor(swap);
+                return (
+                  <TableRow
+                    className="hover:bg-white/5"
+                    key={`${transactionHash}_${_}`}
                   >
-                    View all trades on Solscan{" "}
-                    <ExternalLink className="size-4" />
-                  </Link>
-                </div>
-              </TableCell>
-            </TableRow>
-          )}
+                    <TableCell className="text-left text-sm">
+                      <Link
+                        to={env.getAccountUrl(account)}
+                        target="_blank"
+                        className="hover:text-autofun-text-highlight"
+                      >
+                        {shortenAddress(account)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-center text-sm">
+                      <Triangle
+                        color={
+                          swapType === "Buy"
+                            ? "bg-[#03FF24] m-auto"
+                            : "bg-[#EF5350] rotate-180 m-auto"
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="text-left text-sm">
+                      {formatSwapAmount(solana, true)}
+                    </TableCell>
+                    <TableCell className="text-left text-sm">
+                      {formatSwapAmount(token, true)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-autofun-text-secondary">
+                      <Interval
+                        ms={800}
+                        resolver={() => fromNow(timestamp, true)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <Link
+                        to={env.getTransactionUrl(transactionHash)}
+                        target="_blank"
+                      >
+                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            : null}
         </TableBody>
       </Table>
       {/* <div className="grid place-content-center">
