@@ -110,7 +110,7 @@ export class TokenMigrator {
       if (isLocked !== "true") {
         console.log(`🔒  ${lockKey} is not set to "true", skipping.`);
         await this.redisCache.set(`migration:${mint}:lock`, "true");
-        continue;
+        // continue;
       }
 
 
@@ -270,7 +270,12 @@ export class TokenMigrator {
       const stepIndex = stepNames.indexOf(currentStep);
       const step = allSteps[stepIndex];
       const nextStep = allSteps[stepIndex + 1] || null;
-
+      for (const stepName of stepNames) {
+        const raw = await this.redisCache.get(`migration:${mint}:step:${stepName}:result`);
+        if (!raw) continue;
+        const { extraData } = JSON.parse(raw);
+        if (extraData) Object.assign(token, extraData);
+      }
       const stepResultKey = `migration:${mint}:step:${step.name}:result`;
       const stepResultExists = await this.redisCache.get(stepResultKey);
       if (stepResultExists) {
