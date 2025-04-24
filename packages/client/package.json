@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp ./_worker.js ./dist/_worker.js",
     "ci": "bun install --force && bun install --force @rollup/rollup-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu @tailwindcss/oxide-linux-x64-musl @tailwindcss/oxide-linux-arm64-musl lightningcss-linux-x64-gnu lightningcss-linux-x64-musl lightningcss-linux-arm64-musl && bun run build",
     "lint": "prettier --cache --write \"src/**/*.{ts,tsx}\" && eslint ./src --fix",
     "preview": "vite preview",
