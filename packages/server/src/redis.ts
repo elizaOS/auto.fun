@@ -125,6 +125,8 @@ export class RedisCacheService {
     );
   }
 
+
+
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
     logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
     return this.redisPool.useClient((client) =>

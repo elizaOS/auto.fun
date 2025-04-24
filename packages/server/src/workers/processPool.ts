@@ -1,59 +1,38 @@
 import { fork } from "child_process";
 import path from "path";
+import { getGlobalRedisCache } from "../redis";
 
-const MAX_WORKERS = 4;
-const workerPath = path.join(__dirname, "processWebhook.ts");
+const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 4;
+const JOB_QUEUE_KEY = "webhook:jobs";
+const WORKER_SCRIPT = path.join(__dirname, "processWebhook.ts");
 
-type Job = { data: any };
 
-const jobQueue: Job[] = [];
-const workers: (ReturnType<typeof fork> | null)[] = Array(MAX_WORKERS).fill(null);
-const busy: boolean[] = Array(MAX_WORKERS).fill(false);
-
-function startWorker(index: number, job: Job) {
-   busy[index] = true;
-
-   const child = fork(workerPath, {
+function startWorkerInstance() {
+   const child = fork(WORKER_SCRIPT, {
       execArgv: ["--loader", "ts-node/esm"],
       env: process.env,
    });
 
-   workers[index] = child;
-
-   child.send(job.data);
-
    child.on("exit", (code) => {
-      busy[index] = false;
-      workers[index] = null;
-      if (code !== 0) {
-         console.error("❌ Worker exited with error");
-      }
-      runQueue();
+      console.error(`Worker exited with code ${code}, restarting…`);
+      setTimeout(startWorkerInstance, 1000);
    });
 
    child.on("error", (err) => {
-      console.error("❌ Worker crashed:", err);
-      busy[index] = false;
-      workers[index] = null;
-      runQueue();
+      console.error("Worker crashed:", err);
    });
 }
 
-function runQueue() {
-   const nextJob = jobQueue.shift();
-   if (!nextJob) return;
 
-   const freeIndex = busy.findIndex((b) => !b);
-   if (freeIndex !== -1) {
-      startWorker(freeIndex, nextJob);
-   } else {
-      // back at the front of the queue
-      jobQueue.unshift(nextJob);
-      console.log("Job re-queued:", nextJob);
-   }
+for (let i = 0; i < MAX_WORKERS; i++) {
+   startWorkerInstance();
 }
 
-export function queueJob(data: any) {
-   jobQueue.push({ data });
-   runQueue();
+
+export async function queueJob(data: any) {
+   const cache = await getGlobalRedisCache();
+   const payload = JSON.stringify(data);
+   await cache.redisPool.useClient((client) =>
+      client.rpush(JOB_QUEUE_KEY, payload)
+   );
 }

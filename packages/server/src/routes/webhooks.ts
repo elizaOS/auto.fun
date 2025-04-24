@@ -101,18 +101,14 @@ router.post("/codex-webhook", async (c) => {
 
   const token0IsSol =
     swapEvent.token0Address === "So11111111111111111111111111111111111111112";
-  const tokenMint = token0IsSol ? swapEvent.token1Address : swapEvent.token0Address;
-  const rediscache = await getGlobalRedisCache();
-  const throttleKey = `codex:throttle:${tokenMint}`;
-  const recentlyProcessed = await rediscache.get(throttleKey);
-  if (recentlyProcessed) {
-    logger.log(`Skipping ${tokenMint} – throttled (processed < 2s ago).`);
-    return c.json({ message: "Throttled, token recently processed" }, 200);
-  }
+  const tokenMint = token0IsSol
+    ? swapEvent.token1Address
+    : swapEvent.token0Address;
 
-  queueJob(swapEvent);
-  await rediscache.set(throttleKey, tokenMint, 2);
-  return c.json({ message: "Accepted" });
+  logger.log(`Enqueuing webhook for ${tokenMint}…`);
+  await queueJob(swapEvent);
+
+  return c.json({ message: "Accepted" }, 200);
 });
 
 // Start monitoring batch

@@ -517,9 +517,8 @@ export class ExternalToken {
               ? swap.timestamp.toISOString()
               : swap.timestamp,
         };
-        await redisCache.lpush(listKey, JSON.stringify(swapToStore));
+        await redisCache.lpushTrim(listKey, JSON.stringify(swapToStore), MAX_SWAPS_TO_KEEP);
         // Trim after each push to keep the list size controlled
-        await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
         insertedCount++;
       } catch (redisError) {
         logger.error(
