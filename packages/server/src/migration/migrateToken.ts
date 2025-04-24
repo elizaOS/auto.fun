@@ -162,13 +162,23 @@ export class TokenMigrator {
         name: "lockPrimaryLP",
         eventName: "lpPrimaryLocked",
         fn: (token: any) =>
-          this.lockPrimaryLPTransaction.bind(this)(token.raydium, token.poolInfo, token.poolKeys, token.lpAccount.amount).then((result) => result),
+          this.lockPrimaryLPTransaction(
+            token.raydium,
+            token.poolInfo,
+            token.poolKeys,
+            token.primaryAmount,      // ← use the saved BN
+          ).then((result) => result),
       },
       {
         name: "lockSecondaryLP",
         eventName: "lpSecondaryLocked",
         fn: (token: any) =>
-          this.lockSecondaryLPTransaction.bind(this)(token.raydium, token.poolInfo, token.poolKeys, token.lpAccount.amount).then((result) => result),
+          this.lockSecondaryLPTransaction(
+            token.raydium,
+            token.poolInfo,
+            token.poolKeys,
+            token.secondaryAmount,    // ← use the saved BN
+          ).then((result) => result),
       },
       {
         name: "finalizeLockLP",
@@ -549,10 +559,12 @@ export class TokenMigrator {
 
   async initRaydiumSdkAndFetchPoolInfo(token: TokenData): Promise<{
     txId: string,
-    extraDate: {
+    extraData: {
       poolInfo: any;
       poolKeys: any;
       lpAccount: any;
+      primaryAmount: BN;
+      secondaryAmount: BN;
     }
   }> {
     const raydium = await initSdk({
@@ -574,14 +586,19 @@ export class TokenMigrator {
     const lpAccount = raydium.account.tokenAccounts.find(
       (a: any) => a.mint.toBase58() === lpMintStr,
     );
-
+    if (!lpAccount) throw new Error(`No LP balance found for pool: ${poolId}`);
+    const totalLP = lpAccount.amount as BN;
+    const primaryAmount = totalLP.muln(Number(process.env.PRIMARY_LOCK_PERCENTAGE ?? 90)).divn(100);
+    const secondaryAmount = totalLP.sub(primaryAmount);
     if (!lpAccount) throw new Error(`No LP balance found for pool: ${token.marketId}`);
     return {
       txId: "",
-      extraDate: {
+      extraData: {
         poolInfo: poolInfoResult.poolInfo,
         poolKeys: poolInfoResult.poolKeys,
         lpAccount,
+        primaryAmount,
+        secondaryAmount,
       },
     }
 
