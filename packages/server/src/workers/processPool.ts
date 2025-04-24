@@ -2,7 +2,7 @@ import { fork } from "child_process";
 import path from "path";
 import { getGlobalRedisCache } from "../redis";
 
-const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 4;
+const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 8;
 const JOB_QUEUE_KEY = "webhook:jobs";
 const WORKER_SCRIPT = path.join(__dirname, "processWebhook.ts");
 
