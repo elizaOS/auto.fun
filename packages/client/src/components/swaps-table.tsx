@@ -28,6 +28,7 @@ import { useEffect } from "react";
 import { Tooltip } from "react-tooltip";
 import dayjs from "dayjs";
 import Interval from "./interval";
+import Triangle from "./triangle";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
@@ -112,7 +113,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink,
+        sink
       );
     }
 
@@ -171,7 +172,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
         <TableHeader>
           <TableRow className="bg-transparent">
             <TableHead className="w-[120px]">Account</TableHead>
-            <TableHead className="text-left w-[100px]">Type</TableHead>
+            <TableHead className="text-center w-[75px]">Type</TableHead>
             <TableHead className="text-left">SOL</TableHead>
             <TableHead className="text-left">Token</TableHead>
             <TableHead className="text-right w-[80px]">Date</TableHead>
@@ -214,13 +215,14 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       {shortenAddress(account)}
                     </Link>
                   </TableCell>
-                  <TableCell
-                    className={twMerge([
-                      "text-left text-sm",
-                      swapType === "Buy" ? "text-[#03FF24]" : "text-[#EF5350]",
-                    ])}
-                  >
-                    {swapType}
+                  <TableCell className="text-center text-sm">
+                    <Triangle
+                      color={
+                        swapType === "Buy"
+                          ? "bg-[#03FF24] m-auto"
+                          : "bg-[#EF5350] rotate-180 m-auto"
+                      }
+                    />
                   </TableCell>
                   <TableCell className="text-left text-sm">
                     {formatSwapAmount(solana, true)}
