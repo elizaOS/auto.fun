@@ -1040,6 +1040,16 @@ export async function updateHoldersCache(
     );
 
     const db = getDB();
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+    if (existingToken?.[0]?.imported === 1) {
+      //ignore imported tokens
+      logger.log(`Token ${mint} is not imported, skipping holder update.`);
+      return 0;
+    }
     const redisCache = await getGlobalRedisCache(); // Instantiate Redis cache
 
     // Get all token accounts for this mint using getParsedProgramAccounts
@@ -1471,6 +1481,9 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
       } else {
         logger.log(`No holders found in Redis for key ${holdersListKey}`);
         // Return empty if not found in cache (as updateHoldersCache should populate it)
+        void updateHoldersCache(mint)
+          .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+          .catch((err) => logger.error(`Async holders refresh failed:`, err));
         return c.json({
           holders: [],
           page: 1,
