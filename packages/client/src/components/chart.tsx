@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   createChart,
@@ -10,13 +10,11 @@ import {
 import { getSocket, Socket } from "@/utils/socket";
 import { getChartTable } from "@/utils/api";
 import { Codex } from "@codex-data/sdk";
-import {
-  SymbolType,
-  TokenPairStatisticsType,
-} from "@codex-data/sdk/dist/sdk/generated/graphql";
-import { QuoteToken } from "@codex-data/sdk/dist/resources/graphql";
-import { formatNumber, networkId, useCodex } from "@/utils";
+import { SymbolType } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import { networkId, useCodex } from "@/utils";
 import { IToken } from "@/types";
+import Loader from "./loader";
+import { twMerge } from "tailwind-merge";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
@@ -28,17 +26,13 @@ export default function Chart({ token }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<any>(null);
   const chartRef = useRef<any>(null);
-  const [visibleTimeRange, setVisibleTimeRange] = useState<{
-    from: number;
-    to: number;
-  } | null>(null);
 
   const mint = token.mint;
 
   const isCodex = useCodex(token);
   const pairId = `${mint}:${networkId}`;
 
-  const { data: chartData, isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ["token", mint, "chart", isCodex],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
@@ -81,8 +75,6 @@ export default function Chart({ token }: ChartProps) {
           token: mint,
         });
 
-        console.log(data);
-
         /** If nothing was returned for the specified date range we should try to fetch the last valid candle */
         if (!data?.table?.length) {
           const lastKnownPrice = token?.tokenPriceUSD || 0;
@@ -101,11 +93,13 @@ export default function Chart({ token }: ChartProps) {
       }
     },
     staleTime: 60 * 1000,
-    refetchInterval: 2_000,
+    refetchInterval: isCodex ? 10_000 : 5_000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
     refetchOnReconnect: false,
   });
+
+  const chartData = query?.data;
 
   useEffect(() => {
     const chartOptions: DeepPartial<LightweightChartOptions> = {
@@ -157,15 +151,6 @@ export default function Chart({ token }: ChartProps) {
 
     const chart = createChart(chartElement, chartOptions);
     chartRef.current = chart;
-
-    chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
-      if (range) {
-        setVisibleTimeRange({
-          from: range.from as number,
-          to: range.to as number,
-        });
-      }
-    });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
       wickUpColor: "#03FF24",
@@ -228,12 +213,17 @@ export default function Chart({ token }: ChartProps) {
   return (
     <div
       ref={chartContainerRef}
-      className="w-full min-h-[400px]"
+      className="w-full min-h-[450px] relative"
       style={{ width: "100%", height: "100%" }}
     >
-      {isLoading && (
-        <div className="text-center py-4 h-full">Loading chart data...</div>
-      )}
+      <div
+        className={twMerge([
+          "size-full absolute left-0 top-0 z-50 transition-opacity duration-300",
+          !query?.isPending ? "opacity-0" : "opacity-100",
+        ])}
+      >
+        <Loader className="h-full bg-autofun-background-primary" />
+      </div>
     </div>
   );
 }
