@@ -269,6 +269,12 @@ export class TokenMigrator {
       if (step.name !== "withdraw" && step.name !== "createPool") {
         token.status = "locked";
       }
+      (token.migration as Record<string, any>)[step.name] = {
+        status: "success",
+        txId: result.txId,
+        updatedAt: new Date().toISOString(),
+      };
+
       // Save to DB
       Object.assign(token, result.extraData);
       await safeUpdateTokenInDB({
