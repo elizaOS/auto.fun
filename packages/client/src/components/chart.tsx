@@ -26,7 +26,6 @@ export default function Chart({ mint, isImported }: ChartProps) {
     to: number;
   } | null>(null);
 
-  // Fetch initial chart data using useQuery
   const { data: chartData, isLoading } = useQuery({
     queryKey: ["chart", mint, isImported],
     queryFn: async () => {
@@ -56,7 +55,7 @@ export default function Chart({ mint, isImported }: ChartProps) {
             low: getBars.l[i],
             close: getBars.c[i],
             volume: parseFloat(getBars?.volume?.[i] || "0"),
-            time: getBars.t[i] * 1000,
+            time: getBars.t[i],
           });
         }
 
