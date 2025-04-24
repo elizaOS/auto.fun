@@ -676,7 +676,7 @@ export class TokenMigrator {
     console.log("Sending NFT to manager multisig", nftMinted);
     if (!signerWallet) {
       signerWallet = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+        Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
       );
     }
     const txSignature = await sendNftTo(
@@ -716,7 +716,7 @@ export class TokenMigrator {
     const signerWallet =
       this.wallet.payer ??
       Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+        Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
       );
     const txSignature = await depositToRaydiumVault(
       this.provider,
@@ -786,11 +786,11 @@ export class TokenMigrator {
       return { txId: "no_fee", extraData: {} };
     }
     const mintConstantFee = new BN(Number(process.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
-    const feeWallet = new PublicKey(process.env.ACCOUNT_FEE_MULTISIG!);
+    const feeWallet = new PublicKey(process.env.FEE_WALLET!);
     const signerWallet =
       this.wallet.payer ??
       Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+        Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
       );
     const txSignature = await sendSolTo(
       mintConstantFee,

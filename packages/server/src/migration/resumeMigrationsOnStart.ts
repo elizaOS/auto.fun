@@ -44,7 +44,7 @@ export async function resumeMigrationsOnStart(
          : process.env.MAINNET_SOLANA_RPC_URL!,
    );
    const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
    );
    const provider = new AnchorProvider(
       connection,

@@ -397,12 +397,12 @@ export async function processTransactionLogs(
                   : process.env.MAINNET_SOLANA_RPC_URL || "",
             );
 
-            if (!process.env.WALLET_PRIVATE_KEY) {
+            if (!process.env.EXECUTOR_PRIVATE_KEY) {
                throw new Error("Wallet private key not found");
             }
 
             const wallet = Keypair.fromSecretKey(
-               Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+               Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
             );
             const provider = new AnchorProvider(
                connection,
@@ -532,12 +532,12 @@ export async function migrateTokensFromList(
 
    }
 
-   if (!process.env.WALLET_PRIVATE_KEY) {
+   if (!process.env.EXECUTOR_PRIVATE_KEY) {
       throw new Error("Wallet private key not found");
    }
 
    const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
    );
    const provider = new AnchorProvider(
       connection,

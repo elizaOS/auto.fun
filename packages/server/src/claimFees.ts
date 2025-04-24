@@ -13,7 +13,7 @@ const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_
 export async function claimFees(nftMint: PublicKey, poolId: PublicKey, connection: Connection, claimer: PublicKey): Promise<string> {
    try {
       const wallet = Keypair.fromSecretKey(
-         Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+         Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
       );
 
       // Build an Anchor provider.
