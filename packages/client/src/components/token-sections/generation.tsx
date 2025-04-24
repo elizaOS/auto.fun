@@ -72,40 +72,6 @@ interface TokenInfoResponse {
   image?: string;
 }
 
-// Add this new type for sharing to chat
-interface ShareToChatProps {
-  imageUrl: string;
-  onShareToChat: (imageUrl: string) => void;
-}
-
-// Add this new component for the share to chat button
-const ShareToChatButton = ({ imageUrl, onShareToChat }: ShareToChatProps) => {
-  return (
-    <button
-      onClick={() => onShareToChat(imageUrl)}
-      className="flex items-center gap-2 px-4 py-2 text-white bg-[#03FF24]/10 hover:bg-[#03FF24]/20 border border-[#03FF24]/20 rounded-none transition-colors"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-[#03FF24]"
-      >
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="7 10 12 15 17 10" />
-        <line x1="12" y1="15" x2="12" y2="3" />
-      </svg>
-      Share to Chat
-    </button>
-  );
-};
-
 export default function CommunityTab() {
   type ICommunityTabs = "Image" | "Video" | "Audio";
   const [communityTab, setCommunityTab] = useState<ICommunityTabs>("Image");
@@ -863,13 +829,6 @@ export default function CommunityTab() {
   const [imageForShareModal, setImageForShareModal] = useState<string | null>(
     null,
   );
-
-  // Add this new function to handle sharing to chat
-  const handleShareToChat = (imageUrl: string) => {
-    setSharedImageUrl(imageUrl);
-    // Emit an event that the parent can listen to
-    window.dispatchEvent(new CustomEvent('shareToChat', { detail: { imageUrl } }));
-  };
 
   // --- shareOnX (Initiates the process) ---
   const shareOnX = useCallback(async () => {
@@ -1720,9 +1679,6 @@ export default function CommunityTab() {
       !generatedImage &&
       !isProcessing); // Use the negation of the explicit check
 
-  // Add this new state variable
-  const [sharedImageUrl, setSharedImageUrl] = useState<string | null>(null);
-
   return (
     <div className="flex flex-col">
       <div className="flex flex-col md:flex-row gap-4">
@@ -1978,53 +1934,39 @@ export default function CommunityTab() {
                     </div>
                   ) : null}
                   {displayImageSource ? (
-                    <div className="relative">
-                      <img
-                        key={displayImageSource} // Add key to force re-render on source change
-                        src={displayImageSource}
-                        alt={
-                          generatedImage
-                            ? "Generated Image"
-                            : placeholderImage
-                              ? "Pregenerated Image"
-                              : tokenInfo?.name || "Token Image"
+                    <img
+                      key={displayImageSource} // Add key to force re-render on source change
+                      src={displayImageSource}
+                      alt={
+                        generatedImage
+                          ? "Generated Image"
+                          : placeholderImage
+                            ? "Pregenerated Image"
+                            : tokenInfo?.name || "Token Image"
+                      }
+                      className={`w-full h-full object-contain ${isGenerating ? "opacity-30" : ""}`} // Dim image when generating loader is shown
+                      onError={(e) => {
+                        // Handle potential image load errors, maybe show fallback
+                        console.error(
+                          "Image failed to load:",
+                          e.currentTarget.src,
+                        );
+                        // Optionally set a fallback image or style
+                        e.currentTarget.style.display = "none"; // Hide broken image
+                        // Maybe show a text error in the parent div
+                        const parent = e.currentTarget.parentElement;
+                        if (
+                          parent &&
+                          !parent.querySelector(".image-error-message")
+                        ) {
+                          const errorDiv = document.createElement("div");
+                          errorDiv.className =
+                            "absolute inset-0 flex items-center justify-center text-red-500 image-error-message";
+                          errorDiv.textContent = "Image failed to load";
+                          parent.appendChild(errorDiv);
                         }
-                        className={`w-full h-full object-contain ${isGenerating ? "opacity-30" : ""}`} // Dim image when generating loader is shown
-                        onError={(e) => {
-                          // Handle potential image load errors, maybe show fallback
-                          console.error(
-                            "Image failed to load:",
-                            e.currentTarget.src,
-                          );
-                          // Optionally set a fallback image or style
-                          e.currentTarget.style.display = "none"; // Hide broken image
-                          // Maybe show a text error in the parent div
-                          const parent = e.currentTarget.parentElement;
-                          if (
-                            parent &&
-                            !parent.querySelector(".image-error-message")
-                          ) {
-                            const errorDiv = document.createElement("div");
-                            errorDiv.className =
-                              "absolute inset-0 flex items-center justify-center text-red-500 image-error-message";
-                            errorDiv.textContent = "Image failed to load";
-                            parent.appendChild(errorDiv);
-                          }
-                        }}
-                      />
-                      <div className="absolute top-2 right-2 flex gap-2">
-                        <ShareToChatButton 
-                          imageUrl={displayImageSource} 
-                          onShareToChat={handleShareToChat} 
-                        />
-                        <button
-                          onClick={() => setGeneratedImage(null)}
-                          className="p-2 bg-black/50 hover:bg-black/70 border border-[#03FF24]/20 rounded-none"
-                        >
-                          <X className="w-4 h-4 text-[#03FF24]" />
-                        </button>
-                      </div>
-                    </div>
+                      }}
+                    />
                   ) : (
                     // Fallback if no image source is available
                     <div className="absolute inset-0 flex items-center justify-center text-gray-500">

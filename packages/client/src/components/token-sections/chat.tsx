@@ -849,22 +849,6 @@ export default function ChatSection() {
     }
   };
 
-  // Add this useEffect to listen for shared images
-  useEffect(() => {
-    const handleShareToChat = (event: CustomEvent) => {
-      const { imageUrl } = event.detail;
-      setSelectedImage(imageUrl);
-      setImagePreview(imageUrl);
-      // Switch to chat tab (this assumes there's a way to switch tabs in the parent)
-      window.dispatchEvent(new CustomEvent('switchToChat'));
-    };
-
-    window.addEventListener('shareToChat', handleShareToChat as EventListener);
-    return () => {
-      window.removeEventListener('shareToChat', handleShareToChat as EventListener);
-    };
-  }, []);
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-col my-2">
