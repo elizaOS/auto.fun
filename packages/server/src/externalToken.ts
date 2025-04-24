@@ -164,6 +164,7 @@ export class ExternalToken {
       }
 
       const holderResult = await this._fetchHolderData(marketResult.tokenSupply); // Use internal fetch method
+      console.log(`ExternalToken: Fetched ${holderResult.length} holders for ${this.mint}.`);
 
       const combinedDetails: TokenDetails = {
         marketData: marketResult.newTokenData,
