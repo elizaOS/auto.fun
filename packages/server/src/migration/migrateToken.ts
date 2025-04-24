@@ -491,71 +491,6 @@ export class TokenMigrator {
     };
   }
 
-  async lockPrimaryLP(
-    raydium: any,
-    poolInfo: any,
-    poolKeys: any,
-    primaryAmount: any,
-  ): Promise<{ txId: string; nftMint: string }> {
-    console.log("Performing primary LP lock", primaryAmount.toString());
-    const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
-      await raydium.cpmm.lockLp({
-        poolInfo,
-        lpAmount: primaryAmount,
-        withMetadata: true,
-        txVersion,
-        computeBudgetConfig: {
-          units: 300000,
-          microLamports: 0.0001 * 1e9,
-        },
-      });
-    const { txId: lockTxIdPrimary } = (await retryOperation(
-      () => lockExecutePrimary({ skipPreflight: false }),
-      5,
-      4000,
-    )) as LockResult;
-    const nftMintPrimary = lockExtInfoPrimary.nftMint.toString();
-    logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`);
-
-    return { txId: lockTxIdPrimary, nftMint: nftMintPrimary };
-  }
-
-  async lockSecondaryLP(
-    raydium: any,
-    poolInfo: any,
-    poolKeys: any,
-    secondaryAmount: any,
-  ): Promise<{ txId: string; nftMint: string }> {
-    console.log("Performing Secondat LP lock", secondaryAmount.toString());
-
-    const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
-      await raydium.cpmm.lockLp({
-        poolInfo,
-        // poolKeys,
-        lpAmount: secondaryAmount,
-        withMetadata: true,
-        txVersion,
-        computeBudgetConfig: {
-          units: 300000,
-          microLamports: 0.0001 * 1e9,
-        },
-        // programId:
-        //   raydium.cluster === "devnet"
-        //     ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
-        //     : CREATE_CPMM_POOL_PROGRAM,
-        // authProgram:
-        //   raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
-      });
-    const { txId: lockTxIdSecondary } = (await retryOperation(
-      () => lockExecuteSecondary({ skipPreflight: false }),
-      5,
-      4000,
-    )) as LockResult;
-    const nftMintSecondary = lockExtInfoSecondary.nftMint.toString();
-    logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`);
-
-    return { txId: lockTxIdSecondary, nftMint: nftMintSecondary };
-  }
 
   async initRaydiumSdkAndFetchPoolInfo(token: TokenData): Promise<{
     txId: string,
@@ -565,6 +500,7 @@ export class TokenMigrator {
       lpAccount: any;
       primaryAmount: BN;
       secondaryAmount: BN;
+      totalAmount: BN;
     }
   }> {
     const raydium = await initSdk({
@@ -590,7 +526,6 @@ export class TokenMigrator {
     const totalLP = lpAccount.amount as BN;
     const primaryAmount = totalLP.muln(Number(process.env.PRIMARY_LOCK_PERCENTAGE ?? 90)).divn(100);
     const secondaryAmount = totalLP.sub(primaryAmount);
-    if (!lpAccount) throw new Error(`No LP balance found for pool: ${token.marketId}`);
     return {
       txId: "",
       extraData: {
@@ -599,6 +534,7 @@ export class TokenMigrator {
         lpAccount,
         primaryAmount,
         secondaryAmount,
+        totalAmount: totalLP,
       },
     }
 
@@ -651,8 +587,9 @@ export class TokenMigrator {
     raydium: any,
     poolInfo: any,
     poolKeys: any,
-    primaryAmount: any
-  ): Promise<{ txId: string; nftMint: string }> {
+    primaryAmount: BN
+  ): Promise<{ txId: string; extraData: { primary: { txId: string; nftMint: string } } }> {
+    console.log("Performing primary LP lock", primaryAmount.toString());
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
       lpAmount: primaryAmount,
@@ -664,21 +601,30 @@ export class TokenMigrator {
       },
     });
 
-    const { txId } = await retryOperation(
+    const { txId } = (await retryOperation(
       () => execute({ skipPreflight: false }),
       5,
       4000
-    ) as LockResult;
+    )) as LockResult;
 
-    return { txId, nftMint: extInfo.nftMint.toString() };
+    const nftMint = extInfo.nftMint.toString();
+    logger.log(`[Lock] Primary LP lock txId: ${txId}, nftMint: ${nftMint}`);
+
+    return {
+      txId,
+      extraData: {
+        primary: { txId, nftMint },
+      },
+    };
   }
 
   async lockSecondaryLPTransaction(
     raydium: any,
     poolInfo: any,
     poolKeys: any,
-    secondaryAmount: any
-  ): Promise<{ txId: string; nftMint: string }> {
+    secondaryAmount: BN
+  ): Promise<{ txId: string; extraData: { secondary: { txId: string; nftMint: string } } }> {
+    console.log("Performing secondary LP lock", secondaryAmount.toString());
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
       lpAmount: secondaryAmount,
@@ -690,15 +636,22 @@ export class TokenMigrator {
       },
     });
 
-    const { txId } = await retryOperation(
+    const { txId } = (await retryOperation(
       () => execute({ skipPreflight: false }),
       5,
       4000
-    ) as LockResult;
+    )) as LockResult;
 
-    return { txId, nftMint: extInfo.nftMint.toString() };
+    const nftMint = extInfo.nftMint.toString();
+    logger.log(`[Lock] Secondary LP lock txId: ${txId}, nftMint: ${nftMint}`);
+
+    return {
+      txId,
+      extraData: {
+        secondary: { txId, nftMint },
+      },
+    };
   }
-
 
 
   // send the 10% to the manager multisig
@@ -739,7 +692,7 @@ export class TokenMigrator {
     logger.log(
       `[Send] Sending NFT to manager multisig for token ${token.mint} with NFT ${nftMinted}`,
     );
-    return { txId: txSignature, extraData: {} };
+    return { txId: txSignature, extraData: { sentNftMint: nftMinted } };
   }
   // send the 90% to our raydium vault
   async depositNftToRaydiumVault(
@@ -785,7 +738,7 @@ export class TokenMigrator {
     logger.log(
       `[Deposit] Depositing NFT to Raydium vault for token ${token.mint} with NFT ${nftMinted}`,
     );
-    return { txId: txSignature, extraData: {} };
+    return { txId: txSignature, extraData: { depositedNftMint: nftMinted } };
   }
 
   async finalizeMigration(token: any): Promise<{ txId: string }> {
