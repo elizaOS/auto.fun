@@ -308,7 +308,11 @@ export default function Trade({ token }: { token: IToken }) {
                   ? "Error"
                   : displayMinReceived}
                 <img
-                  src={isTokenSelling ? "/solana.svg" : token?.image || ""}
+                  src={
+                    isTokenSelling
+                      ? "/solana.svg"
+                      : token?.image || "/placeholder.png"
+                  }
                   alt={isTokenSelling ? "SOL" : token?.name || "token"}
                   className="size-6 m-2"
                 />
@@ -431,7 +435,7 @@ const TokenDisplay = ({
   return (
     <div className="flex items-center justify-end mb-4">
       <SkeletonImage
-        src={isSolana ? "/solana.svg" : token?.image || ""}
+        src={isSolana ? "/solana.svg" : token?.image || "/placeholder.png"}
         alt={token?.name || "token"}
         className="size-4"
       />
