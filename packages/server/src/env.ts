@@ -23,8 +23,6 @@ export interface Env {
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey: string; // Used in tests to track the current test token
-  // Redis
-  REDIS_URL: string;
   // Auth token salt for hashing
   AUTH_TOKEN_SALT: string;
   // Frontend URL

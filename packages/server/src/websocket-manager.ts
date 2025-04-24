@@ -40,7 +40,7 @@ class WebSocketManager {
         await subClient.subscribe("ws:direct");
 
         subClient.on("message", (ch, message) => {
-            logger.info(`📣 Received Redis message on ${ch}:`, message);
+            // logger.info(`📣 Received Redis message on ${ch}:`, message);
             const { clientId, room, event, data } = JSON.parse(message as string);
             if (room) {
                 this.broadcastToRoom(room, event, data);

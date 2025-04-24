@@ -1,8 +1,10 @@
 import { getConfigAccount } from "@/hooks/use-config-account";
 import { ConfigAccount } from "@/types";
-import { Autofun } from "@/utils/program";
+// Import the type from the shared types package
+import { Autofun } from "@autodotfun/types/types/autofun.ts";
 import { BN, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { env } from "./env"; // Import env
 // import { toast } from "react-toastify";
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
@@ -274,15 +276,23 @@ export const getJupiterSwapIx = async (
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
   // @TODO token address is static for now because our project is not deployed to mainnet yet
-  const tokenMintAddress = _token.toBase58(); // "9n4nbM75f5Ui3i7g1d8v2c3e6b7e4a4a4a4a4a4a4a4a4a"; // USDC mint address
+  const tokenMintAddress = _token.toBase58();
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
-  // 1. Get a quote from Jupiter.
-  const feePercent = 0.2;
-  const feeBps = feePercent * 100;
-  // Add platform fee to the quote
-  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
+  // --- Platform Fee Setup ---
+  const feePercent = 0.49;
+  const feeBps = feePercent * 100; // This will be 100 bps
+  const platformFeeWallet = env.platformFeeWallet; // Get wallet from env
+
+  if (!platformFeeWallet) {
+    console.warn(
+      "Platform fee wallet address not found in env. Skipping Jupiter platform fee.",
+    );
+  }
+
+  // 1. Get Quote (includes platform fee BPS)
+  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`;
   const quoteRes = await fetch(quoteUrl);
 
   if (!quoteRes.ok) {
@@ -291,23 +301,35 @@ export const getJupiterSwapIx = async (
   }
   const quoteResponse = await quoteRes.json();
 
-  const additionalIxs = [] as any;
-
+  // 2. Get Swap Instructions
   const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
-  const body = {
+  const swapRequestBody: any = {
     quoteResponse,
     userPublicKey: user.toBase58(),
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
+    // --- Add Platform Fee Destination ---
+    ...(platformFeeWallet && {
+      platformFeeAndAccounts: {
+        feeBps: feeBps,
+        feeAccounts: {
+          [outputMint]: platformFeeWallet,
+        },
+      },
+    }),
   };
+
+  console.log("Jupiter Swap Request Body:", JSON.stringify(swapRequestBody)); // Log the body
+
   const swapRes = await fetch(swapUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(swapRequestBody), // Send the modified body
   });
+
   if (!swapRes.ok) {
     const errorMsg = await swapRes.text();
     throw new Error(`Failed to build Jupiter swap transaction: ${errorMsg}`);
@@ -321,5 +343,5 @@ export const getJupiterSwapIx = async (
   const txBuffer = Buffer.from(swapJson.swapTransaction, "base64");
   const swapTransaction = Transaction.from(txBuffer);
 
-  return [...additionalIxs, ...swapTransaction.instructions];
+  return swapTransaction.instructions;
 };

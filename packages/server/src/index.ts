@@ -45,13 +45,6 @@ const app = new Hono<{ Variables: AppVariables }>();
 // Ensure necessary env vars are loaded (dotenv should have done this)
 // You might want to validate required env vars here (like REDIS_HOST etc.)
 const env = process.env as unknown as Env; // Cast process.env, ensure Env type matches
-if (!env.REDIS_HOST || !env.REDIS_PORT) {
-  // Add checks for other required env vars
-  logger.error(
-    "Missing required environment variables (e.g., REDIS_HOST, REDIS_PORT)"
-  );
-  process.exit(1);
-}
 
 // Setup Solana connection
 const RPC_URL = (

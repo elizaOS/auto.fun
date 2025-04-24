@@ -4,44 +4,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { logger } from "./util";
 import crypto from "node:crypto"; // Import crypto if not already available globally in the environment
 import { Buffer } from "node:buffer"; // Ensure Buffer is available
-
-// Define the fixed public base URL
-const PUBLIC_STORAGE_BASE_URL = "https://storage.autofun.tech";
-
-// Singleton S3 Client instance
-let s3ClientInstance: S3Client | null = null;
-
-// Helper function to create/get S3 client instance using process.env
-function getS3Client(): S3Client {
-    if (s3ClientInstance) {
-        return s3ClientInstance;
-    }
-
-    const accountId = process.env.S3_ACCOUNT_ID;
-    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const bucketName = process.env.S3_BUCKET_NAME; // Keep bucket name check here for validation
-
-    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-        // Log the missing variables for easier debugging
-        logger.error("Missing R2 S3 API environment variables. Check S3_ACCOUNT_ID, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME.");
-        throw new Error("Missing required R2 S3 API environment variables.");
-    }
-    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-
-    s3ClientInstance = new S3Client({
-        region: "auto",
-        endpoint: endpoint,
-        credentials: {
-            accessKeyId: accessKeyId,
-            secretAccessKey: secretAccessKey,
-        },
-    });
-
-    logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
-    return s3ClientInstance;
-}
-
+import { getS3Client } from "./s3Client"; // Import the shared S3 client function
 
 // Store file mapping in a local cache for development
 const _fileCache: { [key: string]: string } = {};
@@ -133,11 +96,8 @@ export async function uploadWithS3(
       }
     }
 
-     const s3Client = getS3Client(); // Get client using process.env
-     const bucketName = process.env.S3_BUCKET_NAME;
-     if (!bucketName) {
-         throw new Error("S3_BUCKET_NAME environment variable is not set.");
-     }
+     // Use the shared S3 client getter
+     const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
 
      const putCommand = new PutObjectCommand({
          Bucket: bucketName,
@@ -158,8 +118,8 @@ export async function uploadWithS3(
      logger.log(`S3 Upload successful for Key: ${objectKey}`);
 
 
-      // Construct the public URL using the fixed base
-      const publicUrl = `${PUBLIC_STORAGE_BASE_URL}/${objectKey}`;
+      // Construct the public URL using the appropriate base URL
+      const publicUrl = `${publicBaseUrl}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(objectKey, publicUrl);
@@ -207,11 +167,8 @@ export async function uploadGeneratedImage(
      }
 
 
-      const s3Client = getS3Client(); // Get client using process.env
-      const bucketName = process.env.S3_BUCKET_NAME;
-        if (!bucketName) {
-            throw new Error("S3_BUCKET_NAME environment variable is not set.");
-        }
+      // Use the shared S3 client getter
+      const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
 
       const putCommand = new PutObjectCommand({
           Bucket: bucketName,
@@ -231,8 +188,8 @@ export async function uploadGeneratedImage(
       logger.log(`S3 Upload successful for generated image Key: ${objectKey}`);
 
 
-      // Construct the public URL using the fixed base
-      const publicUrl = `${PUBLIC_STORAGE_BASE_URL}/${objectKey}`;
+      // Construct the public URL using the appropriate base URL
+      const publicUrl = `${publicBaseUrl}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(objectKey, publicUrl);

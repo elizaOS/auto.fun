@@ -2,71 +2,39 @@ import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } fr
 import { Hono } from "hono";
 import { Buffer } from 'node:buffer'; // Ensure Buffer is available
 import { logger } from "../util";
+import { getS3Client } from "../s3Client"; // Import shared S3 client function
+
+// Define the fixed public base URL for R2
+const PUBLIC_S3_STORAGE_BASE_URL_FILES = "https://storage.autofun.tech";
+// Define the default local MinIO base URL
+const DEFAULT_MINIO_BASE_URL_FILES = "http://localhost:9000";
+// Define the default local MinIO bucket
+const DEFAULT_MINIO_BUCKET_FILES = "autofun";
 
 // Singleton S3 Client instance
-let s3ClientInstance: S3Client | null = null;
+const s3ClientInstance: S3Client | null = null;
+const isUsingMinioFiles = false; // Flag for files S3 client
 
-// Helper function to create/get S3 client instance using process.env
-function getS3Client(): S3Client {
-  if (s3ClientInstance) {
-    return s3ClientInstance;
-  }
-
-  const accountId = process.env.S3_ACCOUNT_ID;
-  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-  const bucketName = process.env.S3_BUCKET_NAME; // Keep bucket name check here for validation
-
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-    logger.error("Missing R2 S3 API environment variables. Check S3_ACCOUNT_ID, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME.");
-    throw new Error("Missing required R2 S3 API environment variables.");
-  }
-  const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-
-  s3ClientInstance = new S3Client({
-    region: "auto",
-    endpoint: endpoint,
-    credentials: {
-      accessKeyId: accessKeyId,
-      secretAccessKey: secretAccessKey,
-    },
-  });
-
-  logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
-  return s3ClientInstance;
-}
-
-// Helper function to upload to R2
-async function uploadToR2(buffer: Buffer, options: { contentType: string, key: string }): Promise<string> {
-  const s3Client = getS3Client();
-  const bucketName = process.env.S3_BUCKET_NAME;
-  if (!bucketName) {
-    throw new Error("S3_BUCKET_NAME environment variable is not set.");
-  }
+// Helper function to upload to R2/MinIO
+async function uploadToStorage(buffer: Buffer, options: { contentType: string, key: string }): Promise<string> {
+  // Use the shared S3 client getter
+  const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
 
   const putCmd = new PutObjectCommand({
     Bucket: bucketName,
     Key: options.key,
     Body: buffer,
     ContentType: options.contentType,
-    ACL: 'public-read', // Make uploaded files publicly readable
+    // ACL: 'public-read', // ACL might not be needed/supported depending on setup (e.g., MinIO policies)
   });
 
   try {
     await s3Client.send(putCmd);
-    logger.log(`Successfully uploaded to R2: ${options.key}`);
-
-    // If you have a public bucket URL configured (e.g., via CNAME or R2 Public Bucket setting) use that:
-    // const publicUrl = `https://your-public-bucket-url.com/${options.key}`;
-    // Otherwise, construct the standard R2 URL:
-    const publicUrl = `${process.env.S3_PUBLIC_URL || process.env.R2_PUBLIC_URL}/${options.key}`;
-
-    // Alternatively, return a URL that routes through your API if you want to proxy image/metadata access
-    // Example: return `/api/image/${options.key.split('/').pop()}`; // (Needs adjustment based on key structure)
-    // For now, returning the direct public R2 URL. If the client expects API URLs, adjust this.
-    return publicUrl;
+    logger.log(`Successfully uploaded to Storage: ${options.key}`);
+    const finalPublicUrl = `${publicBaseUrl}/${options.key}`;
+    return finalPublicUrl;
   } catch (error) {
-    logger.error(`Failed to upload ${options.key} to R2:`, error);
+    logger.error(`Failed to upload ${options.key} to Storage:`, error);
     throw new Error(`Failed to upload ${options.key}`);
   }
 }
@@ -88,11 +56,8 @@ fileRouter.get("/metadata/:filename", async (c) => {
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
 
-    const s3Client = getS3Client();
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!bucketName) {
-      throw new Error("S3_BUCKET_NAME environment variable is not set.");
-    }
+    // Use the shared S3 client getter
+    const { client: s3Client, bucketName } = await getS3Client();
 
     // Determine which location to check first based on the temp parameter
     const primaryKey = isTemp
@@ -187,11 +152,8 @@ fileRouter.get("/image/:filename", async (c) => {
       "Access-Control-Max-Age": "86400",
     };
 
-    const s3Client = getS3Client();
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!bucketName) {
-      throw new Error("S3_BUCKET_NAME environment variable is not set.");
-    }
+    // Use the shared S3 client getter
+    const { client: s3Client, bucketName } = await getS3Client();
 
     // Check if this is a special generation image request
     const generationMatch = filename.match(
@@ -340,11 +302,8 @@ fileRouter.get("/twitter-image/:imageId", async (c) => {
       return c.json({ error: "Image ID parameter is required" }, 400);
     }
 
-    const s3Client = getS3Client();
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!bucketName) {
-      throw new Error("S3_BUCKET_NAME environment variable is not set.");
-    }
+    // Use the shared S3 client getter
+    const { client: s3Client, bucketName } = await getS3Client();
 
     // Construct the full storage key
     // Assuming the image was uploaded with .jpg extension
@@ -412,14 +371,8 @@ fileRouter.get("/check-generated-images/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    const s3Client = getS3Client();
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!bucketName) {
-      // Log warning but return success:false instead of throwing 500
-      logger.error("S3_BUCKET_NAME environment variable is not set for image check.");
-      return c.json({ success: false, hasImages: false, error: "Storage not configured" }, 503);
-    }
-
+    // Use the shared S3 client getter
+    const { client: s3Client, bucketName } = await getS3Client();
 
     // Check for generated images in R2 using S3 ListObjectsV2
     const generationImagesPrefix = `generations/${mint}/`;
@@ -516,8 +469,8 @@ fileRouter.post("/upload", async (c) => {
     const imageKey = `token-images/${imageFilename}`;
 
     // --- Upload Image ---
-    logger.log(`[/upload] Uploading image to R2 key: ${imageKey}`);
-    const imageUrl = await uploadToR2(imageBuffer, { contentType, key: imageKey });
+    logger.log(`[/upload] Uploading image to Storage key: ${imageKey}`);
+    const imageUrl = await uploadToStorage(imageBuffer, { contentType, key: imageKey });
     logger.log(`[/upload] Image uploaded successfully: ${imageUrl}`);
     // --- End Image Upload ---
 
@@ -540,14 +493,14 @@ fileRouter.post("/upload", async (c) => {
     const metadataKey = `token-metadata/${metadataFilename}`;
     const metadataBuffer = Buffer.from(JSON.stringify(finalMetadata, null, 2)); // Pretty print JSON
 
-    logger.log(`[/upload] Uploading metadata to R2 key: ${metadataKey}`);
-    // Note: We upload metadata directly to R2 here.
+    logger.log(`[/upload] Uploading metadata to Storage key: ${metadataKey}`);
+    // Note: We upload metadata directly to Storage here.
     // The client should fetch it via the /metadata/:filename endpoint.
-    const directMetadataR2Url = await uploadToR2(metadataBuffer, {
+    const directMetadataStorageUrl = await uploadToStorage(metadataBuffer, {
       contentType: 'application/json',
       key: metadataKey
     });
-    logger.log(`[/upload] Metadata uploaded successfully (direct R2 URL): ${directMetadataR2Url}`);
+    logger.log(`[/upload] Metadata uploaded successfully (direct Storage URL): ${directMetadataStorageUrl}`);
 
     // Construct the URL for the client to use to fetch metadata *via the API*
     // This assumes the API is running at a base URL accessible to the client.
@@ -569,7 +522,7 @@ fileRouter.post("/upload", async (c) => {
 });
 
 
-// Add a similar endpoint for imported images if needed, reusing uploadToR2
+// Add a similar endpoint for imported images if needed, reusing uploadToStorage
 fileRouter.post("/upload-import-image", async (c) => {
   try {
     const user = c.get("user");
@@ -598,8 +551,8 @@ fileRouter.post("/upload-import-image", async (c) => {
     const imageFilename = `imported_${Date.now()}${extension}`;
     const imageKey = `token-images/${imageFilename}`; // Store in the same place or separate?
 
-    logger.log(`[/upload-import-image] Uploading imported image to R2 key: ${imageKey}`);
-    const imageUrl = await uploadToR2(imageBuffer, { contentType, key: imageKey });
+    logger.log(`[/upload-import-image] Uploading imported image to Storage key: ${imageKey}`);
+    const imageUrl = await uploadToStorage(imageBuffer, { contentType, key: imageKey });
     logger.log(`[/upload-import-image] Imported image uploaded successfully: ${imageUrl}`);
 
     return c.json({ success: true, imageUrl: imageUrl });
