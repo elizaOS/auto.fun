@@ -6,14 +6,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table-raw";
-import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
-import { shortenAddress } from "@/utils";
+import { networkId, shortenAddress } from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
-// import PausedIndicator from "./paused-indicator";
-import { useHolders } from "@/hooks/use-holders";
 import { env } from "@/utils/env";
+import { Codex } from "@codex-data/sdk";
+import { useQuery } from "@tanstack/react-query";
+import {
+  HoldersSortAttribute,
+  RankingDirection,
+} from "@codex-data/sdk/dist/sdk/generated/graphql";
 
 function getPercentageOfTotal(value: number, total: number): string | number {
   if (total === 0) {
@@ -24,29 +27,40 @@ function getPercentageOfTotal(value: number, total: number): string | number {
   return percentage?.toFixed(2);
 }
 
-export default function HoldersTable({ token }: { token: IToken }) {
-  const { /*paused,*/ setPause } = usePause();
+const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
-  const query = useHolders({ tokenId: token.mint });
+export default function HoldersTable({ token }: { token: IToken }) {
+  const query = useQuery({
+    queryKey: ["token", token.mint, "holders"],
+    queryFn: async () => {
+      const holders = await codex.queries.holders({
+        input: {
+          tokenId: `${token.mint}:${networkId}`,
+          sort: {
+            attribute: HoldersSortAttribute.Balance,
+            direction: RankingDirection.Desc,
+          },
+        },
+      });
+
+      return holders?.holders?.items;
+    },
+    refetchInterval: 30_000,
+  });
 
   const isLoading = query.isLoading;
-  const data = query?.items;
-
   const supply = token?.tokenSupplyUiAmount;
+  const data = query?.data || [];
 
   return (
-    <Table
-      className="border-0 !rounded-0 !border-spacing-y-0"
-      onMouseEnter={() => setPause(true)}
-      onMouseLeave={() => setPause(false)}
-    >
+    <Table className="border-0 !rounded-0 !border-spacing-y-0">
       <TableHeader className="relative">
         {/* <PausedIndicator show={paused} /> */}
         <TableRow className="bg-transparent">
-          <TableHead>Account</TableHead>
+          <TableHead className="text-left w-[120px]">Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
-          <TableHead className="text-right">%</TableHead>
-          <TableHead className="text-right">View</TableHead>
+          <TableHead className="text-right w-[80px]">%</TableHead>
+          <TableHead className="text-right w-[50px]" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -61,11 +75,14 @@ export default function HoldersTable({ token }: { token: IToken }) {
               </div>
             </TableCell>
           </TableRow>
-        ) : data.length > 0 ? (
+        ) : data?.length > 0 ? (
           data.map((holder) => {
+            const formattedAmount: number =
+              (Number(holder?.balance) ? Number(holder.balance) : 0) /
+              10 ** (token.tokenDecimals || 6);
             return (
               <TableRow className="hover:bg-white/5" key={holder?.address}>
-                <TableCell className="text-left">
+                <TableCell className="text-left text-sm">
                   <Link
                     to={env.getWalletUrl(holder.address)}
                     target="_blank"
@@ -77,13 +94,13 @@ export default function HoldersTable({ token }: { token: IToken }) {
                       : shortenAddress(holder?.address)}
                   </Link>
                 </TableCell>
-                <TableCell className="text-right">
-                  {holder?.amount.toLocaleString()}
+                <TableCell className="text-right text-sm">
+                  {formattedAmount.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-right">
-                  {getPercentageOfTotal(holder.amount, supply)}%
+                <TableCell className="text-right text-sm">
+                  {getPercentageOfTotal(formattedAmount, supply)}%
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-sm">
                   <Link to={env.getWalletUrl(holder.address)} target="_blank">
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                   </Link>

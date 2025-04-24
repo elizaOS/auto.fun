@@ -216,7 +216,7 @@ class SocketWrapper {
 }
 
 // Create a type that matches the Socket.io Socket interface
-type Socket = SocketWrapper;
+export type Socket = SocketWrapper;
 
 let socket: Socket | null = null;
 
