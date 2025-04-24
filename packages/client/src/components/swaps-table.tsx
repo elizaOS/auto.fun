@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table-raw";
 import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
-import { fromNow, shortenAddress } from "@/utils";
+import { fromNow, shortenAddress, useCodex } from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { twMerge } from "tailwind-merge";
@@ -16,28 +16,35 @@ import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
 import Pagination from "./pagination";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Codex } from "@codex-data/sdk";
 import { RankingDirection } from "@codex-data/sdk/dist/resources/graphql";
-import { EventType } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import {
+  AddTokenEventsOutput,
+  EventType,
+} from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { networkId } from "@/utils";
+import { useEffect } from "react";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
-  // const {
-  //   items: data,
-  //   goToPage,
-  //   isLoading,
-  //   currentPage,
-  //   hasNextPage,
-  //   totalItems,
-  //   totalPages,
-  // } = useTransactions({ tokenId: token.mint, isPaused: paused });
+  const isCodex = useCodex(token);
+  const queryClient = useQueryClient();
+  const {
+    items: data,
+    goToPage,
+    isLoading,
+    currentPage,
+    hasNextPage,
+    totalItems,
+    totalPages,
+  } = useTransactions({ tokenId: token.mint, isPaused: paused || isCodex });
 
+  const queryKey = ["token", token.mint, "swaps"];
   const query = useQuery({
-    queryKey: ["token", token.mint, "swaps"],
+    queryKey,
     queryFn: async () => {
       const data = await codex.queries.getTokenEvents({
         query: {
@@ -52,7 +59,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
       const items = data?.getTokenEvents?.items;
       return items;
     },
-    refetchInterval: 15_000,
+    enabled: isCodex,
   });
 
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
@@ -76,6 +83,51 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   const items = query?.data || [];
+
+  useEffect(() => {
+    let cleanupPromise: any;
+    const sink = {
+      next({ data }: { data: { onTokenEventsCreated: AddTokenEventsOutput } }) {
+        const events = data?.onTokenEventsCreated?.events || [];
+        if (events?.length > 1) {
+          for (const event of events) {
+            if (event?.eventType === EventType.Swap) {
+              const data = queryClient.getQueryData(queryKey);
+              queryClient.setQueryData(queryKey, [event, ...(data as any)]);
+            }
+          }
+        }
+      },
+      complete() {
+        console.log("SWAPS SUBSCRIPTION CLEANED");
+      },
+      error(error) {
+        console.error("SWAPS SUBSCRIPTION: ", error);
+      },
+    };
+
+    if (isCodex) {
+      cleanupPromise = codex.subscriptions.onTokenEventsCreated(
+        {
+          input: {
+            networkId,
+            tokenAddress: token.mint,
+          },
+        },
+        sink
+      );
+    }
+
+    return () => {
+      cleanupPromise
+        .then((cleanupFn) => {
+          cleanupFn();
+        })
+        .catch((error) => {
+          console.error("Error during codex subscription cleanup:", error);
+        });
+    };
+  }, []);
 
   return (
     <div
@@ -111,7 +163,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
             </TableRow>
           ) : items?.length > 0 ? (
             items?.map((swap, _) => {
-              console.log(swap);
               const account = swap?.maker || "";
               const swapType = swap?.eventDisplayType || "Buy";
               const solana = swap?.data?.priceBaseTokenTotal || "0";

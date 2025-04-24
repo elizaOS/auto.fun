@@ -7,7 +7,7 @@ export default function TosProvider() {
   const AllowedRoute = routes.includes(location.pathname);
   const [tosAccepted, setTosAccepted] = useLocalStorage<boolean>(
     "tosAccepted",
-    false,
+    false
   );
   const navigate = useNavigate();
 
