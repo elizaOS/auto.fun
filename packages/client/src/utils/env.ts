@@ -76,13 +76,32 @@ const unparsedEnv = {
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   appEnv: process.env.NODE_ENV,
   s3PublicUrl:
-    import.meta.env.VITE_S3_PUBLIC_URL || import.meta.env.VITE_R2_PUBLIC_URL,
+    import.meta.env.VITE_MINIO_PUBLIC_URL || "http://localhost:9000",
   metadataBaseUrl: import.meta.env.VITE_METADATA_BASE_URL,
   imageOptimizationUrl: import.meta.env.VITE_IMAGE_OPTIMIZATION_URL,
   exampleImageUrl: import.meta.env.VITE_EXAMPLE_IMAGE_URL,
   adminAddresses:
     parseAdminAddresses(import.meta.env.VITE_ADMIN_ADDRESSES) || [],
 } as const;
+
+// Log all values in unparsedEnv to debug which ones are missing
+console.log("==== ENV VALIDATION DEBUG ====");
+console.log("solanaNetwork:", unparsedEnv.solanaNetwork);
+console.log("rpcUrl:", unparsedEnv.rpcUrl);
+console.log("rpcUrlMainnet:", unparsedEnv.rpcUrlMainnet);
+console.log("virtualReserves:", unparsedEnv.virtualReserves);
+console.log("tokenSupply:", unparsedEnv.tokenSupply);
+console.log("decimals:", unparsedEnv.decimals);
+console.log("apiUrl:", unparsedEnv.apiUrl);
+console.log("platformFeeWallet:", unparsedEnv.platformFeeWallet);
+console.log("programId:", unparsedEnv.programId);
+console.log("appEnv:", unparsedEnv.appEnv);
+console.log("s3PublicUrl:", unparsedEnv.s3PublicUrl);
+console.log("metadataBaseUrl:", unparsedEnv.metadataBaseUrl);
+console.log("imageOptimizationUrl:", unparsedEnv.imageOptimizationUrl);
+console.log("exampleImageUrl:", unparsedEnv.exampleImageUrl);
+console.log("adminAddresses:", unparsedEnv.adminAddresses);
+console.log("=========================");
 
 const envSchema = z.object({
   solanaNetwork: z.string().min(1),
@@ -103,7 +122,15 @@ const envSchema = z.object({
   adminAddresses: z.array(z.string()),
 });
 
-const parsedEnv = envSchema.parse(unparsedEnv);
+let parsedEnv;
+
+try {
+  parsedEnv = envSchema.parse(unparsedEnv);
+  console.log("Environment validation successful");
+} catch (error) {
+  console.error("ENV VALIDATION ERROR:", error);
+  throw error;
+}
 
 export const env = {
   ...parsedEnv,

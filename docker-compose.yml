@@ -1,8 +1,50 @@
-version: "3.8"
-
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+      - "8787:8787"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      # IS_DOCKER=true # This can be set in .env.development.local if needed
+      - NODE_ENV=development # Explicitly set NODE_ENV for dotenv-flow
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Passwords and DB connection string are expected to be in the copied .env file
+      - REDIS_PASSWORD=MDikUKnhRHlURlnORexvVztDTrNCUBze
+      - DATABASE_URL=postgres://autofun_owner:npg_2PDZgJfEtrh6@postgres:5432/autofun
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=autofun_owner
+      - DB_PASSWORD=npg_2PDZgJfEtrh6
+      - DB_NAME=autofun
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minio_user
+      - MINIO_SECRET_KEY=minio_password
+      - MINIO_BUCKET_NAME=autofun
+      - WEBHOOK_PUBLIC_URL=http://localhost:8787 # Might be overridden by tunnel script
+      - WAIT_FOR_POSTGRES=true
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      # EXECUTOR_PRIVATE_KEY should be loaded from the copied .env file
+    # env_file: (Removed - will use Dockerfile CMD copy)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - app-network
+
   postgres:
-    image: postgres:latest
+    image: postgres:15
     container_name: autofun-postgres
     environment:
       POSTGRES_USER: autofun_owner
@@ -11,22 +53,37 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autofun_owner -d autofun"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
 
   redis:
-    image: redis:latest
+    image: redis:7
     container_name: autofun-redis
     command: redis-server --requirepass MDikUKnhRHlURlnORexvVztDTrNCUBze
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis-data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "MDikUKnhRHlURlnORexvVztDTrNCUBze", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio
     container_name: autofun-minio
+    command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minio_user
       MINIO_ROOT_PASSWORD: minio_password
@@ -34,11 +91,21 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
+      - minio-data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
-  postgres_data:
-  redis_data:
-  minio_data:
+  postgres-data:
+  redis-data:
+  minio-data:
