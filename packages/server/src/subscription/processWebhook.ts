@@ -104,12 +104,12 @@ parentPort?.on("message", async (data: any) => {
       await ext.updateMarketAndHolders();
 
       const wsClient = getWebSocketClient();
-      await wsClient.to(`token-${tokenMint}`).emit("newSwap", {
+      await wsClient.to(`global`).emit("newSwap", {
          ...swapRecord,
          mint: tokenMint,
          timestamp: swapRecord.timestamp.toISOString(),
       });
-      await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
+      await wsClient.to(`global`).emit("newCandle", latestCandle);
 
       process.exit(0); // Done successfully
    } catch (e) {

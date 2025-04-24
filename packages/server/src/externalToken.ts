@@ -328,6 +328,7 @@ export class ExternalToken {
               amountIn: SolValue * LAMPORTS_PER_SOL,
               amountOut: Math.abs(baseAmount),
               price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
+              timestamp: new Date(codexSwap.timestamp * 1000),
             };
           case EventDisplayType.Sell:
             return {
@@ -337,6 +338,8 @@ export class ExternalToken {
               amountIn: Math.abs(baseAmount),
               amountOut: SolValue * LAMPORTS_PER_SOL,
               price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
+
+              timestamp: new Date(codexSwap.timestamp * 1000),
             };
           default:
             return null;
@@ -347,8 +350,13 @@ export class ExternalToken {
     if (processedSwaps.length > 0) {
       await this.insertProcessedSwaps(processedSwaps);
       await this.wsClient
-        .to(`token-${this.mint}`)
-        .emit("newSwap", processedSwaps);
+        .to(`global`)
+        .emit("newSwap", {
+          ...processedSwaps,
+          tokenMint: this.mint,
+          mint: this.mint,
+          timestamp: new Date(processedSwaps[processedSwaps.length - 1].timestamp).toISOString(),
+        });
     }
 
     console.log(
@@ -427,6 +435,7 @@ export class ExternalToken {
                 amountIn: SolValue * LAMPORTS_PER_SOL,
                 amountOut: Math.abs(baseAmount),
                 price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
+                timestamp: new Date(codexSwap.timestamp * 1000),
               };
             case EventDisplayType.Sell:
               return {
@@ -436,6 +445,8 @@ export class ExternalToken {
                 amountIn: Math.abs(baseAmount),
                 amountOut: SolValue * LAMPORTS_PER_SOL,
                 price: swapData.priceUsd ? Math.abs(Number(swapData.priceUsd)) : 0,
+                timestamp: new Date(codexSwap.timestamp * 1000),
+
               };
             default:
               return null;
@@ -446,8 +457,13 @@ export class ExternalToken {
       if (processedSwaps.length > 0) {
         await this.insertProcessedSwaps(processedSwaps);
         await this.wsClient
-          .to(`token-${this.mint}`)
-          .emit("newSwap", processedSwaps);
+          .to(`global`)
+          .emit("newSwap", {
+            ...processedSwaps,
+            tokenMint: this.mint,
+            mint: this.mint,
+            timestamp: new Date(processedSwaps[processedSwaps.length - 1].timestamp).toISOString(),
+          });
       }
 
       // Update the cursor for the next batch

@@ -56,7 +56,7 @@ process.on("message", async (data: any) => {
 
       const wsClient = getWebSocketClient();
 
-      await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
+      await wsClient.to(`global`).emit("newCandle", latestCandle);
 
       process.exit(0);
    } catch (e) {
