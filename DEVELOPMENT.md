@@ -18,7 +18,6 @@ Create a `.env.local` file in the root directory with the following content:
 # Database connection
 DATABASE_URL=postgresql://autofun_owner:npg_2PDZgJfEtrh6@localhost:5432/autofun
 # Redis connection
-REDIS_URL=redis://:MDikUKnhRHlURlnORexvVztDTrNCUBze@localhost:6379
 REDIS_HOST="localhost"
 REDIS_PORT=6379
 REDIS_PASSWORD="MDikUKnhRHlURlnORexvVztDTrNCUBze"

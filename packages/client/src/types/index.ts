@@ -64,7 +64,7 @@ export const TokenSchema = z
       "harvested",
       "migration_failed",
       "partner_import",
-    ]),
+    ]).nullish(),
     liquidity: z.number().nullish(),
     curveLimit: z.number().nullish().default(0),
     reserveLamport: z.number().nullish(),
@@ -124,6 +124,22 @@ export const TokenSchema = z
       }
       return val;
     }, z.number().nullish()),
+    isToken2022: z.preprocess((val) => {
+      if (typeof val === "string") return parseInt(val, 10) || 0;
+      return val ?? 0;
+    }, z.number().optional().default(0)),
+    hideFromFeatured: z.preprocess((val) => {
+      if (typeof val === "string") return parseInt(val, 10) || 0;
+      return val ?? 0;
+    }, z.number().optional().default(0)),
+    creatorProfile: z
+      .object({
+        address: z.string(),
+        displayName: z.string().nullable(),
+        profilePictureUrl: z.string().nullable(),
+      })
+      .optional()
+      .nullable(),
   })
   .transform((data) => ({
     ...data,
@@ -168,6 +184,9 @@ export const TokenSchema = z
     verified: data?.verified ? data?.verified : 0,
     featured: data?.featured ? data?.featured : 0,
     hidden: data?.hidden ? !!data.hidden : false,
+    isToken2022: data.isToken2022 || 0,
+    hideFromFeatured: data.hideFromFeatured || 0,
+    creatorProfile: data.creatorProfile,
   }));
 
 export type IToken = z.infer<typeof TokenSchema>;

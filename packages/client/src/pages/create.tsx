@@ -1480,7 +1480,9 @@ export default function Create() {
           }
         }
 
-        const tokenData = (await response.json()) as TokenSearchData;
+        const tokenData = (await response.json()) as TokenSearchData & {
+          isToken2022?: boolean;
+        }; // Add isToken2022 to type assertion
 
         // If token has an image URL, fetch and convert to base64
         if (tokenData.image) {
@@ -1533,6 +1535,7 @@ export default function Create() {
         }
 
         // Store token data in localStorage for later use
+        // Include the isToken2022 flag
         localStorage.setItem("import_token_data", JSON.stringify(tokenData));
         setHasStoredToken(true);
 
@@ -1993,7 +1996,9 @@ export default function Create() {
       // Check if we're working with imported token data
       const storedTokenData = localStorage.getItem("import_token_data");
       if (storedTokenData) {
-        const tokenData = JSON.parse(storedTokenData);
+        const tokenData = JSON.parse(storedTokenData) as TokenSearchData & {
+          isToken2022?: boolean;
+        }; // Add type assertion here too
         try {
           // Convert image to base64 if exists
           let media_base64: string | null = null;
@@ -2035,12 +2040,12 @@ export default function Create() {
               imageBase64: media_base64,
               metadataUrl: tokenData.metadataUri || "",
               creator:
-                tokenData.creators ||
+                tokenData.creators || // Use updateAuthority/creator from search result
                 tokenData.updateAuthority ||
-                tokenData.mintAuthority ||
-                "",
-              // Include the import flag to indicate this is an imported token
+                tokenData.creator || // Fallback to creator if others missing
+                "", // Or handle error if no creator found
               imported: true,
+              isToken2022: tokenData.isToken2022 === true, // <<< Pass the flag
             }),
           });
 

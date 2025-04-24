@@ -6,6 +6,9 @@ import { getDB, tokens, users, Token } from "../db";
 import { logger } from "../logger";
 import { adminAddresses } from "./adminAddresses";
 import { getFeaturedMaxValues, applyFeaturedSort } from "../util";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Buffer } from "node:buffer";
+import { getS3Client } from "../s3Client"; // Import shared S3 client
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -1010,41 +1013,6 @@ adminRouter.put("/tokens/:mint/details", requireAdminOrModerator, async (c) => {
 });
 // --- END PUT ROUTE ---
 
-// --- Add S3 imports and helpers ---
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { Buffer } from "node:buffer";
-
-// Define the fixed public base URL used for constructing URLs (should match uploader.ts)
-const PUBLIC_STORAGE_BASE_URL = "https://storage.autofun.tech";
-
-// Singleton S3 Client instance for admin routes
-let adminS3ClientInstance: S3Client | null = null;
-
-// Helper function to create/get S3 client instance using process.env (specific to admin routes)
-function getAdminS3Client(): S3Client {
-    if (adminS3ClientInstance) {
-        return adminS3ClientInstance;
-    }
-    // Reuse environment variables logic from uploader/token routes
-    const accountId = process.env.S3_ACCOUNT_ID;
-    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const bucketName = process.env.S3_BUCKET_NAME;
-    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-        logger.error("Missing R2 S3 API environment variables in admin route.");
-        throw new Error("Missing required R2 S3 API environment variables.");
-    }
-    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-    adminS3ClientInstance = new S3Client({
-        region: "auto",
-        endpoint: endpoint,
-        credentials: { accessKeyId, secretAccessKey },
-    });
-    logger.log(`Admin S3 Client initialized for endpoint: ${endpoint}`);
-    return adminS3ClientInstance;
-}
-// --- End S3 imports and helpers ---
-
 // --- NEW: Route to update metadata JSON ---
 adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) => {
     try {
@@ -1090,51 +1058,51 @@ adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) =>
 
         // --- Extract S3 Object Key from URL ---
         let objectKey = "";
-        const expectedStoragePrefix = "token-metadata/";
-        const localApiPrefix = "/api/metadata/";
+        // Get public base URL from shared client to help parse
+        const { publicBaseUrl } = await getS3Client(); 
+        
+        // Define potential prefixes
+        const expectedR2Prefix = "https://storage.autofun.tech/"; // Hardcode for now, or get dynamically
+        const expectedMinioPrefixPattern = /^http:\/\/localhost:9000\/[^\/]+\//; // Matches http://localhost:9000/bucketname/
+        const localApiPrefix = "/api/metadata/"; // Assuming API route is consistent
 
-        if (token.url.startsWith(PUBLIC_STORAGE_BASE_URL + "/")) {
-            objectKey = token.url.substring((PUBLIC_STORAGE_BASE_URL + "/").length);
-            // Optional: Double-check if the extracted key starts with the expected storage prefix
-            if (!objectKey.startsWith(expectedStoragePrefix)) {
-                logger.warn(`Extracted key "${objectKey}" from public URL for ${mint} does not start with expected prefix "${expectedStoragePrefix}".`);
-                // Decide whether to proceed or error out
-            }
+        if (token.url.startsWith(publicBaseUrl + "/")) { // Check primary case: starts with current base URL
+            objectKey = new URL(token.url).pathname.substring(publicBaseUrl.length + 1);
+        } else if (token.url.startsWith(expectedR2Prefix)) { // Check legacy/hardcoded R2 prefix
+             objectKey = token.url.substring(expectedR2Prefix.length);
+             logger.warn(`[Admin Metadata Update] URL ${token.url} used R2 prefix directly.`);
+        } else if (expectedMinioPrefixPattern.test(token.url)) { // Check if it looks like a MinIO path URL
+             objectKey = new URL(token.url).pathname.substring(1); // Get path after hostname (includes bucket)
+             logger.warn(`[Admin Metadata Update] URL ${token.url} matched MinIO pattern.`);
         } else {
-            // Handle other URLs (like local http://localhost:8787/api/metadata/...)
-            try {
+             // Fallback for local API path or other unknowns
+             try {
                 const parsedUrl = new URL(token.url);
                 const path = parsedUrl.pathname;
-
                 if (path.startsWith(localApiPrefix)) {
-                    // Extract the filename part after /api/metadata/
                     const filename = path.substring(localApiPrefix.length);
-                    // Construct the correct S3 key
-                    objectKey = `${expectedStoragePrefix}${filename}`;
-                    logger.log(`Parsed local API URL for ${mint}. Constructed S3 key: ${objectKey}`);
+                    // Attempt to construct a likely S3 key (assuming token-metadata prefix)
+                    objectKey = `token-metadata/${filename}`; 
+                    logger.log(`[Admin Metadata Update] Parsed local API URL. Constructed S3 key: ${objectKey}`);
                 } else {
-                     // Log a warning if the path doesn't match expected local or public formats
-                     logger.error(`Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`);
+                     logger.error(`[Admin Metadata Update] Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`);
                      return c.json({ error: "Cannot determine storage key from token metadata URL format" }, 500);
                 }
-            } catch (urlParseError) {
-                 logger.error(`Failed to parse metadata URL to get object key for ${mint}: ${token.url}`, urlParseError);
+             } catch (urlParseError) {
+                 logger.error(`[Admin Metadata Update] Failed to parse metadata URL to get object key for ${mint}: ${token.url}`, urlParseError);
                  return c.json({ error: "Could not determine storage key from token metadata URL" }, 500);
-            }
+             }
         }
 
         if (!objectKey) {
-             // This condition might be redundant now if the above logic handles all cases or errors out
-             logger.error(`Failed to extract a valid object key for ${mint} from URL: ${token.url}`);
+             logger.error(`[Admin Metadata Update] Failed to extract a valid object key for ${mint} from URL: ${token.url}`);
              return c.json({ error: "Failed to extract valid storage key from metadata URL" }, 500);
         }
+        logger.log(`[Admin Metadata Update] Determined object key: ${objectKey}`);
 
-        // --- Upload updated metadata to S3 ---
-        const s3Client = getAdminS3Client();
-        const bucketName = process.env.S3_BUCKET_NAME;
-        if (!bucketName) {
-            throw new Error("S3_BUCKET_NAME environment variable is not set.");
-        }
+        // --- Upload updated metadata to S3 --- 
+        // Use shared client
+        const { client: s3Client, bucketName } = await getS3Client(); 
 
         const metadataBuffer = Buffer.from(JSON.stringify(updatedMetadata, null, 2), 'utf8'); // Pretty print JSON
 

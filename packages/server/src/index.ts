@@ -20,6 +20,7 @@ import generationRouter from "./routes/generation";
 import migrationRouter from "./routes/migration";
 import preGeneratedAdminRoutes from "./routes/admin/pregenerated"; // Import the new router
 import shareRouter from "./routes/share";
+import userRouter from "./routes/user";
 import swapRouter from "./routes/swap";
 import tokenRouter from "./routes/token";
 import webhookRouter from "./routes/webhooks";
@@ -46,13 +47,6 @@ const app = new Hono<{ Variables: AppVariables }>();
 // Ensure necessary env vars are loaded (dotenv should have done this)
 // You might want to validate required env vars here (like REDIS_HOST etc.)
 const env = process.env as unknown as Env; // Cast process.env, ensure Env type matches
-if (!env.REDIS_HOST || !env.REDIS_PORT) {
-  // Add checks for other required env vars
-  logger.error(
-    "Missing required environment variables (e.g., REDIS_HOST, REDIS_PORT)"
-  );
-  process.exit(1);
-}
 
 // Setup Solana connection
 const RPC_URL = (
@@ -113,6 +107,7 @@ api.route("/", chatRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
+api.route("/users", userRouter);
 api.route("/admin", adminRouter); // Note: Ensure admin/owner routes have appropriate checks
 api.route("/owner", ownerRouter);
 api.route("/admin/pregenerated", preGeneratedAdminRoutes); // Mount the new router

@@ -1,7 +1,7 @@
-import { IToken } from "@/types";
 import * as CANNON from "cannon-es";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { IToken } from "@/types";
 // import { getToken } from "@/utils/api";
 import { resizeImage } from "@/utils";
 
@@ -29,13 +29,6 @@ declare module "cannon-es" {
     bodyA: CANNON.Body;
     bodyB: CANNON.Body;
     contact: ContactEquation;
-  }
-}
-
-// Declare the resetDice function on the window object
-declare global {
-  interface Window {
-    resetDice?: () => void;
   }
 }
 
@@ -201,62 +194,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Add a ref to track if tokens have been processed initially
   const tokensProcessedRef = useRef(false);
 
-  // Refs for animation loop and visibility
-  const isVisibleRef = useRef(true); // Assume visible initially
-  const frameCountRef = useRef(0);
-  const animationIdRef = useRef<number | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null); // Ref for renderer
-  const animateFuncRef = useRef<() => void | null>(null); // Ref to store the animate function
-
-  // --- Visibility Detection Effect --- (Moved to top level)
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const wasVisible = isVisibleRef.current;
-          isVisibleRef.current = entry.isIntersecting;
-
-          // If it just became visible and animation isn't running, start it
-          if (
-            entry.isIntersecting &&
-            !wasVisible &&
-            animationIdRef.current === null &&
-            animateFuncRef.current
-          ) {
-            console.log("Component became visible, starting animation.");
-            animationIdRef.current = requestAnimationFrame(
-              animateFuncRef.current,
-            );
-          }
-          // Optional: Stop animation if it becomes hidden (though skipping work is often enough)
-          // else if (!entry.isIntersecting && wasVisible && animationIdRef.current !== null) {
-          //   console.log("Component hidden, stopping animation frame requests.");
-          //   cancelAnimationFrame(animationIdRef.current);
-          //   animationIdRef.current = null;
-          // }
-        });
-      },
-      { threshold: 0.1 }, // Trigger when 10% is visible
-    );
-
-    const currentRef = containerRef.current;
-    observer.observe(currentRef);
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-      observer.disconnect();
-      // Ensure animation frame is cancelled on unmount regardless of visibility
-      if (animationIdRef.current !== null) {
-        cancelAnimationFrame(animationIdRef.current);
-        animationIdRef.current = null;
-      }
-    };
-  }, []); // Empty dependency array, runs once on mount
-
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
     if (tokensProcessedRef.current && sceneInitializedRef.current) return;
@@ -319,27 +256,21 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Wake up the body
       dieBody.wakeUp();
 
-      // Impulse and Torque values - might need tuning
-      const impulseMagnitude = 1 * dieBody.mass; // Scale impulse by mass
-      const torqueMagnitude = 0.5 * dieBody.mass; // Significantly reduced torque magnitude
-
-      // Apply random impulse (linear force)
-      const impulseVector = new CANNON.Vec3(
-        (Math.random() - 0.5) * impulseMagnitude,
-        Math.random() * (impulseMagnitude * 0.5), // More upward impulse
-        (Math.random() - 0.5) * impulseMagnitude,
+      // Apply random velocity
+      const velocity = new CANNON.Vec3(
+        (Math.random() - 0.5) * 15,
+        -10 - Math.random() * 15,
+        (Math.random() - 0.5) * 15,
       );
-      // Apply impulse at the center of mass
-      // Providing the world point to apply the impulse (center of mass in this case)
-      dieBody.applyImpulse(impulseVector, dieBody.position);
+      dieBody.velocity.copy(velocity);
 
-      // Apply random torque (rotational force)
-      const torqueVector = new CANNON.Vec3(
-        (Math.random() - 0.5) * torqueMagnitude,
-        (Math.random() - 0.5) * torqueMagnitude,
-        (Math.random() - 0.5) * torqueMagnitude,
+      // Apply spin
+      const angularVelocity = new CANNON.Vec3(
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20,
       );
-      dieBody.applyTorque(torqueVector);
+      dieBody.angularVelocity.copy(angularVelocity);
     }
   };
 
@@ -444,32 +375,27 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       return;
     }
 
+    // Force for all dice
     for (const dieBody of diceBodiesRef.current) {
       // Wake up the body
       dieBody.wakeUp();
 
-      // Impulse and Torque values - might need tuning
-      const impulseMagnitudeFactor = 40 * dieBody.mass; // Scale impulse by mass
-
-      // const torqueMagnitude = 0.5 * dieBody.mass; // Significantly reduced torque magnitude
-
-      // Apply random impulse (linear force)
-      const impulseVector = new CANNON.Vec3(
-        (Math.random() - 0.5) * impulseMagnitudeFactor,
-        Math.random() * (impulseMagnitudeFactor * 0.5), // More upward impulse
-        (Math.random() - 0.5) * impulseMagnitudeFactor,
+      // Apply random force
+      const forceVector = new CANNON.Vec3(
+        (Math.random() - 0.5) * 200,
+        Math.random() * 50,
+        (Math.random() - 0.5) * 200,
       );
-      // Apply impulse at the center of mass
-      // Providing the world point to apply the impulse (center of mass in this case)
-      dieBody.applyImpulse(impulseVector, dieBody.position);
 
-      // Apply random torque (rotational force)
-      // const torqueVector = new CANNON.Vec3(
-      //   (Math.random() - 0.5) * torqueMagnitude,
-      //   (Math.random() - 0.5) * torqueMagnitude,
-      //   (Math.random() - 0.5) * torqueMagnitude,
-      // );
-      // dieBody.applyTorque(torqueVector);
+      // Apply direct velocity for immediate effect
+      dieBody.velocity.set(forceVector.x, forceVector.y, forceVector.z);
+
+      // Add random spin
+      dieBody.angularVelocity.set(
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+      );
     }
   };
 
@@ -518,7 +444,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     };
   };
 
-  // --- Main Scene Setup Effect ---
   useEffect(() => {
     // Skip if already initialized or if we don't have the required elements
     if (
@@ -544,10 +469,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Physics world
     const world = new CANNON.World();
     worldRef.current = world;
-    world.gravity.set(0, -9.8 * 10, 0); // Less intense gravity
-    world.solver.iterations = 7; // Increase iterations from 7 to 12 for better accuracy
-    world.broadphase = new CANNON.SAPBroadphase(world); // More efficient broadphase
-    world.allowSleep = true; // Critical for performance
+    world.gravity.set(0, -9.8 * 20, 0); // stronger gravity for faster falls
+    world.broadphase = new CANNON.NaiveBroadphase();
+    world.solver.iterations = 8;
+    world.allowSleep = true;
 
     // Setup materials
     const floorMaterial = new CANNON.Material(FLOOR_MATERIAL);
@@ -601,9 +526,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       alpha: true, // Enable transparency
     });
     renderer.setSize(containerWidth, containerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Limit pixel ratio
-    renderer.shadowMap.enabled = false; // Remove shadow mapping
-    rendererRef.current = renderer; // Store renderer in ref
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.setClearColor(0x000000, 0); // Make background transparent
 
     // Add renderer to DOM
     containerRef.current.innerHTML = "";
@@ -618,7 +543,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     directionalLight.rotation.x = -Math.PI / 4; // 45 degrees pitched down
     directionalLight.rotation.z = -Math.PI / 8; // 45 degrees pitched right
     directionalLight.position.set(0, 5, 0);
-    directionalLight.castShadow = false;
+    directionalLight.castShadow = true;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 50;
     directionalLight.shadow.camera.left = -20;
@@ -656,152 +581,77 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
       color: 0x03ff24, // Bright green
       roughness: 0.7,
+      // emissive: 0x000000,
+      // fully transparent
+      // transparent: true,
+      // opacity: 0.0,
+      // emissiveIntensity: 0.3,
     });
 
-    // Back wall - Increased Height and Thickness
-    const wallHeight = 100; // Increased height
-    const frontBackWallThickness = 5; // Increased thickness
-    const sideWallThickness = 10; // Increased thickness
-
-    const backWallGeometry = new THREE.BoxGeometry(
-      frustumWidth,
-      wallHeight,
-      frontBackWallThickness,
-    );
+    // Back wall
+    const backWallGeometry = new THREE.BoxGeometry(frustumWidth, 20, 1);
     const backWall = new THREE.Mesh(backWallGeometry, wallMeshMaterial);
-    // Adjust Y position to sit on the floor, account for half thickness Z
-    backWall.position.set(
-      0,
-      wallHeight / 2 - 0.5,
-      -frustumHeight / 2 - frontBackWallThickness / 2,
-    );
+    backWall.position.set(0, 2, -frustumHeight / 2);
     backWall.castShadow = true;
     backWall.receiveShadow = true;
     scene.add(backWall);
 
-    // Back wall physics body - Increased Height and Thickness
+    // Back wall physics body
     const backWallBody = new CANNON.Body({
       mass: 0,
-      // Use half-extents
-      shape: new CANNON.Box(
-        new CANNON.Vec3(
-          frustumWidth / 2,
-          wallHeight / 2,
-          frontBackWallThickness / 2,
-        ),
-      ),
+      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth / 2, 20, 0.5)),
       material: wallMaterial,
     });
-    // Adjust Y position, account for half thickness Z
-    backWallBody.position.set(
-      0,
-      wallHeight / 2 - 0.5,
-      -frustumHeight / 2 - frontBackWallThickness / 2,
-    );
+    backWallBody.position.set(0, 2, -frustumHeight / 2);
     world.addBody(backWallBody);
 
-    // Front wall - Reuse Geometry, Adjust Position
+    // Front wall
     const frontWall = new THREE.Mesh(backWallGeometry, wallMeshMaterial);
-    // Adjust Y position, account for half thickness Z
-    frontWall.position.set(
-      0,
-      wallHeight / 2 - 0.5,
-      frustumHeight / 2 + frontBackWallThickness / 2,
-    );
+    frontWall.position.set(0, 2, frustumHeight / 2);
     frontWall.castShadow = true;
     frontWall.receiveShadow = true;
     scene.add(frontWall);
 
-    // Front wall physics body - Increased Height and Thickness
+    // Front wall physics body
     const frontWallBody = new CANNON.Body({
       mass: 0,
-      // Use half-extents
-      shape: new CANNON.Box(
-        new CANNON.Vec3(
-          frustumWidth / 2,
-          wallHeight / 2,
-          frontBackWallThickness / 2,
-        ),
-      ),
+      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth / 2, 50, 0.5)),
       material: wallMaterial,
     });
-    // Adjust Y position, account for half thickness Z
-    frontWallBody.position.set(
-      0,
-      wallHeight / 2 - 0.5,
-      frustumHeight / 2 + frontBackWallThickness / 2,
-    );
+    frontWallBody.position.set(0, 2, frustumHeight / 2);
     world.addBody(frontWallBody);
 
-    // Left wall - Increased Height and Thickness
-    const sideWallGeometry = new THREE.BoxGeometry(
-      sideWallThickness,
-      wallHeight,
-      frustumHeight,
-    );
+    // Left wall
+    const sideWallGeometry = new THREE.BoxGeometry(1, 20, frustumHeight);
     const leftWall = new THREE.Mesh(sideWallGeometry, wallMeshMaterial);
-    // Adjust Y position, account for half thickness X
-    leftWall.position.set(
-      -frustumWidth / 2 - sideWallThickness / 2,
-      wallHeight / 2 - 0.5,
-      0,
-    );
+    leftWall.position.set(-frustumWidth / 2, 2, 0);
     leftWall.castShadow = true;
     leftWall.receiveShadow = true;
     scene.add(leftWall);
 
-    // Left wall physics body - Increased Height and Thickness
+    // Left wall physics body
     const leftWallBody = new CANNON.Body({
       mass: 0,
-      // Use half-extents
-      shape: new CANNON.Box(
-        new CANNON.Vec3(
-          sideWallThickness / 2,
-          wallHeight / 2,
-          frustumHeight / 2,
-        ),
-      ),
+      shape: new CANNON.Box(new CANNON.Vec3(0.5, 20, frustumHeight / 2)),
       material: wallMaterial,
     });
-    // Adjust Y position, account for half thickness X
-    leftWallBody.position.set(
-      -frustumWidth / 2 - sideWallThickness / 2,
-      wallHeight / 2 - 0.5,
-      0,
-    );
+    leftWallBody.position.set(-frustumWidth / 2, 2, 0);
     world.addBody(leftWallBody);
 
-    // Right wall - Reuse Geometry, Adjust Position
+    // Right wall
     const rightWall = new THREE.Mesh(sideWallGeometry, wallMeshMaterial);
-    // Adjust Y position, account for half thickness X
-    rightWall.position.set(
-      frustumWidth / 2 + sideWallThickness / 2,
-      wallHeight / 2 - 0.5,
-      0,
-    );
+    rightWall.position.set(frustumWidth / 2, 2, 0);
     rightWall.castShadow = true;
     rightWall.receiveShadow = true;
     scene.add(rightWall);
 
-    // Right wall physics body - Increased Height and Thickness
+    // Right wall physics body
     const rightWallBody = new CANNON.Body({
       mass: 0,
-      // Use half-extents
-      shape: new CANNON.Box(
-        new CANNON.Vec3(
-          sideWallThickness / 2,
-          wallHeight / 2,
-          frustumHeight / 2,
-        ),
-      ),
+      shape: new CANNON.Box(new CANNON.Vec3(0.5, 50, frustumHeight / 2)),
       material: wallMaterial,
     });
-    // Adjust Y position, account for half thickness X
-    rightWallBody.position.set(
-      frustumWidth / 2 + sideWallThickness / 2,
-      wallHeight / 2 - 0.5,
-      0,
-    );
+    rightWallBody.position.set(frustumWidth / 2, 2, 0);
     world.addBody(rightWallBody);
 
     // Load textures for dice
@@ -813,25 +663,33 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Helper function to create materials for a die with the same texture on all sides
     const createDieMaterialsWithSameTexture = (tokenImage: string) => {
       return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
+        // Make sure textureLoader has crossOrigin set
+        if (!textureLoader.crossOrigin) {
+          textureLoader.crossOrigin = "anonymous";
+        }
+
         textureLoader.load(
           tokenImage,
           (texture) => {
+            // Success callback - only resolve here
             texture.colorSpace = THREE.SRGBColorSpace;
-            texture.minFilter = THREE.LinearFilter; // Simpler filtering
-            texture.generateMipmaps = false; // Disable mipmaps for performance
             setIsLoading(false);
 
-            // Create a single material instead of 6 identical ones
-            const material = new THREE.MeshStandardMaterial({
-              map: texture,
-              roughness: 0.75,
-              metalness: 0.2,
-              emissiveMap: texture,
-              emissiveIntensity: 0.3,
-            });
+            // Create materials with the successfully loaded texture
+            const materials = Array(6)
+              .fill(null)
+              .map(
+                () =>
+                  new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.75,
+                    metalness: 0.2,
+                    emissiveMap: texture,
+                    emissiveIntensity: 0.3,
+                  }),
+              );
 
-            // Reuse the same material for all sides
-            resolve(Array(6).fill(material));
+            resolve(materials);
           },
           undefined,
           (error) => {
@@ -881,7 +739,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const scale = 2.25;
 
     // Create dice
-    const diceGeometry = new THREE.BoxGeometry(scale, scale, scale, 1, 1, 1);
+    const diceGeometry = new THREE.BoxGeometry(scale, scale, scale);
     const dice: THREE.Mesh[] = [];
     const diceBodies: CANNON.Body[] = [];
 
@@ -941,11 +799,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       dice.push(die);
       diceBodies.push(dieBody);
-
-      // Set better sleep parameters on dice bodies
-      dieBody.allowSleep = true;
-      dieBody.sleepSpeedLimit = 0.5; // Higher threshold for sleeping
-      dieBody.sleepTimeLimit = 0.5; // Fall asleep faster
 
       return { die, dieBody };
     }
@@ -1022,100 +875,33 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       }
     }
 
-    // Add collision event listener to world
+    // Add collision event listener to world (use collide event instead of beginContact)
     world.addEventListener("collide", handleCollisions);
 
-    // Animation function (defined inside main useEffect)
+    // Animation function
     function animate() {
-      // Schedule next frame immediately
-      animationIdRef.current = requestAnimationFrame(animate);
+      requestAnimationFrame(animate);
 
-      // If not visible or no container, skip physics and render
-      if (!isVisibleRef.current || !containerRef.current) {
-        return;
+      // Step the physics world
+      world.step(1 / 60);
+
+      // Update dice positions and rotations
+      for (let i = 0; i < diceBodies.length; i++) {
+        const dieBody = diceBodies[i];
+        const die = dice[i];
+
+        die.position.copy(dieBody.position as any);
+        die.quaternion.copy(dieBody.quaternion as any);
       }
 
-      const world = worldRef.current;
-      const scene = sceneRef.current;
-      const camera = cameraRef.current;
-      const renderer = rendererRef.current;
-
-      if (!world || !scene || !camera || !renderer) return;
-
-      // Determine if any dice are active or force update periodically
-      const isDiceActive =
-        diceBodiesRef.current.length > 0 &&
-        diceBodiesRef.current.some(
-          (body) =>
-            !body.sleepState &&
-            (body.velocity.length() > 0.1 ||
-              body.angularVelocity.length() > 0.1),
-        );
-
-      // Only step physics and update positions if dice are active or on forced update interval
-      if (isDiceActive || frameCountRef.current % 3 === 0) {
-        const currentFrustumWidth = camera.right - camera.left;
-        const currentFrustumDepth = camera.top - camera.bottom;
-
-        world.step(1 / 60);
-
-        for (let i = 0; i < diceBodiesRef.current.length; i++) {
-          const dieBody = diceBodiesRef.current[i];
-          const die = diceRef.current[i];
-
-          if (die && dieBody) {
-            die.position.copy(dieBody.position as any);
-            die.quaternion.copy(dieBody.quaternion as any);
-
-            // Check if the die has fallen below the floor threshold
-            if (dieBody.position.y < -10) {
-              console.warn("Die fell through floor, resetting position.");
-              // Reset position to a random spot above the floor inside the current bounds
-              const resetX =
-                (Math.random() - 0.5) * (currentFrustumWidth * 0.8); // Use 80% of width
-              const resetZ =
-                (Math.random() - 0.5) * (currentFrustumDepth * 0.8); // Use 80% of depth
-              dieBody.position.set(resetX, 25, resetZ); // Reset high up
-
-              // Reset velocities with some randomness
-              const randomVelX = (Math.random() - 0.5) * 10;
-              const randomVelZ = (Math.random() - 0.5) * 10;
-              dieBody.velocity.set(randomVelX, -5, randomVelZ); // Add random horizontal velocity
-
-              // Add random spin
-              const randomSpinX = (Math.random() - 0.5) * 15;
-              const randomSpinY = (Math.random() - 0.5) * 15;
-              const randomSpinZ = (Math.random() - 0.5) * 15;
-              dieBody.angularVelocity.set(
-                randomSpinX,
-                randomSpinY,
-                randomSpinZ,
-              );
-
-              // Wake the body up
-              dieBody.wakeUp();
-            }
-          }
-        }
-      }
-
-      frameCountRef.current++;
       renderer.render(scene, camera);
     }
 
-    // Store the animate function in a ref so the visibility effect can call it
-    animateFuncRef.current = animate;
-
-    // Start animation only if visible
-    if (isVisibleRef.current) {
-      animate();
-    }
-
-    // Expose reset function to window so the button can access it
-    window.resetDice = throwDice;
+    // Start animation
+    animate();
 
     // Track resize timeout for debouncing
-    const resizeTimeout: number | null = null;
+    let resizeTimeout: number | null = null;
 
     // Updated window resize handler
     const onWindowResize = () => {
@@ -1148,116 +934,89 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         newFrustumHeight / frustumHeight,
       );
 
-      // Use the constants defined earlier for consistency
-      const wallHeight = 100;
-      const frontBackWallThickness = 5;
-      const sideWallThickness = 10;
+      // Debounce resize updates
+      resizeTimeout = window.setTimeout(() => {
+        const newContainerWidth =
+          containerRef.current?.clientWidth || containerWidth;
+        const newAspect = newContainerWidth / containerHeight;
+        const newFrustumHeight = frustumSize;
+        const newFrustumWidth = frustumSize * newAspect;
 
-      // Update mesh positions and scales using new dimensions
-      backWall.position.set(
-        0,
-        wallHeight / 2 - 0.5,
-        -newFrustumHeight / 2 - frontBackWallThickness / 2,
-      );
-      backWall.scale.set(newFrustumWidth / frustumWidth, 1, 1); // Scale width, thickness is fixed
+        // Update camera
+        camera.left = newFrustumWidth / -2;
+        camera.right = newFrustumWidth / 2;
+        camera.top = newFrustumHeight / 2;
+        camera.bottom = newFrustumHeight / -2;
+        camera.updateProjectionMatrix();
 
-      frontWall.position.set(
-        0,
-        wallHeight / 2 - 0.5,
-        newFrustumHeight / 2 + frontBackWallThickness / 2,
-      );
-      frontWall.scale.set(newFrustumWidth / frustumWidth, 1, 1); // Scale width, thickness is fixed
+        // Update renderer size
+        renderer.setSize(newContainerWidth, containerHeight);
 
-      leftWall.position.set(
-        -newFrustumWidth / 2 - sideWallThickness / 2,
-        wallHeight / 2 - 0.5,
-        0,
-      );
-      leftWall.scale.set(1, 1, newFrustumHeight / frustumHeight); // Scale depth, thickness is fixed
+        // Update mesh positions and scales
+        floor.position.set(0, -0.5, 0);
+        floor.scale.set(
+          newFrustumWidth / frustumWidth,
+          1,
+          newFrustumHeight / frustumHeight,
+        );
 
-      rightWall.position.set(
-        newFrustumWidth / 2 + sideWallThickness / 2,
-        wallHeight / 2 - 0.5,
-        0,
-      );
-      rightWall.scale.set(1, 1, newFrustumHeight / frustumHeight); // Scale depth, thickness is fixed
+        backWall.position.set(0, 2, -newFrustumHeight / 2);
+        backWall.scale.set(newFrustumWidth / frustumWidth, 1, 1);
 
-      // Update physics bodies without recreating them
-      // Remove old wall bodies first
-      world.removeBody(floorBody);
-      world.removeBody(leftWallBody);
-      world.removeBody(rightWallBody);
-      world.removeBody(frontWallBody);
-      world.removeBody(backWallBody);
+        frontWall.position.set(0, 2, newFrustumHeight / 2);
+        frontWall.scale.set(newFrustumWidth / frustumWidth, 1, 1);
 
-      // Floor physics body
-      floorBody.position.set(0, -0.5, 0);
-      floorBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
-      );
-      world.addBody(floorBody);
+        leftWall.position.set(-newFrustumWidth / 2, 2, 0);
+        leftWall.scale.set(1, 1, newFrustumHeight / frustumHeight);
 
-      // Back wall physics body - Use new dimensions
-      backWallBody.position.set(
-        0,
-        wallHeight / 2 - 0.5,
-        -newFrustumHeight / 2 - frontBackWallThickness / 2,
-      );
-      backWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(
-          newFrustumWidth / 2,
-          wallHeight / 2,
-          frontBackWallThickness / 2,
-        ),
-      );
-      world.addBody(backWallBody);
+        rightWall.position.set(newFrustumWidth / 2, 2, 0);
+        rightWall.scale.set(1, 1, newFrustumHeight / frustumHeight);
 
-      // Front wall physics body - Use new dimensions
-      frontWallBody.position.set(
-        0,
-        wallHeight / 2 - 0.5,
-        newFrustumHeight / 2 + frontBackWallThickness / 2,
-      );
-      frontWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(
-          newFrustumWidth / 2,
-          wallHeight / 2,
-          frontBackWallThickness / 2,
-        ),
-      );
-      world.addBody(frontWallBody);
+        // Update physics bodies without recreating them
+        // Remove old wall bodies first
+        world.removeBody(floorBody);
+        world.removeBody(leftWallBody);
+        world.removeBody(rightWallBody);
+        world.removeBody(frontWallBody);
+        world.removeBody(backWallBody);
 
-      // Left wall physics body - Use new dimensions
-      leftWallBody.position.set(
-        -newFrustumWidth / 2 - sideWallThickness / 2,
-        wallHeight / 2 - 0.5,
-        0,
-      );
-      leftWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(
-          sideWallThickness / 2,
-          wallHeight / 2,
-          newFrustumHeight / 2,
-        ),
-      );
-      world.addBody(leftWallBody);
+        // Floor physics body
+        floorBody.position.set(0, -0.5, 0);
+        floorBody.shapes[0] = new CANNON.Box(
+          new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
+        );
+        world.addBody(floorBody);
 
-      // Right wall physics body - Use new dimensions
-      rightWallBody.position.set(
-        newFrustumWidth / 2 + sideWallThickness / 2,
-        wallHeight / 2 - 0.5,
-        0,
-      );
-      rightWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(
-          sideWallThickness / 2,
-          wallHeight / 2,
-          newFrustumHeight / 2,
-        ),
-      );
-      world.addBody(rightWallBody);
-      // Do NOT reposition and reroll dice when resizing
-      // Removed: throwDice();
+        // Back wall physics body
+        backWallBody.position.set(0, 2, -newFrustumHeight / 2);
+        backWallBody.shapes[0] = new CANNON.Box(
+          new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5),
+        );
+        world.addBody(backWallBody);
+
+        // Front wall physics body
+        frontWallBody.position.set(0, 2, newFrustumHeight / 2);
+        frontWallBody.shapes[0] = new CANNON.Box(
+          new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5),
+        );
+        world.addBody(frontWallBody);
+
+        // Left wall physics body
+        leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
+        leftWallBody.shapes[0] = new CANNON.Box(
+          new CANNON.Vec3(0.5, 20, newFrustumHeight / 2),
+        );
+        world.addBody(leftWallBody);
+
+        // Right wall physics body
+        rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
+        rightWallBody.shapes[0] = new CANNON.Box(
+          new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
+        );
+        world.addBody(rightWallBody);
+        // Do NOT reposition and reroll dice when resizing
+        // Removed: throwDice();
+      }, 100); // Debounce for 100ms
     };
 
     window.addEventListener("resize", onWindowResize);
@@ -1267,34 +1026,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Cleanup on unmount
     return () => {
-      // Cancel any pending animation frames
-      if (animationIdRef.current !== null) {
-        cancelAnimationFrame(animationIdRef.current);
-        animationIdRef.current = null;
-      }
-
-      // Clear animate function ref
-      animateFuncRef.current = null;
-
-      // Clear all physics bodies
-      if (worldRef.current) {
-        for (const body of diceBodiesRef.current) {
-          worldRef.current.removeBody(body);
-        }
-      }
-
-      // Dispose of geometry and materials
-      for (const die of diceRef.current) {
-        if (die.geometry) die.geometry.dispose();
-        if (Array.isArray(die.material)) {
-          die.material.forEach((mat) => mat.dispose());
-        }
-      }
-
-      // Clear references
-      diceRef.current = [];
-      diceBodiesRef.current = [];
-
       // Reset initialization flags on unmount
       sceneInitializedRef.current = false;
       tokensProcessedRef.current = false;
@@ -1306,14 +1037,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       window.removeEventListener("resize", onWindowResize);
 
-      // Remove the reset function from window
-      delete window.resetDice;
-
       // Dispose of resources
       renderer.dispose();
-      rendererRef.current = null; // Clear renderer ref
     };
-  }, [selectedTokens]); // Dependency array for main setup effect
+  }, [selectedTokens]);
 
   return (
     <div
@@ -1346,7 +1073,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       <div
         ref={containerRef}
-        className="w-full h-full absolute top-0 left-0 z-0 border-8 border-[#03FF24]"
+        className="w-full h-full absolute top-0 left-0 z-0"
       />
 
       {isLoading && (

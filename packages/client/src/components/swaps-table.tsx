@@ -16,6 +16,7 @@ import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
 import Pagination from "./pagination";
+import { useEffect } from "react";
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
@@ -53,108 +54,114 @@ export default function SwapsTable({ token }: { token: IToken }) {
   return (
     <div
       className="space-y-12 h-fit overflow-y-hidden overflow-x-none relative"
-      onMouseEnter={() => setPause(true)}
-      onMouseLeave={() => setPause(false)}
     >
-      <div className="absolute right-0 top-1 transform">
-        <PausedIndicator show={paused} />
-      </div>
-      <Table className="border-0 !rounded-0 !border-spacing-y-0">
-        <TableHeader>
-          <TableRow className="bg-transparent">
-            <TableHead className="w-[120px]">Account</TableHead>
-            <TableHead className="text-left w-[100px]">Type</TableHead>
-            <TableHead className="text-left">SOL</TableHead>
-            <TableHead className="text-left">Token</TableHead>
-            <TableHead className="text-left w-[80px]">Date</TableHead>
-            <TableHead className="text-right w-[50px]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
-                <div className="flex flex-col items-center gap-2">
-                  <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
-                  <p className="text-autofun-text-secondary">
-                    Fetching transactions from blockchain...
-                  </p>
-                </div>
-              </TableCell>
+      <div
+        onMouseEnter={() => {
+          setPause(true)
+        }}
+        onMouseLeave={() => {
+          setPause(false)
+        }}>
+        <div className="absolute right-0 top-1 transform">
+          <PausedIndicator show={paused} />
+        </div>
+        <Table className="border-0 !rounded-0 !border-spacing-y-0">
+          <TableHeader>
+            <TableRow className="bg-transparent">
+              <TableHead className="w-[120px]">Account</TableHead>
+              <TableHead className="text-left w-[100px]">Type</TableHead>
+              <TableHead className="text-left">SOL</TableHead>
+              <TableHead className="text-left">Token</TableHead>
+              <TableHead className="text-left w-[80px]">Date</TableHead>
+              <TableHead className="text-right w-[50px]" />
             </TableRow>
-          ) : data.length > 0 ? (
-            data
-              .sort(
-                (a, b) =>
-                  new Date(b.timestamp).getTime() -
-                  new Date(a.timestamp).getTime(),
-              )
-              .map((swap, _) => {
-                const isBuy = swap.type === "Buy";
-                return (
-                  <TableRow
-                    className="hover:bg-white/5"
-                    key={`${swap?.txId}_${_}`}
-                  >
-                    <TableCell className="text-left">
-                      <Link
-                        to={env.getAccountUrl(swap?.user)}
-                        target="_blank"
-                        className="hover:text-autofun-text-highlight"
-                      >
-                        {shortenAddress(swap?.user)}
-                      </Link>
-                    </TableCell>
-                    <TableCell
-                      className={twMerge([
-                        "text-left",
-                        isBuy ? "text-[#03FF24]" : "text-[#EF5350]",
-                      ])}
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
+                    <p className="text-autofun-text-secondary">
+                      Fetching transactions from blockchain...
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : data.length > 0 ? (
+              data
+                .sort(
+                  (a, b) =>
+                    new Date(b.timestamp).getTime() -
+                    new Date(a.timestamp).getTime(),
+                )
+                .map((swap, _) => {
+                  const isBuy = swap.type === "Buy";
+                  return (
+                    <TableRow
+                      className="hover:bg-white/5"
+                      key={`${swap?.txId}_${_}`}
                     >
-                      {swap.type}
-                    </TableCell>
-                    <TableCell className="text-left">
-                      {formatSwapAmount(swap.solAmount, !isBuy)}
-                    </TableCell>
-                    <TableCell className="text-left">
-                      {formatSwapAmount(swap.tokenAmount, true)}
-                    </TableCell>
-                    <TableCell className="text-left">
-                      {fromNow(swap?.timestamp, true)}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={env.getTransactionUrl(swap.txId)}
-                        target="_blank"
+                      <TableCell className="text-left">
+                        <Link
+                          to={env.getAccountUrl(swap?.user)}
+                          target="_blank"
+                          className="hover:text-autofun-text-highlight"
+                        >
+                          {shortenAddress(swap?.user)}
+                        </Link>
+                      </TableCell>
+                      <TableCell
+                        className={twMerge([
+                          "text-left",
+                          isBuy ? "text-[#03FF24]" : "text-[#EF5350]",
+                        ])}
                       >
-                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={6}
-                className="text-center py-8 text-autofun-text-secondary"
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <p>No transaction data available from blockchain.</p>
-                  <Link
-                    to={`https://solscan.io/token/${token?.mint}#trades`}
-                    target="_blank"
-                    className="text-autofun-text-highlight hover:underline flex items-center gap-1"
-                  >
-                    View all trades on Solscan{" "}
-                    <ExternalLink className="size-4" />
-                  </Link>
-                </div>
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+                        {swap.type}
+                      </TableCell>
+                      <TableCell className="text-left">
+                        {formatSwapAmount(swap.solAmount, !isBuy)}
+                      </TableCell>
+                      <TableCell className="text-left">
+                        {formatSwapAmount(swap.tokenAmount, true)}
+                      </TableCell>
+                      <TableCell className="text-left">
+                        {fromNow(swap?.timestamp, true)}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={env.getTransactionUrl(swap.txId)}
+                          target="_blank"
+                        >
+                          <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-autofun-text-secondary"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <p>No transaction data available from blockchain.</p>
+                    <Link
+                      to={`https://solscan.io/token/${token?.mint}#trades`}
+                      target="_blank"
+                      className="text-autofun-text-highlight hover:underline flex items-center gap-1"
+                    >
+                      View all trades on Solscan{" "}
+                      <ExternalLink className="size-4" />
+                    </Link>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
       <div className="grid place-content-center">
         <Pagination
           pagination={{

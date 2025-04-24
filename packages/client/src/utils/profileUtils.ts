@@ -400,13 +400,27 @@ export const useUserProfile = (address: string | undefined | null) => {
       const response = await fetch(`${env.apiUrl}/api/users/${address}`);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch user profile: ${response.statusText}`);
+        // Log the status text before throwing
+        const statusText = response.statusText;
+        console.error(
+          `API Error (${response.status}): ${statusText} for ${address}`,
+        );
+        throw new Error(`Failed to fetch user profile: ${statusText}`);
       }
 
       const data = (await response.json()) as ProfileApiResponse;
+      console.log(
+        `[useUserProfile] Raw data received for ${address}:`,
+        JSON.stringify(data),
+      );
+      if (!data.user) {
+        console.warn(
+          `[useUserProfile] User object is null or missing in API response for ${address}`,
+        );
+      }
       setProfileData(data);
     } catch (err) {
-      console.error("Error fetching user profile:", err);
+      console.error("[useUserProfile] Error fetching user profile:", err);
       setError(
         err instanceof Error
           ? err
@@ -503,6 +517,7 @@ export const useProfile = () => {
     data,
     isLoading: combinedIsLoading,
     isError: combinedIsError,
+    refetch: refetchProfile,
   };
 };
 
@@ -537,4 +552,87 @@ export const updateUserProfile = async (
   }
 
   return await response.json();
+};
+
+// Function to upload a new profile picture
+export const uploadProfilePicture = async (
+  file: File,
+): Promise<UserProfileData> => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) {
+    throw new Error("Authentication required to upload profile picture");
+  }
+
+  // Basic client-side validation (optional, as backend also validates)
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Invalid file type. Please select an image.");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    // 5MB limit
+    throw new Error("Image file size exceeds 5MB limit.");
+  }
+
+  const formData = new FormData();
+  formData.append("profilePicture", file); // Key must match backend expectation
+
+  const headers: Record<string, string> = {
+    // Content-Type is set automatically by browser for FormData
+    Authorization: `Bearer ${JSON.parse(authToken)}`,
+  };
+
+  const response = await fetch(`${env.apiUrl}/api/users/profile/picture`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: formData,
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(responseData.error || "Failed to upload profile picture");
+  }
+
+  if (!responseData.user) {
+    throw new Error("API response did not include updated user profile.");
+  }
+
+  // Return the updated user data from the response
+  return responseData.user as UserProfileData;
+};
+
+// Function to trigger profile picture generation (placeholder)
+export const generateProfilePicture = async (): Promise<UserProfileData> => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) {
+    throw new Error("Authentication required to generate profile picture");
+  }
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${JSON.parse(authToken)}`,
+  };
+
+  const response = await fetch(
+    `${env.apiUrl}/api/users/profile/picture/generate`,
+    {
+      method: "POST",
+      headers,
+      credentials: "include",
+      // body: JSON.stringify({ prompt: "Optional prompt here" }) // Optional: Add if backend supports it
+    },
+  );
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(responseData.error || "Failed to generate profile picture");
+  }
+
+  if (!responseData.user) {
+    throw new Error(
+      "API response did not include updated user profile after generation.",
+    );
+  }
+
+  return responseData.user as UserProfileData;
 };
