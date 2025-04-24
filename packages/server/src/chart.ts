@@ -87,10 +87,13 @@ export async function getLatestCandle(
       );
 
       if (candles.length > 0) {
+        const idx = candles.length - 1;
+        const lastRaw = candles[idx];
+
         const lastCandle = {
-          ...candles[length - 1],
-          price: candles[length - 1].close,
-          timestamp: new Date(candles[candles.length - 1].time * 1000),
+          ...lastRaw,
+          price: lastRaw.close,
+          timestamp: new Date(lastRaw.time * 1000),
         };
         return lastCandle;
       }

@@ -347,16 +347,20 @@ export class ExternalToken {
       })
       .filter((swap): swap is NonNullable<typeof swap> => !!swap);
 
+
     if (processedSwaps.length > 0) {
       await this.insertProcessedSwaps(processedSwaps);
-      await this.wsClient
-        .to(`global`)
-        .emit("newSwap", {
-          ...processedSwaps,
-          tokenMint: this.mint,
-          mint: this.mint,
-          timestamp: new Date(processedSwaps[processedSwaps.length - 1].timestamp).toISOString(),
-        });
+      for (const swap of processedSwaps) {
+        await this.wsClient
+          .to(`token-${this.mint}`)
+          .emit("newSwap", {
+            ...swap,
+            tokenMint: this.mint,
+            mint: this.mint,
+            timestamp: new Date(swap.timestamp).toISOString(),
+          });
+      }
+
     }
 
     console.log(
@@ -456,14 +460,17 @@ export class ExternalToken {
 
       if (processedSwaps.length > 0) {
         await this.insertProcessedSwaps(processedSwaps);
-        await this.wsClient
-          .to(`global`)
-          .emit("newSwap", {
-            ...processedSwaps,
-            tokenMint: this.mint,
-            mint: this.mint,
-            timestamp: new Date(processedSwaps[processedSwaps.length - 1].timestamp).toISOString(),
-          });
+        for (const swap of processedSwaps) {
+          await this.wsClient
+            .to(`token-${this.mint}`)
+            .emit("newSwap", {
+              ...swap,
+              tokenMint: this.mint,
+              mint: this.mint,
+              timestamp: new Date(swap.timestamp).toISOString(),
+            });
+        }
+
       }
 
       // Update the cursor for the next batch
