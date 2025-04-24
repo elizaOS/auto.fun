@@ -100,10 +100,6 @@ export class TokenMigrator {
     for (const lockKey of lockKeys) {
       console.log("🔑  raw lockKey:", lockKey);
       const isLocked = await this.redisCache.get(lockKey);
-      if (isLocked !== "true") {
-        console.log(`🔒  ${lockKey} is not set to "true", skipping.`);
-        continue;
-      }
       const parts = lockKey.split(":");
       if (parts.length < 4) {
         console.warn("⚠️  Unexpected key format, skipping:", lockKey);
@@ -111,6 +107,13 @@ export class TokenMigrator {
       }
       // folows this schema ["mainnet","migration", ...<mintParts>..., "lock"]
       const mint = parts.slice(2, parts.length - 1).join(":");
+      if (isLocked !== "true") {
+        console.log(`🔒  ${lockKey} is not set to "true", skipping.`);
+        await this.redisCache.set(`migration:${mint}:lock`, "true");
+        continue;
+      }
+
+
       console.log(`[Migrate] Found locked token: ${mint}`);
       logger.log(`[Migrate] Resuming migration for token ${mint}`);
 
