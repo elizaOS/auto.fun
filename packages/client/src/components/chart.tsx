@@ -33,7 +33,7 @@ export default function Chart({ mint, isImported }: ChartProps) {
   } | null>(null);
 
   const useCodex = isImported;
-  const networkId = "1399811149";
+  const networkId = 1399811149;
   const pairId = `${mint}:${networkId}`;
   const { data: chartData, isLoading } = useQuery({
     queryKey: ["chart", mint, useCodex],
@@ -81,7 +81,7 @@ export default function Chart({ mint, isImported }: ChartProps) {
       }
     },
     staleTime: 60 * 1000,
-    refetchInterval: 30_000, // Since chart is always 1 minute, we can refresh every 30 seconds
+    refetchInterval: 15_000, // Since chart is always 1 minute, we can refresh every 30 seconds
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -156,7 +156,6 @@ export default function Chart({ mint, isImported }: ChartProps) {
       const sink = {
         next: (data) => {
           console.log("Got subscription data", data);
-          console.log("Got subscription data", data);
           // Check if data contains bars information
           if (data?.data?.onBarsUpdated) {
             const barData = data.data.onBarsUpdated;
@@ -186,14 +185,62 @@ export default function Chart({ mint, isImported }: ChartProps) {
       cleanup = codex.subscriptions.onBarsUpdated(
         {
           // address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH WORKS
-          pairId: `0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2:1`,
+          pairId,
           quoteToken: QuoteToken.Token1,
+          statsType: TokenPairStatisticsType.Unfiltered,
           // pairId,
           // tokenId:
           // networkId: 1,
         },
         sink
       );
+
+      codex.subscribe(
+        `subscription OnBarsUpdated($pairId: String, $quoteToken: QuoteToken) {
+  onBarsUpdated(pairId: $pairId, quoteToken: $quoteToken) {
+    eventSortKey
+    networkId
+    pairAddress
+    pairId
+    timestamp
+    quoteToken
+    aggregates {
+      r1 {
+        t
+        usd {
+          t
+          o
+          h
+          l
+          c
+          volume
+        }
+        token {
+          t
+          o
+          h
+          l
+          c
+          volume
+        }
+      }
+    }
+  }
+}`,
+        {
+          pairId,
+          quoteToken: QuoteToken.Token1,
+        },
+        sink
+      );
+
+      // codex.subscriptions.onPriceUpdated(
+      //   {
+      //     address: mint,
+      //     networkId,
+      //   },
+      //   sink
+      // );
 
       // codex.subscriptions.onBarsUpdated(
       //   {
@@ -223,7 +270,6 @@ export default function Chart({ mint, isImported }: ChartProps) {
     return () => {
       window.removeEventListener("resize", handleResize);
       if (useCodex) {
-        cleanup();
       } else if (socket) {
         socket.off("newCandle");
       }

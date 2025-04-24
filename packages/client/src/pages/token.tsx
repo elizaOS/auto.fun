@@ -230,7 +230,7 @@ export default function Page() {
     <Fragment>
       <Helmet>
         <title>
-          {token?.name} ({token?.ticker}) - auto.fun
+          {`${token?.name} (${token?.ticker})`} - auto.fun
         </title>
       </Helmet>
       <div className="flex flex-col gap-3">
