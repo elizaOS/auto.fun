@@ -208,9 +208,9 @@ class WebSocketManager {
 
         if (roomName) {
             if (operation === 'join') {
-                await this.joinRoom(client, roomName);
+                await this.joinRoom(event, client, roomName);
             } else {
-                await this.leaveRoom(client, roomName);
+                await this.leaveRoom(event, client, roomName);
             }
         } else {
             logger.warn(`Invalid format for event '${event}' from ${client.clientId}:`, data);
@@ -288,7 +288,7 @@ class WebSocketManager {
     }
 
     // --- Room Management ---
-    private async joinRoom(client: ClientMetadata, roomName: string): Promise<void> {
+    private async joinRoom(event: string, client: ClientMetadata, roomName: string): Promise<void> {
         if (!this.redisCache) {
             this.redisCache = await getGlobalRedisCache();
         }
@@ -299,29 +299,18 @@ class WebSocketManager {
         client.rooms.add(roomName);
         const clientRoomsKey = await this.redisKey(`client:${client.clientId}:rooms`);
         const roomClientsKey = await this.redisKey(`room:${roomName}:clients`);
-        try {
-            await this.redisCache.sadd(clientRoomsKey, roomName);
-            await this.redisCache.sadd(roomClientsKey, client.clientId);
-            logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
-            const responseEvent = event && String(event) === 'subscribeToChat' ? 'subscribedToChat' : (roomName.startsWith('token-') ? 'subscribed' : 'joined');
-            client.ws.send(JSON.stringify({
-                event: responseEvent,
-                data: { room: roomName }
-            }));
-        } catch (error) {
-            logger.error(`Redis error joining room ${roomName} for client ${client.clientId}:`, error);
-            this.localRoomClients.get(roomName)?.delete(client.clientId);
-            client.rooms.delete(roomName);
-            try {
-                client.ws.send(JSON.stringify({ event: 'join_error', data: { room: roomName, error: 'Failed to update subscription' } }));
-            } catch {
-                // do nothing
-            }
-            throw error;
-        }
+        await this.redisCache.sadd(clientRoomsKey, roomName);
+        await this.redisCache.sadd(roomClientsKey, client.clientId);
+
+        logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
+        const responseEvent = event && String(event) === 'subscribeToChat' ? 'subscribedToChat' : (roomName.startsWith('token-') ? 'subscribed' : 'joined');
+        client.ws.send(JSON.stringify({
+            event: responseEvent,
+            data: { room: roomName }
+        }));
     }
 
-    private async leaveRoom(client: ClientMetadata, roomName: string): Promise<void> {
+    private async leaveRoom(event: string, client: ClientMetadata, roomName: string): Promise<void> {
         if (!this.redisCache) {
             this.redisCache = await getGlobalRedisCache();
         }
