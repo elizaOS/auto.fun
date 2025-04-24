@@ -42,10 +42,10 @@ class WebSocketManager {
         subClient.on("message", (ch, message) => {
             logger.info(`📣 Received Redis message on ${ch}:`, message);
             const { clientId, room, event, data } = JSON.parse(message as string);
-            if(room) {
+            if (room) {
                 this.broadcastToRoom(room, event, data);
             }
-            if(clientId){
+            if (clientId) {
                 this.sendToClient(clientId, event, data);
             }
         });

@@ -64,7 +64,7 @@ process.on("message", async (data: any) => {
          logger.error("Error updating market and holders", e);
       }
       try {
-         await ext.updateLatestSwapData(2);
+         await ext.updateLatestSwapData(10);
       } catch (e) {
          logger.error("Error updating latest swap data", e);
       }
