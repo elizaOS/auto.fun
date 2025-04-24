@@ -50,7 +50,6 @@ async function workerLoop() {
          const txSeenKey = `webhook:seen:${tokenMint}`;
          const added = await client.sadd(txSeenKey, swap.transactionHash);
          if (added === 1) {
-            // new entry—set TTL if first time
             await client.expire(txSeenKey, 120 * 60);
          } else {
             logger.log(`Skipping duplicate tx ${swap.transactionHash}`);
@@ -108,7 +107,6 @@ async function workerLoop() {
             logger.error("Error sending candle:", e);
          }
 
-         // 7) Heavy on-chain work only once per TOKEN_UPDATE_WINDOW
          if (doHeavyWork) {
             try {
                const ext = await ExternalToken.create(tokenMint, redisCache);
