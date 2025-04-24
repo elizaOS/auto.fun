@@ -125,9 +125,11 @@ export default function Chart({ token, isImported }: ChartProps) {
       crosshair: {
         horzLine: {
           color: "#262626",
+          labelBackgroundColor: "#262626",
         },
         vertLine: {
           color: "#262626",
+          labelBackgroundColor: "#262626",
         },
       },
       localization: {

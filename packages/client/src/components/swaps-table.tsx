@@ -34,12 +34,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
   const {
     items: data,
-    goToPage,
     isLoading,
-    currentPage,
-    hasNextPage,
-    totalItems,
-    totalPages,
   } = useTransactions({ tokenId: token.mint, isPaused: paused || isCodex });
 
   const queryKey = ["token", token.mint, "swaps"];
