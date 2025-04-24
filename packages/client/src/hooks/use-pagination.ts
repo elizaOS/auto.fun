@@ -1,5 +1,5 @@
 import { fetcher } from "@/utils/api";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useSearchParams } from "react-router";
 import {
@@ -176,6 +176,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
     queryKey,
     queryFn: async () => {
       if (page < 1 || !enabled) return null;
+
 
       const result = await fetchPaginatedData<TOutput, TInput>({
         endpoint,
