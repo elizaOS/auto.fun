@@ -92,17 +92,25 @@ export class TokenMigrator {
 
     // find all keys like "migration:<mint>:lock"
     const lockKeys: string[] = await this.redisCache.keys("migration:*:lock");
-
     if (lockKeys.length === 0) {
       logger.log("[Migrate] No in-flight migrations found.");
       return;
     }
 
     for (const lockKey of lockKeys) {
+      console.log("🔑  raw lockKey:", lockKey);
       const isLocked = await this.redisCache.get(lockKey);
-      if (isLocked !== "true") continue;
-
-      const [, , mint] = lockKey.split(":");
+      if (isLocked !== "true") {
+        console.log(`🔒  ${lockKey} is not set to "true", skipping.`);
+        continue;
+      }
+      const parts = lockKey.split(":");
+      if (parts.length < 4) {
+        console.warn("⚠️  Unexpected key format, skipping:", lockKey);
+        continue;
+      }
+      // folows this schema ["mainnet","migration", ...<mintParts>..., "lock"]
+      const mint = parts.slice(2, parts.length - 1).join(":");
       console.log(`[Migrate] Found locked token: ${mint}`);
       logger.log(`[Migrate] Resuming migration for token ${mint}`);
 
@@ -113,17 +121,18 @@ export class TokenMigrator {
       }
 
       try {
+        // clear the 'lock' 
         await this.redisCache.set(lockKey, "false");
         await this.migrateToken(token);
       } catch (err) {
         logger.error(`[Migrate] Error resuming migration for ${mint}:`, err);
+
         await this.redisCache.set(lockKey, "false");
       }
     }
 
     logger.log("[Migrate] Resume complete.");
   }
-
   async printMigrationState(mint: string): Promise<void> {
     const state = await this.getMigrationState(mint);
     console.log(JSON.stringify(state, null, 2));
