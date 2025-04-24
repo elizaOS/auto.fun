@@ -209,6 +209,7 @@ export default function Page() {
               size="small"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="relative p-2"
+              aria-label="filter"
             >
               <FilterIcon size={24} />
               {(tokenSource !== "all" || bondingStatus !== "all") && (

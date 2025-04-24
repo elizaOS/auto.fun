@@ -45,7 +45,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
-  const isDisabled = ["migrating", "migration_failed", "failed"].includes(
+  const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status,
   );
 
@@ -353,19 +353,23 @@ export default function Trade({ token }: { token: IToken }) {
                 </span>
               </div>
             </div>
-            {slippage > 3 ? (
-              <p className="text-orange-500 font-dm-mono text-xs">
-                Your transaction may be frontrun and result in an unfavorable
-                trade
-              </p>
-            ) : null}
+
+            <p
+              className={twMerge([
+                "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
+                slippage > 3 ? "opacity-100" : "h-0 opacity-0",
+              ])}
+            >
+              Your transaction may be frontrun and result in an unfavorable
+              trade
+            </p>
           </div>
 
           {/* Swap Button - Now in the left column below Min Received */}
           <div className="flex justify-center items-center">
             <button
               disabled={
-                isDisabled ||
+                isStatusDisabled ||
                 insufficientBalance ||
                 isExecutingSwap ||
                 !sellAmount ||
@@ -373,8 +377,7 @@ export default function Trade({ token }: { token: IToken }) {
               }
               onClick={onSwap}
               className={twMerge([
-                "w-full mx-2 cursor-pointer mt-2",
-                isDisabled ? "cursor-not-allowed! opacity-50" : "",
+                "w-full mx-2 cursor-pointer mt-2 !disabled:cursor-not-allowed !disabled:opacity-50",
               ])}
             >
               <img
