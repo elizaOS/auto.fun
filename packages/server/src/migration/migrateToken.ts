@@ -102,11 +102,10 @@ export class TokenMigrator {
       const isLocked = await this.redisCache.get(lockKey);
       if (isLocked !== "true") continue;
 
-      // extract the mint from "migration:<mint>:lock"
-      const [, mint] = lockKey.split(":");
+      const [, , mint] = lockKey.split(":");
+      console.log(`[Migrate] Found locked token: ${mint}`);
       logger.log(`[Migrate] Resuming migration for token ${mint}`);
 
-      // load the token from DB (or skip if missing)
       const token = await getToken(mint);
       if (!token) {
         logger.error(`[Migrate] Token ${mint} not found in DB. Skipping.`);
@@ -114,10 +113,10 @@ export class TokenMigrator {
       }
 
       try {
+        await this.redisCache.set(lockKey, "false");
         await this.migrateToken(token);
       } catch (err) {
         logger.error(`[Migrate] Error resuming migration for ${mint}:`, err);
-        // ensure we clear the lock so it can be retried next startup
         await this.redisCache.set(lockKey, "false");
       }
     }
@@ -222,13 +221,13 @@ export class TokenMigrator {
     ];
   }
 
-  async migrateToken(token: TokenData): Promise<void> {
+  async migrateToken(token: TokenData,): Promise<void> {
     const mint = token.mint;
     try {
       const lockKey = `migration:${mint}:lock`;
       const lock = await this.redisCache.get(lockKey);
       if (lock === "true") {
-        logger.log(`[Migrate] Token ${mint} is locked. Skipping.`);
+        logger.log(`[Migrate] Token ${token.mint} is locked. Skipping.`);
         return;
       }
 
@@ -270,6 +269,12 @@ export class TokenMigrator {
       if (step.name !== "withdraw" && step.name !== "createPool") {
         token.status = "locked";
       }
+      (token.migration as Record<string, any>)[step.name] = {
+        status: "success",
+        txId: result.txId,
+        updatedAt: new Date().toISOString(),
+      };
+
       // Save to DB
       Object.assign(token, result.extraData);
       await safeUpdateTokenInDB({
@@ -325,6 +330,7 @@ export class TokenMigrator {
       tx,
       this.connection,
       this.wallet,
+      token.mint,
     );
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
 
