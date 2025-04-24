@@ -389,11 +389,12 @@ export const WalletModal: FC<WalletModalProps> = () => {
             Connect a Solana Wallet to Continue
           </h3>
           <div className="my-4 flex justify-center">
-            <SkeletonImage
+            <img
               src="/wallet-modal.png"
               width={363}
               height={133}
               alt="wallet_modal"
+              className="size-full"
             />
           </div>
           {installedWallets?.length > 0 ? (
