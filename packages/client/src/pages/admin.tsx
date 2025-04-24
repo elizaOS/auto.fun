@@ -18,24 +18,27 @@ export default function Admin() {
   const currentPath = location.pathname;
 
   const { walletAddress } = useAuthentication();
-  
+
   // Check if the user is an admin (client-side check)
   const isAdmin = walletAddress && adminAddresses.includes(walletAddress);
-  
+
   // Fetch moderator status if not an admin
   const moderatorQuery = useQuery({
     queryKey: ["user-moderator-status", walletAddress],
     queryFn: async () => {
       if (!walletAddress || isAdmin) return { isModerator: false };
       try {
-        const response = await fetcher(`/api/admin/users/${walletAddress}`, "GET");
+        const response = await fetcher(
+          `/api/admin/users/${walletAddress}`,
+          "GET",
+        );
         return { isModerator: response.user?.isModerator === 1 };
       } catch (error) {
         console.error("Error checking moderator status:", error);
         return { isModerator: false };
       }
     },
-    enabled: !!walletAddress && !isAdmin
+    enabled: !!walletAddress && !isAdmin,
   });
 
   // Helper function to determine if a link is active
@@ -51,7 +54,11 @@ export default function Admin() {
 
   // If the query is still loading, show a loading state
   if (moderatorQuery.isLoading && !isAdmin) {
-    return <div className="flex justify-center items-center h-screen"><Loader /></div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader />
+      </div>
+    );
   }
 
   // Check if user has access (either admin or moderator)

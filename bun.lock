@@ -379,6 +379,8 @@
         "nanoid": "^5.1.5",
         "p-queue": "^8.1.0",
         "pg": "^8.14.1",
+        "random-animal-name": "^0.1.1",
+        "random-animal-name-generator": "^0.1.1",
         "tweetnacl": "^1.0.3",
         "uuid": "^11.1.0",
         "zod": "^3.24.3",
@@ -4713,6 +4715,10 @@
     "quick-lru": ["quick-lru@5.1.1", "", {}, "sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA=="],
 
     "radix3": ["radix3@1.1.2", "", {}, "sha512-b484I/7b8rDEdSDKckSSBA8knMpcdsXudlE/LNL639wFoHKwLbEkQFZHWEYwDC0wa0FKUcCY+GAF73Z7wxNVFA=="],
+
+    "random-animal-name": ["random-animal-name@0.1.1", "", {}, "sha512-6LtEegc1FzFsD77WF5KmxhXPCbcI33qlAgxd8aHVrwOW595yh3Kkw52dTaqGmLXb05JiRf1ypzUXPKEosTCoAA=="],
+
+    "random-animal-name-generator": ["random-animal-name-generator@0.1.1", "", {}, "sha512-VggZMRUlhOcRlm0x+2BegT+QfzeFj82Q5BqykpMcsrDoHR+NUp2DEnrZmYWekFgN3qCGRX73GYRygHAv4+0pQQ=="],
 
     "randombytes": ["randombytes@2.1.0", "", { "dependencies": { "safe-buffer": "^5.1.0" } }, "sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ=="],
 

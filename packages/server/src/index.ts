@@ -20,6 +20,7 @@ import generationRouter from "./routes/generation";
 import migrationRouter from "./routes/migration";
 import preGeneratedAdminRoutes from "./routes/admin/pregenerated"; // Import the new router
 import shareRouter from "./routes/share";
+import userRouter from "./routes/user";
 import swapRouter from "./routes/swap";
 import tokenRouter from "./routes/token";
 import webhookRouter from "./routes/webhooks";
@@ -111,6 +112,7 @@ api.route("/", chatRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
+api.route("/users", userRouter);
 api.route("/admin", adminRouter); // Note: Ensure admin/owner routes have appropriate checks
 api.route("/owner", ownerRouter);
 api.route("/admin/pregenerated", preGeneratedAdminRoutes); // Mount the new router

@@ -5,7 +5,6 @@ import { Hono } from "hono";
 import { Buffer } from "node:buffer"; // Added for image decoding
 import crypto from "node:crypto";
 import { z } from "zod";
-import { verifyAuth } from "../auth";
 import { getDB, mediaGenerations, preGeneratedTokens, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { MediaGeneration } from "../types";
@@ -731,9 +730,6 @@ const app = new Hono<{
     user?: { publicKey: string } | null;
   };
 }>();
-
-// Add authentication middleware
-app.use("*", verifyAuth);
 
 // Media generation validation schema
 const MediaGenerationRequestSchema = z.object({

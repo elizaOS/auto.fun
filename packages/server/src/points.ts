@@ -68,7 +68,9 @@ export async function awardUserPoints(
 ): Promise<void> {
   const db = getDB();
   const now = new Date();
-  const pointsToAdd = calculatePoints(event);
+  const rawPoints = calculatePoints(event);
+  const pointsToAdd = Math.round(rawPoints);
+
   if (pointsToAdd <= 0) return;
 
   // 1) Upsert into user_points

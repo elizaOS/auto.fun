@@ -16,7 +16,7 @@ import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./migration/migrateToken";
 import { getToken } from "./migration/migrations";
 import { awardGraduationPoints, awardUserPoints } from "./points";
-import { getGlobalRedisCache } from "./redis";
+import { getGlobalRedisCache, RedisCacheService } from "./redis";
 import {
   checkAndReplenishTokens
 } from "./routes/generation";
@@ -29,6 +29,7 @@ import {
   logger
 } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
+import { PointEvent } from "./points";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -214,6 +215,30 @@ type ProcessResult = {
   event?: string;
 };
 
+async function pushSwapToRedis(
+  redis: RedisCacheService,
+  key: string,
+  record: any,
+  maxLength = 100
+) {
+  // 1) fetch raw
+  const raw = await redis.get(key);
+  let list: any[];
+  try {
+    list = raw ? JSON.parse(raw) : [];
+  } catch {
+    console.warn(`[Swap] invalid JSON in ${key}, resetting to []`);
+    list = [];
+  }
+
+  // 2) prepend and trim
+  list.unshift(record);
+  if (list.length > maxLength) list = list.slice(0, maxLength);
+
+  // 3) write back
+  await redis.set(key, JSON.stringify(list));
+}
+
 type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
   logs: string[],
@@ -314,6 +339,15 @@ async function handleSwap(
       const reserveMatch = reservesLog?.match(/Reserves:\s*(\d+)\s+(\d+)/);
       const reserveToken = reserveMatch?.[1];
       const reserveLamport = reserveMatch?.[2];
+      console.log("found swap log", {
+        mintAddress,
+        swapMatch,
+        user,
+        direction,
+        amount,
+        amountOut,
+        reserveMatch,
+      });
       if (
         !mintAddress ||
         !swapMatch ||
@@ -328,12 +362,15 @@ async function handleSwap(
       }
 
       // Retrieve token mint info to get decimals.
+      console.log("fetching token mint info", mintAddress);
       const tokenWithSupply = await getToken(mintAddress);
+      console.log("fetched token mint info", tokenWithSupply);
       if (!tokenWithSupply) {
         logger.error(`Token not found: ${mintAddress}`);
         return null;
       }
       const solPrice = await getSOLPrice();
+      console.log("fetched sol price", solPrice);
 
       const TOKEN_DECIMALS = tokenWithSupply.tokenDecimals || 6;
       const tokenAmount = Number(reserveToken) / 10 ** TOKEN_DECIMALS;
@@ -350,6 +387,7 @@ async function handleSwap(
         tokenWithSupply,
         solPrice,
       );
+      console.log("fetched token market data", tokenWithMarketData);
       const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
       const swapRecord = {
@@ -411,24 +449,36 @@ async function handleSwap(
         })
         .where(eq(tokens.mint, mintAddress))
         .returning();
+      console.log("updating the holder cache", mintAddress);
       await updateHoldersCache(mintAddress, false);
 
 
       const newToken = updatedTokens[0];
       const usdVolume =
-        swapRecord.type === "buy"
-          ? (swapRecord.amountOut / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          : (swapRecord.amountIn / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
+        direction === "1"
+          ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
 
       const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
-      await awardUserPoints(swapRecord.user, {
-        type: `${bondStatus}_${swapRecord.type}` as any,
-        usdVolume,
-      });
-      await awardUserPoints(swapRecord.user, {
-        type: "trade_volume_bonus",
-        usdVolume,
-      });
+      console.log("awarding user points",
+        swapRecord.user,
+      );
+      try {
+        await awardUserPoints(swapRecord.user, {
+          type: `${bondStatus}_${swapRecord.type}` as any,
+          usdVolume,
+        });
+      } catch (err) {
+        logger.error("Failed to award user points:", err);
+      }
+      try {
+        await awardUserPoints(swapRecord.user, {
+          type: "trade_volume_bonus",
+          usdVolume,
+        });
+      } catch (err) {
+        logger.error("Failed to award trade volume bonus:", err);
+      }
 
       try {
         const listLength = await redisCache.llen(listKey);
@@ -446,6 +496,7 @@ async function handleSwap(
 
 
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);
+      console.log("fetched latest candle", latestCandle);
       await wsClient.to(`global`).emit("newCandle", latestCandle);
 
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
@@ -457,7 +508,7 @@ async function handleSwap(
       await wsClient
         .to("global")
         .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
-
+      console.log("updated the token in DB", mintAddress);
       return {
         found: true,
         tokenAddress: mintAddress,

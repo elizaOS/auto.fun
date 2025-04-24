@@ -93,7 +93,7 @@ export interface TokenData {
   holderCount?: number;
   txId?: string;
   migration?: MigrationData;
-  withdrawnAmounts?: WithdrawnAmountsData;
+  withdrawnAmounts?: WithdrawnAmountsData | '';
   poolInfo?: PoolInfoData;
   lockLpTxId?: string;
   tokenSupply?: string;

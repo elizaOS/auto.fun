@@ -48,16 +48,26 @@ process.on("message", async (data: any) => {
       }
 
       if (!token) return;
-
-      const ext = await ExternalToken.create(tokenMint, redisCache);
-      await ext.updateLatestSwapData(5);
-      const latestCandle = await getLatestCandle(tokenMint, swap, token);
-      await ext.updateMarketAndHolders();
-
       const wsClient = getWebSocketClient();
+      console.log(`sending swap to the user ${tokenMint}`);
+      try {
+         const latestCandle = await getLatestCandle(tokenMint, swap, token);
 
-      await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
-
+         await wsClient.to(`global`).emit("newCandle", latestCandle);
+      } catch (e) {
+         logger.error("Error sending candle to the user", e);
+      }
+      const ext = await ExternalToken.create(tokenMint, redisCache);
+      try {
+         await ext.updateMarketAndHolders();
+      } catch (e) {
+         logger.error("Error updating market and holders", e);
+      }
+      try {
+         await ext.updateLatestSwapData(10);
+      } catch (e) {
+         logger.error("Error updating latest swap data", e);
+      }
       process.exit(0);
    } catch (e) {
       logger.error("Webhook child error", e);

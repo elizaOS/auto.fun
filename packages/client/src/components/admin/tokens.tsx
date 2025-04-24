@@ -12,8 +12,21 @@ import { IToken } from "@/types";
 import { formatNumber, fromNow, resizeImage } from "@/utils"; // Add fromNow and resizeImage
 import { env } from "@/utils/env"; // Import env
 import BondingCurveBar from "../bonding-curve-bar"; // Import BondingCurveBar
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"; // Import table components
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table"; // Import table components
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@radix-ui/react-dialog";
 import Button from "../button";
 
 type SortOrderType = "asc" | "desc";
@@ -96,7 +109,7 @@ function AdminTokensList() {
       );
       queryClient.invalidateQueries({
         queryKey: [paginationOptions.endpoint],
-        refetchType: 'active',
+        refetchType: "active",
       });
     },
     onError: (error, tokenAddress) => {
@@ -112,10 +125,12 @@ function AdminTokensList() {
       return await fetcher(`/api/admin/tokens/${tokenAddress}`, "DELETE");
     },
     onSuccess: (_, tokenAddress) => {
-      toast.success(`Token ${tokenAddress.substring(0, 6)}... deleted successfully`);
+      toast.success(
+        `Token ${tokenAddress.substring(0, 6)}... deleted successfully`,
+      );
       queryClient.invalidateQueries({
         queryKey: [paginationOptions.endpoint],
-        refetchType: 'active',
+        refetchType: "active",
       });
       setIsDeleteModalOpen(false);
       setTokenToDelete(null);
@@ -211,7 +226,10 @@ function AdminTokensList() {
           </TableHeader>
           <TableBody>
             {tokensPagination?.items?.map((token: IToken) => (
-              <TableRow key={token.mint} className="border-b border-autofun-background-primary">
+              <TableRow
+                key={token.mint}
+                className="border-b border-autofun-background-primary"
+              >
                 <TableCell className="p-2 font-mono text-xs">
                   {token.mint.substring(0, 8)}...
                 </TableCell>
@@ -239,7 +257,9 @@ function AdminTokensList() {
                   {formatNumber(token.volume24h)}
                 </TableCell>
                 <TableCell className="p-2 text-left">
-                  {token.imported === 0 && <BondingCurveBar progress={token.curveProgress} />}
+                  {token.imported === 0 && (
+                    <BondingCurveBar progress={token.curveProgress} />
+                  )}
                 </TableCell>
                 <TableCell className="p-2">
                   {token.createdAt
@@ -299,7 +319,10 @@ function AdminTokensList() {
                   <button
                     className="p-1 text-red-500 hover:text-red-400 disabled:opacity-50"
                     onClick={() => openDeleteModal(token)}
-                    disabled={deleteTokenMutation.isPending && deleteTokenMutation.variables === token.mint}
+                    disabled={
+                      deleteTokenMutation.isPending &&
+                      deleteTokenMutation.variables === token.mint
+                    }
                     title="Delete Token"
                   >
                     <Trash2 size={16} />
@@ -336,39 +359,58 @@ function AdminTokensList() {
           <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
             <DialogContent className="sm:max-w-[425px] bg-autofun-background-primary border-autofun-border p-4">
               <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to permanently delete this token?
-              This action cannot be undone.
-            </DialogDescription>
-          {tokenToDelete && (
-            <div className="flex items-center space-x-3 my-4 p-3 bg-autofun-background-input rounded">
-              <img
-                src={tokenToDelete.image ? resizeImage(tokenToDelete.image, 40, 40) : "/placeholder.png"}
-                alt={tokenToDelete.name}
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.png"; }}
-              />
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium truncate">{tokenToDelete.name}</span>
-                <span className="text-xs text-autofun-text-secondary truncate">(${tokenToDelete.ticker})</span>
-                <span className="text-xs text-autofun-text-secondary font-mono truncate">{tokenToDelete.mint}</span>
+              <DialogDescription>
+                Are you sure you want to permanently delete this token? This
+                action cannot be undone.
+              </DialogDescription>
+              {tokenToDelete && (
+                <div className="flex items-center space-x-3 my-4 p-3 bg-autofun-background-input rounded">
+                  <img
+                    src={
+                      tokenToDelete.image
+                        ? resizeImage(tokenToDelete.image, 40, 40)
+                        : "/placeholder.png"
+                    }
+                    alt={tokenToDelete.name}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.png";
+                    }}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate">
+                      {tokenToDelete.name}
+                    </span>
+                    <span className="text-xs text-autofun-text-secondary truncate">
+                      (${tokenToDelete.ticker})
+                    </span>
+                    <span className="text-xs text-autofun-text-secondary font-mono truncate">
+                      {tokenToDelete.mint}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2">
+                <DialogClose asChild>
+                  <Button
+                    variant="outline"
+                    onClick={() => setTokenToDelete(null)}
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  onClick={handleConfirmDelete}
+                  disabled={deleteTokenMutation.isPending}
+                >
+                  {deleteTokenMutation.isPending
+                    ? "Deleting..."
+                    : "Delete Token"}
+                </Button>
               </div>
-            </div>
-          )}
-          <div className="flex items-center justify-end gap-2">
-            <DialogClose asChild>
-              <Button variant="outline" onClick={() => setTokenToDelete(null)}>Cancel</Button>
-            </DialogClose>
-            <Button
-              onClick={handleConfirmDelete}
-              disabled={deleteTokenMutation.isPending}
-            >
-              {deleteTokenMutation.isPending ? "Deleting..." : "Delete Token"}
-            </Button>
-            </div>
-        </DialogContent>
-      </Dialog>
-      </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       )}
     </div>
   );

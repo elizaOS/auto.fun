@@ -25,7 +25,7 @@ export default function AdminModerators() {
     queryFn: async () => {
       const response = await fetcher("/api/admin/moderators", "GET");
       return response.moderators || [];
-    }
+    },
   });
 
   // Add moderator mutation
@@ -40,9 +40,9 @@ export default function AdminModerators() {
     },
     onError: (error) => {
       toast.error(
-        `Failed to add moderator: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to add moderator: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-    }
+    },
   });
 
   // Remove moderator mutation
@@ -56,9 +56,9 @@ export default function AdminModerators() {
     },
     onError: (error) => {
       toast.error(
-        `Failed to remove moderator: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to remove moderator: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-    }
+    },
   });
 
   const addModerator = () => {
@@ -88,7 +88,11 @@ export default function AdminModerators() {
         {moderatorsQuery.isError && (
           <div className="bg-autofun-error/10 border border-autofun-error text-autofun-error p-4 rounded-md">
             <p className="font-semibold">Error:</p>
-            <p>{moderatorsQuery.error instanceof Error ? moderatorsQuery.error.message : "Failed to load moderators"}</p>
+            <p>
+              {moderatorsQuery.error instanceof Error
+                ? moderatorsQuery.error.message
+                : "Failed to load moderators"}
+            </p>
           </div>
         )}
 
@@ -107,9 +111,13 @@ export default function AdminModerators() {
               <button
                 className="bg-autofun-background-primary hover:bg-autofun-background-secondary text-white px-4 py-2 rounded-md disabled:opacity-50 h-10"
                 onClick={addModerator}
-                disabled={addModeratorMutation.isPending || !newModeratorAddress}
+                disabled={
+                  addModeratorMutation.isPending || !newModeratorAddress
+                }
               >
-                {addModeratorMutation.isPending ? "Adding..." : "Add New Moderator"}
+                {addModeratorMutation.isPending
+                  ? "Adding..."
+                  : "Add New Moderator"}
               </button>
             </div>
           </div>
@@ -118,7 +126,8 @@ export default function AdminModerators() {
         {!isAdmin && (
           <div className="bg-autofun-background-secondary/50 border border-autofun-border rounded-lg p-4 mb-6">
             <p className="text-autofun-text-secondary italic">
-              Only administrators can add or remove moderators. Moderators can view this list but cannot modify it.
+              Only administrators can add or remove moderators. Moderators can
+              view this list but cannot modify it.
             </p>
           </div>
         )}
@@ -146,9 +155,13 @@ export default function AdminModerators() {
                 </thead>
                 <tbody>
                   {moderatorsQuery.data?.map((moderator: Moderator) => (
-                    <tr key={moderator.id} className="border-b border-autofun-border">
+                    <tr
+                      key={moderator.id}
+                      className="border-b border-autofun-border"
+                    >
                       <td className="py-3 px-4 font-mono">
-                        {moderator.address.slice(0, 8)}...{moderator.address.slice(-8)}
+                        {moderator.address.slice(0, 8)}...
+                        {moderator.address.slice(-8)}
                       </td>
                       <td className="py-3 px-4">{moderator.name || "—"}</td>
                       <td className="py-3 px-4">
@@ -173,7 +186,9 @@ export default function AdminModerators() {
                               className="text-green-500 hover:text-green-600"
                               disabled={removeModeratorMutation.isPending}
                             >
-                              {removeModeratorMutation.isPending ? "Removing..." : "Remove"}
+                              {removeModeratorMutation.isPending
+                                ? "Removing..."
+                                : "Remove"}
                             </button>
                           ) : (
                             <button
@@ -195,10 +210,11 @@ export default function AdminModerators() {
 
         {moderatorsQuery.data?.length > 0 && isAdmin && (
           <div className="text-sm text-autofun-text-secondary mt-2">
-            Note: Administrators (marked in green) cannot be removed from the moderators list.
+            Note: Administrators (marked in green) cannot be removed from the
+            moderators list.
           </div>
         )}
       </div>
     </div>
   );
-} 
+}
