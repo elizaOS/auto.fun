@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table-raw";
 import { IToken } from "@/types";
-import { shortenAddress } from "@/utils";
+import { networkId, shortenAddress } from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { env } from "@/utils/env";
@@ -35,7 +35,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
     queryFn: async () => {
       const holders = await codex.queries.holders({
         input: {
-          tokenId: `${token.mint}:1399811149`,
+          tokenId: `${token.mint}:${networkId}`,
           sort: {
             attribute: HoldersSortAttribute.Balance,
             direction: RankingDirection.Desc,
@@ -57,9 +57,9 @@ export default function HoldersTable({ token }: { token: IToken }) {
       <TableHeader className="relative">
         {/* <PausedIndicator show={paused} /> */}
         <TableRow className="bg-transparent">
-          <TableHead className="text-left w-[200px]">Account</TableHead>
+          <TableHead className="text-left w-[120px]">Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
-          <TableHead className="text-right">%</TableHead>
+          <TableHead className="text-right w-[80px]">%</TableHead>
           <TableHead className="text-right w-[50px]" />
         </TableRow>
       </TableHeader>

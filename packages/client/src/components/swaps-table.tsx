@@ -25,6 +25,9 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { networkId } from "@/utils";
 import { useEffect } from "react";
+import { Tooltip } from "react-tooltip";
+import dayjs from "dayjs";
+import Interval from "./interval";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
@@ -159,9 +162,11 @@ export default function SwapsTable({ token }: { token: IToken }) {
       onMouseEnter={() => setPause(true)}
       onMouseLeave={() => setPause(false)}
     >
-      <div className="absolute right-0 top-1 transform">
-        <PausedIndicator show={paused} />
-      </div>
+      {!isCodex ? (
+        <div className="absolute right-0 top-1 transform">
+          <PausedIndicator show={paused} />
+        </div>
+      ) : null}
       <Table className="border-0 !rounded-0 !border-spacing-y-0">
         <TableHeader>
           <TableRow className="bg-transparent">
@@ -169,7 +174,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             <TableHead className="text-left w-[100px]">Type</TableHead>
             <TableHead className="text-left">SOL</TableHead>
             <TableHead className="text-left">Token</TableHead>
-            <TableHead className="text-left w-[80px]">Date</TableHead>
+            <TableHead className="text-right w-[80px]">Date</TableHead>
             <TableHead className="text-right w-[50px]" />
           </TableRow>
         </TableHeader>
@@ -197,7 +202,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               } = dataExtractor(swap);
               return (
                 <TableRow
-                  className="hover:bg-white/5 animate-fade-in"
+                  className="hover:bg-white/5"
                   key={`${transactionHash}_${_}`}
                 >
                   <TableCell className="text-left text-sm">
@@ -223,8 +228,11 @@ export default function SwapsTable({ token }: { token: IToken }) {
                   <TableCell className="text-left text-sm">
                     {formatSwapAmount(token, true)}
                   </TableCell>
-                  <TableCell className="text-left text-sm">
-                    {fromNow(timestamp, true)}
+                  <TableCell className="text-right text-sm text-autofun-text-secondary">
+                    <Interval
+                      ms={1000}
+                      resolver={() => fromNow(timestamp, true)}
+                    />
                   </TableCell>
                   <TableCell className="text-sm">
                     <Link

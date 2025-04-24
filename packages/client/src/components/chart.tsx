@@ -21,11 +21,10 @@ import { IToken } from "@/types";
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 interface ChartProps {
-  mint: IToken;
-  isImported: boolean;
+  token: IToken;
 }
 
-export default function Chart({ token, isImported }: ChartProps) {
+export default function Chart({ token }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<any>(null);
   const chartRef = useRef<any>(null);

@@ -500,10 +500,7 @@ export default function Page() {
                 {/* Tab Content */}
                 {activeTab === "chart" && (
                   <>
-                    <Chart
-                      token={token}
-                      isImported={token.imported ? true : false}
-                    />
+                    <Chart token={token} />
 
                     <TransactionsAndHolders token={token} />
                   </>
