@@ -29,7 +29,10 @@ import {
   safeUpdateTokenInDB
 } from "./migrations";
 
-
+function asBN(x: BN | string) {
+  // Redis stored hex strings, so we parse as hex
+  return typeof x === "string" ? new BN(x, "hex") : x;
+}
 export class TokenMigrator {
   constructor(
     public connection: Connection,
@@ -513,9 +516,9 @@ export class TokenMigrator {
       poolInfo: any;
       poolKeys: any;
       lpAccount: any;
-      primaryAmount: BN;
-      secondaryAmount: BN;
-      totalAmount: BN;
+      primaryAmount: BN | string
+      secondaryAmount: BN | string;
+      totalAmount: BN | string;
     }
   }> {
     const raydium = await initSdk({
@@ -567,12 +570,13 @@ export class TokenMigrator {
   }> {
     const aggregatedTxId = `${primary.txId},${secondary.txId}`;
     const aggregatedNftMint = `${primary.nftMint},${secondary.nftMint}`;
+    const amount = asBN(totalAmount);
 
     const tokenData: Partial<TokenData> = {
       mint: token.mint,
       lockId: aggregatedTxId,
       nftMinted: aggregatedNftMint,
-      lockedAmount: totalAmount.toString(),
+      lockedAmount: amount.toString(),
       status: "locked",
       lastUpdated: new Date().toISOString(),
       lockedAt: new Date(),
@@ -601,13 +605,14 @@ export class TokenMigrator {
   async lockPrimaryLPTransaction(
     poolInfo: any,
     poolKeys: any,
-    primaryAmount: BN
+    primaryAmount: BN | string
   ): Promise<{ txId: string; extraData: { primary: { txId: string; nftMint: string } } }> {
     console.log("Performing primary LP lock", primaryAmount.toString());
+    const amountBn = asBN(primaryAmount);
     const raydium = await initSdk({ loadToken: false });
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
-      lpAmount: primaryAmount,
+      lpAmount: amountBn,
       withMetadata: true,
       txVersion,
       computeBudgetConfig: {
@@ -636,14 +641,16 @@ export class TokenMigrator {
   async lockSecondaryLPTransaction(
     poolInfo: any,
     poolKeys: any,
-    secondaryAmount: BN
+    secondaryAmount: BN | string
   ): Promise<{ txId: string; extraData: { secondary: { txId: string; nftMint: string } } }> {
     console.log("Performing secondary LP lock", secondaryAmount.toString());
+    const amountBn = asBN(secondaryAmount);
+
     const raydium = await initSdk({ loadToken: false });
 
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
-      lpAmount: secondaryAmount,
+      lpAmount: amountBn,
       withMetadata: true,
       txVersion,
       computeBudgetConfig: {
