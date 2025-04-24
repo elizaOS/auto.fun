@@ -82,7 +82,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
     }
   };
 
-  const items = query?.data || [];
+  const items = isCodex ? query?.data : data;
 
   useEffect(() => {
     let cleanupPromise: any;
@@ -119,15 +119,44 @@ export default function SwapsTable({ token }: { token: IToken }) {
     }
 
     return () => {
-      cleanupPromise
-        .then((cleanupFn) => {
-          cleanupFn();
-        })
-        .catch((error) => {
-          console.error("Error during codex subscription cleanup:", error);
-        });
+      if (cleanupPromise) {
+        cleanupPromise
+          .then((cleanupFn) => {
+            cleanupFn();
+          })
+          .catch((error) => {
+            console.error("Error during codex subscription cleanup:", error);
+          });
+      }
     };
   }, []);
+
+  const dataExtractor = (swap: any) => {
+    let account;
+    let swapType;
+    let solana;
+    let token;
+    let transactionHash;
+    let timestamp;
+
+    if (isCodex) {
+      account = swap?.maker || "NA";
+      swapType = swap?.eventDisplayType || "Buy";
+      solana = swap?.data?.priceBaseTokenTotal || "0";
+      token = swap?.data?.amountNonLiquidityToken || "0";
+      transactionHash = swap?.transactionHash || "";
+      timestamp = swap?.timestamp * 1000 || 0;
+    } else {
+      account = swap?.user || "NA";
+      swapType = swap?.type || "Buy";
+      solana = swap?.solAmount || "0";
+      token = swap?.tokenAmount || "0";
+      transactionHash = swap?.txId || "";
+      timestamp = swap?.timestamp || 0;
+    }
+
+    return { account, swapType, solana, token, transactionHash, timestamp };
+  };
 
   return (
     <div
@@ -150,7 +179,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {query?.isPending ? (
+          {(!isCodex ? isLoading : query?.isPending) ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center py-8">
                 <div className="flex flex-col items-center gap-2">
@@ -161,14 +190,16 @@ export default function SwapsTable({ token }: { token: IToken }) {
                 </div>
               </TableCell>
             </TableRow>
-          ) : items?.length > 0 ? (
+          ) : (items || [])?.length > 0 ? (
             items?.map((swap, _) => {
-              const account = swap?.maker || "";
-              const swapType = swap?.eventDisplayType || "Buy";
-              const solana = swap?.data?.priceBaseTokenTotal || "0";
-              const token = swap?.data?.amountNonLiquidityToken || "0";
-              const transactionHash = swap?.transactionHash || "";
-              const timestamp = swap?.timestamp * 1000 || 0;
+              const {
+                account,
+                swapType,
+                solana,
+                token,
+                transactionHash,
+                timestamp,
+              } = dataExtractor(swap);
               return (
                 <TableRow
                   className="hover:bg-white/5"
