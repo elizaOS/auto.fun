@@ -175,7 +175,6 @@ export class TokenMigrator {
         eventName: "lpPrimaryLocked",
         fn: (token: any) =>
           this.lockPrimaryLPTransaction(
-            token.raydium,
             token.poolInfo,
             token.poolKeys,
             token.primaryAmount,      // ← use the saved BN
@@ -186,7 +185,6 @@ export class TokenMigrator {
         eventName: "lpSecondaryLocked",
         fn: (token: any) =>
           this.lockSecondaryLPTransaction(
-            token.raydium,
             token.poolInfo,
             token.poolKeys,
             token.secondaryAmount,    // ← use the saved BN
@@ -601,12 +599,12 @@ export class TokenMigrator {
   }
 
   async lockPrimaryLPTransaction(
-    raydium: any,
     poolInfo: any,
     poolKeys: any,
     primaryAmount: BN
   ): Promise<{ txId: string; extraData: { primary: { txId: string; nftMint: string } } }> {
     console.log("Performing primary LP lock", primaryAmount.toString());
+    const raydium = await initSdk({ loadToken: false });
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
       lpAmount: primaryAmount,
@@ -636,12 +634,13 @@ export class TokenMigrator {
   }
 
   async lockSecondaryLPTransaction(
-    raydium: any,
     poolInfo: any,
     poolKeys: any,
     secondaryAmount: BN
   ): Promise<{ txId: string; extraData: { secondary: { txId: string; nftMint: string } } }> {
     console.log("Performing secondary LP lock", secondaryAmount.toString());
+    const raydium = await initSdk({ loadToken: false });
+
     const { execute, extInfo } = await raydium.cpmm.lockLp({
       poolInfo,
       lpAmount: secondaryAmount,
