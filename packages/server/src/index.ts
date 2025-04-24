@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import dotenv from "dotenv-flow";
 dotenv.config();
 
 import { Connection } from "@solana/web3.js";

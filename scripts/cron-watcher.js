@@ -8,7 +8,7 @@
  */
 
 import fetch from "node-fetch";
-import dotenv from "dotenv";
+import dotenv from "dotenv-flow";
 
 dotenv.config();
 

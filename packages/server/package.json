@@ -36,6 +36,7 @@
     "axios": "^1.8.4",
     "bs58": "^6.0.0",
     "dotenv": "^16.5.0",
+    "dotenv-flow": "^4.1.0",
     "drizzle-orm": "^0.42.0",
     "generic-pool": "^3.9.0",
     "hono": "^4.7.7",

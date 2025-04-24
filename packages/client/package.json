@@ -37,6 +37,7 @@
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",
     "dayjs": "^1.11.13",
+    "dotenv": "^16.5.0",
     "lightweight-charts": "^5.0.6",
     "lodash": "^4.17.21",
     "lucide-react": "^0.483.0",

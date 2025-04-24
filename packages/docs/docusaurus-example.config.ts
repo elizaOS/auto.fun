@@ -1,8 +1,10 @@
-import dotenv from 'dotenv';
+import dotenv from 'dotenv-flow';
 import * as Plugin from '@docusaurus/types/src/plugin';
 import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 
-dotenv.config();
+dotenv.config({
+  path: "../../.env",
+});
 
 const config = {
   title: 'eliza',

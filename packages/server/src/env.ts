@@ -38,8 +38,6 @@ export interface Env {
   NEWS_API_KEY?: string;
   PREGENERATED_TOKENS_COUNT?: string;
   HELIUS_WEBHOOK_AUTH_TOKEN: string;
-  CODEX_WEBHOOK_AUTH_TOKEN: string;
-  // Add ADMIN_ADDRESSES to the Env interface
   ADMIN_ADDRESSES?: string;
   MANAGER_MULTISIG_ADDRESS: string;
   FIXED_FEE: string;
