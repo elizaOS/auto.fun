@@ -1025,9 +1025,9 @@ export default function ChatSection() {
               </div>
 
               {/* Chat input */}
-              <div className="p-4 pt-8 border-t-2 border-[#03FF24]/30 relative">
+              <div className="p-4 pt-24 border-t-2 border-[#03FF24]/30 relative">
                 {selectedImage && (
-                  <div className="absolute -top-[380px] left-4 w-full z-10">
+                  <div className="absolute -top-[320px] left-4 w-full z-10">
                     <div className="relative w-full aspect-square max-w-[400px] border-4 border-[#03FF24] flex items-center justify-center bg-black">
                       <img 
                         src={imagePreview || ''} 
