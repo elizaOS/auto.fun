@@ -24,6 +24,7 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
+import { updateHoldersCache, processTokenUpdateEvent } from "../tokenSupplyHelpers";
 
 // S3 Client Helper (copied from uploader.ts, using process.env)
 let s3ClientInstance: S3Client | null = null;
@@ -957,224 +958,6 @@ async function checkBlockchainTokenBalance(
   });
 }
 
-// Function to process a token update and emit WebSocket events
-export async function processTokenUpdateEvent(
-  tokenData: any,
-  shouldEmitGlobal: boolean = false,
-  isNewTokenEvent: boolean = false, // Add the new flag
-): Promise<void> {
-  try {
-    // Get WebSocket client
-    const wsClient = getWebSocketClient();
-
-    // Get DB connection and calculate featuredScore
-    const db = getDB();
-    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-
-    // Create enriched token data with featuredScore
-    const enrichedTokenData = {
-      ...tokenData,
-      featuredScore: calculateFeaturedScore(
-        tokenData,
-        maxVolume,
-        maxHolders,
-      ),
-    };
-
-    // Always emit to token-specific room
-    await wsClient.emit(
-      `token-${tokenData.mint}`,
-      "updateToken",
-      enrichedTokenData,
-    );
-
-    // Use env var for debug check
-    const debugWs = process.env.DEBUG_WEBSOCKET === "true";
-    if (debugWs) {
-      logger.log(`Emitted token update event for ${tokenData.mint}`);
-    }
-
-    // Handle global emission based on flags
-    if (isNewTokenEvent) {
-      // If it's a new token event, *only* emit the global "newToken" event
-      await wsClient.emit("global", "newToken", {
-        ...enrichedTokenData,
-        timestamp: new Date(),
-      });
-      if (debugWs) {
-        logger.log(`Emitted NEW token event to global feed: ${tokenData.mint}`);
-      }
-    } else if (shouldEmitGlobal) {
-      // Otherwise, if shouldEmitGlobal is true (and it's not a new token), emit "updateToken" globally
-      await wsClient.emit("global", "updateToken", {
-        ...enrichedTokenData,
-        timestamp: new Date(),
-      });
-
-      if (debugWs) {
-        logger.log("Emitted token update event to global feed");
-      }
-    }
-
-    return;
-  } catch (error) {
-    logger.error("Error processing token update event:", error);
-    // Don't throw to avoid breaking other functionality
-  }
-}
-
-export async function updateHoldersCache(
-  mint: string,
-  imported: boolean = false,
-): Promise<number> {
-  const env = process.env;
-  try {
-    // Use the utility function to get the RPC URL with proper API key
-    const connection = new Connection(process.env.NETWORK! === "devnet" ?
-      process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!,
-      {
-        commitment: "confirmed",
-        confirmTransactionInitialTimeout: 60000, // 60 seconds
-      }
-
-    );
-
-    const db = getDB();
-    const redisCache = await getGlobalRedisCache(); // Instantiate Redis cache
-
-    // Get all token accounts for this mint using getParsedProgramAccounts
-    // This method is more reliable for finding all holders
-    const accounts = await connection.getParsedProgramAccounts(
-      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
-      {
-        filters: [
-          {
-            dataSize: 165, // Size of token account
-          },
-          {
-            memcmp: {
-              offset: 0,
-              bytes: mint, // Mint address
-            },
-          },
-        ],
-      },
-    );
-
-    if (!accounts || accounts.length === 0) {
-      logger.log(`No accounts found for token ${mint}`);
-      return 0;
-    }
-
-    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
-
-    // Process accounts to extract holder information
-    let totalTokens = 0;
-    // Change type from TokenHolder to any or a new local type if needed
-    const holders: any[] = [];
-
-    // Process each account to get holder details
-    for (const account of accounts) {
-      try {
-        const parsedAccountInfo = account.account.data as ParsedAccountData;
-        const tokenBalance =
-          parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
-
-        // Skip accounts with zero balance
-        if (tokenBalance <= 0) continue;
-
-        const ownerAddress = parsedAccountInfo.parsed?.info?.owner || "";
-
-        // Skip accounts without owner
-        if (!ownerAddress) continue;
-
-        // Add to total tokens for percentage calculation
-        totalTokens += tokenBalance;
-
-        // Use a consistent structure, maybe matching old DB schema if needed
-        holders.push({
-          // id: crypto.randomUUID(), // No longer needed for DB
-          mint, // Keep for context within the stored object
-          address: ownerAddress,
-          amount: tokenBalance,
-          percentage: 0, // Will calculate after we have the total
-          lastUpdated: new Date(), // Keep track of update time
-        });
-
-
-
-      } catch (error: any) {
-        logger.error(`Error processing account for ${mint}:`, error);
-        // Continue with other accounts even if one fails
-        continue;
-      }
-    }
-
-    // Calculate percentages now that we have the total
-    if (totalTokens > 0) {
-      for (const holder of holders) {
-        holder.percentage = (holder.amount / totalTokens) * 100;
-      }
-    }
-
-    // Sort holders by amount (descending)
-    holders.sort((a, b) => b.amount - a.amount);
-
-    const holdersListKey = `holders:${mint}`;
-    try {
-      // Store the entire list, stringified. No TTL.
-      await redisCache.set(holdersListKey, JSON.stringify(holders));
-      logger.log(
-        `Stored ${holders.length} holders in Redis list ${holdersListKey}`,
-      );
-    } catch (redisError) {
-      logger.error(`Failed to store holders in Redis for ${mint}:`, redisError);
-    }
-
-    try {
-      const wsClient = getWebSocketClient();
-      const limitedHolders = holders.slice(0, 50); // Emit only top 50
-      wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
-    } catch (wsError) {
-      logger.error(`WebSocket error when emitting holder update:`, wsError);
-    }
-
-
-    await db
-      .update(tokens)
-      .set({
-        holderCount: holders.length, // Use full count
-        lastUpdated: new Date(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    // Emit WebSocket event to notify of token update (with new holder count)
-    try {
-      const tokenData = await db
-        .select()
-        .from(tokens)
-        .where(eq(tokens.mint, mint))
-        .limit(1);
-
-      if (tokenData && tokenData.length > 0) {
-        await processTokenUpdateEvent({
-          ...tokenData[0],
-          event: "holdersUpdated",
-          holderCount: holders.length, // Use full count here too
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (wsError) {
-      logger.error(`WebSocket error when emitting holder update: ${wsError}`);
-    }
-
-    return holders.length; // Return full count
-  } catch (error) {
-    logger.error(`Error updating holders for token ${mint}:`, error);
-    return 0;
-  }
-}
-
 // --- END VALIDATION FUNCTION ---
 
 // --- Route Handler ---
@@ -1471,6 +1254,9 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
       } else {
         logger.log(`No holders found in Redis for key ${holdersListKey}`);
         // Return empty if not found in cache (as updateHoldersCache should populate it)
+        void updateHoldersCache(mint)
+          .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+          .catch((err) => logger.error(`Async holders refresh failed:`, err));
         return c.json({
           holders: [],
           page: 1,

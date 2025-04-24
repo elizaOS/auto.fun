@@ -164,6 +164,7 @@ export class ExternalToken {
       }
 
       const holderResult = await this._fetchHolderData(marketResult.tokenSupply); // Use internal fetch method
+      console.log(`ExternalToken: Fetched ${holderResult.length} holders for ${this.mint}.`);
 
       const combinedDetails: TokenDetails = {
         marketData: marketResult.newTokenData,
@@ -174,7 +175,7 @@ export class ExternalToken {
       // 3. Store combined data in Redis
       await this.redisCache.set(detailsKey, JSON.stringify(combinedDetails), MARKET_HOLDER_REFRESH_INTERVAL * 2); // Cache for double the interval?
       // add holders to a separate list
-      await this.redisCache.set(holdersListKey, JSON.stringify(holderResult), MARKET_HOLDER_REFRESH_INTERVAL * 2);
+      await this.redisCache.set(holdersListKey, JSON.stringify(holderResult));
       logger.log(`ExternalToken: Stored updated market/holder details in Redis for ${this.mint}`);
 
       // 4. Emit WebSocket updates (consider doing this outside if possible)

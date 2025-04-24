@@ -20,7 +20,7 @@ import { getGlobalRedisCache } from "./redis";
 import {
   checkAndReplenishTokens
 } from "./routes/generation";
-import { updateHoldersCache } from "./routes/token";
+import { updateHoldersCache } from "./tokenSupplyHelpers";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
   calculateFeaturedScore,

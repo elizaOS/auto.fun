@@ -88,55 +88,41 @@ export class TokenMigrator {
   }
 
   async resumeMigrationsOnStart(): Promise<void> {
-    try {
-      const db = getDB();
-      const migratingTokens = await db
-        .select()
-        .from(tokens)
-        .where(eq(tokens.status, "migrating"))
-        .execute();
+    logger.log("[Migrate] Scanning for ongoing migrations on startup...");
 
-      if (migratingTokens.length === 0) {
-        logger.log("[Migrate] No tokens to resume on startup.");
-        return;
-      }
+    // find all keys like "migration:<mint>:lock"
+    const lockKeys: string[] = await this.redisCache.keys("migration:*:lock");
 
-      logger.log(`[Migrate] Resuming ${migratingTokens.length} token(s)...`);
-
-      for (const dbToken of migratingTokens) {
-        const mint = dbToken.mint;
-
-        // Prevent multiple resumes
-        const lockKey = `migration:${mint}:lock`;
-        const isLocked = await this.redisCache.get(lockKey);
-        if (isLocked === "true") {
-          logger.log(`[Migrate] Token ${mint} is locked. Skipping resume.`);
-          continue;
-        }
-
-        const newToken = await getToken(mint);
-        if (!newToken) {
-          logger.error(`[Migrate] Token ${mint} not found in DB.`);
-          continue;
-        }
-
-        const lastUpdated = new Date(newToken.lastUpdated);
-        const stale = Date.now() - lastUpdated.getTime() > 60 * 60 * 1000;
-
-        if (!stale) {
-          logger.log(`[Migrate] Token ${mint} updated recently. Skipping.`);
-          continue;
-        }
-
-        logger.log(`[Migrate] Token ${mint} is stale. Resuming migration.`);
-        await this.migrateToken(newToken);
-      }
-
-      logger.log("[Migrate] Resume complete.");
-    } catch (error) {
-      logger.error("[Migrate] Failed to resume migrations on startup:");
-      console.error(error);
+    if (lockKeys.length === 0) {
+      logger.log("[Migrate] No in-flight migrations found.");
+      return;
     }
+
+    for (const lockKey of lockKeys) {
+      const isLocked = await this.redisCache.get(lockKey);
+      if (isLocked !== "true") continue;
+
+      // extract the mint from "migration:<mint>:lock"
+      const [, mint] = lockKey.split(":");
+      logger.log(`[Migrate] Resuming migration for token ${mint}`);
+
+      // load the token from DB (or skip if missing)
+      const token = await getToken(mint);
+      if (!token) {
+        logger.error(`[Migrate] Token ${mint} not found in DB. Skipping.`);
+        continue;
+      }
+
+      try {
+        await this.migrateToken(token);
+      } catch (err) {
+        logger.error(`[Migrate] Error resuming migration for ${mint}:`, err);
+        // ensure we clear the lock so it can be retried next startup
+        await this.redisCache.set(lockKey, "false");
+      }
+    }
+
+    logger.log("[Migrate] Resume complete.");
   }
 
   async printMigrationState(mint: string): Promise<void> {
