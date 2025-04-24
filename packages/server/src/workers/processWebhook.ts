@@ -1,3 +1,5 @@
+// processWebhook.ts
+import crypto from "crypto";
 import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { eq } from "drizzle-orm";
@@ -6,13 +8,16 @@ import { getLatestCandle } from "../chart";
 import { getWebSocketClient } from "../websocket-client";
 import { logger } from "../util";
 import { webSocketManager } from '../websocket-manager';
+import { Redis } from "ioredis";
 
 const JOB_QUEUE_KEY = "webhook:jobs";
 const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 2000;
 const MAX_JOBS_PER_SECOND = Number(process.env.MAX_JOBS_PER_SECOND) || 5;
+// only do holders/swaps updates once per TOKEN_UPDATE_WINDOW seconds
+const TOKEN_UPDATE_WINDOW = Number(process.env.TOKEN_UPDATE_WINDOW) || 60;
 
 async function sleep(ms: number) {
-   return new Promise((resolve) => setTimeout(resolve, ms));
+   return new Promise((r) => setTimeout(r, ms));
 }
 
 async function workerLoop() {
@@ -22,6 +27,7 @@ async function workerLoop() {
    }
 
    const blockingClient = await redisCache.redisPool.acquire();
+   const client = await redisCache.redisPool.acquire();
 
    if (!webSocketManager.redisCache) {
       await webSocketManager.initialize(redisCache);
@@ -35,44 +41,51 @@ async function workerLoop() {
             await sleep(JOB_DELAY_MS);
             continue;
          }
-         const rawJob = res[1];
+         const rawJob = res[1] as string;
          const swap = JSON.parse(rawJob);
 
-         // determine mint
          const token0IsSol =
             swap.token0Address === "So11111111111111111111111111111111111111112";
          const tokenMint = token0IsSol ? swap.token1Address : swap.token0Address;
-
-         // dedupe by transactionHash
          const txSeenKey = `webhook:seen:${tokenMint}`;
-         const added = await redisCache.redisPool.useClient((c) =>
-            c.sadd(txSeenKey, swap.transactionHash)
-         );
-         if (added === 0) {
+         const added = await client.sadd(txSeenKey, swap.transactionHash);
+         if (added === 1) {
+            // new entry—set TTL if first time
+            await client.expire(txSeenKey, 120 * 60);
+         } else {
             logger.log(`Skipping duplicate tx ${swap.transactionHash}`);
             continue;
          }
 
          const nowSec = Math.floor(Date.now() / 1000);
          const rateKey = `webhook:rate:${nowSec}`;
-         const count = await redisCache.redisPool.useClient((c) => c.incr(rateKey));
+         const count = await client.incr(rateKey);
          if (count === 1) {
-            await redisCache.redisPool.useClient((c) => c.expire(rateKey, 1));
+            await client.expire(rateKey, 1);
          }
          if (count > MAX_JOBS_PER_SECOND) {
-            await redisCache.redisPool.useClient((c) => c.rpush(JOB_QUEUE_KEY, rawJob));
+            await client.rpush(JOB_QUEUE_KEY, rawJob);
             await sleep(JOB_DELAY_MS * 5);
             continue;
          }
 
+         const updateLockKey = `webhook:updateLock:${tokenMint}`;
+         const gotLock = await client.set(
+            updateLockKey,
+            "1",
+            "EX",
+            TOKEN_UPDATE_WINDOW,
+            "NX"
+         );
+         const doHeavyWork = gotLock === "OK";
+
          const cacheKey = `codex-webhook:${tokenMint}`;
-         let token = null;
+         let token: any = null;
          const cached = await redisCache.get(cacheKey);
          if (cached) {
             token = JSON.parse(cached);
          } else {
-            const db = getDB();
-            const rows = await db
+            const rows = await getDB()
                .select()
                .from(tokens)
                .where(eq(tokens.mint, tokenMint))
@@ -91,27 +104,30 @@ async function workerLoop() {
          try {
             const latestCandle = await getLatestCandle(tokenMint, swap, token);
             await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
-         } catch (err) {
-            logger.error("Error sending candle:", err);
+         } catch (e) {
+            logger.error("Error sending candle:", e);
          }
 
-         try {
-            const ext = await ExternalToken.create(tokenMint, redisCache);
-            await ext.updateMarketAndHolders();
-         } catch (err) {
-            logger.error("Error updating market & holders:", err);
-         }
-
-         try {
-            const ext = await ExternalToken.create(tokenMint, redisCache);
-            await ext.updateLatestSwapData(10);
-         } catch (err) {
-            logger.error("Error updating latest swap data:", err);
+         // 7) Heavy on-chain work only once per TOKEN_UPDATE_WINDOW
+         if (doHeavyWork) {
+            try {
+               const ext = await ExternalToken.create(tokenMint, redisCache);
+               await ext.updateMarketAndHolders();
+            } catch (e) {
+               logger.error("Error updating market & holders:", e);
+            }
+            try {
+               const ext = await ExternalToken.create(tokenMint, redisCache);
+               await ext.updateLatestSwapData(10);
+            } catch (e) {
+               logger.error("Error updating latest swap data:", e);
+            }
          }
 
          await sleep(JOB_DELAY_MS);
+
       } catch (err) {
-         logger.error("Worker error:", err);
+         logger.error("❌ Webhook worker error", err);
          await sleep(JOB_DELAY_MS * 2);
       }
    }
