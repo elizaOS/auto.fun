@@ -28,16 +28,10 @@ preGeneratedAdminRoutes.get("/", async (c) => {
     const page = parseInt(queryParams.page || "1");
     const sortBy = queryParams.sortBy || "createdAt";
     const sortOrder = queryParams.sortOrder || "desc";
-    const filterUsed = queryParams.used; // 'true', 'false', or undefined
     const search = queryParams.search;
     const offset = (page - 1) * limit;
 
     const conditions: (SQL | undefined)[] = [];
-    if (filterUsed === 'true') {
-      conditions.push(eq(preGeneratedTokens.used, 1));
-    } else if (filterUsed === 'false') {
-      conditions.push(eq(preGeneratedTokens.used, 0));
-    }
 
     if (search) {
        conditions.push(
@@ -67,7 +61,6 @@ preGeneratedAdminRoutes.get("/", async (c) => {
       createdAt: preGeneratedTokens.createdAt,
       name: preGeneratedTokens.name,
       ticker: preGeneratedTokens.ticker,
-      used: preGeneratedTokens.used,
     };
     const sortColumn = validSortColumns[sortBy as keyof typeof validSortColumns] || preGeneratedTokens.createdAt;
     tokensQuery.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));

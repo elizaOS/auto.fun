@@ -391,17 +391,6 @@ export default function AdminPregenerated() {
                   <td className="p-2">
                     {new Date(token.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="p-2">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        token.used
-                          ? "bg-red-900 text-red-300"
-                          : "bg-green-900 text-green-300"
-                      }`}
-                    >
-                      {token.used ? "Yes" : "No"}
-                    </span>
-                  </td>
                   <td className="p-2 flex items-center space-x-2">
                     <button
                       onClick={() => openEditModal(token)}
