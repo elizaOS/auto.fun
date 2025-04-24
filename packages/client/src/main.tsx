@@ -14,6 +14,7 @@ import Testing from "./pages/testing";
 import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 import Admin from "./pages/admin";
+import { HelmetProvider } from "react-helmet-async";
 
 if (
   !window.location.href.includes("?dev") &&
@@ -23,24 +24,26 @@ if (
 }
 
 createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Homepage />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/terms-of-service" element={<TermsOfService />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profiles/:address" element={<Profile />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/fees" element={<Fees />} />
-        <Route path="/token/:address" element={<Token />} />
-        <Route path="/create" element={<Create />} />
-        <Route path="/testing" element={<Testing />} />
-        <Route path="/callback" element={<CallbackPage />} />
-        <Route path="/callback-oauth1" element={<CallbackPage />} />
-        <Route path="/admin/*" element={<Admin />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
-    </Routes>
-  </BrowserRouter>,
+  <HelmetProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Homepage />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profiles/:address" element={<Profile />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/fees" element={<Fees />} />
+          <Route path="/token/:address" element={<Token />} />
+          <Route path="/create" element={<Create />} />
+          <Route path="/testing" element={<Testing />} />
+          <Route path="/callback" element={<CallbackPage />} />
+          <Route path="/callback-oauth1" element={<CallbackPage />} />
+          <Route path="/admin/*" element={<Admin />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  </HelmetProvider>,
 );

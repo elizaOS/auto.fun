@@ -137,7 +137,7 @@ export default function Chart({ token }: ChartProps) {
           return new Intl.NumberFormat("en-US", {
             notation: "standard",
             style: "currency",
-            currency: 'USD',
+            currency: "USD",
             maximumFractionDigits:
               Number(decimalsLength || "1") > 8
                 ? 8

@@ -14,7 +14,7 @@ import Verified from "@/components/verified";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
-import Helmet from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import {
   abbreviateNumber,
   formatNumber,
@@ -89,7 +89,7 @@ function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
 }
 
 export default function Page() {
-  const params = useParams();
+  const params = useParams<{ address: string }>();
   const address = params?.address;
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
@@ -226,6 +226,16 @@ export default function Page() {
       </div>
     );
   }
+
+  // --- Helmet Setup --- Add this block
+  const apiBaseUrl = env.apiUrl || ""; // Use env helper
+  const ogImageUrl = address
+    ? `${apiBaseUrl}/api/og-image/${address}.png`
+    : `${apiBaseUrl}/default-og-image.png`; // Use API base URL and default
+  const pageUrl = window.location.href; // Or construct canonical URL
+  const defaultDescription = `View ${token?.name || "token"} details, price, and market cap on auto.fun.`;
+  const title = `${token?.name || "Token"} (${token?.ticker || "--"}) - auto.fun`;
+  // --- End Helmet Setup ---
 
   return (
     <Fragment>

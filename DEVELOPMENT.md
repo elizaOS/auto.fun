@@ -22,7 +22,7 @@ REDIS_HOST="localhost"
 REDIS_PORT=6379
 REDIS_PASSWORD="MDikUKnhRHlURlnORexvVztDTrNCUBze"
 # MinIO S3 connection
-S3_ENDPOINT=http://localhost:9000
+S3_STORAGE_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY=minio_user
 S3_SECRET_KEY=minio_password
 ```
