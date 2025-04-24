@@ -34,11 +34,11 @@ const columns = [
   }),
   columnHelper.accessor("tokensHeld", {
     header: "Amount",
-    cell: ({ cell }) => cell.getValue().toLocaleString(),
+    cell: ({ cell }) => (cell.getValue() ?? 0).toLocaleString(),
   }),
   columnHelper.accessor("solValue", {
     header: "SOL",
-    cell: ({ cell }) => cell.getValue().toFixed(4),
+    cell: ({ cell }) => cell.getValue()?.toFixed(4),
   }),
   columnHelper.accessor("mint", {
     header: "View",

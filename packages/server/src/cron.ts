@@ -221,7 +221,7 @@ async function pushSwapToRedis(
   maxLength = 100
 ) {
   // 1) fetch raw
-  let raw = await redis.get(key);
+  const raw = await redis.get(key);
   let list: any[];
   try {
     list = raw ? JSON.parse(raw) : [];

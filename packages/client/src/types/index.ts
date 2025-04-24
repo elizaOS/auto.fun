@@ -124,6 +124,14 @@ export const TokenSchema = z
       }
       return val;
     }, z.number().nullish()),
+    creatorProfile: z
+      .object({
+        address: z.string(),
+        displayName: z.string().nullable(),
+        profilePictureUrl: z.string().nullable(),
+      })
+      .optional()
+      .nullable(),
   })
   .transform((data) => ({
     ...data,
@@ -168,6 +176,7 @@ export const TokenSchema = z
     verified: data?.verified ? data?.verified : 0,
     featured: data?.featured ? data?.featured : 0,
     hidden: data?.hidden ? !!data.hidden : false,
+    creatorProfile: data.creatorProfile,
   }));
 
 export type IToken = z.infer<typeof TokenSchema>;

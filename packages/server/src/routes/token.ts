@@ -6,10 +6,11 @@ import {
   PublicKey
 } from "@solana/web3.js";
 import { and, count, eq, or, sql, SQL } from "drizzle-orm";
+import { getTableColumns } from 'drizzle-orm';
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
 import { Buffer } from 'node:buffer'; // Buffer import
-import { getDB, Token, tokens } from "../db";
+import { getDB, Token, tokens, users } from "../db";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
 import { getGlobalRedisCache } from "../redis";
@@ -1435,19 +1436,34 @@ tokenRouter.get("/token/:mint", async (c) => {
       }
     }
 
-    // Get token data
+    // Get token data and potentially creator profile
     const db = getDB();
-    const [tokenData, solPrice] = await Promise.all([
-      db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1),
-      getSOLPrice(),
+    const [tokenResult, solPrice] = await Promise.all([
+      db.select({
+          // Select all fields from tokens table
+          ...getTableColumns(tokens),
+          // Select specific fields from users table, aliased
+          creatorProfile: {
+              address: users.address,
+              displayName: users.display_name,
+              profilePictureUrl: users.profile_picture_url,
+          }
+      })
+      .from(tokens)
+      .leftJoin(users, eq(tokens.creator, users.address)) // LEFT JOIN users on creator address
+      .where(eq(tokens.mint, mint))
+      .limit(1),
+      getSOLPrice(), // Fetch SOL price concurrently
     ]);
 
-    if (!tokenData || tokenData.length === 0) {
+
+    if (!tokenResult || tokenResult.length === 0) {
       // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
     }
 
-    const token = tokenData[0];
+    // Process the result - tokenResult[0] contains token fields and a creatorProfile object (which is null if no matching user was found)
+    const token = tokenResult[0];
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;

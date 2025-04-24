@@ -8,6 +8,7 @@ import nacl from "tweetnacl";
 import { getDB, users } from "./db";
 import { Env } from "./env";
 import { logger } from "./util";
+import { ensureUserProfile } from "./routes/user";
 
 // Define the AuthTokenData interface here to fix TypeScript errors
 interface AuthTokenData {
@@ -225,6 +226,9 @@ export const authenticate = async (c: AppContext) => {
           return c.json({ message: "Missing address in payload" }, 400);
         }
 
+        // Ensure profile exists after SIWS verification
+        await ensureUserProfile(address);
+
         // Create a JWT token
         try {
           const token = await createJwtToken(address);
@@ -292,6 +296,9 @@ export const authenticate = async (c: AppContext) => {
           logger.log("Signature verification result:", verified);
 
           if (verified) {
+            // Ensure profile exists after legacy verification
+            await ensureUserProfile(publicKey);
+
             // Try to create a JWT token
             try {
               const token = await createJwtToken(publicKey);
