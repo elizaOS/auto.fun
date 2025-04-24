@@ -66,7 +66,9 @@ export default function TwitterSharePage() {
   const attemptBatchRef = useRef<number>(0); // Batch attempts for smoother rate update
 
   // --- OG Image Test State ---
-  const [ogTestMint, setOgTestMint] = useState<string>("8btUuvx2Bu4zTd8g1tN5wCKMULyPgqiPaDiJbFbWkFUN"); // <<< Set default mint
+  const [ogTestMint, setOgTestMint] = useState<string>(
+    "8btUuvx2Bu4zTd8g1tN5wCKMULyPgqiPaDiJbFbWkFUN",
+  ); // <<< Set default mint
   const [ogPreviewUrl, setOgPreviewUrl] = useState<string | null>(null);
   const [ogIsLoading, setOgIsLoading] = useState<boolean>(false);
   const [ogError, setOgError] = useState<string | null>(null);
@@ -468,7 +470,7 @@ export default function TwitterSharePage() {
     }
     let imageUrl = `${env.apiUrl}/api/og-image/${mint.trim()}.png?timestamp=${Date.now()}`;
     if (refresh) {
-      imageUrl += '&refresh=true';
+      imageUrl += "&refresh=true";
     }
     return imageUrl;
   };
@@ -733,7 +735,10 @@ export default function TwitterSharePage() {
         </p>
 
         <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4 rounded-lg">
-          <label htmlFor="ogMint" className="text-gray-300 font-medium shrink-0">
+          <label
+            htmlFor="ogMint"
+            className="text-gray-300 font-medium shrink-0"
+          >
             Token Mint:
           </label>
           <input
@@ -774,22 +779,19 @@ export default function TwitterSharePage() {
               className="max-w-full h-auto border border-gray-600"
               onLoad={handleImageLoad}
               onError={handleImageError}
-              style={{ width: '600px', height: '315px' }} // Standard OG aspect ratio
+              style={{ width: "600px", height: "315px" }} // Standard OG aspect ratio
             />
           )}
           {ogIsLoading && !ogPreviewUrl && (
             <p className="text-gray-400">Loading preview...</p>
           )}
           {!ogIsLoading && !ogPreviewUrl && !ogError && (
-             <p className="text-gray-500">Enter a mint and click preview.</p>
+            <p className="text-gray-500">Enter a mint and click preview.</p>
           )}
-          {ogError && (
-            <p className="text-red-400">Error: {ogError}</p>
-          )}
+          {ogError && <p className="text-red-400">Error: {ogError}</p>}
         </div>
       </div>
       {/* --- End OG Image Test Section --- */}
-
     </div>
   );
 }

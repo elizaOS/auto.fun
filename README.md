@@ -161,7 +161,7 @@ Fill in the following variables in your root `.env` file:
 
 **Storage (MinIO/S3):**
 
-*   `S3_ENDPOINT`: URL for the S3-compatible storage endpoint (MinIO for local dev).
+*   `S3_STORAGE_ENDPOINT`: URL for the S3-compatible storage endpoint (MinIO for local dev).
     *   Local Default: `http://localhost:9000`
 *   `S3_ACCESS_KEY`: Access key for the S3 service.
     *   Local Default: `minio_user`

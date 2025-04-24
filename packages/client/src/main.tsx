@@ -14,7 +14,7 @@ import Testing from "./pages/testing";
 import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 import Admin from "./pages/admin";
-import { HelmetProvider } from 'react-helmet-async';
+import { HelmetProvider } from "react-helmet-async";
 
 if (
   !window.location.href.includes("?dev") &&
