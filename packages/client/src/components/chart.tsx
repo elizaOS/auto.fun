@@ -10,7 +10,13 @@ import {
 import { getSocket, Socket } from "@/utils/socket";
 import { getChartTable } from "@/utils/api";
 import { Codex } from "@codex-data/sdk";
-import { SymbolType } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import {
+  SymbolType,
+  TokenPairStatisticsType,
+} from "@codex-data/sdk/dist/sdk/generated/graphql";
+import { QuoteToken } from "@codex-data/sdk/dist/resources/graphql";
+
+const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 interface ChartProps {
   mint: string;
@@ -27,7 +33,8 @@ export default function Chart({ mint, isImported }: ChartProps) {
   } | null>(null);
 
   const useCodex = isImported;
-
+  const networkId = "1399811149";
+  const pairId = `${mint}:${networkId}`;
   const { data: chartData, isLoading } = useQuery({
     queryKey: ["chart", mint, useCodex],
     queryFn: async () => {
@@ -35,13 +42,11 @@ export default function Chart({ mint, isImported }: ChartProps) {
       const from = to - 21600; // 6 hours
 
       if (useCodex) {
-        const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
-
         const { getBars } = await codex.queries.getBars({
           currencyCode: "USD",
           from,
           to,
-          symbol: `${mint}:1399811149`,
+          symbol: pairId,
           resolution: "1",
           symbolType: SymbolType.Token,
         });
@@ -76,7 +81,7 @@ export default function Chart({ mint, isImported }: ChartProps) {
       }
     },
     staleTime: 60 * 1000,
-    refetchInterval: 10_000,
+    refetchInterval: 30_000, // Since chart is always 1 minute, we can refresh every 30 seconds
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -144,8 +149,59 @@ export default function Chart({ mint, isImported }: ChartProps) {
     window.addEventListener("resize", handleResize);
 
     let socket: Socket | undefined;
+    let cleanup: any;
     /** Handle Websockets for improts and bonded tokens */
     if (useCodex) {
+      console.log(`useCodex => ${useCodex} SUBSCRIBE TO CHART WEBSOCKET`);
+      const sink = {
+        next: (data) => {
+          console.log("Got subscription data", data);
+          console.log("Got subscription data", data);
+          // Check if data contains bars information
+          if (data?.data?.onBarsUpdated) {
+            const barData = data.data.onBarsUpdated;
+            // Process the bar data and update the chart
+            if (candlestickSeriesRef.current && barData) {
+              // Format the data as needed by your chart library
+              const newCandle = {
+                time: barData.time,
+                open: barData.open,
+                high: barData.high,
+                low: barData.low,
+                close: barData.close,
+                volume: barData.volume,
+              };
+              candlestickSeriesRef.current.update(newCandle);
+            }
+          }
+        },
+        error: (err) => {
+          console.log("Got subscription error", err);
+        },
+        complete: () => {
+          console.log("Got subscription complete");
+        },
+      };
+
+      cleanup = codex.subscriptions.onBarsUpdated(
+        {
+          // address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH WORKS
+          pairId: `0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2:1`,
+          quoteToken: QuoteToken.Token1,
+          // pairId,
+          // tokenId:
+          // networkId: 1,
+        },
+        sink
+      );
+
+      // codex.subscriptions.onBarsUpdated(
+      //   {
+      //     pairId,
+      //     quoteToken: QuoteToken.Token1,
+      //   },
+      //   sink
+      // );
     } else {
       /** Handle incoming data for non-bonded tokens */
       socket = getSocket();
@@ -167,12 +223,13 @@ export default function Chart({ mint, isImported }: ChartProps) {
     return () => {
       window.removeEventListener("resize", handleResize);
       if (useCodex) {
+        cleanup();
       } else if (socket) {
         socket.off("newCandle");
       }
       chart.remove();
     };
-  }, [mint]);
+  }, [mint, useCodex]);
 
   // Update chart data when it's available from useQuery
   useEffect(() => {
@@ -185,11 +242,11 @@ export default function Chart({ mint, isImported }: ChartProps) {
   return (
     <div
       ref={chartContainerRef}
-      className="w-full"
+      className="w-full min-h-[400px]"
       style={{ width: "100%", height: "100%" }}
     >
       {isLoading && (
-        <div className="text-center py-4">Loading chart data...</div>
+        <div className="text-center py-4 h-full">Loading chart data...</div>
       )}
     </div>
   );

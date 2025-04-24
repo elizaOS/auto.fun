@@ -415,7 +415,7 @@ export default function Page() {
           {/* Middle Column - 50% - Tabs for Chart and AI Create */}
           <div className="w-full lg:w-1/2 flex flex-col gap-3 order-3 lg:order-2">
             <div className="overflow-hidden relative">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1">
                 {/* Green stroke above tab section */}
                 <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
@@ -502,12 +502,10 @@ export default function Page() {
                 {/* Tab Content */}
                 {activeTab === "chart" && (
                   <>
-                    <div className="w-full h-[50vh] bg-autofun-background-primary">
-                      <Chart
-                        mint={token.mint}
-                        isImported={token.imported ? true : false}
-                      />
-                    </div>
+                    <Chart
+                      mint={token.mint}
+                      isImported={token.imported ? true : false}
+                    />
 
                     <TransactionsAndHolders token={token} />
                   </>
