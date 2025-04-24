@@ -65,7 +65,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={twMerge(
-      "h-5 px-4 text-left whitespace-nowrap align-middle font-dm-mono font-normal text-[14px] leading-[16px] tracking-[2px] uppercase text-autofun-text-info [&:has([role=checkbox])]:pr-0",
+      "h-5 first:pl-4 last:pr-4 px-2 text-left whitespace-nowrap align-middle font-dm-mono font-normal text-[14px] leading-[16px] tracking-[2px] uppercase text-autofun-text-info [&:has([role=checkbox])]:pr-0",
       className,
     )}
     {...props}
