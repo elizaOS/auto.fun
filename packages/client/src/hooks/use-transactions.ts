@@ -47,9 +47,6 @@ export const useTransactions = ({
   });
 
   useEffect(() => {
-  }, [isPaused]);
-
-  useEffect(() => {
     const socket = getSocket();
 
     socket.on("newSwap", (transaction: any) => {
