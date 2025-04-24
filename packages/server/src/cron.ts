@@ -414,7 +414,7 @@ async function handleSwap(
       const ext = await ExternalToken.create(mintAddress, redisCache);
       await ext.insertProcessedSwaps([swapRecord]);
       console.log(`sending swap to the user ${mintAddress}`);
-      await wsClient.emit(`global`, "newSwap", {
+      await wsClient.emit(`token-${mintAddress}`, "newSwap", {
         ...swapRecord,
         tokenMint: mintAddress,
         mint: mintAddress,
@@ -497,8 +497,7 @@ async function handleSwap(
 
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);
       console.log("fetched latest candle", latestCandle);
-      await wsClient.to(`global`).emit("newCandle", latestCandle);
-
+      await wsClient.to(`token-${mintAddress}`).emit("newCandle", latestCandle);
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
       const enrichedToken = {
         ...newToken,
@@ -506,7 +505,7 @@ async function handleSwap(
       };
 
       await wsClient
-        .to("global")
+        .to(`token-${mintAddress}`)
         .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
       console.log("updated the token in DB", mintAddress);
       return {
@@ -583,10 +582,10 @@ async function handleCurveComplete(
       redisCache
     );
 
-    await updateTokenInDB(token);
+    await updateTokenInDB(tokenData);
     await tokenMigrator.migrateToken(token);
     await wsClient.emit(
-      "global",
+      `token-${mintAddress}`,
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );

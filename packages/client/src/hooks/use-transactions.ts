@@ -40,6 +40,7 @@ export const useTransactions = ({
     validationSchema: TransactionSchema,
     itemsPropertyName: "swaps",
     sortBy: "timestamp",
+    useUrlState: true,
     sortOrder: "desc",
     enabled: isPaused ? false : true,
     refetchInterval: 30000,

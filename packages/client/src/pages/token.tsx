@@ -14,7 +14,7 @@ import Verified from "@/components/verified";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
-import Helmet from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import {
   abbreviateNumber,
   formatNumber,
@@ -35,6 +35,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
+import Chart from "@/components/chart";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;
@@ -88,7 +89,7 @@ function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
 }
 
 export default function Page() {
-  const params = useParams();
+  const params = useParams<{ address: string }>();
   const address = params?.address;
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
@@ -226,12 +227,20 @@ export default function Page() {
     );
   }
 
+  // --- Helmet Setup --- Add this block
+  const apiBaseUrl = env.apiUrl || ""; // Use env helper
+  const ogImageUrl = address
+    ? `${apiBaseUrl}/api/og-image/${address}.png`
+    : `${apiBaseUrl}/default-og-image.png`; // Use API base URL and default
+  const pageUrl = window.location.href; // Or construct canonical URL
+  const defaultDescription = `View ${token?.name || "token"} details, price, and market cap on auto.fun.`;
+  const title = `${token?.name || "Token"} (${token?.ticker || "--"}) - auto.fun`;
+  // --- End Helmet Setup ---
+
   return (
     <Fragment>
       <Helmet>
-        <title>
-          {token?.name} ({token?.ticker}) - auto.fun
-        </title>
+        <title>{`${token?.name} (${token?.ticker})`} - auto.fun</title>
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}
@@ -444,7 +453,7 @@ export default function Page() {
           {/* Middle Column - 50% - Tabs for Chart and AI Create */}
           <div className="w-full lg:w-1/2 flex flex-col gap-3 order-3 lg:order-2">
             <div className="overflow-hidden relative">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1">
                 {/* Green stroke above tab section */}
                 <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
@@ -531,9 +540,7 @@ export default function Page() {
                 {/* Tab Content */}
                 {activeTab === "chart" && (
                   <>
-                    <div className="w-full h-[50vh] bg-autofun-background-primary">
-                      <TradingViewChart name={token.name} token={token.mint} />
-                    </div>
+                    <Chart token={token} />
 
                     <TransactionsAndHolders token={token} />
                   </>

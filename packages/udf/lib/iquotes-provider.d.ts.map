@@ -1,1 +1,0 @@
-{"version":3,"file":"iquotes-provider.d.ts","sourceRoot":"","sources":["../src/iquotes-provider.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,yDAAyD,CAAC;AAEpF,OAAO,EACN,aAAa,EACb,MAAM,WAAW,CAAC;AAEnB,MAAM,WAAW,iBAAkB,SAAQ,aAAa;IACvD,CAAC,EAAE,SAAS,EAAE,CAAC;CACf;AAED,MAAM,WAAW,eAAe;IAE/B,SAAS,CAAC,OAAO,EAAE,MAAM,EAAE,GAAG,OAAO,CAAC,SAAS,EAAE,CAAC,CAAC;CACnD"}

@@ -41,6 +41,7 @@ export async function uploadWithS3(
     filename?: string;
     metadata?: Record<string, string>; // For custom metadata
     basePath?: string; // Allow specifying base path like 'token-metadata' or 'token-images'
+    cacheControl?: string; // Optional Cache-Control header value
   } = {},
 ) {
 
@@ -69,7 +70,7 @@ export async function uploadWithS3(
     options.contentType || (options.isJson ? "application/json" : "image/jpeg");
 
   logger.log(
-    `Preparing upload: Key=${objectKey}, ContentType=${contentType}, Filename=${options.filename || "none"}`,
+    `Preparing upload: Key=${objectKey}, ContentType=${contentType}, Filename=${options.filename || "none"}, CacheControl=${options.cacheControl || 'default'}`,
   );
 
 
@@ -104,8 +105,8 @@ export async function uploadWithS3(
          Key: objectKey,
          Body: objectData,
          ContentType: contentType,
-         // Add Cache-Control or other metadata as needed
-         CacheControl: "public, max-age=31536000", // Example: 1 year cache
+         // Apply specific Cache-Control if provided, otherwise use default
+         CacheControl: options.cacheControl || "public, max-age=31536000", // Default: 1 year cache
          Metadata: { // Pass custom metadata here if needed
              publicAccess: "true", // Example custom metadata
              originalFilename: options.filename || "",
@@ -170,29 +171,27 @@ export async function uploadGeneratedImage(
       // Use the shared S3 client getter
       const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
 
-      const putCommand = new PutObjectCommand({
-          Bucket: bucketName,
-          Key: objectKey,
-          Body: objectData,
-          ContentType: contentType,
-          CacheControl: "public, max-age=31536000", // Example: 1 year cache
-          Metadata: { // Custom metadata
+      // Use the uploadWithS3 function for consistency, passing cache control
+      const publicUrl = await uploadWithS3(
+        data, // Pass the image data directly
+        {
+          contentType: contentType,
+          basePath: `generations/${tokenMint}`, // Custom base path
+          filename: `gen-${generationNumber}.jpg`, // Use the generation number in the filename part
+          metadata: { // Pass specific metadata for generated images
               publicAccess: "true",
               tokenMint: tokenMint,
               generationNumber: generationNumber.toString(),
           },
-      });
+          cacheControl: "public, max-age=31536000" // Keep 1 year cache for generated images unless overridden
+        }
+      );
 
-      logger.log(`Uploading generated image to S3: Bucket=${bucketName}, Key=${objectKey}`);
-      await s3Client.send(putCommand);
-      logger.log(`S3 Upload successful for generated image Key: ${objectKey}`);
-
-
-      // Construct the public URL using the appropriate base URL
-      const publicUrl = `${publicBaseUrl}/${objectKey}`;
-
-      // Log file in development mode
-      logUploadedFile(objectKey, publicUrl);
+      // Construct the predictable object key for logging purposes (uploadWithS3 handles actual key creation)
+      // Note: uploadWithS3 adds a UUID, so the *actual* S3 key will differ.
+      // We log the intended *predictable* key structure for reference.
+      const predictableObjectKey = `generations/${tokenMint}/gen-${generationNumber}.jpg`;
+      logUploadedFile(predictableObjectKey, publicUrl); // Log with the *returned* public URL
 
       logger.log(`Successfully uploaded generated image via S3 API, Public URL: ${publicUrl}`);
       return publicUrl;

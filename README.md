@@ -18,13 +18,11 @@ Press the fun button. Auto.fun is a platform featuring a Solana-based program fo
 This monorepo contains the following packages:
 
 *   `packages/autodoc`: Automatic repository documentation generation.
-*   `packages/charts`: Charting views for token data (potentially consolidated with `udf`).
 *   `packages/client`: The Vite + React frontend application.
 *   `packages/docs`: Project documentation.
 *   `packages/program`: Solana programs (Anchor framework) for the core Auto.fun logic and Raydium Vault interactions.
 *   `packages/server`: The Hono backend server handling API requests, authentication, and off-chain logic.
 *   `packages/types`: Shared TypeScript types, constants, and IDLs across the frontend, server, and program interactions.
-*   `packages/udf`: UDF-compatible data feed for charting libraries (potentially consolidated with `charts`).
 
 ## Technology Stack
 
@@ -161,7 +159,7 @@ Fill in the following variables in your root `.env` file:
 
 **Storage (MinIO/S3):**
 
-*   `S3_ENDPOINT`: URL for the S3-compatible storage endpoint (MinIO for local dev).
+*   `S3_STORAGE_ENDPOINT`: URL for the S3-compatible storage endpoint (MinIO for local dev).
     *   Local Default: `http://localhost:9000`
 *   `S3_ACCESS_KEY`: Access key for the S3 service.
     *   Local Default: `minio_user`

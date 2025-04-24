@@ -27,6 +27,7 @@ import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
 import { updateHoldersCache, processTokenUpdateEvent } from "../tokenSupplyHelpers";
 import { getS3Client } from "../s3Client"; // Import shared S3 client function
+import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relative to src
 
 // Basic logger implementation (Re-added)
 const logger = {
@@ -212,6 +213,99 @@ function buildTokensCountBaseQuery(
 
 // Define the router (Env removed from Bindings)
 const tokenRouter = new Hono<{ Bindings: {} }>();
+
+// --- OG Image Endpoint ---
+tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optionally
+    const mint = c.req.param("mint").replace(/\.png$/, ''); // Remove .png suffix
+    // Get query params
+    const queryParams = c.req.query();
+    const forceRefresh = queryParams.refresh === 'true';
+
+    logger.log(`[GET /og-image/:mint] Request for mint: ${mint}, Refresh: ${forceRefresh}`);
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+        return c.text("Invalid mint address", 400);
+    }
+
+    const redisCache = await getGlobalRedisCache();
+    const s3Key = `og-images/${mint}.png`;
+    const redisUrlKey = `og:image:url:${mint}`;
+    const cacheTTL = 14400; // 4 hours in seconds
+
+    try {
+        // 1. Check Redis for cached S3 URL (Skip if forceRefresh is true)
+        if (!forceRefresh && redisCache) {
+            const cachedUrl = await redisCache.get(redisUrlKey);
+            if (cachedUrl) {
+                logger.log(`[OG Image] Cache hit for ${mint}, redirecting to ${cachedUrl}`);
+                // Use 302 Found for temporary redirect
+                return c.redirect(cachedUrl, 302);
+            }
+            logger.log(`[OG Image] URL cache miss for ${mint}`);
+        } else if (forceRefresh) {
+            logger.log(`[OG Image] Refresh requested, skipping cache check for ${mint}`);
+        }
+
+        // 2. Cache Miss or Refresh Requested -> Generate Image
+        logger.log(`[OG Image] Generating image for ${mint}...`);
+        let imageBuffer: Buffer;
+        try {
+            imageBuffer = await generateOgImage(mint);
+        } catch (genError: any) {
+            logger.error(`[OG Image] Failed to generate image for ${mint}:`, genError);
+            // Redirect to a default OG image if generation fails
+            // Consider hosting a static default image
+            const defaultOgImage = `${process.env.API_URL || ''}/default-og-image.png`;
+            logger.warn(`[OG Image] Redirecting to default OG image: ${defaultOgImage}`);
+            // You might want to return a 404 or 500 instead, depending on desired behavior
+            return c.redirect(defaultOgImage, 302);
+            // Alternative: return c.text('Failed to generate image', 500);
+        }
+
+        // 3. Upload generated image to S3/R2
+        logger.log(`[OG Image] Uploading generated image to S3 key: ${s3Key}`);
+        const { publicBaseUrl } = await getS3Client(); // Get base URL for construction
+        let publicUrl = '';
+        try {
+            // Use the updated uploadWithS3 function with cache control
+            publicUrl = await uploadWithS3(
+                imageBuffer,
+                {
+                    filename: `${mint}.png`, // Filename part for uploader
+                    contentType: 'image/png',
+                    basePath: 'og-images',       // Specify the correct base path
+                    cacheControl: `public, max-age=${cacheTTL}` // 4-hour cache
+                }
+            );
+
+            logger.log(`[OG Image] Upload successful, public URL: ${publicUrl}`);
+
+        } catch (uploadError) {
+            logger.error(`[OG Image] Failed to upload image ${s3Key} to S3:`, uploadError);
+            // Handle upload error (e.g., return 500 or default image)
+             const defaultOgImage = `${process.env.API_URL || ''}/default-og-image.png`;
+            return c.redirect(defaultOgImage, 302);
+            // Alternative: return c.text('Failed to store generated image', 500);
+        }
+
+        // 4. Update Redis Cache with the *new* public URL
+        if (redisCache && publicUrl) {
+            await redisCache.set(redisUrlKey, publicUrl, cacheTTL);
+            logger.log(`[OG Image] Updated Redis URL cache for ${mint}`);
+        }
+
+        // 5. Redirect to the newly uploaded image
+        logger.log(`[OG Image] Redirecting to newly generated image: ${publicUrl}`);
+        return c.redirect(publicUrl, 302);
+
+    } catch (error) {
+        logger.error(`[OG Image] Unexpected error for mint ${mint}:`, error);
+        // General error fallback
+        const defaultOgImage = `${process.env.API_URL || ''}/default-og-image.png`;
+        return c.redirect(defaultOgImage, 302);
+        // Alternative: return c.text('Internal Server Error', 500);
+    }
+});
 
 // --- Endpoint to serve images from storage (S3 API) ---
 tokenRouter.get("/image/:filename", async (c) => {
@@ -431,7 +525,7 @@ export async function processSwapEvent(
     }
 
     // Emit to token-specific room
-    await wsClient.emit(`global`, "newSwap", enrichedSwap);
+    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
 
     // Only log in debug mode or for significant events
     // Check for process is not ideal in Cloudflare Workers, use env var instead
@@ -442,7 +536,7 @@ export async function processSwapEvent(
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
-      await wsClient.emit("global", "newSwap", enrichedSwap);
+      await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
 
       if (debugWs) {
         logger.log("Emitted swap event to global feed");

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp ./_worker.js ./dist/_worker.js",
     "ci": "bun install --force && bun install --force @rollup/rollup-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu @tailwindcss/oxide-linux-x64-musl @tailwindcss/oxide-linux-arm64-musl lightningcss-linux-x64-gnu lightningcss-linux-x64-musl lightningcss-linux-arm64-musl && bun run build",
     "lint": "prettier --cache --write \"src/**/*.{ts,tsx}\" && eslint ./src --fix",
     "preview": "vite preview",
@@ -14,8 +14,8 @@
     "knip": "knip"
   },
   "dependencies": {
-    "@autodotfun/charts": "workspace:*",
     "@autodotfun/types": "workspace:*",
+    "@codex-data/sdk": "^1.0.6",
     "@coral-xyz/anchor": "^0.31.0",
     "@noble/ed25519": "^2.2.3",
     "@noble/hashes": "^1.7.2",
@@ -37,6 +37,7 @@
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",
     "dayjs": "^1.11.13",
+    "lightweight-charts": "^5.0.6",
     "lodash": "^4.17.21",
     "lucide-react": "^0.483.0",
     "numeral": "^2.0.6",
@@ -45,6 +46,7 @@
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
     "react-helmet": "^6.1.0",
+    "react-helmet-async": "^2.0.5",
     "react-hook-form": "^7.54.2",
     "react-intersection-observer": "^9.16.0",
     "react-router": "^7.4.0",
