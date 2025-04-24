@@ -18,7 +18,7 @@ export default function Loader({
       ])}
     >
       <img
-        className="w-auto size-16 animate-wiggle animate-infinite animate-duration-200 animate-ease-linear"
+        className="w-auto size-16 animate-wiggle animate-infinite animate-duration-200 animate-ease-linear select-none"
         src="/dice.svg"
         alt="logo"
       />

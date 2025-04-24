@@ -60,7 +60,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
   if ((data || [])?.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2">
-        <img className="w-auto grayscale size-16" src="/dice.svg" alt="logo" />
+        <img className="w-auto grayscale size-16 select-none" src="/dice.svg" alt="logo" />
         <p className="text-sm font-dm-mono text-autofun-text-secondary">
           No holders were found.
         </p>
