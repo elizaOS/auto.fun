@@ -76,6 +76,7 @@
     "lru-cache": "^11.1.0",
     "lucide-react": "^0.483.0",
     "nanoid": "^5.1.5",
+    "ngrok": "^5.0.0-beta.2",
     "node-fetch": "^3.3.2",
     "openai": "^4.89.0",
     "pg": "^8.14.1",
