@@ -106,12 +106,12 @@ router.post("/codex-webhook", async (c) => {
   const throttleKey = `codex:throttle:${tokenMint}`;
   const recentlyProcessed = await rediscache.get(throttleKey);
   if (recentlyProcessed) {
-    logger.log(`Skipping ${tokenMint} – throttled (processed < 5s ago).`);
+    logger.log(`Skipping ${tokenMint} – throttled (processed < 2s ago).`);
     return c.json({ message: "Throttled, token recently processed" }, 200);
   }
 
   queueJob(swapEvent);
-  await rediscache.set(throttleKey, tokenMint, 5);
+  await rediscache.set(throttleKey, tokenMint, 2);
   return c.json({ message: "Accepted" });
 });
 

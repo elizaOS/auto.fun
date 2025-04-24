@@ -99,17 +99,17 @@ parentPort?.on("message", async (data: any) => {
       }
 
       const ext = await ExternalToken.create(tokenMint, redisCache);
-      await ext.updateLatestSwapData(20);
+      await ext.updateLatestSwapData(5);
       const latestCandle = await getLatestCandle(tokenMint, swap, token);
       await ext.updateMarketAndHolders();
 
       const wsClient = getWebSocketClient();
-      await wsClient.to(`global`).emit("newSwap", {
+      await wsClient.to(`token-${tokenMint}`).emit("newSwap", {
          ...swapRecord,
          mint: tokenMint,
          timestamp: swapRecord.timestamp.toISOString(),
       });
-      await wsClient.to(`global`).emit("newCandle", latestCandle);
+      await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
 
       process.exit(0); // Done successfully
    } catch (e) {
