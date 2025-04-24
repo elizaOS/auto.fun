@@ -353,7 +353,7 @@ export class ExternalToken {
       );
       for (const swap of sortedSwaps) {
         await this.wsClient
-          .to(`global`)
+          .to(`token-${this.mint}`)
           .emit("newSwap", {
             ...swap,
             tokenMint: this.mint,

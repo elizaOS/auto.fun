@@ -6,43 +6,76 @@ import { ExternalToken } from "../externalToken";
 import { getLatestCandle } from "../chart";
 import { getWebSocketClient } from "../websocket-client";
 import { logger } from "../util";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import crypto from "node:crypto";
 import { webSocketManager } from '../websocket-manager';
 
 const JOB_QUEUE_KEY = "webhook:jobs";
 const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 500;
+const MAX_JOBS_PER_SECOND = Number(process.env.MAX_JOBS_PER_SECOND) || 10;
+
+async function sleep(ms: number) {
+   return new Promise((r) => setTimeout(r, ms));
+}
+
 async function workerLoop() {
    const redisCache = await getGlobalRedisCache();
-   if (!await redisCache.isPoolReady()) {
+   if (!(await redisCache.isPoolReady())) {
       throw new Error("Redis pool is not ready");
    }
 
-   // Ensure WebSocket manager is initialized
+   // init WS once
    if (!webSocketManager.redisCache) {
       await webSocketManager.initialize(redisCache);
    }
    const wsClient = getWebSocketClient();
 
    while (true) {
+      let rawJob: string;
       try {
-         // Block until a job arrives
+         // 1) Fetch one job (blocking)
          const result = await redisCache.redisPool.useClient((client) =>
             client.blpop(JOB_QUEUE_KEY, 0)
          );
          if (!result) {
             logger.warn("No job retrieved from the queue—continuing loop");
+            await sleep(JOB_DELAY_MS);
             continue;
          }
-         const [, rawJob] = result;
+         [, rawJob] = result;
          const swap = JSON.parse(rawJob);
 
-         // Determine which side is SOL
+         // 2) global rate‐limit
+         const nowSec = Math.floor(Date.now() / 1000);
+         const rateKey = `webhook:rate:${nowSec}`;
+         const count = await redisCache.redisPool.useClient((c) => c.incr(rateKey));
+         if (count === 1) {
+            // expire in 1s so next second is fresh
+            await redisCache.redisPool.useClient((c) => c.expire(rateKey, 1));
+         }
+         if (count > MAX_JOBS_PER_SECOND) {
+            // too many this second → re-queue and back off
+            logger.warn(
+               `Rate limit hit (${count} > ${MAX_JOBS_PER_SECOND}/s). re-queuing job and sleeping.`
+            );
+            await redisCache.redisPool.useClient((c) => c.rpush(JOB_QUEUE_KEY, rawJob));
+            await sleep(JOB_DELAY_MS * 5);
+            continue;
+         }
+
+         // 3) per‐token de-duplication (1s window)
          const token0IsSol =
             swap.token0Address === "So11111111111111111111111111111111111111112";
          const tokenMint = token0IsSol ? swap.token1Address : swap.token0Address;
+         const dedupeKey = `codex:throttle:${tokenMint}`;
+         const seen = await redisCache.redisPool.useClient(client =>
+            client.set(dedupeKey, '1', 'EX', 1, 'NX')
+         );
+         if (seen === null) {
+            // we already saw one a moment ago
+            logger.log(`Skipping ${tokenMint} (dedupe window)`);
+            continue;
+         }
 
-         // Try to load token from cache or DB
+         // 4) look up token in cache or DB
          let token: any = null;
          const cacheKey = `codex-webhook:${tokenMint}`;
          const cached = await redisCache.get(cacheKey);
@@ -58,7 +91,8 @@ async function workerLoop() {
                .execute();
             if (rows[0]) {
                token = rows[0];
-               await redisCache.set(cacheKey, JSON.stringify(token), 60 * 60); // cache 1h
+               // cache 1h
+               await redisCache.set(cacheKey, JSON.stringify(token), 60 * 60);
             }
          }
          if (!token) {
@@ -66,37 +100,37 @@ async function workerLoop() {
             continue;
          }
 
-         // 1) send newCandle
+         // 5) process: new candle, holders, swaps
          try {
             logger.log(`Sending new candle for ${tokenMint}...`);
             const latestCandle = await getLatestCandle(tokenMint, swap, token);
-            await wsClient.to("global").emit("newCandle", latestCandle);
+            await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
          } catch (e) {
-            logger.error("Error sending candle to the user", e);
+            logger.error("Error sending candle:", e);
          }
 
-         // 2) update on‐chain market/holders
          try {
-            logger.log(`Updating market and holders for ${tokenMint}...`);
+            logger.log(`Updating market & holders for ${tokenMint}...`);
             const ext = await ExternalToken.create(tokenMint, redisCache);
             await ext.updateMarketAndHolders();
          } catch (e) {
-            logger.error("Error updating market and holders", e);
+            logger.error("Error updating market & holders:", e);
          }
 
-         // 3) update latest batch of swaps
          try {
             logger.log(`Updating latest swap data for ${tokenMint}...`);
             const ext = await ExternalToken.create(tokenMint, redisCache);
             await ext.updateLatestSwapData(10);
          } catch (e) {
-            logger.error("Error updating latest swap data", e);
+            logger.error("Error updating latest swap data:", e);
          }
-         await new Promise((resolve) => setTimeout(resolve, JOB_DELAY_MS));
+
+         // 6) small pause before next loop
+         await sleep(JOB_DELAY_MS);
       } catch (err) {
          logger.error("❌ Webhook worker error", err);
-         // continue;
-         await new Promise((resolve) => setTimeout(resolve, JOB_DELAY_MS));
+         // back off a bit on errors too
+         await sleep(JOB_DELAY_MS * 2);
       }
    }
 }
