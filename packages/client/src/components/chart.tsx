@@ -15,7 +15,7 @@ import {
   TokenPairStatisticsType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { QuoteToken } from "@codex-data/sdk/dist/resources/graphql";
-import { networkId, useCodex } from "@/utils";
+import { formatNumber, networkId, useCodex } from "@/utils";
 import { IToken } from "@/types";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
@@ -81,7 +81,18 @@ export default function Chart({ token, isImported }: ChartProps) {
           token: mint,
         });
 
-        console.log({ data });
+        if (!data?.table?.length) {
+          return [
+            {
+              time: Math.floor(Date.now() / 1000) * 1000,
+              open: 0,
+              high: 0,
+              low: 0,
+              close: 0,
+              volume: 0,
+            },
+          ];
+        }
         return data?.table;
       }
     },
@@ -118,6 +129,14 @@ export default function Chart({ token, isImported }: ChartProps) {
         vertLine: {
           color: "#262626",
         },
+      },
+      localization: {
+        // priceFormatter: (price: number) => formatNumber(price, true, false),
+        priceFormatter: (price: number) =>
+          new Intl.NumberFormat("en-US", {
+            notation: "standard",
+            maximumFractionDigits: 7,
+          }).format(price),
       },
     };
 
