@@ -325,6 +325,7 @@ export class TokenMigrator {
       tx,
       this.connection,
       this.wallet,
+      token.mint,
     );
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
 
