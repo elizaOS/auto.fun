@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { useProfile, useUserProfile, updateUserProfile, UserProfileData } from "../utils/profileUtils";
+import {
+  useProfile,
+  useUserProfile,
+  updateUserProfile,
+  UserProfileData,
+} from "../utils/profileUtils";
 import { TokenTable } from "../components/token-table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
@@ -50,7 +55,11 @@ const ProfileHeader = ({ user, isCurrentUser, onEdit }: ProfileHeaderProps) => {
           </Link>
         </div>
         {isCurrentUser && (
-          <Button onClick={onEdit} variant="outline" className="flex items-center gap-2">
+          <Button
+            onClick={onEdit}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
             <Edit2 className="w-4 h-4" />
             Edit Profile
           </Button>
@@ -68,7 +77,9 @@ interface EditProfileModalProps {
 
 const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
   const [displayName, setDisplayName] = useState(user.displayName);
-  const [profilePictureUrl, setProfilePictureUrl] = useState(user.profilePictureUrl || "");
+  const [profilePictureUrl, setProfilePictureUrl] = useState(
+    user.profilePictureUrl || "",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -79,8 +90,8 @@ const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
 
     try {
       await onSave(
-        displayName, 
-        profilePictureUrl.trim() === "" ? null : profilePictureUrl
+        displayName,
+        profilePictureUrl.trim() === "" ? null : profilePictureUrl,
       );
       onClose();
     } catch (err) {
@@ -95,14 +106,20 @@ const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
       <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-md max-w-md w-full">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-white text-xl font-medium">Edit Profile</h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white">
+          <button
+            onClick={onClose}
+            className="text-neutral-400 hover:text-white"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="displayName" className="block text-neutral-300 mb-2">
+            <label
+              htmlFor="displayName"
+              className="block text-neutral-300 mb-2"
+            >
               Display Name
             </label>
             <input
@@ -117,7 +134,10 @@ const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="profilePictureUrl" className="block text-neutral-300 mb-2">
+            <label
+              htmlFor="profilePictureUrl"
+              className="block text-neutral-300 mb-2"
+            >
               Profile Picture URL
             </label>
             <input
@@ -128,7 +148,9 @@ const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
               placeholder="https://example.com/image.jpg"
               className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 text-white rounded-md focus:outline-none focus:ring-1 focus:ring-autofun-background-action-highlight"
             />
-            <p className="text-xs text-neutral-500 mt-1">Leave blank to remove profile picture</p>
+            <p className="text-xs text-neutral-500 mt-1">
+              Leave blank to remove profile picture
+            </p>
           </div>
 
           {error && (
@@ -156,24 +178,24 @@ type Tab = "held" | "created";
 export default function Profile() {
   const [selectedTab, setSelectedTab] = useState<Tab>("held");
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  
+
   // Get address from URL or use connected wallet
   const { address } = useParams<{ address?: string }>();
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58();
-  
+
   // Determine which address to show profile for
   const targetAddress = address || walletAddress;
   const isCurrentUser = targetAddress === walletAddress;
-  
+
   // For current user, use the full profile with tokens held
-  const { data: currentUserProfile, isLoading: isCurrentUserLoading } = useProfile();
-  
+  const { data: currentUserProfile, isLoading: isCurrentUserLoading } =
+    useProfile();
+
   // For other users, just fetch their profile data
-  const { profileData: otherUserProfile, isLoading: isOtherUserLoading } = useUserProfile(
-    !isCurrentUser ? targetAddress : null
-  );
-  
+  const { profileData: otherUserProfile, isLoading: isOtherUserLoading } =
+    useUserProfile(!isCurrentUser ? targetAddress : null);
+
   // Combine the data based on which user we're viewing
   const isLoading = isCurrentUser ? isCurrentUserLoading : isOtherUserLoading;
   const profileData = isCurrentUser
@@ -187,13 +209,13 @@ export default function Profile() {
         tokensCreated: otherUserProfile?.tokensCreated || [],
         tokensHeld: [], // Don't show tokens held for other users
       };
-  
+
   const tableTokens = useMemo(() => {
     // If viewing another user's profile, only show created tokens
     if (!isCurrentUser) {
       return profileData.tokensCreated;
     }
-    
+
     // For current user, show the selected tab
     switch (selectedTab) {
       case "created":
@@ -201,10 +223,18 @@ export default function Profile() {
       case "held":
         return profileData.tokensHeld;
     }
-  }, [selectedTab, profileData.tokensCreated, profileData.tokensHeld, isCurrentUser]);
+  }, [
+    selectedTab,
+    profileData.tokensCreated,
+    profileData.tokensHeld,
+    isCurrentUser,
+  ]);
 
   // Handle profile update
-  const handleSaveProfile = async (displayName: string, profilePictureUrl: string | null) => {
+  const handleSaveProfile = async (
+    displayName: string,
+    profilePictureUrl: string | null,
+  ) => {
     try {
       await updateUserProfile(displayName, profilePictureUrl);
       // Refresh the profile data
@@ -231,14 +261,14 @@ export default function Profile() {
       <div className="text-white text-[32px] font-medium leading-9 mb-6 font-satoshi">
         {isCurrentUser ? "Your Profile" : "User Profile"}
       </div>
-      
+
       {/* Profile Header with user info */}
-      <ProfileHeader 
-        user={profileData.user} 
+      <ProfileHeader
+        user={profileData.user}
         isCurrentUser={isCurrentUser}
         onEdit={() => setIsEditProfileOpen(true)}
       />
-      
+
       {/* Edit Profile Modal */}
       {isEditProfileOpen && profileData.user && (
         <EditProfileModal
@@ -247,7 +277,7 @@ export default function Profile() {
           onSave={handleSaveProfile}
         />
       )}
-      
+
       {/* Tabs - only show tokens held tab for current user */}
       <div className="flex gap-2.5 mb-4">
         {isCurrentUser && (

@@ -12,7 +12,7 @@ import { calculateAmountOutSell } from "./swapUtils";
 export interface UserProfileData {
   id: string;
   address: string;
-  displayName: string; 
+  displayName: string;
   profilePictureUrl: string | null;
   points: number;
   rewardPoints: number;
@@ -382,7 +382,9 @@ const useCreatedTokens = () => {
 // --- New Hook: useUserProfile ---
 // Fetches public user data (info, created tokens) for a given address
 export const useUserProfile = (address: string | undefined | null) => {
-  const [profileData, setProfileData] = useState<ProfileApiResponse | null>(null);
+  const [profileData, setProfileData] = useState<ProfileApiResponse | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -396,16 +398,20 @@ export const useUserProfile = (address: string | undefined | null) => {
 
     try {
       const response = await fetch(`${env.apiUrl}/api/users/${address}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch user profile: ${response.statusText}`);
       }
-      
-      const data = await response.json() as ProfileApiResponse;
+
+      const data = (await response.json()) as ProfileApiResponse;
       setProfileData(data);
     } catch (err) {
       console.error("Error fetching user profile:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error fetching user profile"));
+      setError(
+        err instanceof Error
+          ? err
+          : new Error("Unknown error fetching user profile"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -419,7 +425,7 @@ export const useUserProfile = (address: string | undefined | null) => {
     profileData,
     isLoading,
     error,
-    refetch: fetchUserProfile
+    refetch: fetchUserProfile,
   };
 };
 // --- End useUserProfile Hook ---
@@ -436,15 +442,15 @@ export const useProfile = () => {
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const walletAddress = publicKey?.toBase58();
-  
+
   // Use our new hook to fetch user profile data
-  const { 
-    profileData, 
-    isLoading: isLoadingProfile, 
+  const {
+    profileData,
+    isLoading: isLoadingProfile,
     error: profileError,
-    refetch: refetchProfile
+    refetch: refetchProfile,
   } = useUserProfile(walletAddress);
-  
+
   const getOwnedTokens = useOwnedTokens();
 
   const fetchProfile = useCallback(async () => {
@@ -462,7 +468,7 @@ export const useProfile = () => {
     // Get tokensCreated from the profileData
     const tokensCreated = profileData?.tokensCreated || [];
     const user = profileData?.user || null;
-    
+
     // always update the state even if one fails
     setData({ user, tokensHeld, tokensCreated });
     setIsLoading(false);
@@ -493,17 +499,17 @@ export const useProfile = () => {
   // Set error if either operation fails
   const combinedIsError = isError || !!profileError;
 
-  return { 
-    data, 
-    isLoading: combinedIsLoading, 
-    isError: combinedIsError 
+  return {
+    data,
+    isLoading: combinedIsLoading,
+    isError: combinedIsError,
   };
 };
 
 // Function to update user profile
 export const updateUserProfile = async (
-  displayName?: string, 
-  profilePictureUrl?: string | null
+  displayName?: string,
+  profilePictureUrl?: string | null,
 ) => {
   const authToken = localStorage.getItem("authToken");
   if (!authToken) {
@@ -512,16 +518,16 @@ export const updateUserProfile = async (
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${JSON.parse(authToken)}`
+    Authorization: `Bearer ${JSON.parse(authToken)}`,
   };
 
   const response = await fetch(`${env.apiUrl}/api/users/profile`, {
     method: "PUT",
     headers,
     credentials: "include",
-    body: JSON.stringify({ 
-      displayName, 
-      profilePictureUrl 
+    body: JSON.stringify({
+      displayName,
+      profilePictureUrl,
     }),
   });
 
