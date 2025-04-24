@@ -41,6 +41,11 @@ export function getSharedRedisPool(): RedisPool {
 // Export the type for use in other modules
 export type RedisCache = RedisCacheService;
 
+// Default local Redis configuration
+const DEFAULT_REDIS_HOST = "localhost";
+const DEFAULT_REDIS_PORT = 6379;
+const DEFAULT_REDIS_PASSWORD = "MDikUKnhRHlURlnORexvVztDTrNCUBze";
+
 export class RedisCacheService {
   constructor(public redisPool: RedisPool) { }
 
@@ -119,26 +124,26 @@ export class RedisCacheService {
       logger.warn(`LPUSH called with no values for key: ${this.getKey(key)}`);
       return 0;
     }
-    logger.info(`LPUSH ${values.length} values to ${this.getKey(key)}`);
+    // logger.info(`LPUSH ${values.length} values to ${this.getKey(key)}`);
     return this.redisPool.useClient((client) =>
       client.lpush(this.getKey(key), ...values) // Spread the values array
     );
   }
 
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
+    // logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
     return this.redisPool.useClient((client) =>
       client.lrange(this.getKey(key), start, stop)
     );
   }
 
   async llen(key: string): Promise<number> {
-    logger.info(`LLEN for ${this.getKey(key)}`);
+    // logger.info(`LLEN for ${this.getKey(key)}`);
     return this.redisPool.useClient((client) => client.llen(this.getKey(key)));
   }
 
   async ltrim(key: string, start: number, stop: number): Promise<"OK" | null> {
-    logger.info(`LTRIM on ${this.getKey(key)} ${start} ${stop}`);
+    // logger.info(`LTRIM on ${this.getKey(key)} ${start} ${stop}`);
     return this.redisPool.useClient((client) =>
       client.ltrim(this.getKey(key), start, stop)
     );
@@ -149,9 +154,9 @@ export class RedisCacheService {
     value: string,
     maxLength: number
   ): Promise<Array<unknown> | null> {
-    logger.info(
-      `LPUSH+LTRIM pipeline on ${this.getKey(key)} limit ${maxLength}`
-    );
+    // logger.info(
+    //   `LPUSH+LTRIM pipeline on ${this.getKey(key)} limit ${maxLength}`
+    // );
     return this.redisPool.useClient((client) =>
       client
         .multi()
@@ -165,7 +170,7 @@ export class RedisCacheService {
   // --- START NEW SET METHODS ---
   async sadd(key: string, member: string | string[]): Promise<number> {
     const members = Array.isArray(member) ? member : [member];
-    logger.info(`SADD to ${this.getKey(key)}`);
+    // logger.info(`SADD to ${this.getKey(key)}`);
     // Note: ioredis sadd returns number of elements added
     return this.redisPool.useClient((client: Redis) =>
       client.sadd(this.getKey(key), ...members)
@@ -174,7 +179,7 @@ export class RedisCacheService {
 
   async srem(key: string, member: string | string[]): Promise<number> {
     const members = Array.isArray(member) ? member : [member];
-    logger.info(`SREM from ${this.getKey(key)}`);
+    // logger.info(`SREM from ${this.getKey(key)}`);
     // Note: ioredis srem returns number of elements removed
     return this.redisPool.useClient((client: Redis) =>
       client.srem(this.getKey(key), ...members)
@@ -182,7 +187,7 @@ export class RedisCacheService {
   }
 
   async smembers(key: string): Promise<string[]> {
-    logger.info(`SMEMBERS for ${this.getKey(key)}`);
+    // logger.info(`SMEMBERS for ${this.getKey(key)}`);
     return this.redisPool.useClient((client: Redis) =>
       client.smembers(this.getKey(key))
     );
@@ -294,17 +299,20 @@ export class RedisPool {
   private pool: Pool<Redis>;
   private publisherClient: Redis | null = null;
   private subscriberClient: Redis | null = null;
-  private options: RedisPoolOptions;
+  private options: Required<RedisPoolOptions>; // Make options required internally
 
   constructor(options: RedisPoolOptions = {}) {
+    // Use environment variables or fall back to defaults
     this.options = {
-      host: options.host || "localhost",
-      port: options.port || 6379,
-      password: options.password,
+      host: options.host || process.env.REDIS_HOST || DEFAULT_REDIS_HOST,
+      port: options.port || Number(process.env.REDIS_PORT) || DEFAULT_REDIS_PORT,
+      password: options.password || process.env.REDIS_PASSWORD || DEFAULT_REDIS_PASSWORD,
       max: options.max || 10,
       min: options.min || 2,
       idleTimeoutMillis: options.idleTimeoutMillis || 30000,
     };
+
+    logger.info(`[RedisPool] Initializing with host: ${this.options.host === DEFAULT_REDIS_HOST ? 'DEFAULT LOCAL HOST' : this.options.host}:${this.options.port}`);
 
     this.pool = createPool<Redis>(
       {
@@ -312,7 +320,7 @@ export class RedisPool {
           const client = new Redis({
             host: this.options.host,
             port: this.options.port,
-            password: this.options.password,
+            password: this.options.password || undefined, // Pass undefined if no password
             retryStrategy: (times) => {
               if (times > 10) return null;
               return Math.min(times * 100, 3000);
@@ -381,7 +389,7 @@ export class RedisPool {
       this.publisherClient = new Redis({
         host: this.options.host,
         port: this.options.port,
-        password: this.options.password,
+        password: this.options.password || undefined,
       });
 
       this.publisherClient.on("error", (err) =>
@@ -397,7 +405,7 @@ export class RedisPool {
       this.subscriberClient = new Redis({
         host: this.options.host,
         port: this.options.port,
-        password: this.options.password,
+        password: this.options.password || undefined,
       });
 
       this.subscriberClient.on("error", (err) =>

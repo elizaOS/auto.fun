@@ -67,6 +67,7 @@ const unparsedEnv = {
   apiUrl: isDevnet
     ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL
     : import.meta.env.VITE_API_URL,
+  platformFeeWallet: import.meta.env.VITE_PLATFORM_FEE_WALLET,
   programId: isDevnet
     ? import.meta.env.VITE_DEV_PROGRAM_ID ||
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
@@ -90,6 +91,7 @@ const envSchema = z.object({
   tokenSupply: z.string().min(1),
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
+  platformFeeWallet: z.string().min(1),
   programId: z.string().min(1),
   appEnv: z.enum(["development", "production"]),
   s3PublicUrl: z.string().min(1),
