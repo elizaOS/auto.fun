@@ -116,7 +116,9 @@ router.post("/codex-webhook", async (c) => {
     return c.json({ message: "Duplicate, ignored" }, 200);
   }
   logger.log(`Enqueuing webhook for ${tokenMint}…`);
-  await queueJob(swapEvent);
+  queueJob(swapEvent).catch(err => {
+    logger.error(`Failed to enqueue swapEvent ${txId}:`, err);
+  });
 
   return c.json({ message: "Accepted" }, 200);
 });
