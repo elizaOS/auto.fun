@@ -9,12 +9,15 @@ import {
 } from "lightweight-charts";
 import { getSocket } from "@/utils/socket";
 import { getChartTable } from "@/utils/api";
+import { Codex } from "@codex-data/sdk";
+import { SymbolType } from "@codex-data/sdk/dist/sdk/generated/graphql";
 
 interface ChartProps {
   mint: string;
+  isImported: boolean;
 }
 
-export default function Chart({ mint }: ChartProps) {
+export default function Chart({ mint, isImported }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<any>(null);
   const chartRef = useRef<any>(null);
@@ -23,29 +26,59 @@ export default function Chart({ mint }: ChartProps) {
     to: number;
   } | null>(null);
 
-  console.log(visibleTimeRange);
-
   // Fetch initial chart data using useQuery
   const { data: chartData, isLoading } = useQuery({
-    queryKey: ["chart", mint],
+    queryKey: ["chart", mint, isImported],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
       const from = to - 21600; // 6 hours
 
-      return await getChartTable({
-        pairIndex: 1,
-        from,
-        to,
-        range: 1,
-        token: mint,
-      });
+      if (isImported) {
+        const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
+        const { getBars } = await codex.queries.getBars({
+          currencyCode: "USD",
+          from,
+          to,
+          symbol: `${mint}:1399811149`,
+          resolution: "1",
+          symbolType: SymbolType.Token,
+        });
+
+        if (!getBars) return [];
+
+        const candleCount = getBars.o.length;
+
+        const bars = [];
+        for (let i = 0; i < candleCount; i++) {
+          bars.push({
+            open: getBars.o[i],
+            high: getBars.h[i],
+            low: getBars.l[i],
+            close: getBars.c[i],
+            volume: parseFloat(getBars?.volume?.[i] || "0"),
+            time: getBars.t[i] * 1000,
+          });
+        }
+
+        return bars;
+      } else {
+        const data = await getChartTable({
+          pairIndex: 1,
+          from,
+          to,
+          range: 1,
+          token: mint,
+        });
+
+        return data?.table;
+      }
     },
     staleTime: 60 * 1000,
+    refetchInterval: 10_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
 
-  console.log({ chartData });
   useEffect(() => {
     const chartOptions: DeepPartial<LightweightChartOptions> = {
       layout: {
@@ -76,7 +109,9 @@ export default function Chart({ mint }: ChartProps) {
     };
 
     const chartElement = chartContainerRef.current;
+
     if (!chartElement) return;
+
     const socket = getSocket();
     const chart = createChart(chartElement, chartOptions);
     chartRef.current = chart;
@@ -132,14 +167,9 @@ export default function Chart({ mint }: ChartProps) {
 
   // Update chart data when it's available from useQuery
   useEffect(() => {
-    if (
-      chartData &&
-      chartData.table &&
-      chartData.table.length > 0 &&
-      candlestickSeriesRef.current
-    ) {
+    if (chartData && chartData.length > 0 && candlestickSeriesRef.current) {
       // Set the initial data
-      candlestickSeriesRef.current.setData(chartData?.table || []);
+      candlestickSeriesRef.current.setData(chartData || []);
     }
   }, [chartData]);
 

@@ -167,16 +167,12 @@
         "typescript": "5.8.2",
       },
     },
-    "packages/charts": {
-      "name": "@autodotfun/charts",
-      "version": "0.0.1",
-    },
     "packages/client": {
       "name": "@autodotfun/client",
       "version": "0.0.1",
       "dependencies": {
-        "@autodotfun/charts": "workspace:*",
         "@autodotfun/types": "workspace:*",
+        "@codex-data/sdk": "^1.0.6",
         "@coral-xyz/anchor": "^0.31.0",
         "@noble/ed25519": "^2.2.3",
         "@noble/hashes": "^1.7.2",
@@ -482,8 +478,6 @@
     "@antfu/utils": ["@antfu/utils@8.1.1", "", {}, "sha512-Mex9nXf9vR6AhcXmMrlz/HVgYYZpVGJ6YlPgwl7UnaFpnshXs6EK/oa5Gpf3CzENMjkvEx2tQtntGnb7UtSTOQ=="],
 
     "@autodotfun/autodoc": ["@autodotfun/autodoc@workspace:packages/autodoc"],
-
-    "@autodotfun/charts": ["@autodotfun/charts@workspace:packages/charts"],
 
     "@autodotfun/client": ["@autodotfun/client@workspace:packages/client"],
 

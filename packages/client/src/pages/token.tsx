@@ -503,7 +503,10 @@ export default function Page() {
                 {activeTab === "chart" && (
                   <>
                     <div className="w-full h-[50vh] bg-autofun-background-primary">
-                      <Chart mint={token.mint} />
+                      <Chart
+                        mint={token.mint}
+                        isImported={token.imported ? true : false}
+                      />
                     </div>
 
                     <TransactionsAndHolders token={token} />
