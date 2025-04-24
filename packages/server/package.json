@@ -45,7 +45,6 @@
     "p-queue": "^8.1.0",
     "pg": "^8.14.1",
     "random-animal-name": "^0.1.1",
-    "random-animal-name-generator": "^0.1.1",
     "sharp": "^0.34.1",
     "tweetnacl": "^1.0.3",
     "uuid": "^11.1.0",
