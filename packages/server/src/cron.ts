@@ -414,7 +414,7 @@ async function handleSwap(
       const ext = await ExternalToken.create(mintAddress, redisCache);
       await ext.insertProcessedSwaps([swapRecord]);
       console.log(`sending swap to the user ${mintAddress}`);
-      await wsClient.emit(`global`, "newSwap", {
+      await wsClient.emit(`token-${mintAddress}`, "newSwap", {
         ...swapRecord,
         tokenMint: mintAddress,
         mint: mintAddress,

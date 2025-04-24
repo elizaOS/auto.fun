@@ -12,6 +12,20 @@ import { Wallet } from "../tokenSupplyHelpers/customWallet";
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
 export async function resumeMigrationsOnStart(
 ): Promise<void> {
+
+   const redisCache = await getGlobalRedisCache();
+   const RESUME_LOCK_KEY = "migration:resume:lock";
+
+   const gotLock = await redisCache.set(
+      RESUME_LOCK_KEY,
+      "locked",
+      20 * 60   // 20 min lock
+   );
+   if (!gotLock) {
+      console.log("[Resume] Another instance is already doing the resume. Skipping.");
+      return;
+   }
+
    const RPC_URL =
       process.env.NETWORK === "devnet"
          ? process.env.DEVNET_SOLANA_RPC_URL
@@ -40,18 +54,25 @@ export async function resumeMigrationsOnStart(
       provider,
    );
    const autofunProgram = new Program<Autofun>(idl as any, provider);
-   const redisCache = await getGlobalRedisCache();
 
-   const tokenMigrator = new TokenMigrator(
-      connection,
-      new Wallet(wallet),
-      program,
-      autofunProgram,
-      provider,
-      redisCache
-   );
+   try {
+      const tokenMigrator = new TokenMigrator(
+         connection,
+         new Wallet(wallet),
+         program,
+         autofunProgram,
+         provider,
+         redisCache
+      );
 
-   console.log("[Resume] Checking for in-flight migrations on startup…");
-   await tokenMigrator.resumeMigrationsOnStart();
-   console.log("[Resume] Done.");
+      console.log("[Resume] Checking for in-flight migrations on startup…");
+      await tokenMigrator.resumeMigrationsOnStart();
+      console.log("[Resume] Done.");
+   } finally {
+
+      // wait for 5 minutes 
+      await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
+      await redisCache.del(RESUME_LOCK_KEY);
+      console.log("[Resume] Released resume lock.");
+   }
 }
