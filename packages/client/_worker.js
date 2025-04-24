@@ -11,13 +11,15 @@ class MetaTagHandler {
     let tagsHtml = '';
     for (const [property, content] of Object.entries(this.tags)) {
       const attrName = property.startsWith('og:') ? 'property' : (property.startsWith('twitter:') ? 'name' : 'property');
-      const escapedContent = content.replace(/"/g, '&quot;');
+      // Ensure content is a string before replacing quotes
+      const safeContent = String(content ?? '');
+      const escapedContent = safeContent.replace(/"/g, '&quot;');
       tagsHtml += `<meta ${attrName}="${property}" content="${escapedContent}">\n`;
     }
-    // Add standard width/height if an image is set
-    if (this.tags['og:image']) {
-      tagsHtml += '<meta property="og:image:width" content="1200">\n';
-      tagsHtml += '<meta property="og:image:height" content="630">\n';
+    // Conditionally add width/height if it's the *static* OG image
+    if (this.tags['og:image'] && this.tags['og:image'].endsWith('/og.png')) {
+         tagsHtml += '<meta property="og:image:width" content="1200">\n';
+         tagsHtml += '<meta property="og:image:height" content="630">\n';
     }
     element.prepend(tagsHtml, { html: true });
   }
@@ -25,97 +27,91 @@ class MetaTagHandler {
 
 
 export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    console.log(`[Worker] Request received for: ${url.pathname}`); // Log incoming path
+    async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        console.log(`[Worker v3] Request: ${url.pathname}`);
 
-    try {
-      // --- Routing Logic ---
-
-      // 1. API requests
-      if (url.pathname.startsWith('/api/')) {
-        console.log("[Worker] Path starts with /api/, letting it pass through...");
-        // Assuming API handled elsewhere or by origin fetch
-        return env.ASSETS.fetch(request); // Or just fetch(request) if proxied
-      }
-
-      // 2. Static Assets
-      const assetExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.json', '.webmanifest', '.br', '.txt', '.map', '.woff', '.woff2'];
-       if (assetExtensions.some(ext => url.pathname.endsWith(ext)) || url.pathname.includes('.')) { // Added broader check for files
-           console.log(`[Worker] Path looks like an asset (${url.pathname}), serving static.`);
-           return env.ASSETS.fetch(request);
-       }
-
-      // --- HTML Request Handling (SPA Fallback / OG Tags) ---
-      console.log(`[Worker] Path is not API or known asset, assuming HTML request for: ${url.pathname}`);
-
-      // --- TEMPORARY DEBUGGING ---
-      // Instead of fetching index.html and using HTMLRewriter, return simple HTML
-      console.log(`[Worker] Bypassing index.html fetch for path: ${url.pathname}. Returning simple HTML.`);
-      return new Response('<html><head><title>Test Page</title></head><body><h1>Worker Responding (Debug)</h1></body></html>', {
-        headers: { 'Content-Type': 'text/html' },
-      });
-      // --- END TEMPORARY DEBUGGING ---
-
-      /* --- ORIGINAL LOGIC (Commented out for debugging) ---
-      const spaRequest = new Request(new URL('/index.html', url.origin), request);
-      let response = await env.ASSETS.fetch(spaRequest);
-
-      // Ensure we got an HTML response
-      if (response.headers.get('Content-Type')?.startsWith('text/html')) {
-        console.log(`[Worker] Fetched index.html, proceeding with HTMLRewriter for ${url.pathname}`);
-        const tokenPathRegex = /^\\/token\\/([a-zA-Z0-9]{32,44})$/;
-        const match = url.pathname.match(tokenPathRegex);
-
-        let ogTags = {};
-        const defaultTitle = 'auto.fun';
-        const defaultDescription = 'press the fun button';
-        const siteBaseUrl = url.origin;
-
-        if (match && match[1]) {
-          // --- Token Route ---
-          const mint = match[1];
-          console.log(`[Worker] Matched token route for mint: ${mint}`);
-          const dynamicImageUrl = `${siteBaseUrl}/api/og-image/${mint}.png`;
-          ogTags['og:title'] = `Token ${mint.substring(0, 6)}... - ${defaultTitle}`;
-          ogTags['og:description'] = `View details for token ${mint} on ${defaultTitle}`;
-          ogTags['og:url'] = url.toString();
-          ogTags['og:image'] = dynamicImageUrl;
-          ogTags['og:image:type'] = 'image/png';
-          ogTags['twitter:card'] = 'summary_large_image';
-          ogTags['twitter:image'] = dynamicImageUrl;
-          ogTags['twitter:title'] = ogTags['og:title'];
-          ogTags['twitter:description'] = ogTags['og:description'];
-        } else {
-          // --- Default Route ---
-          console.log(`[Worker] Using default OG tags for path: ${url.pathname}`);
-          ogTags['og:title'] = defaultTitle;
-          ogTags['og:description'] = defaultDescription;
-          ogTags['og:url'] = url.toString();
-          ogTags['og:image'] = `${siteBaseUrl}/og.png`; // Make sure og.png exists in your build output
-          ogTags['og:image:type'] = 'image/png';
-          ogTags['twitter:card'] = 'summary_large_image';
-          ogTags['twitter:title'] = defaultTitle;
-          ogTags['twitter:description'] = defaultDescription;
-          ogTags['twitter:image'] = `${siteBaseUrl}/og.png`;
+        // Let API requests pass through to be handled by the backend/functions
+        if (url.pathname.startsWith('/api/')) {
+            console.log("[Worker v3] API request, passing through.");
+            // Allow Pages to handle this - it might route to a Function, serve a static file, or 404.
+            return env.ASSETS.fetch(request);
         }
 
-        // Rewrite the HTML response
-        console.log('[Worker] Applying HTMLRewriter...');
-        // HTMLRewriter is global in Cloudflare Workers
-        return new HTMLRewriter()
-          .on('head', new MetaTagHandler(ogTags))
-          .transform(response);
-      } else {
-        console.log(`[Worker] Fetched asset for ${url.pathname} was not HTML (${response.headers.get('Content-Type')}), returning directly.`);
-        return response; // Return non-HTML response as-is
-      }
-      --- END ORIGINAL LOGIC --- */
+        // Fetch the asset AS IS from the Pages platform first.
+        // This handles static assets AND the index.html for SPA routes correctly.
+        console.log(`[Worker v3] Fetching asset/page via env.ASSETS.fetch for: ${url.pathname}`);
+        let response = await env.ASSETS.fetch(request);
 
-    } catch (e) {
-      console.error(`[Worker] Error during fetch for ${url.pathname}:`, e);
-      // Optionally return a custom error page or simple error response
-      return new Response('An error occurred processing the request.', { status: 500 });
+        // Clone the response so we can read headers and still use the body
+        response = new Response(response.body, response);
+
+        // Check if it's an HTML response - only modify HTML
+        const contentType = response.headers.get('Content-Type');
+        if (contentType && contentType.toLowerCase().includes('text/html')) {
+            console.log(`[Worker v3] HTML detected for ${url.pathname}. Rewriting OG tags.`);
+
+            const tokenPathRegex = /^\/token\/([a-zA-Z0-9]{32,44})$/;
+            const match = url.pathname.match(tokenPathRegex);
+
+            let ogTags = {};
+            const defaultTitle = 'auto.fun';
+            const defaultDescription = 'press the fun button';
+            // Use url.origin which correctly reflects the current domain (pages.dev or custom)
+            const siteBaseUrl = url.origin;
+
+            if (match && match[1]) {
+                // --- Dynamic Token Route ---
+                const mint = match[1];
+                console.log(`[Worker v3] Matched token route: ${mint}`);
+                // Point og:image to the API endpoint that generates the image
+                const dynamicImageUrl = `${siteBaseUrl}/api/og-image/${mint}.png`;
+                ogTags['og:title'] = `Token ${mint.substring(0, 4)}...${mint.substring(mint.length - 4)} - ${defaultTitle}`;
+                ogTags['og:description'] = `View ${mint.substring(0,4)}...${mint.substring(mint.length - 4)} on ${defaultTitle}.`; // More concise
+                ogTags['og:url'] = url.toString(); // Current full URL
+                ogTags['og:image'] = dynamicImageUrl;
+                ogTags['og:image:type'] = 'image/png'; // The API serves PNG
+                // Width/Height are implicitly set by the generated image via the API
+                 ogTags['og:image:width'] = '1200'; // Specify standard dimensions
+                 ogTags['og:image:height'] = '630';
+                ogTags['twitter:card'] = 'summary_large_image';
+                ogTags['twitter:image'] = dynamicImageUrl;
+                ogTags['twitter:title'] = ogTags['og:title'];
+                ogTags['twitter:description'] = ogTags['og:description'];
+
+            } else {
+                // --- Default Route (e.g., /) ---
+                console.log(`[Worker v3] Default OG tags for path: ${url.pathname}`);
+                ogTags['og:title'] = defaultTitle;
+                ogTags['og:description'] = defaultDescription;
+                ogTags['og:url'] = url.toString(); // Current full URL
+                ogTags['og:image'] = `${siteBaseUrl}/og.png`; // Static default image
+                ogTags['og:image:type'] = 'image/png';
+                // Set width/height for the static default image
+                ogTags['og:image:width'] = '1200';
+                ogTags['og:image:height'] = '630';
+                ogTags['twitter:card'] = 'summary_large_image';
+                ogTags['twitter:title'] = defaultTitle;
+                ogTags['twitter:description'] = defaultDescription;
+                ogTags['twitter:image'] = `${siteBaseUrl}/og.png`;
+            }
+
+            // Apply the HTMLRewriter to inject meta tags into the <head>
+            try {
+                console.log(`[Worker v3] Applying HTMLRewriter...`);
+                return new HTMLRewriter()
+                    .on('head', new MetaTagHandler(ogTags))
+                    .transform(response);
+            } catch (rewriteError) {
+                console.error(`[Worker v3] HTMLRewriter error for ${url.pathname}:`, rewriteError);
+                // Return the original response if rewriting fails
+                return response;
+            }
+
+        } else {
+            // Not HTML, return original response (e.g., CSS, JS, images, etc.)
+            console.log(`[Worker v3] Non-HTML content type (${contentType}), returning original response.`);
+            return response;
+        }
     }
-  },
 }; 
