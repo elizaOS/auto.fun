@@ -15,11 +15,13 @@ export async function resumeMigrationsOnStart(
 
    const redisCache = await getGlobalRedisCache();
    const RESUME_LOCK_KEY = "migration:resume:lock";
+   const lockValue = process.pid.toString();
+   const TTL_MS = 20 * 60 * 1000; // 20 minutes
 
-   const gotLock = await redisCache.set(
+   const gotLock = await redisCache.acquireLock(
       RESUME_LOCK_KEY,
-      "locked",
-      20 * 60   // 20 min lock
+      lockValue,
+      TTL_MS
    );
    if (!gotLock) {
       console.log("[Resume] Another instance is already doing the resume. Skipping.");
@@ -72,7 +74,7 @@ export async function resumeMigrationsOnStart(
 
       // wait for 5 minutes 
       await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
-      await redisCache.del(RESUME_LOCK_KEY);
+      await redisCache.releaseLock(RESUME_LOCK_KEY, lockValue);
       console.log("[Resume] Released resume lock.");
    }
 }
