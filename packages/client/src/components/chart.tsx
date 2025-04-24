@@ -40,7 +40,7 @@ export default function Chart({ token, isImported }: ChartProps) {
   const pairId = `${mint}:${networkId}`;
 
   const { data: chartData, isLoading } = useQuery({
-    queryKey: ["token", mint, "chart", useCodex],
+    queryKey: ["token", mint, "chart", isCodex],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
       const from = to - 21600; // 6 hours
@@ -74,13 +74,14 @@ export default function Chart({ token, isImported }: ChartProps) {
         return bars;
       } else {
         const data = await getChartTable({
-          pairIndex: 1,
+          pairIndex: 10,
           from,
           to,
           range: 1,
           token: mint,
         });
 
+        console.log({ data });
         return data?.table;
       }
     },
