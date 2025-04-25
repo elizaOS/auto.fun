@@ -4,11 +4,12 @@ import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.json";
+import { WebSocketClient } from "./websocket-client";
 
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
 
 
-export async function claimFees(nftMint: PublicKey, poolId: PublicKey, connection: Connection, claimer: PublicKey): Promise<string> {
+export async function claimFees(nftMint: PublicKey, poolId: PublicKey, connection: Connection, claimer: PublicKey, websocket: WebSocketClient): Promise<string> {
    try {
       const wallet = Keypair.fromSecretKey(
          Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
@@ -49,7 +50,11 @@ export async function claimFees(nftMint: PublicKey, poolId: PublicKey, connectio
       if (!success) {
          throw new Error("Failed to claim after multiple attempts.");
       }
-
+      websocket.to(`claimer:${claimer.toBase58()}`).emit("claim", {
+         txSignature,
+         poolId: poolId.toBase58(),
+         claimer: claimer.toBase58(),
+      });
       console.log("Transaction Signature:", txSignature);
       return txSignature;
    } catch (error) {
