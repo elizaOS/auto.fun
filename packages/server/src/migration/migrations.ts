@@ -266,6 +266,16 @@ export async function safeUpdateTokenInDB(
 ): Promise<void> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      if (data.lockedAt) {
+        data.lockedAt = new Date(data.lockedAt)
+      }
+      if (data.completedAt) {
+        data.completedAt = new Date(data.completedAt)
+      }
+      if (data.migratedAt) {
+        data.migratedAt = new Date(data.migratedAt)
+      }
+
       await updateTokenInDB(data);
       return;
     } catch (err) {

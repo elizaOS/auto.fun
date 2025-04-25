@@ -13,6 +13,7 @@ import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { createNewTokenData, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { getGlobalRedisCache } from "../redis";
+import { claimFees } from "../claimFees";
 
 
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
@@ -133,26 +134,26 @@ migrationRouter.post("/claimFees", async (c) => {
     if (userInfo.length === 0 || userInfo[0].address !== token.creator) {
       return c.json({ error: "Unauthorized" }, 401);
     }
-
-    const nftMint = token.nftMinted?.split(",")[0];
-    const poolId = token.marketId;
-
-    const payload = {
-      tokenMint: token.mint,
+    const nftMint = new PublicKey(token.nftMinted.split(",")[0]);
+    const claimer = new PublicKey(token.creator);
+    const poolId = new PublicKey(token.marketId)
+    const connection = new Connection(
+      process.env.NETWORK === "devnet"
+        ? process.env.DEVNET_SOLANA_RPC_URL || ""
+        : process.env.MAINNET_SOLANA_RPC_URL || "",
+    );
+    const websocket = getWebSocketClient();
+    // async () => {
+    await claimFees(
       nftMint,
       poolId,
-      userAddress: token.creator,
-    };
-
-    await fetch(`https://autofun-production.up.railway.app/claim-fees`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.JWT_SECRET}`,
-      },
-      body: JSON.stringify(payload),
+      connection,
+      claimer,
+      websocket
+    ).catch((err) => {
+      logger.error("Error in claim fees:", err);
     });
-
+    // }
     // Return a success response.
     return c.json({
       status: "Claim invocation processing started",
