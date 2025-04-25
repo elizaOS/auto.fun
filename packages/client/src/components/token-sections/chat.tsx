@@ -6,11 +6,12 @@ import useAuthentication, { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { RefreshCw, Send } from "lucide-react";
+import { RefreshCw, Send, Maximize, Minimize } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 import { getSocket } from "@/utils/socket"; // Import WebSocket utility
+import { clsx } from "clsx"; // Import clsx for conditional classes
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -100,6 +101,7 @@ export default function ChatSection() {
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null);
+  const [isChatFullscreen, setIsChatFullscreen] = useState(false);
 
   // --- Pagination State ---
   const [oldestTimestamp, setOldestTimestamp] = useState<string | null>(null);
@@ -639,8 +641,6 @@ export default function ChatSection() {
       hasLiked: false, // Assuming default
     };
 
-    // Optimistically add the message
-    setChatMessages((prev) => [...prev, optimisticMessage]);
     const messageToSend = chatInput.trim(); // Store message before clearing input
     setChatInput("");
 
@@ -775,14 +775,47 @@ export default function ChatSection() {
     );
   };
 
+  // Effect to manage body scroll based on fullscreen state
+  useEffect(() => {
+    if (isChatFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Cleanup function to reset overflow when component unmounts
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isChatFullscreen]);
+
   return (
     <div className="flex flex-col my-2">
-      <div className="flex flex-col md:flex-row gap-4">
+      <div
+        className={clsx(
+          "flex flex-col md:flex-row gap-4",
+          isChatFullscreen &&
+            "fixed inset-0 z-50 bg-black p-2 flex flex-col z-10000", // Use flex-col for fullscreen container
+        )}
+      >
         {/* Content Area */}
-        <div className="flex flex-col grow w-full">
-          <div className="flex flex-col h-[70vh] bg-black border-t-1 border-gray-700">
+        <div
+          className={clsx(
+            "flex flex-col grow w-full",
+            isChatFullscreen && "overflow-hidden", // Contain children within fullscreen
+          )}
+        >
+          <div
+            className={clsx(
+              "flex flex-col border-t-1 border-gray-700",
+              isChatFullscreen
+                ? "grow" // Let this inner container grow to fill Content Area
+                : "h-[70vh]", // Original height
+            )}
+          >
             {/* Tier Selection Header */}
-            <div className="flex justify-between items-center p-2">
+            <div className="flex justify-between items-center p-2 flex-shrink-0">
+              {" "}
+              {/* Ensure header doesn't grow */}
               <div className="flex gap-2">
                 {CHAT_TIERS.map((tier) => {
                   const isEligible = eligibleChatTiers.includes(tier);
@@ -805,34 +838,17 @@ export default function ChatSection() {
                   );
                 })}
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="small"
-                  variant="outline"
-                  onClick={() => {
-                    setOldestTimestamp(null);
-                    setHasOlderMessages(true);
-                    fetchChatMessages(selectedChatTier, false);
-                  }}
-                  disabled={
-                    isRefreshingMessages ||
-                    isChatLoading ||
-                    isLoadingOlderMessages
-                  }
-                  className="p-1"
-                >
-                  <RefreshCw
-                    size={16}
-                    className={
-                      isRefreshingMessages ||
-                      (isChatLoading && !isRefreshingMessages)
-                        ? "animate-spin"
-                        : ""
-                    }
-                  />
-                </Button>
-              </div>
+              {/* Fullscreen Button - Mobile Only */}
+              <button
+                onClick={() => setIsChatFullscreen(!isChatFullscreen)}
+                className="md:hidden p-1 text-gray-400 hover:text-white"
+              >
+                {isChatFullscreen ? (
+                  <Minimize size={20} />
+                ) : (
+                  <Maximize size={20} />
+                )}
+              </button>
             </div>
 
             {/* Message Display Area */}
@@ -940,7 +956,9 @@ export default function ChatSection() {
             </div>
 
             {/* Message Input Area */}
-            <div className="p-2 border-t border-gray-700">
+            <div className="p-2 flex-shrink-0">
+              {" "}
+              {/* Ensure input doesn't grow */}
               {/* Scroll to bottom button */}
               {showScrollButton && (
                 <button
@@ -962,7 +980,6 @@ export default function ChatSection() {
                   </svg>
                 </button>
               )}
-
               {!canChatInSelectedTier && publicKey && (
                 <p className="text-center text-yellow-500 text-sm mb-2">
                   You need {getTierThreshold(selectedChatTier).toLocaleString()}

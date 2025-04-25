@@ -4,7 +4,7 @@ import { getGlobalRedisCache, RedisCacheService } from "../redis";
 import { Redis } from "ioredis";
 import { logger } from "../util";
 
-const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 8;
+const MAX_WORKERS = Number(process.env.MAX_WORKERS) || 4;
 const JOB_QUEUE_KEY = "webhook:jobs";
 const WORKER_SCRIPT = path.join(__dirname, "processWebhook.ts");
 const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes

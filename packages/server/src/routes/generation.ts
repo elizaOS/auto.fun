@@ -2302,6 +2302,34 @@ app.post("/enhance-and-generate", async (c) => {
     logger.log(`Original prompt: ${userPrompt}`);
     logger.log(`Media type: ${mediaType}, Mode: ${mode}`);
 
+    // Get token metadata from database
+    const db = getDB();
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    if (!existingToken || existingToken.length === 0) {
+      if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
+        return c.json(
+          {
+            success: false,
+            error: "Token not found. Please provide a valid token mint address.",
+          },
+          404
+        );
+      }
+      logger.log("Token not found in DB, but proceeding in development mode");
+    }
+
+    const tokenMetadata = {
+      name: existingToken?.[0]?.name || "",
+      symbol: existingToken?.[0]?.ticker || "",
+      description: existingToken?.[0]?.description || "",
+      prompt: "",
+    };
+
     // Check rate limits for the user on this token
     const rateLimit = await checkRateLimits(tokenMint, mediaType, user.publicKey);
 
@@ -2344,34 +2372,6 @@ app.post("/enhance-and-generate", async (c) => {
         );
       }
     }
-
-    // Get token metadata from database
-    const db = getDB();
-    const existingToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, tokenMint))
-      .limit(1);
-
-    if (!existingToken || existingToken.length === 0) {
-      if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
-        return c.json(
-          {
-            success: false,
-            error: "Token not found. Please provide a valid token mint address.",
-          },
-          404
-        );
-      }
-      logger.log("Token not found in DB, but proceeding in development mode");
-    }
-
-    const tokenMetadata = {
-      name: existingToken?.[0]?.name || "",
-      symbol: existingToken?.[0]?.ticker || "",
-      description: existingToken?.[0]?.description || "",
-      prompt: "",
-    };
 
     // Enhance the prompt
     const enhancedPrompt = await generateEnhancedPrompt(userPrompt, tokenMetadata, mediaType);

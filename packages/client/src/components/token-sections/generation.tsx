@@ -1685,16 +1685,17 @@ export default function CommunityTab() {
         {/* Content Area */}
         <div className="flex flex-col grow w-full">
           {/* Main generation controls - consistent across all media types */}
-          <div className="flex flex-col gap-4 w-full">
-            {/* Controls row - consistent for all media types */}
-            <div className="flex items-center py-3">
-              {/* Input field with dynamic placeholder based on tab */}
-              <input
-                type="text"
+          <div className="flex flex-col w-full">
+            {/* Input Area */}
+            <div className="w-full pt-2">
+              <textarea
+                rows={3}
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isGenerating) {
+                  if (e.key === "Enter" && !e.shiftKey && !isGenerating) {
+                    // Allow Shift+Enter for newlines
+                    e.preventDefault(); // Prevent default Enter behavior (newline in textarea)
                     if (communityTab === "Image") {
                       generateImage();
                     } else if (communityTab === "Video") {
@@ -1720,74 +1721,17 @@ export default function CommunityTab() {
                         : "Enter a description for your video (optional)"
                       : "Optional: describe the musical style (e.g., 'upbeat electronic with retro synths')"
                 }
-                className="flex-1 h-10 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white px-2 text-base leading-10"
+                className="w-full border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white px-2 py-2 text-base resize-none leading-normal" // Use py-2, leading-normal for textarea
               />
+            </div>
 
-              {/* Generate button with dynamic behavior based on tab */}
-              <button
-                onClick={() => {
-                  if (communityTab === "Image") {
-                    generateImage();
-                  } else if (communityTab === "Video") {
-                    if (videoMode === "text") {
-                      generateVideo();
-                    } else if (videoMode === "image" && selectedImageForVideo) {
-                      generateVideo(true, selectedImageForVideo);
-                    }
-                  } else if (communityTab === "Audio") {
-                    generateAudio();
-                  }
-                }}
-                disabled={
-                  isGenerating ||
-                  (communityTab === "Image" &&
-                    (!userPrompt.trim() ||
-                      (tokenBalance ?? 0) <
-                        (generationMode === "pro" ? 10000 : 1000))) ||
-                  (communityTab === "Video" &&
-                    videoMode === "text" &&
-                    (!userPrompt.trim() ||
-                      (tokenBalance ?? 0) <
-                        (generationMode === "fast" ? 10000 : 100000))) ||
-                  (communityTab === "Video" &&
-                    videoMode === "image" &&
-                    (!selectedImageForVideo ||
-                      (tokenBalance ?? 0) <
-                        (generationMode === "fast" ? 10000 : 100000))) ||
-                  (communityTab === "Audio" && (tokenBalance ?? 0) < 10000)
-                }
-                className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12 cursor-pointer"
-              >
-                <img
-                  src={
-                    isGenerating
-                      ? "/create/generating.svg"
-                      : "/create/generateup.svg"
-                  }
-                  alt="Generate"
-                  className="h-12 w-auto"
-                  onMouseDown={(e) => {
-                    if (!isGenerating)
-                      (e.target as HTMLImageElement).src =
-                        "/create/generatedown.svg";
-                  }}
-                  onMouseUp={(e) => {
-                    if (!isGenerating)
-                      (e.target as HTMLImageElement).src =
-                        "/create/generateup.svg";
-                  }}
-                  onDragStart={(e) => e.preventDefault()}
-                  onMouseOut={(e) => {
-                    if (!isGenerating)
-                      (e.target as HTMLImageElement).src =
-                        "/create/generateup.svg";
-                  }}
-                />
-              </button>
-
+            {/* Controls row - moved below input */}
+            <div className="flex items-center justify-end pb-4">
               {/* Fast/Pro mode buttons - only show for Image and Video */}
               {communityTab !== "Audio" && (
-                <div className="flex space-x-1 h-10">
+                <div className="flex space-x-1 h-10 mr-4">
+                  {" "}
+                  {/* Added margin */}
                   <Tooltip anchorSelect="#faston">
                     <span>Fast</span>
                   </Tooltip>
@@ -1826,6 +1770,68 @@ export default function CommunityTab() {
                   </button>
                 </div>
               )}
+
+              {/* Generate button */}
+              <button
+                onClick={() => {
+                  if (communityTab === "Image") {
+                    generateImage();
+                  } else if (communityTab === "Video") {
+                    if (videoMode === "text") {
+                      generateVideo();
+                    } else if (videoMode === "image" && selectedImageForVideo) {
+                      generateVideo(true, selectedImageForVideo);
+                    }
+                  } else if (communityTab === "Audio") {
+                    generateAudio();
+                  }
+                }}
+                disabled={
+                  isGenerating ||
+                  (communityTab === "Image" &&
+                    (!userPrompt.trim() ||
+                      (tokenBalance ?? 0) <
+                        (generationMode === "pro" ? 10000 : 1000))) ||
+                  (communityTab === "Video" &&
+                    videoMode === "text" &&
+                    (!userPrompt.trim() ||
+                      (tokenBalance ?? 0) <
+                        (generationMode === "fast" ? 10000 : 100000))) ||
+                  (communityTab === "Video" &&
+                    videoMode === "image" &&
+                    (!selectedImageForVideo ||
+                      (tokenBalance ?? 0) <
+                        (generationMode === "fast" ? 10000 : 100000))) ||
+                  (communityTab === "Audio" && (tokenBalance ?? 0) < 10000)
+                }
+                className="transition-colors disabled:opacity-50 flex items-center cursor-pointer" // Removed mx-2, h-12
+              >
+                <img
+                  src={
+                    isGenerating
+                      ? "/create/generating.svg"
+                      : "/create/generateup.svg"
+                  }
+                  alt="Generate"
+                  className="h-12 w-auto" // Kept h-12
+                  onMouseDown={(e) => {
+                    if (!isGenerating)
+                      (e.target as HTMLImageElement).src =
+                        "/create/generatedown.svg";
+                  }}
+                  onMouseUp={(e) => {
+                    if (!isGenerating)
+                      (e.target as HTMLImageElement).src =
+                        "/create/generateup.svg";
+                  }}
+                  onDragStart={(e) => e.preventDefault()}
+                  onMouseOut={(e) => {
+                    if (!isGenerating)
+                      (e.target as HTMLImageElement).src =
+                        "/create/generateup.svg";
+                  }}
+                />
+              </button>
             </div>
 
             {/* Video-specific options */}
@@ -2059,11 +2065,7 @@ export default function CommunityTab() {
                 </div>
               ) : (
                 // --- Placeholder for Video/Audio before generation ---
-                <div className="flex items-center justify-center w-full h-[400px] sm:h-[500px] md:h-[600px] bg-gray-900 text-gray-500">
-                  {communityTab === "Video"
-                    ? "Generate a video"
-                    : "Generate audio"}
-                </div>
+                <div className="flex items-center justify-center w-full h-[400px] sm:h-[500px] md:h-[600px] text-gray-500"></div>
               )}
 
               {/* Download and share buttons */}

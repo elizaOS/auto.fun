@@ -764,7 +764,8 @@ export class TokenMigrator {
     return { txId: txSignature, extraData: { depositedNftMint: nftMinted } };
   }
 
-  async finalizeMigration(token: any): Promise<{ txId: string }> {
+  async finalizeMigration(token: any): Promise<{ txId: string; extraData: object }> {
+    console.log("Finalizing migration for token", token.mint);
     try {
       token.status = "locked";
       token.lockedAt = new Date().toISOString();
@@ -779,6 +780,11 @@ export class TokenMigrator {
       //       step: "finalize",
       //     },
       //   )
+      console.log(
+        "Finalizing migration for token",
+        token.mint,
+        token.lockedAt,
+      )
 
     } catch (err) {
       console.error(
@@ -787,7 +793,13 @@ export class TokenMigrator {
       );
     }
 
-    return { txId: "finalized" };
+    return {
+      txId: token.lockedAt,
+      extraData: {
+        lockedAt: token.lockedAt,
+        status: "locked",
+      },
+    };
   }
 
   async collectFee(token: any): Promise<{ txId: string; extraData: object }> {
@@ -811,7 +823,7 @@ export class TokenMigrator {
     );
 
 
-    return { txId: txSignature ?? "", extraData: {} };
+    return { txId: txSignature ?? "", extraData: { feeCollected: mintConstantFee.toString() } };
   }
 
   private async fetchPoolInfoWithRetry(
