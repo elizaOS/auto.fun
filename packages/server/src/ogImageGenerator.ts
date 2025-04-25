@@ -183,7 +183,7 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
 
         // --- Dynamic Text Styling & Positioning ---
         const baseCashtagFontSize = 110;
-        const baseTitleFontSize = 60;
+        const baseTitleFontSize = 54;
         const dataFontSize = 76;
         const labelFontSize = 34;
         // CJK character detection (Unicode range for common CJK ideographs)
