@@ -36,9 +36,8 @@ export default function Chart({ token }: ChartProps) {
     queryKey: ["token", mint, "chart", isCodex],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
-      const from = isCodex ? to - 21600 : to - 21600 * 2; // Codex = 6 hours, Prebonded = 12h
+      const from = isCodex ? to - 21600 : to - 21600 * 2;
 
-      /** If codex we use its own way to fetch the chart */
       if (isCodex) {
         const { getBars } = await codex.queries.getBars({
           currencyCode: "USD",
@@ -52,17 +51,25 @@ export default function Chart({ token }: ChartProps) {
         if (!getBars) return [];
 
         const candleCount = getBars.o.length;
-
         const bars = [];
+
         for (let i = 0; i < candleCount; i++) {
-          bars.push({
-            open: getBars.o[i],
-            high: getBars.h[i],
-            low: getBars.l[i],
-            close: getBars.c[i],
-            volume: parseFloat(getBars?.volume?.[i] || "0"),
-            time: getBars.t[i],
-          });
+          const open = Number(getBars.o[i]);
+          const high = Number(getBars.h[i]);
+          const low = Number(getBars.l[i]);
+          const close = Number(getBars.c[i]);
+          const time = Number(getBars.t[i]);
+
+          if (!isNaN(open) && !isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(time)) {
+            bars.push({
+              open,
+              high,
+              low,
+              close,
+              volume: parseFloat(getBars?.volume?.[i] || "0"),
+              time,
+            });
+          }
         }
 
         return bars;
@@ -75,9 +82,10 @@ export default function Chart({ token }: ChartProps) {
           token: mint,
         });
 
-        /** If nothing was returned for the specified date range we should try to fetch the last valid candle */
         if (!data?.table?.length) {
-          const lastKnownPrice = token?.tokenPriceUSD || 0;
+          const lastKnownPrice = Number(token?.tokenPriceUSD) || 0;
+          if (isNaN(lastKnownPrice)) return [];
+          
           return [
             {
               time: Math.floor(Date.now() / 1000) * 1000,
@@ -89,7 +97,14 @@ export default function Chart({ token }: ChartProps) {
             },
           ];
         }
-        return data?.table;
+
+        return data.table.filter(candle => 
+          !isNaN(Number(candle.open)) && 
+          !isNaN(Number(candle.high)) && 
+          !isNaN(Number(candle.low)) && 
+          !isNaN(Number(candle.close)) && 
+          !isNaN(Number(candle.time))
+        );
       }
     },
     staleTime: 60 * 1000,
