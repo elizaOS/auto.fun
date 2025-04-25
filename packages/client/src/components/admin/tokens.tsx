@@ -16,7 +16,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"; // Import icons
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import BondingCurveBar from "../bonding-curve-bar"; // Import BondingCurveBar
 import Button from "../button";
@@ -445,6 +445,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     url: "",
     description: "",
   }); // Add description
+  const navigate = useNavigate();
 
   // State for the new image upload
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
@@ -923,6 +924,30 @@ function AdminTokenDetails({ address }: { address: string }) {
   }
 
   const token = tokenQuery.data;
+
+  // Add delete token mutation
+  const deleteTokenMutation = useMutation({
+    mutationFn: async () => {
+      return await fetcher(`/api/admin/tokens/${address}`, "DELETE");
+    },
+    onSuccess: () => {
+      toast.success("Token deleted successfully");
+      // Redirect to admin tokens page after deletion
+      navigate("/admin/tokens");
+    },
+    onError: (error) => {
+      toast.error(
+        `Failed to delete token: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    },
+  });
+
+  // Add this after other button mutations
+  const handleDeleteToken = () => {
+    if (window.confirm("Are you sure you want to delete this token? This action cannot be undone.")) {
+      deleteTokenMutation.mutate();
+    }
+  };
 
   return (
     <div className="p-4 bg-autofun-background-input ">
@@ -1482,6 +1507,15 @@ function AdminTokenDetails({ address }: { address: string }) {
             : token.hidden
               ? "Unhide Token"
               : "Hide Token"}
+        </button>
+        
+        <button
+          className="px-4 py-2 bg-red-900 text-red-300 hover:bg-red-800 flex items-center gap-2"
+          onClick={handleDeleteToken}
+          disabled={deleteTokenMutation.isPending}
+        >
+          <Trash2 className="h-4 w-4" />
+          {deleteTokenMutation.isPending ? "Deleting..." : "Delete Token"}
         </button>
       </div>
 
