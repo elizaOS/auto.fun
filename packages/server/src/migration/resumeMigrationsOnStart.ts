@@ -23,10 +23,20 @@ export async function resumeMigrationsOnStart(
       lockValue,
       TTL_MS
    );
+   // release lock after 3 minutes regardless of return 
+   setTimeout(async () => {
+      await redisCache.releaseLock(RESUME_LOCK_KEY, lockValue);
+      console.log("[Resume] Released resume lock.");
+   }, 3 * 60 * 1000);
+
    if (!gotLock) {
       console.log("[Resume] - Another instance is already doing the resume. Skipping.");
       return;
    }
+
+
+
+   await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
 
    const RPC_URL =
       process.env.NETWORK === "devnet"

@@ -31,9 +31,9 @@ import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relati
 
 // Basic logger implementation (Re-added)
 const logger = {
-    log: (...args: any[]) => console.log("[INFO]", ...args),
-    warn: (...args: any[]) => console.warn("[WARN]", ...args),
-    error: (...args: any[]) => console.error("[ERROR]", ...args),
+  log: (...args: any[]) => console.log("[INFO]", ...args),
+  warn: (...args: any[]) => console.warn("[WARN]", ...args),
+  error: (...args: any[]) => console.error("[ERROR]", ...args),
 };
 
 // --- Validation Function ---
@@ -216,95 +216,95 @@ const tokenRouter = new Hono<{ Bindings: {} }>();
 
 // --- OG Image Endpoint ---
 tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optionally
-    const mint = c.req.param("mint").replace(/\.png$/, ''); // Remove .png suffix
-    // Get query params
-    const queryParams = c.req.query();
-    const forceRefresh = queryParams.refresh === 'true';
+  const mint = c.req.param("mint").replace(/\.png$/, ''); // Remove .png suffix
+  // Get query params
+  const queryParams = c.req.query();
+  const forceRefresh = queryParams.refresh === 'true';
 
-    logger.log(`[GET /og-image/:mint] Request for mint: ${mint}, Refresh: ${forceRefresh}`);
+  logger.log(`[GET /og-image/:mint] Request for mint: ${mint}, Refresh: ${forceRefresh}`);
 
-    if (!mint || mint.length < 32 || mint.length > 44) {
-        return c.text("Invalid mint address", 400);
+  if (!mint || mint.length < 32 || mint.length > 44) {
+    return c.text("Invalid mint address", 400);
+  }
+
+  const redisCache = await getGlobalRedisCache();
+  const s3Key = `og-images/${mint}.png`;
+  const redisUrlKey = `og:image:url:${mint}`;
+  const cacheTTL = 14400; // 4 hours in seconds
+
+  try {
+    // 1. Check Redis for cached S3 URL (Skip if forceRefresh is true)
+    if (!forceRefresh && redisCache) {
+      const cachedUrl = await redisCache.get(redisUrlKey);
+      if (cachedUrl) {
+        logger.log(`[OG Image] Cache hit for ${mint}, redirecting to ${cachedUrl}`);
+        // Use 302 Found for temporary redirect
+        return c.redirect(cachedUrl, 302);
+      }
+      logger.log(`[OG Image] URL cache miss for ${mint}`);
+    } else if (forceRefresh) {
+      logger.log(`[OG Image] Refresh requested, skipping cache check for ${mint}`);
     }
 
-    const redisCache = await getGlobalRedisCache();
-    const s3Key = `og-images/${mint}.png`;
-    const redisUrlKey = `og:image:url:${mint}`;
-    const cacheTTL = 14400; // 4 hours in seconds
-
+    // 2. Cache Miss or Refresh Requested -> Generate Image
+    logger.log(`[OG Image] Generating image for ${mint}...`);
+    let imageBuffer: Buffer;
     try {
-        // 1. Check Redis for cached S3 URL (Skip if forceRefresh is true)
-        if (!forceRefresh && redisCache) {
-            const cachedUrl = await redisCache.get(redisUrlKey);
-            if (cachedUrl) {
-                logger.log(`[OG Image] Cache hit for ${mint}, redirecting to ${cachedUrl}`);
-                // Use 302 Found for temporary redirect
-                return c.redirect(cachedUrl, 302);
-            }
-            logger.log(`[OG Image] URL cache miss for ${mint}`);
-        } else if (forceRefresh) {
-            logger.log(`[OG Image] Refresh requested, skipping cache check for ${mint}`);
-        }
-
-        // 2. Cache Miss or Refresh Requested -> Generate Image
-        logger.log(`[OG Image] Generating image for ${mint}...`);
-        let imageBuffer: Buffer;
-        try {
-            imageBuffer = await generateOgImage(mint);
-        } catch (genError: any) {
-            logger.error(`[OG Image] Failed to generate image for ${mint}:`, genError);
-            // Redirect to a default OG image if generation fails
-            // Consider hosting a static default image
-            const defaultOgImage = `/default-og-image.png`;
-            logger.warn(`[OG Image] Redirecting to default OG image: ${defaultOgImage}`);
-            // You might want to return a 404 or 500 instead, depending on desired behavior
-            return c.redirect(defaultOgImage, 302);
-            // Alternative: return c.text('Failed to generate image', 500);
-        }
-
-        // 3. Upload generated image to S3/R2
-        logger.log(`[OG Image] Uploading generated image to S3 key: ${s3Key}`);
-        const { publicBaseUrl } = await getS3Client(); // Get base URL for construction
-        let publicUrl = '';
-        try {
-            // Use the updated uploadWithS3 function with cache control
-            publicUrl = await uploadWithS3(
-                imageBuffer,
-                {
-                    filename: `${mint}.png`, // Filename part for uploader
-                    contentType: 'image/png',
-                    basePath: 'og-images',       // Specify the correct base path
-                    cacheControl: `public, max-age=${cacheTTL}` // 4-hour cache
-                }
-            );
-
-            logger.log(`[OG Image] Upload successful, public URL: ${publicUrl}`);
-
-        } catch (uploadError) {
-            logger.error(`[OG Image] Failed to upload image ${s3Key} to S3:`, uploadError);
-            // Handle upload error (e.g., return 500 or default image)
-             const defaultOgImage = `/default-og-image.png`;
-            return c.redirect(defaultOgImage, 302);
-            // Alternative: return c.text('Failed to store generated image', 500);
-        }
-
-        // 4. Update Redis Cache with the *new* public URL
-        if (redisCache && publicUrl) {
-            await redisCache.set(redisUrlKey, publicUrl, cacheTTL);
-            logger.log(`[OG Image] Updated Redis URL cache for ${mint}`);
-        }
-
-        // 5. Redirect to the newly uploaded image
-        logger.log(`[OG Image] Redirecting to newly generated image: ${publicUrl}`);
-        return c.redirect(publicUrl, 302);
-
-    } catch (error) {
-        logger.error(`[OG Image] Unexpected error for mint ${mint}:`, error);
-        // General error fallback
-        const defaultOgImage = `/default-og-image.png`;
-        return c.redirect(defaultOgImage, 302);
-        // Alternative: return c.text('Internal Server Error', 500);
+      imageBuffer = await generateOgImage(mint);
+    } catch (genError: any) {
+      logger.error(`[OG Image] Failed to generate image for ${mint}:`, genError);
+      // Redirect to a default OG image if generation fails
+      // Consider hosting a static default image
+      const defaultOgImage = `/default-og-image.png`;
+      logger.warn(`[OG Image] Redirecting to default OG image: ${defaultOgImage}`);
+      // You might want to return a 404 or 500 instead, depending on desired behavior
+      return c.redirect(defaultOgImage, 302);
+      // Alternative: return c.text('Failed to generate image', 500);
     }
+
+    // 3. Upload generated image to S3/R2
+    logger.log(`[OG Image] Uploading generated image to S3 key: ${s3Key}`);
+    const { publicBaseUrl } = await getS3Client(); // Get base URL for construction
+    let publicUrl = '';
+    try {
+      // Use the updated uploadWithS3 function with cache control
+      publicUrl = await uploadWithS3(
+        imageBuffer,
+        {
+          filename: `${mint}.png`, // Filename part for uploader
+          contentType: 'image/png',
+          basePath: 'og-images',       // Specify the correct base path
+          cacheControl: `public, max-age=${cacheTTL}` // 4-hour cache
+        }
+      );
+
+      logger.log(`[OG Image] Upload successful, public URL: ${publicUrl}`);
+
+    } catch (uploadError) {
+      logger.error(`[OG Image] Failed to upload image ${s3Key} to S3:`, uploadError);
+      // Handle upload error (e.g., return 500 or default image)
+      const defaultOgImage = `/default-og-image.png`;
+      return c.redirect(defaultOgImage, 302);
+      // Alternative: return c.text('Failed to store generated image', 500);
+    }
+
+    // 4. Update Redis Cache with the *new* public URL
+    if (redisCache && publicUrl) {
+      await redisCache.set(redisUrlKey, publicUrl, cacheTTL);
+      logger.log(`[OG Image] Updated Redis URL cache for ${mint}`);
+    }
+
+    // 5. Redirect to the newly uploaded image
+    logger.log(`[OG Image] Redirecting to newly generated image: ${publicUrl}`);
+    return c.redirect(publicUrl, 302);
+
+  } catch (error) {
+    logger.error(`[OG Image] Unexpected error for mint ${mint}:`, error);
+    // General error fallback
+    const defaultOgImage = `/default-og-image.png`;
+    return c.redirect(defaultOgImage, 302);
+    // Alternative: return c.text('Internal Server Error', 500);
+  }
 });
 
 // --- Endpoint to serve images from storage (S3 API) ---
@@ -1510,19 +1510,19 @@ tokenRouter.get("/token/:mint", async (c) => {
     const db = getDB();
     const [tokenResult, solPrice] = await Promise.all([
       db.select({
-          // Select all fields from tokens table
-          ...getTableColumns(tokens),
-          // Select specific fields from users table, aliased
-          creatorProfile: {
-              address: users.address,
-              displayName: users.display_name,
-              profilePictureUrl: users.profile_picture_url,
-          }
+        // Select all fields from tokens table
+        ...getTableColumns(tokens),
+        // Select specific fields from users table, aliased
+        creatorProfile: {
+          address: users.address,
+          displayName: users.display_name,
+          profilePictureUrl: users.profile_picture_url,
+        }
       })
-      .from(tokens)
-      .leftJoin(users, eq(tokens.creator, users.address)) // LEFT JOIN users on creator address
-      .where(eq(tokens.mint, mint))
-      .limit(1),
+        .from(tokens)
+        .leftJoin(users, eq(tokens.creator, users.address)) // LEFT JOIN users on creator address
+        .where(eq(tokens.mint, mint))
+        .limit(1),
       getSOLPrice(), // Fetch SOL price concurrently
     ]);
 
@@ -1639,7 +1639,7 @@ tokenRouter.post("/create-token", async (c) => {
       metadataUrl,
       imported,
       creator,
-      isToken2022, // <<< Add isToken2022 here
+      isToken2022,
     } = body;
 
     const mintAddress = tokenMint || mint;
@@ -1712,7 +1712,7 @@ tokenRouter.post("/create-token", async (c) => {
       // Insert with all required fields from the schema
       await db.insert(tokens).values([
         {
-          id: mintAddress, 
+          id: mintAddress,
           mint: mintAddress,
           name: name || `Token ${mintAddress.slice(0, 8)}`,
           ticker: symbol || "TOKEN",
@@ -1875,178 +1875,178 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
 });
 
 tokenRouter.post("/token/:mint/update", async (c) => {
-    const mint = c.req.param("mint");
-    const user = c.get("user");
-    const body = await c.req.json();
-    const db = getDB();
+  const mint = c.req.param("mint");
+  const user = c.get("user");
+  const body = await c.req.json();
+  const db = getDB();
 
-    // Basic validation & auth checks
-    // ... (validation for mint)
-    // ... (check for user)
-    
-    // Get the token to check permissions and get metadata URL
-    const tokenDataResult = await db
-      .select({ creator: tokens.creator, url: tokens.url, imported: tokens.imported })
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
+  // Basic validation & auth checks
+  // ... (validation for mint)
+  // ... (check for user)
 
-    if (!tokenDataResult || tokenDataResult.length === 0) {
-      return c.json({ error: "Token not found" }, 404);
+  // Get the token to check permissions and get metadata URL
+  const tokenDataResult = await db
+    .select({ creator: tokens.creator, url: tokens.url, imported: tokens.imported })
+    .from(tokens)
+    .where(eq(tokens.mint, mint))
+    .limit(1);
+
+  if (!tokenDataResult || tokenDataResult.length === 0) {
+    return c.json({ error: "Token not found" }, 404);
+  }
+  const currentTokenData = tokenDataResult[0];
+
+  // Permission check
+  // ... (check if user === currentTokenData.creator)
+
+  // Define allowed fields for update and prepare updateData
+  const allowedUpdateFields = [
+    "website",
+    "twitter",
+    "telegram",
+    "discord",
+    "farcaster",
+  ];
+  const updateData: Partial<Token> = {};
+  for (const field of allowedUpdateFields) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      // @ts-ignore
+      updateData[field] = body[field] ?? currentTokenData[field];
     }
-    const currentTokenData = tokenDataResult[0];
-    
-    // Permission check
-    // ... (check if user === currentTokenData.creator)
+  }
 
-    // Define allowed fields for update and prepare updateData
-    const allowedUpdateFields = [
-      "website",
-      "twitter",
-      "telegram",
-      "discord",
-      "farcaster",
-    ];
-    const updateData: Partial<Token> = {};
-    for (const field of allowedUpdateFields) {
-      if (Object.prototype.hasOwnProperty.call(body, field)) {
-         // @ts-ignore
-         updateData[field] = body[field] ?? currentTokenData[field];
-      }
-    }
+  const dbUpdateNeeded = Object.keys(updateData).length > 0;
+  if (dbUpdateNeeded) {
+    updateData.lastUpdated = new Date();
+  } else {
+    logger.log("[Token Update] No relevant fields provided for DB update.");
+  }
 
-    const dbUpdateNeeded = Object.keys(updateData).length > 0;
-    if (dbUpdateNeeded) {
-        updateData.lastUpdated = new Date();
-    } else {
-        logger.log("[Token Update] No relevant fields provided for DB update.");
-    }
-    
-    // Update DB if needed
-    if (dbUpdateNeeded) {
-        await db.update(tokens).set(updateData).where(eq(tokens.mint, mint));
-        logger.log("[Token Update] Token DB record updated successfully.");
-    }
+  // Update DB if needed
+  if (dbUpdateNeeded) {
+    await db.update(tokens).set(updateData).where(eq(tokens.mint, mint));
+    logger.log("[Token Update] Token DB record updated successfully.");
+  }
 
-    // Update metadata in storage (S3 API) only if it's NOT an imported token
-    // AND if there were actually relevant social fields updated (check updateData)
-    if (currentTokenData?.imported === 0 && Object.keys(updateData).some(key => allowedUpdateFields.includes(key))) {
+  // Update metadata in storage (S3 API) only if it's NOT an imported token
+  // AND if there were actually relevant social fields updated (check updateData)
+  if (currentTokenData?.imported === 0 && Object.keys(updateData).some(key => allowedUpdateFields.includes(key))) {
+    try {
+      const originalUrl = currentTokenData.url;
+      if (originalUrl) {
+        let objectKey = "";
+        // Get S3 details - client needed later, base URL for parsing
+        const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
+
         try {
-            const originalUrl = currentTokenData.url;
-            if (originalUrl) {
-                let objectKey = "";
-                // Get S3 details - client needed later, base URL for parsing
-                const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client(); 
-                
-                try {
-                    const url = new URL(originalUrl);
-                    
-                    // Check if URL starts with the expected public base URL (R2 or MinIO path style)
-                    if (originalUrl.startsWith(publicBaseUrl + "/")) {
-                        objectKey = url.pathname.substring(publicBaseUrl.length + 1); // +1 for the slash
-                    } 
-                    // Fallback: try to infer based on common patterns if base URL doesn't match
-                    else {
-                        const parts = url.pathname.split("/").filter(p => p);
-                        if (parts.length >= 2) {
-                             objectKey = parts.slice(-2).join('/');
-                        } else if (parts.length === 1) {
-                             objectKey = parts[0];
-                        }
-                        if (!objectKey) {
-                            throw new Error("Could not parse object key from metadata URL structure");
-                        }
-                        logger.warn(`[Metadata Update] Could not parse object key using current base URL (${publicBaseUrl}), using inferred key: ${objectKey} from URL: ${originalUrl}`);
-                    }
-                } catch (urlParseError) {
-                    logger.error(`[Metadata Update] Failed to parse original metadata URL: ${originalUrl}`, urlParseError);
-                    throw new Error("Could not parse metadata URL to get object key.");
-                }
+          const url = new URL(originalUrl);
 
-                if (!objectKey) {
-                    throw new Error("Failed to extract object key from metadata URL.");
-                }
-
-                logger.log(`[Metadata Update] Determined object key: ${objectKey}`);
-
-                let existingMetadata: any = null;
-
-                // Fetch existing metadata content
-                try {
-                    logger.log(`[Metadata Update] Fetching existing metadata from Bucket: ${bucketName}, Key: ${objectKey}`);
-                    const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
-                    const response = await s3Client.send(getCmd);
-                    const jsonString = await response.Body?.transformToString();
-                    if (!jsonString) throw new Error("Empty metadata content retrieved.");
-                    existingMetadata = JSON.parse(jsonString);
-                    logger.log(`[Metadata Update] Successfully fetched existing metadata.`);
-                } catch (fetchErr: any) {
-                     logger.warn(`[Metadata Update] Failed to fetch or parse existing metadata from S3 (${objectKey}): ${fetchErr.name || fetchErr.message}. Skipping S3 update.`);
-                     existingMetadata = null; // Ensure it's null so update doesn't proceed
-                }
-
-                // Only proceed with S3 update if fetch was successful
-                if (existingMetadata) {
-                    existingMetadata.properties = existingMetadata.properties || {};
-                    let metadataChanged = false;
-                    // Update properties only if they were changed in updateData
-                    if (updateData.website !== undefined) { existingMetadata.properties.website = updateData.website; metadataChanged = true; }
-                    if (updateData.twitter !== undefined) { existingMetadata.properties.twitter = updateData.twitter; metadataChanged = true; }
-                    if (updateData.telegram !== undefined) { existingMetadata.properties.telegram = updateData.telegram; metadataChanged = true; }
-                    if (updateData.discord !== undefined) { existingMetadata.properties.discord = updateData.discord; metadataChanged = true; }
-                    if (updateData.farcaster !== undefined) { existingMetadata.properties.farcaster = updateData.farcaster; metadataChanged = true; }
-
-                    if (metadataChanged) {
-                        const buf = Buffer.from(JSON.stringify(existingMetadata, null, 2), 'utf8'); // Pretty print
-                        logger.log(`[Metadata Update] Attempting to overwrite S3 object. Bucket: ${bucketName}, Key: ${objectKey}`);
-                        const putCmd = new PutObjectCommand({
-                            Bucket: bucketName,
-                            Key: objectKey,
-                            Body: buf,
-                            ContentType: "application/json",
-                        });
-                        await s3Client.send(putCmd);
-                        logger.log(`[Metadata Update] Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`);
-                    } else {
-                         logger.log(`[Metadata Update] No relevant social fields changed. Skipping S3 PutObject.`);
-                    }
-                }
-            } else {
-                logger.warn(`[Metadata Update] Token ${mint} has no metadata URL, cannot update S3 metadata.`);
+          // Check if URL starts with the expected public base URL (R2 or MinIO path style)
+          if (originalUrl.startsWith(publicBaseUrl + "/")) {
+            objectKey = url.pathname.substring(publicBaseUrl.length + 1); // +1 for the slash
+          }
+          // Fallback: try to infer based on common patterns if base URL doesn't match
+          else {
+            const parts = url.pathname.split("/").filter(p => p);
+            if (parts.length >= 2) {
+              objectKey = parts.slice(-2).join('/');
+            } else if (parts.length === 1) {
+              objectKey = parts[0];
             }
-        } catch (e) {
-            logger.error("[Metadata Update] Error during S3 metadata update process:", e);
+            if (!objectKey) {
+              throw new Error("Could not parse object key from metadata URL structure");
+            }
+            logger.warn(`[Metadata Update] Could not parse object key using current base URL (${publicBaseUrl}), using inferred key: ${objectKey} from URL: ${originalUrl}`);
+          }
+        } catch (urlParseError) {
+          logger.error(`[Metadata Update] Failed to parse original metadata URL: ${originalUrl}`, urlParseError);
+          throw new Error("Could not parse metadata URL to get object key.");
         }
-    }
-    
-    // Fetch updated token data to return
-    const updatedTokenResult = await db
-      .select() // Select all columns after update
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
 
-    if (updatedTokenResult.length > 0) {
-      // Emit WebSocket event
-      try {
-          await processTokenUpdateEvent({
-            ...(updatedTokenResult[0] as any), // Cast to any if needed for BigInts etc.
-            event: "tokenUpdated",
-            timestamp: new Date().toISOString(),
-          });
-          logger.log(`Emitted token update event for ${mint}`);
-      } catch (wsError) {
-          logger.error(`WebSocket error when emitting token update: ${wsError}`);
+        if (!objectKey) {
+          throw new Error("Failed to extract object key from metadata URL.");
+        }
+
+        logger.log(`[Metadata Update] Determined object key: ${objectKey}`);
+
+        let existingMetadata: any = null;
+
+        // Fetch existing metadata content
+        try {
+          logger.log(`[Metadata Update] Fetching existing metadata from Bucket: ${bucketName}, Key: ${objectKey}`);
+          const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
+          const response = await s3Client.send(getCmd);
+          const jsonString = await response.Body?.transformToString();
+          if (!jsonString) throw new Error("Empty metadata content retrieved.");
+          existingMetadata = JSON.parse(jsonString);
+          logger.log(`[Metadata Update] Successfully fetched existing metadata.`);
+        } catch (fetchErr: any) {
+          logger.warn(`[Metadata Update] Failed to fetch or parse existing metadata from S3 (${objectKey}): ${fetchErr.name || fetchErr.message}. Skipping S3 update.`);
+          existingMetadata = null; // Ensure it's null so update doesn't proceed
+        }
+
+        // Only proceed with S3 update if fetch was successful
+        if (existingMetadata) {
+          existingMetadata.properties = existingMetadata.properties || {};
+          let metadataChanged = false;
+          // Update properties only if they were changed in updateData
+          if (updateData.website !== undefined) { existingMetadata.properties.website = updateData.website; metadataChanged = true; }
+          if (updateData.twitter !== undefined) { existingMetadata.properties.twitter = updateData.twitter; metadataChanged = true; }
+          if (updateData.telegram !== undefined) { existingMetadata.properties.telegram = updateData.telegram; metadataChanged = true; }
+          if (updateData.discord !== undefined) { existingMetadata.properties.discord = updateData.discord; metadataChanged = true; }
+          if (updateData.farcaster !== undefined) { existingMetadata.properties.farcaster = updateData.farcaster; metadataChanged = true; }
+
+          if (metadataChanged) {
+            const buf = Buffer.from(JSON.stringify(existingMetadata, null, 2), 'utf8'); // Pretty print
+            logger.log(`[Metadata Update] Attempting to overwrite S3 object. Bucket: ${bucketName}, Key: ${objectKey}`);
+            const putCmd = new PutObjectCommand({
+              Bucket: bucketName,
+              Key: objectKey,
+              Body: buf,
+              ContentType: "application/json",
+            });
+            await s3Client.send(putCmd);
+            logger.log(`[Metadata Update] Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`);
+          } else {
+            logger.log(`[Metadata Update] No relevant social fields changed. Skipping S3 PutObject.`);
+          }
+        }
+      } else {
+        logger.warn(`[Metadata Update] Token ${mint} has no metadata URL, cannot update S3 metadata.`);
       }
-      return c.json({
-        success: true,
-        message: "Token information updated successfully",
-        token: updatedTokenResult[0],
-      });
-    } else {
-      logger.error(`Failed to fetch updated token data for ${mint} after update.`);
-      return c.json({ success: false, message: "Token updated in DB, but failed to fetch result." }, 500);
+    } catch (e) {
+      logger.error("[Metadata Update] Error during S3 metadata update process:", e);
     }
+  }
+
+  // Fetch updated token data to return
+  const updatedTokenResult = await db
+    .select() // Select all columns after update
+    .from(tokens)
+    .where(eq(tokens.mint, mint))
+    .limit(1);
+
+  if (updatedTokenResult.length > 0) {
+    // Emit WebSocket event
+    try {
+      await processTokenUpdateEvent({
+        ...(updatedTokenResult[0] as any), // Cast to any if needed for BigInts etc.
+        event: "tokenUpdated",
+        timestamp: new Date().toISOString(),
+      });
+      logger.log(`Emitted token update event for ${mint}`);
+    } catch (wsError) {
+      logger.error(`WebSocket error when emitting token update: ${wsError}`);
+    }
+    return c.json({
+      success: true,
+      message: "Token information updated successfully",
+      token: updatedTokenResult[0],
+    });
+  } else {
+    logger.error(`Failed to fetch updated token data for ${mint} after update.`);
+    return c.json({ success: false, message: "Token updated in DB, but failed to fetch result." }, 500);
+  }
 });
 
 tokenRouter.get("/token/:mint/check-balance", async (c) => {
