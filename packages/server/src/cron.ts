@@ -583,7 +583,7 @@ async function handleCurveComplete(
     );
 
     await updateTokenInDB(tokenData);
-    await tokenMigrator.migrateToken(token);
+    await tokenMigrator.resumeOneStep(token.mint, true);
     await wsClient.emit(
       `token-${mintAddress}`,
       "updateToken",

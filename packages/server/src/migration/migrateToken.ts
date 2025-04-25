@@ -87,12 +87,22 @@ export class TokenMigrator {
     const allSteps = this.getMigrationSteps();
     const stepNames = allSteps.map((s) => s.name);
     const stepKey = `migration:${mint}:currentStep`;
+    console.log("stepKey", stepKey);
     const lockKey = `migration:${mint}:lock`;
-
-    const [rawCurrent, rawLock] = await Promise.all([
-      this.redisCache.get(stepKey),
-      this.redisCache.get(lockKey),
-    ]);
+    console.log("lockKey", lockKey);
+    let rawCurrent: string | null = null;
+    let rawLock: string | null = null;
+    try {
+      [rawCurrent, rawLock] = await Promise.all([
+        this.redisCache.get(stepKey),
+        this.redisCache.get(lockKey),
+      ]);
+    } catch (err) {
+      logger.error(`[Migrate] Error getting Redis keys:`, err);
+      throw err;
+    }
+    console.log("rawCurrent", rawCurrent);
+    console.log("rawLock", rawLock);
     let current = rawCurrent && stepNames.includes(rawCurrent) ? rawCurrent : stepNames[0];
 
     if (rawLock === "true" && !forced) {
@@ -107,16 +117,26 @@ export class TokenMigrator {
 
       const idx = stepNames.indexOf(current);
       const step = allSteps[idx];
+      console.log("step", step);
       if (!step) {
         await this.redisCache.set(lockKey, "false");
+        logger.log(`[Migrate] No step found for token ${mint}.`);
         return { ranStep: null, nextStep: null };
       }
 
       const resultKey = `migration:${mint}:step:${step.name}:result`;
       if (await this.redisCache.get(resultKey)) {
+
+        logger.log(`[Migrate] Step result already exists for token ${mint}, skipping.`);
       } else {
-        const { txId, extraData } = await step.fn(token);
-        Object.assign(token, extraData);
+        logger.log(`[Migrate] Running step "${step.name}" for token ${mint}`);
+        const { txId, extraData } = await retryOperation(() => step.fn(token), 3, 5000);
+        for (const stepName of stepNames) {
+          const raw = await this.redisCache.get(`migration:${mint}:step:${stepName}:result`);
+          if (!raw) continue;
+          const { extraData } = JSON.parse(raw);
+          if (extraData) Object.assign(token, extraData);
+        }
         await safeUpdateTokenInDB({ ...token, lastUpdated: new Date().toISOString() });
         await this.redisCache.set(
           resultKey,
