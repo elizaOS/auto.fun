@@ -589,7 +589,9 @@ async function handleCurveComplete(
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );
+    const ext = await ExternalToken.create(mintAddress, redisCache);
 
+    ext.registerWebhook()
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
   } catch (err) {

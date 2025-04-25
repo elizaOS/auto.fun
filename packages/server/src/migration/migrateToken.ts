@@ -296,8 +296,8 @@ export class TokenMigrator {
       const result = await retryOperation(() => step.fn(token), 3, 2000);
       if (step.name !== "withdraw") {
         token.status = "locked";
+        token.lockedAt = new Date();
       } else {
-        token.status = "migrating";
       }
       (token.migration as Record<string, any>)[step.name] = {
         status: "success",
