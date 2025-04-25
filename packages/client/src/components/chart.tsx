@@ -35,12 +35,21 @@ export default function Chart({ token }: ChartProps) {
   const query = useQuery({
     queryKey: ["token", mint, "chart", isCodex],
     queryFn: async () => {
+      let from = 0;
       const to = Math.floor(new Date().getTime() / 1000.0);
-      const from = isCodex ? to - 21600 : to - 21600 * 2;
+      
+      from = isCodex ? to - 21600 : to - 21600 * 2; // Codex = 6 hours, Prebonded = 12h
+      if (token?.imported === 0 && token?.lockedAt && isCodex) {
+        // use the lock time if available and more recent than 6 hours ago
+        const lockTime = Math.floor(
+          new Date(token.lockedAt).getTime() / 1000.0
+        );
+        const sixHoursAgo = Math.floor(new Date().getTime() / 1000.0) - 21600;
+        from = Math.max(lockTime, sixHoursAgo);
+      }
 
       if (isCodex) {
         const { getBars } = await codex.queries.getBars({
-          currencyCode: "USD",
           from,
           to,
           symbol: pairId,
