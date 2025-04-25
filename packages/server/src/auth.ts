@@ -9,6 +9,7 @@ import { getDB, users } from "./db";
 import { Env } from "./env";
 import { logger } from "./util";
 import { ensureUserProfile } from "./routes/user";
+import { getGlobalRedisCache } from "./redis";
 
 // Define the AuthTokenData interface here to fix TypeScript errors
 interface AuthTokenData {
@@ -387,24 +388,46 @@ export const authStatus = async (c: AppContext) => {
       const walletToQuery = tokenData.publicKey;
 
       if (walletToQuery) {
-        const db = getDB();
-
         try {
+          // Try to get user data from Redis cache first
+          const redisCache = await getGlobalRedisCache();
+          const cacheKey = `user:${walletToQuery}`;
+          const cachedUser = await redisCache.get(cacheKey);
+
+          if (cachedUser) {
+            const userData = JSON.parse(cachedUser);
+            return c.json({
+              authenticated: true,
+              user: {
+                points: userData.points,
+                privileges: tokenData.privileges || [],
+              },
+            });
+          }
+
+          // If not in cache, query database
+          const db = getDB();
           const dbUser = await db
-            .select()
+            .select({
+              points: users.points,
+            })
             .from(users)
             .where(eq(users.address, walletToQuery))
             .limit(1);
 
-          if (dbUser.length > 0) {
-            // Include privileges from token if available
-            const privileges = tokenData.privileges || [];
+          if (dbUser && dbUser.length > 0 && dbUser[0]) {
+            // Cache the user data for 1 minute
+            await redisCache.set(
+              cacheKey,
+              JSON.stringify({ points: dbUser[0].points }),
+              60 // 1 minute TTL
+            );
 
             return c.json({
               authenticated: true,
               user: {
                 points: dbUser[0].points,
-                privileges,
+                privileges: tokenData.privileges || [],
               },
             });
           }
@@ -456,7 +479,6 @@ export const verifyAuth = async (
 
     const tokenToUse = headerToken; // ONLY use header token
 
-    console.log("tokenToUse", tokenToUse);
 
     // Check for JWT token
     if (tokenToUse && tokenToUse.includes(".")) {
