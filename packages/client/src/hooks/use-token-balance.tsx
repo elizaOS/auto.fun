@@ -3,7 +3,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useEffect, useState } from "react";
 
-export const useSolBalance = () => {
+export const useSolBalance = ({ enabled }: { enabled?: boolean } = {}) => {
   const [solBalance, setSolBalance] = useState(0);
   const [error, setError] = useState<string>("");
 
@@ -11,7 +11,7 @@ export const useSolBalance = () => {
   const { publicKey } = useWallet();
 
   useEffect(() => {
-    if (!publicKey || !connection) return;
+    if (!publicKey || !connection || enabled === false) return;
 
     const fetchSolBalance = async () => {
       try {
@@ -33,7 +33,7 @@ export const useSolBalance = () => {
     return () => {
       connection.removeAccountChangeListener(id);
     };
-  }, [publicKey, connection]);
+  }, [publicKey, connection, enabled]);
 
   return error ? error : solBalance;
 };
@@ -54,7 +54,7 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
       const tokenMint = new PublicKey(tokenId);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         publicKey,
-        { mint: tokenMint },
+        { mint: tokenMint }
       );
 
       let balance = 0;
@@ -77,7 +77,7 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
     // Listen for token account changes
     const tokenAccountListener = connection.onProgramAccountChange(
       program.programId,
-      fetchTokenBalance,
+      fetchTokenBalance
     );
 
     return () => {
