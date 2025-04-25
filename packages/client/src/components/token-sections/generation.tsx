@@ -413,13 +413,13 @@ export default function CommunityTab() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          userPrompt,
           tokenMint,
-          tokenMetadata,
-          mediaType: "image",
+          userPrompt,
+          type: "image",
           mode: generationMode,
+          publicKey: publicKey?.toString(),
         }),
-        credentials: "include", // Important to include credentials for auth cookies
+        credentials: "include",
       });
 
       // Headers object doesn't have a standard iterator, so we'll get keys and values manually
@@ -508,7 +508,7 @@ export default function CommunityTab() {
       if (!data || typeof data !== "object") {
         throw new Error("Invalid response format");
       }
-
+      console.log("data", data);
       if (data.success && data.mediaUrl) {
         // Check if mediaUrl is a data URL or a regular URL
         if (data.mediaUrl.startsWith("data:")) {

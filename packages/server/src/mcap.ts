@@ -28,8 +28,6 @@ const lastUpdateTime: Date | null = null;
  * Prioritizes cache, then Pyth, then fallback APIs
  */
 export async function getSOLPrice(): Promise<number> {
-  console.log("getting sol price");
-  // If env is provided, try to get price from cache first
     const cacheService = new CacheService();
     const cachedPrice = await cacheService.getSolPrice();
     console.log("cachedPrice", cachedPrice);
@@ -88,7 +86,7 @@ export async function getSOLPrice(): Promise<number> {
     );
     const data = (await response.json()) as any;
 
-    if (data && data.price) {
+    if (data && data?.price) {
       const price = parseFloat(data.price);
 
       // If env is provided, cache the price
