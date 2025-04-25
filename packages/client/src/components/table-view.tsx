@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -41,6 +42,28 @@ export function TableView({
 }: TableViewProps) {
   const navigate = useNavigate();
 
+  // Load saved sort preferences on component mount
+  useEffect(() => {
+    const savedSortBy = localStorage.getItem("tableSortBy");
+    const savedSortOrder = localStorage.getItem("tableSortOrder") as SortOrderType;
+
+    if (savedSortBy) {
+      setSortBy(savedSortBy as keyof IToken);
+    }
+
+    if (savedSortOrder && (savedSortOrder === "asc" || savedSortOrder === "desc")) {
+      setSortOrder(savedSortOrder);
+    }
+  }, [setSortBy, setSortOrder]);
+
+  // Save sort preferences whenever they change
+  useEffect(() => {
+    if (sortBy) {
+      localStorage.setItem("tableSortBy", sortBy as string);
+    }
+    localStorage.setItem("tableSortOrder", sortOrder);
+  }, [sortBy, sortOrder]);
+
   const handleSort = (columnKey: keyof IToken) => {
     if (sortBy === columnKey) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -48,6 +71,7 @@ export function TableView({
       setSortBy(columnKey);
       setSortOrder("desc");
     }
+    // No need to manually save to localStorage here as the useEffect will handle it
   };
 
   const SortIcon = ({ columnKey }: { columnKey: keyof IToken }) => {
