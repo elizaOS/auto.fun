@@ -415,8 +415,8 @@ export const authStatus = async (c: AppContext) => {
             .where(eq(users.address, walletToQuery))
             .limit(1);
 
-          if (dbUser.length > 0) {
-            // Cache the user data for 5 minutes
+          if (dbUser && dbUser.length > 0 && dbUser[0]) {
+            // Cache the user data for 1 minute
             await redisCache.set(
               cacheKey,
               JSON.stringify({ points: dbUser[0].points }),
