@@ -14,7 +14,7 @@ export default function MainentenaceProvider({ children }: PropsWithChildren) {
 
   if (isEnabled)
     return (
-      <div className="h-screen flex items-center justify-center text-white">
+      <div className="fixed w-screen h-screen bg-autofun-background-action-primary z-[1000] flex items-center justify-center text-white">
         <div className="flex items-center flex-col gap-4 p-4">
           <img
             src="/logo.png"
@@ -29,5 +29,5 @@ export default function MainentenaceProvider({ children }: PropsWithChildren) {
         </div>
       </div>
     );
-  return children;
+  return null;
 }
