@@ -1,8 +1,8 @@
 // check-admin.ts
 import * as anchor from '@coral-xyz/anchor';
 import { Program, web3 } from '@coral-xyz/anchor';
-import { Autofun } from '../target/types/autofun'; // Import the generated types
-import { RaydiumVault } from '../target/types/raydium_vault';
+import type { Autofun } from '../target/types/autofun.ts';
+import type { RaydiumVault } from "../target/types/raydium_vault";
 import BN from 'bn.js'; // Import BN for handling large numbers
 
 (async () => {
