@@ -10,8 +10,8 @@ import { getGlobalRedisCache } from "../redis";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
-import { createTokenPrompt } from "./generation-prompts/create-token";
-import { enhancePrompt } from "./generation-prompts/enhance-prompt";
+import { enhancePrompt } from "../prompts/enhance-prompt";
+import { createTokenPrompt } from "../prompts/create-token";
 import { uploadToStorage } from "./files";
 
 // Enum for media types
