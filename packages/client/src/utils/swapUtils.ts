@@ -289,7 +289,7 @@ export const getJupiterSwapIx = async (
 
   // Only compute/apply a platform fee if we're NOT using Token-2022
   let feeAccount = undefined;
-  if (isToken2022) {
+  if (!isToken2022) {
     console.log("Using Jupiter platform fee.");
     const feePercent = 2;
     const feeBps = Math.round(feePercent * 10); // 0.2% = 200 bps
