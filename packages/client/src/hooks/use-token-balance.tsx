@@ -56,10 +56,19 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
         publicKey,
         { mint: tokenMint },
       );
-      const balance =
-        tokenAccounts.value.length > 0
-          ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount
-          : 0;
+
+      let balance = 0;
+      if (tokenAccounts.value.length > 0) {
+        const accountInfo = tokenAccounts.value[0].account.data.parsed.info;
+        const amount = Number(accountInfo.tokenAmount.amount || 0); // Ensure amount is a number
+        const decimals = accountInfo.tokenAmount.decimals || 0; // Ensure decimals is a number
+
+        if (decimals > 0) {
+          balance = amount / Math.pow(10, decimals);
+        } else {
+          balance = amount; // Handle case where decimals might be 0
+        }
+      }
 
       setTokenBalance(balance);
     };
