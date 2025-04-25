@@ -417,7 +417,7 @@ export default function CommunityTab() {
           userPrompt,
           type: "image",
           mode: generationMode,
-          publicKey: publicKey?.toString()
+          publicKey: publicKey?.toString(),
         }),
         credentials: "include",
       });

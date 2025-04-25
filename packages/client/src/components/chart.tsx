@@ -60,7 +60,13 @@ export default function Chart({ token }: ChartProps) {
           const close = Number(getBars.c[i]);
           const time = Number(getBars.t[i]);
 
-          if (!isNaN(open) && !isNaN(high) && !isNaN(low) && !isNaN(close) && !isNaN(time)) {
+          if (
+            !isNaN(open) &&
+            !isNaN(high) &&
+            !isNaN(low) &&
+            !isNaN(close) &&
+            !isNaN(time)
+          ) {
             bars.push({
               open,
               high,
@@ -85,7 +91,7 @@ export default function Chart({ token }: ChartProps) {
         if (!data?.table?.length) {
           const lastKnownPrice = Number(token?.tokenPriceUSD) || 0;
           if (isNaN(lastKnownPrice)) return [];
-          
+
           return [
             {
               time: Math.floor(Date.now() / 1000) * 1000,
@@ -98,12 +104,13 @@ export default function Chart({ token }: ChartProps) {
           ];
         }
 
-        return data.table.filter(candle => 
-          !isNaN(Number(candle.open)) && 
-          !isNaN(Number(candle.high)) && 
-          !isNaN(Number(candle.low)) && 
-          !isNaN(Number(candle.close)) && 
-          !isNaN(Number(candle.time))
+        return data.table.filter(
+          (candle) =>
+            !isNaN(Number(candle.open)) &&
+            !isNaN(Number(candle.high)) &&
+            !isNaN(Number(candle.low)) &&
+            !isNaN(Number(candle.close)) &&
+            !isNaN(Number(candle.time)),
         );
       }
     },
