@@ -479,7 +479,6 @@ export const verifyAuth = async (
 
     const tokenToUse = headerToken; // ONLY use header token
 
-    console.log("tokenToUse", tokenToUse);
 
     // Check for JWT token
     if (tokenToUse && tokenToUse.includes(".")) {
