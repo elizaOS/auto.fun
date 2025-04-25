@@ -6,11 +6,6 @@ type TermsSection = {
 
 const TERMS_AND_CONDITIONS: TermsSection[] = [
   {
-    header: "Platform Terms & Conditions",
-    subheader: "Last Updated",
-    content: "31 January 2025",
-  },
-  {
     header: "General Notice",
     subheader: "Legal Agreement",
     content:
@@ -208,8 +203,12 @@ const TERMS_AND_CONDITIONS: TermsSection[] = [
 const TermsOfService = () => {
   return (
     <div className="flex flex-col flex-1 min-h-[100vh]">
-      <div className="max-w-4xl mx-auto p-6 text-white">
+      <div className="max-w-4xl mx-auto p-12 text-white">
         <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-6xl font-bold">Platform Terms & Conditions</h1>
+          <div className="text-xl font-medium">Last Updated: 31 January 2025</div>
+        </div>
           {TERMS_AND_CONDITIONS.map((item, _) => (
             <div className="flex flex-col gap-4">
               <div className="text-3xl font-bold">{item.header}</div>
