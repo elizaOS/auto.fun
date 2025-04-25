@@ -1,92 +1,118 @@
 import { useProgram } from "@/utils/program";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useSolBalance = ({ enabled }: { enabled?: boolean } = {}) => {
-  const [solBalance, setSolBalance] = useState(0);
-  const [error, setError] = useState<string>("");
-
+export const useSolBalance = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!publicKey || !connection || enabled === false) return;
-
-    const fetchSolBalance = async () => {
-      try {
-        if (error) {
-          setError("");
-        }
-        const balance = await connection.getBalance(publicKey);
-        setSolBalance(balance / 1e9);
-      } catch (error) {
-        setError("Error");
-        console.error("Error fetching SOL balance:", error);
+  const query = useQuery({
+    queryKey: ['solBalance', publicKey?.toString()],
+    queryFn: async () => {
+      if (!publicKey || !connection) {
+        return 0;
       }
-    };
+      
+      try {
+        const balance = await connection.getBalance(publicKey);
+        return balance / 1e9;
+      } catch (error) {
+        console.error("Error fetching SOL balance:", error);
+        throw new Error("Error fetching SOL balance");
+      }
+    },
+    enabled: !!publicKey && !!connection && enabled,
+    refetchInterval: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    fetchSolBalance();
+  // Set up account change listener in useEffect
+  useEffect(() => {
+    if (!publicKey || !connection || !enabled) return;
+    
     const id = connection.onAccountChange(publicKey, () => {
-      fetchSolBalance();
+      // Invalidate the query to trigger a refetch
+      queryClient.invalidateQueries({ queryKey: ['solBalance', publicKey?.toString()] });
     });
+    
+    // Return cleanup function
     return () => {
       connection.removeAccountChangeListener(id);
     };
-  }, [publicKey, connection, enabled]);
-
-  return error ? error : solBalance;
+  }, [publicKey, connection, enabled, queryClient]);
+  
+  return query.data ?? 0;
 };
 
 export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
-  const solBalance = useSolBalance();
-  const [tokenBalance, setTokenBalance] = useState(0);
-
   const { connection } = useConnection();
   const { publicKey } = useWallet();
   const program = useProgram();
-
-  // Get token balance
+  const queryClient = useQueryClient();
+  
+  const solBalance = useSolBalance();
+  
+  const tokenBalanceQuery = useQuery({
+    queryKey: ['tokenBalance', publicKey?.toString(), tokenId],
+    queryFn: async () => {
+      if (!publicKey || !connection || !program || !tokenId) {
+        return 0;
+      }
+      
+      try {
+        const tokenMint = new PublicKey(tokenId);
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { mint: tokenMint },
+        );
+        
+        let balance = 0;
+        if (tokenAccounts.value.length > 0) {
+          const accountInfo = tokenAccounts.value[0].account.data.parsed.info;
+          const amount = Number(accountInfo.tokenAmount.amount || 0);
+          const decimals = accountInfo.tokenAmount.decimals || 0;
+          
+          if (decimals > 0) {
+            balance = amount / Math.pow(10, decimals);
+          } else {
+            balance = amount;
+          }
+        }
+        
+        return balance;
+      } catch (error) {
+        console.error("Error fetching token balance:", error);
+        throw new Error("Error fetching token balance");
+      }
+    },
+    enabled: !!publicKey && !!connection && !!program && !!tokenId,
+    refetchInterval: false,
+    staleTime: 5 * 60 * 1000,
+  });
   useEffect(() => {
     if (!publicKey || !connection || !program || !tokenId) return;
-
-    const fetchTokenBalance = async () => {
-      const tokenMint = new PublicKey(tokenId);
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        publicKey,
-        { mint: tokenMint },
-      );
-
-      let balance = 0;
-      if (tokenAccounts.value.length > 0) {
-        const accountInfo = tokenAccounts.value[0].account.data.parsed.info;
-        const amount = Number(accountInfo.tokenAmount.amount || 0); // Ensure amount is a number
-        const decimals = accountInfo.tokenAmount.decimals || 0; // Ensure decimals is a number
-
-        if (decimals > 0) {
-          balance = amount / Math.pow(10, decimals);
-        } else {
-          balance = amount; // Handle case where decimals might be 0
-        }
-      }
-
-      setTokenBalance(balance);
-    };
-
-    fetchTokenBalance();
-    // Listen for token account changes
+    
     const tokenAccountListener = connection.onProgramAccountChange(
       program.programId,
-      fetchTokenBalance,
+      () => {
+        queryClient.invalidateQueries({ 
+          queryKey: ['tokenBalance', publicKey?.toString(), tokenId] 
+        });
+      }
     );
-
+    
     return () => {
       connection.removeProgramAccountChangeListener(tokenAccountListener);
     };
-  }, [publicKey, connection, tokenId, program]);
-
+  }, [publicKey, connection, program, tokenId, queryClient]);
+  
   return {
     solBalance,
-    tokenBalance,
+    tokenBalance: tokenBalanceQuery.data ?? 0,
+    isLoading: tokenBalanceQuery.isLoading,
+    error: tokenBalanceQuery.error,
   };
 };
