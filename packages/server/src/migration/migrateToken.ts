@@ -80,6 +80,90 @@ export class TokenMigrator {
     };
   }
 
+  public async resumeOneStep(mint: string, forced = false): Promise<{
+    ranStep: string | null;
+    nextStep: string | null;
+  }> {
+    const allSteps = this.getMigrationSteps();
+    const stepNames = allSteps.map((s) => s.name);
+    const stepKey = `migration:${mint}:currentStep`;
+    const lockKey = `migration:${mint}:lock`;
+
+    const [rawCurrent, rawLock] = await Promise.all([
+      this.redisCache.get(stepKey),
+      this.redisCache.get(lockKey),
+    ]);
+    let current = rawCurrent && stepNames.includes(rawCurrent) ? rawCurrent : stepNames[0];
+
+    if (rawLock === "true" && !forced) {
+      return { ranStep: null, nextStep: null };
+    }
+
+    await this.redisCache.set(lockKey, "true");
+
+    try {
+      const token = await getToken(mint);
+      if (!token) throw new Error(`Token ${mint} not found`);
+
+      const idx = stepNames.indexOf(current);
+      const step = allSteps[idx];
+      if (!step) {
+        await this.redisCache.set(lockKey, "false");
+        return { ranStep: null, nextStep: null };
+      }
+
+      const resultKey = `migration:${mint}:step:${step.name}:result`;
+      if (await this.redisCache.get(resultKey)) {
+      } else {
+        const { txId, extraData } = await step.fn(token);
+        Object.assign(token, extraData);
+        await safeUpdateTokenInDB({ ...token, lastUpdated: new Date().toISOString() });
+        await this.redisCache.set(
+          resultKey,
+          JSON.stringify({ txId, extraData })
+        );
+      }
+
+
+      const next = allSteps[idx + 1]?.name || null;
+      if (next) {
+        await this.redisCache.set(stepKey, next);
+      }
+
+      await this.redisCache.set(lockKey, "false");
+
+      return { ranStep: step.name, nextStep: next };
+    } catch (err) {
+      await this.redisCache.set(lockKey, "false");
+      throw err;
+    }
+  }
+
+  async resumeMigrationForToken(mint: string, forced = false): Promise<void> {
+    const token = await getToken(mint);
+    if (!token) {
+      throw new Error(`Token ${mint} not found in DB`);
+    }
+
+    const lockKey = `migration:${mint}:lock`;
+    const lock = await this.redisCache.get(lockKey);
+    if (lock === "true" && !forced) {
+      logger.log(`[Migrate] Token ${token.mint} is locked. Skipping.`);
+      return;
+    }
+
+    // Lock the token
+    await this.redisCache.set(lockKey, "true");
+
+    try {
+      await this.migrateToken(token);
+    } catch (err) {
+      logger.error(`[Migrate] Error migrating token ${token.mint}:`, err);
+      await this.redisCache.set(lockKey, "false");
+      throw err;
+    }
+  }
+
   async forceResumeAtStep(mint: string, step: string): Promise<void> {
     const validSteps = this.getMigrationSteps().map((s) => s.name);
     if (!validSteps.includes(step)) {
