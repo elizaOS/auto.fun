@@ -6,6 +6,7 @@ import { getDB, tokens, User, users } from "../db";
 import { uploadWithS3 } from "../uploader"; // Import the S3 uploader utility
 import { logger } from "../util";
 import { generateMedia, MediaType } from "./generation"; // Import generation utilities
+import { uploadToStorage } from "./files";
 // Assume an auth middleware exists and is imported, e.g.:
 // import { authMiddleware } from "../middleware/auth";
 
@@ -264,66 +265,52 @@ app.put('/profile', async (c) => {
 // --- End PUT /users/profile ---
 
 // --- POST /users/profile/picture - Upload Profile Picture ---
-// TODO: Add actual file handling middleware (e.g., hono/multer or custom)
-// For now, assume file buffer is available (this part needs real implementation)
 app.post('/profile/picture', async (c) => {
-     const currentUser = c.var.user;
+    const currentUser = c.var.user;
     if (!currentUser || !currentUser.publicKey) {
         return c.json({ error: "Unauthorized" }, 401);
     }
     const userPublicKey = currentUser.publicKey;
 
     try {
-        // --- !!! Placeholder for actual file reading !!! ---
-        // You'll need middleware to parse multipart/form-data
-        // Example structure assuming middleware adds file to context:
-        // const file = c.get('file'); // Hypothetical
-        // if (!file || !file.buffer || !file.mimetype) { // Hypothetical file structure
-        //     return c.json({ error: "No image file uploaded or invalid format." }, 400);
-        // }
-        // const imageBuffer = file.buffer;
-        // const contentType = file.mimetype;
-
-        // --- !!! TEMPORARY Hardcoded Placeholder !!! ---
-        console.warn("Profile picture upload endpoint hit, but file handling is NOT implemented.");
-        // Simulate reading a file for demonstration (replace with real logic)
-        const imageBuffer = Buffer.from("fake-image-data"); // Replace with actual file buffer
-        const contentType = "image/png"; // Replace with actual file content type
-        // --- !!! End Placeholder !!! ---
-
-        // Basic Validation (add more robust checks)
-        if (!contentType.startsWith("image/")) {
-             return c.json({ error: "Invalid file type. Please upload an image (JPEG, PNG, GIF, WebP)." }, 400);
-        }
-        if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB Limit
-             return c.json({ error: "Image file size exceeds 5MB limit." }, 400);
+        const formData = await c.req.formData();
+        const file = formData.get('profilePicture') as File;
+        
+        if (!file) {
+            return c.json({ error: "No file uploaded" }, 400);
         }
 
-        // Generate a unique filename for storage
-        const ext = contentType.split('/')[1] || 'png';
+        if (!file.type.startsWith('image/')) {
+            return c.json({ error: "Invalid file type. Please upload an image." }, 400);
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            return c.json({ error: "File size exceeds 5MB limit" }, 400);
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const imageBuffer = Buffer.from(arrayBuffer);
+
+        const ext = file.type.split('/')[1] || 'png';
         const filename = `profile_${userPublicKey}_${Date.now()}.${ext}`;
+        const key = `profile-pictures/${filename}`;
 
-        // Upload to S3 (or your chosen storage)
-        const imageUrl = await uploadWithS3(imageBuffer, {
-             filename,
-             contentType,
-             basePath: 'profile-pictures' // Example storage path
+        const imageUrl = await uploadToStorage(imageBuffer, {
+            contentType: file.type,
+            key: key
         });
 
         if (!imageUrl) {
-             throw new Error("Failed to upload image to storage.");
+            throw new Error("Failed to upload image to storage");
         }
 
-        // Ensure user profile exists
         await ensureUserProfile(userPublicKey);
 
-        // Update the user's profile picture URL in the database
         const db = getDB();
         await db.update(users)
              .set({ profile_picture_url: imageUrl })
              .where(eq(users.address, userPublicKey));
 
-        // Fetch the updated user profile to return
         const updatedUser = await ensureUserProfile(userPublicKey);
 
         return c.json({
