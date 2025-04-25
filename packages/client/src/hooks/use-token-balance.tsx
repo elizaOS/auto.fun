@@ -54,7 +54,7 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
       const tokenMint = new PublicKey(tokenId);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         publicKey,
-        { mint: tokenMint }
+        { mint: tokenMint },
       );
 
       let balance = 0;
@@ -77,7 +77,7 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
     // Listen for token account changes
     const tokenAccountListener = connection.onProgramAccountChange(
       program.programId,
-      fetchTokenBalance
+      fetchTokenBalance,
     );
 
     return () => {
