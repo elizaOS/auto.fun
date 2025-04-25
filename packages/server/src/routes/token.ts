@@ -188,27 +188,21 @@ function buildTokensCountBaseQuery(
 
   if (hideImported === 1) {
     conditions.push(sql`${tokens.imported} = 0`);
-    logger.log(`[Count Build] Adding condition: imported = 0`);
   }
   let specificStatusApplied = false;
   if (status === "active") {
     conditions.push(sql`${tokens.status} = 'active'`);
-    logger.log(`[Count Build] Adding condition: status = 'active'`);
     specificStatusApplied = true;
   } else if (status === "locked") {
     conditions.push(sql`${tokens.status} = 'locked'`);
-    logger.log(`[Count Build] Adding condition: status = 'locked'`);
     specificStatusApplied = true;
   }
   if (!specificStatusApplied) {
     conditions.push(sql`${tokens.status} != 'pending'`);
-    logger.log(`[Count Build] Adding condition: status != 'pending'`);
   }
   conditions.push(sql`(${tokens.hidden} != 1 OR ${tokens.hidden} IS NULL)`);
-  logger.log(`[Count Build] Adding condition: hidden != 1 OR hidden IS NULL`);
   if (creator) {
     conditions.push(eq(tokens.creator, creator));
-    logger.log(`[Count Build] Adding condition: creator = ${creator}`);
   }
   if (search) {
     conditions.push(
