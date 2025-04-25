@@ -12,6 +12,7 @@ import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
+import { uploadToStorage } from "./files";
 
 // Enum for media types
 export enum MediaType {
@@ -1512,36 +1513,56 @@ export async function generateImage(
   creator?: string
 ): Promise<MediaGeneration> {
   try {
-    // In test mode, return a test image
-    if (process.env.NODE_ENV === "test") {
-      return {
-        id: crypto.randomUUID(),
-        mint,
-        type: "image",
-        prompt,
-        mediaUrl: "https://example.com/test-image.png",
-        negativePrompt: negativePrompt || "",
-        seed: 12345,
-        numInferenceSteps: 30,
-        creator: creator || "test-creator",
-        timestamp: new Date().toISOString(),
-        dailyGenerationCount: 1,
-        lastGenerationReset: new Date().toISOString(),
-      };
+    // Check if user has privileges and available generations
+    const db = getDB();
+    const userGenerations = await db
+      .select()
+      .from(mediaGenerations)
+      .where(
+        and(
+          eq(mediaGenerations.mint, mint),
+          eq(mediaGenerations.creator, creator || ""),
+          gte(mediaGenerations.timestamp, new Date(Date.now() - 24 * 60 * 60 * 1000))
+        )
+      );
+
+    if (userGenerations.length >= 10) {
+      throw new Error("Daily generation limit reached");
     }
 
-    // For production, we would call the actual Fal.ai API
-    // This is simplified for the test scenario
-    if (!process.env.FAL_API_KEY) {
-      throw new Error("FAL_API_KEY is not configured");
+    // Generate image using Fal.ai
+    const imageResult = await generateMedia({
+      prompt,
+      type: MediaType.IMAGE,
+      negative_prompt: negativePrompt,
+      mode: "fast"
+    }) as any;
+
+    if (!imageResult?.data?.images?.[0]?.url) {
+      throw new Error("Failed to generate image");
     }
 
-    // Generate a realistic test image URL
-    const imageUrl = `https://example.com/generated/${mint}/${Date.now()}.png`;
+    // Download the generated image
+    const imageResponse = await fetch(imageResult.data.images[0].url);
+    if (!imageResponse.ok) {
+      throw new Error("Failed to download generated image");
+    }
 
-    // Return media generation data
-    return {
-      id: crypto.randomUUID(),
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const imageKey = `generations/${mint}/image/generation-${timestamp}.jpg`;
+    const imageUrl = await uploadToStorage(imageBuffer, {
+      contentType: "image/jpeg",
+      key: imageKey
+    });
+
+    // Create media generation record
+    const generationId = crypto.randomUUID();
+    const now = new Date();
+    await db.insert(mediaGenerations).values({
+      id: generationId,
       mint,
       type: "image",
       prompt,
@@ -1550,9 +1571,22 @@ export async function generateImage(
       seed: Math.floor(Math.random() * 1000000),
       numInferenceSteps: 30,
       creator: creator || "",
-      timestamp: new Date().toISOString(),
-      dailyGenerationCount: 1,
-      lastGenerationReset: new Date().toISOString(),
+      timestamp: now
+    });
+
+    return {
+      id: generationId,
+      mint,
+      type: "image",
+      prompt,
+      mediaUrl: imageUrl,
+      negativePrompt: negativePrompt || "",
+      seed: Math.floor(Math.random() * 1000000),
+      numInferenceSteps: 30,
+      creator: creator || "",
+      timestamp: now.toISOString(),
+      dailyGenerationCount: userGenerations.length + 1,
+      lastGenerationReset: now.toISOString()
     };
   } catch (error) {
     console.error("Error generating image:", error);
@@ -2242,4 +2276,88 @@ app.post("/mark-token-used", async (c) => {
     );
   }
 });
+
+// Enhance and generate endpoint
+app.post("/enhance-and-generate", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { mint, prompt, type = MediaType.IMAGE, publicKey } = body;
+
+    if (!mint || !prompt) {
+      return c.json({ error: "Mint and prompt are required" }, 400);
+    }
+
+    // Check rate limits
+    const rateLimitCheck = await checkRateLimits(mint, type, publicKey);
+    if (!rateLimitCheck.allowed) {
+      return c.json(
+        {
+          error: rateLimitCheck.message || "Rate limit exceeded",
+          remaining: rateLimitCheck.remaining,
+        },
+        429
+      );
+    }
+
+    // Check token ownership if enabled
+    if (TOKEN_OWNERSHIP.ENABLED && publicKey) {
+      const ownershipCheck = await checkTokenOwnership(mint, publicKey, "fast", type);
+      if (!ownershipCheck.allowed) {
+        return c.json({ error: ownershipCheck.message }, 403);
+      }
+    }
+
+    // Get token metadata
+    const db = getDB();
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!token || token.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    const tokenData = token[0];
+
+    const metadata = {
+      name: tokenData.name,
+      symbol: tokenData.ticker,
+      description: tokenData.description || ""
+    };
+
+    // Enhance the prompt
+    const enhancedPrompt = await generateEnhancedPrompt(
+      prompt,
+      metadata,
+      type
+    );
+
+    // Generate media based on type
+    let result;
+    if (type === MediaType.IMAGE) {
+      result = await generateImage(mint, enhancedPrompt, undefined, publicKey);
+    } else if (type === MediaType.VIDEO) {
+      result = await generateVideo(mint, enhancedPrompt, undefined, publicKey);
+    } else {
+      return c.json({ error: "Unsupported media type" }, 400);
+    }
+
+    return c.json({
+      success: true,
+      result,
+      enhancedPrompt,
+    });
+  } catch (error) {
+    logger.error("Error in enhance-and-generate:", error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
 export default app;

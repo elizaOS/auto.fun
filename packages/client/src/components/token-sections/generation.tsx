@@ -413,13 +413,13 @@ export default function CommunityTab() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          userPrompt,
-          tokenMint,
-          tokenMetadata,
-          mediaType: "image",
+          mint: tokenMint,
+          prompt: userPrompt,
+          type: "image",
           mode: generationMode,
+          publicKey: publicKey?.toString()
         }),
-        credentials: "include", // Important to include credentials for auth cookies
+        credentials: "include",
       });
 
       // Headers object doesn't have a standard iterator, so we'll get keys and values manually
@@ -509,16 +509,16 @@ export default function CommunityTab() {
         throw new Error("Invalid response format");
       }
 
-      if (data.success && data.mediaUrl) {
+      if (data.success && data.result?.mediaUrl) {
         // Check if mediaUrl is a data URL or a regular URL
-        if (data.mediaUrl.startsWith("data:")) {
+        if (data.result.mediaUrl.startsWith("data:")) {
           // It's already a data URL, use directly
-          setGeneratedImage(data.mediaUrl);
+          setGeneratedImage(data.result.mediaUrl);
         } else {
           // It's a URL, make sure it's absolute
-          const fullUrl = data.mediaUrl.startsWith("http")
-            ? data.mediaUrl
-            : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
+          const fullUrl = data.result.mediaUrl.startsWith("http")
+            ? data.result.mediaUrl
+            : `${env.apiUrl}${data.result.mediaUrl.startsWith("/") ? "" : "/"}${data.result.mediaUrl}`;
           setGeneratedImage(fullUrl);
         }
 
