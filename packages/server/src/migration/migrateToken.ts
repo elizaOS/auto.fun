@@ -80,6 +80,110 @@ export class TokenMigrator {
     };
   }
 
+  public async resumeOneStep(mint: string, forced = false): Promise<{
+    ranStep: string | null;
+    nextStep: string | null;
+  }> {
+    const allSteps = this.getMigrationSteps();
+    const stepNames = allSteps.map((s) => s.name);
+    const stepKey = `migration:${mint}:currentStep`;
+    console.log("stepKey", stepKey);
+    const lockKey = `migration:${mint}:lock`;
+    console.log("lockKey", lockKey);
+    let rawCurrent: string | null = null;
+    let rawLock: string | null = null;
+    try {
+      [rawCurrent, rawLock] = await Promise.all([
+        this.redisCache.get(stepKey),
+        this.redisCache.get(lockKey),
+      ]);
+    } catch (err) {
+      logger.error(`[Migrate] Error getting Redis keys:`, err);
+      throw err;
+    }
+    console.log("rawCurrent", rawCurrent);
+    console.log("rawLock", rawLock);
+    const current = rawCurrent && stepNames.includes(rawCurrent) ? rawCurrent : stepNames[0];
+
+    if (rawLock === "true" && !forced) {
+      return { ranStep: null, nextStep: null };
+    }
+
+    await this.redisCache.set(lockKey, "true");
+
+    try {
+      const token = await getToken(mint);
+      if (!token) throw new Error(`Token ${mint} not found`);
+
+      const idx = stepNames.indexOf(current);
+      const step = allSteps[idx];
+      console.log("step", step);
+      if (!step) {
+        await this.redisCache.set(lockKey, "false");
+        logger.log(`[Migrate] No step found for token ${mint}.`);
+        return { ranStep: null, nextStep: null };
+      }
+
+      const resultKey = `migration:${mint}:step:${step.name}:result`;
+      if (await this.redisCache.get(resultKey)) {
+
+        logger.log(`[Migrate] Step result already exists for token ${mint}, skipping.`);
+      } else {
+        logger.log(`[Migrate] Running step "${step.name}" for token ${mint}`);
+        const { txId, extraData } = await retryOperation(() => step.fn(token), 3, 5000);
+        for (const stepName of stepNames) {
+          const raw = await this.redisCache.get(`migration:${mint}:step:${stepName}:result`);
+          if (!raw) continue;
+          const { extraData } = JSON.parse(raw);
+          if (extraData) Object.assign(token, extraData);
+        }
+        await safeUpdateTokenInDB({ ...token, lastUpdated: new Date().toISOString() });
+        await this.redisCache.set(
+          resultKey,
+          JSON.stringify({ txId, extraData })
+        );
+      }
+
+
+      const next = allSteps[idx + 1]?.name || null;
+      if (next) {
+        await this.redisCache.set(stepKey, next);
+      }
+
+      await this.redisCache.set(lockKey, "false");
+
+      return { ranStep: step.name, nextStep: next };
+    } catch (err) {
+      await this.redisCache.set(lockKey, "false");
+      throw err;
+    }
+  }
+
+  async resumeMigrationForToken(mint: string, forced = false): Promise<void> {
+    const token = await getToken(mint);
+    if (!token) {
+      throw new Error(`Token ${mint} not found in DB`);
+    }
+
+    const lockKey = `migration:${mint}:lock`;
+    const lock = await this.redisCache.get(lockKey);
+    if (lock === "true" && !forced) {
+      logger.log(`[Migrate] Token ${token.mint} is locked. Skipping.`);
+      return;
+    }
+
+    // Lock the token
+    await this.redisCache.set(lockKey, "true");
+
+    try {
+      await this.migrateToken(token);
+    } catch (err) {
+      logger.error(`[Migrate] Error migrating token ${token.mint}:`, err);
+      await this.redisCache.set(lockKey, "false");
+      throw err;
+    }
+  }
+
   async forceResumeAtStep(mint: string, step: string): Promise<void> {
     const validSteps = this.getMigrationSteps().map((s) => s.name);
     if (!validSteps.includes(step)) {
@@ -294,8 +398,9 @@ export class TokenMigrator {
 
       logger.log(`[Migrate] Running step "${step.name}" for token ${mint}`);
       const result = await retryOperation(() => step.fn(token), 3, 2000);
-      if (step.name !== "withdraw" && step.name !== "createPool") {
+      if (step.name !== "withdraw") {
         token.status = "locked";
+        token.lockedAt = new Date();
       }
       (token.migration as Record<string, any>)[step.name] = {
         status: "success",
@@ -334,6 +439,17 @@ export class TokenMigrator {
         mint: token.mint,
         lastUpdated: new Date().toISOString(),
       });
+      const RETRY_DELAY_MS = 60_000;
+
+      logger.log(`[Migrate] Will retry token ${mint} in ${RETRY_DELAY_MS / 1000}s`);
+      setTimeout(() => {
+        this.migrateToken(token).catch(e =>
+          logger.error(`[Migrate] Retry for ${mint} failed:`, e)
+        );
+      }, RETRY_DELAY_MS);
+
+      // done with this invocation
+      return;
     }
   }
 
@@ -524,6 +640,7 @@ export class TokenMigrator {
     const raydium = await initSdk({
       loadToken: false,
     });
+    console.log(" initialization of raydium sdk", raydium.cluster);
 
     if (!raydium) throw new Error("Raydium SDK init failed");
     const poolId = token.marketId;

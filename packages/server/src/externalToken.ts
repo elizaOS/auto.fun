@@ -82,7 +82,7 @@ export class ExternalToken {
             webhooks: [
               {
                 alertRecurrence: AlertRecurrence.Indefinite,
-                callbackUrl: `${process.env.API_URL}/api/codex-webhook`,
+                callbackUrl: `${process.env.API_URL}`,
                 conditions: {
                   tokenAddress: {
                     eq: this.mint,

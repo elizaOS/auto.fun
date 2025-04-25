@@ -70,8 +70,6 @@ export const useTokens = (params: UseTokensParams) => {
               item.mint === updatedToken.mint ? updatedToken : item,
             ),
           );
-        } else {
-          console.log("Token has no ticker:", updatedToken);
         }
       } catch (error) {
         console.error("Failed to parse token update:", error, token);

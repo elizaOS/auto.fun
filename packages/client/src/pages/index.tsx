@@ -17,6 +17,7 @@ import { Fragment } from "react/jsx-runtime";
 import { FilterIcon, X } from "lucide-react"; // Example icons
 import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
 import { Helmet } from "react-helmet";
+import { useWindowSize } from "@uidotdev/usehooks";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
@@ -39,6 +40,7 @@ interface UseTokensParams {
 
 export default function Page() {
   const [activeTab] = useViewMode();
+  const { width } = useWindowSize();
   // Manage sort/filter state locally, initializing from localStorage using the hook
   const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
     "category",
@@ -46,7 +48,7 @@ export default function Page() {
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
-    "all",
+    "autofun",
   );
   const [bondingStatus, setBondingStatus] =
     useUrlSearchParams<BondingStatusType>("status", "all");
@@ -152,7 +154,7 @@ export default function Page() {
     return query?.items || [];
   }, [query?.items]);
 
-  const isMobile = window.innerWidth <= 640;
+  const isMobile = width ? width <= 640 : false;
 
   return (
     <Fragment>

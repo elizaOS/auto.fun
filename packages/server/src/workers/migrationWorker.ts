@@ -1,11 +1,11 @@
-import { resumeMigrationsOnStart } from "../migration/resumeMigrationsOnStart";
+import { startMigrationCron } from "../migration/resumeMigrationsOnStart";
 
 (async () => {
    try {
       console.log(`[MigrationWorker:${process.env.NETWORK}] starting…`);
-      await resumeMigrationsOnStart();
+      await startMigrationCron();
       console.log(`[MigrationWorker:${process.env.NETWORK}] finished.`);
-      process.exit(0);
+      // process.exit(0);
    } catch (err) {
       console.error("[MigrationWorker] error:", err);
       process.exit(1);

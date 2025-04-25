@@ -583,13 +583,15 @@ async function handleCurveComplete(
     );
 
     await updateTokenInDB(tokenData);
-    await tokenMigrator.migrateToken(token);
+    await tokenMigrator.resumeOneStep(token.mint, true);
     await wsClient.emit(
       `token-${mintAddress}`,
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );
+    const ext = await ExternalToken.create(mintAddress, redisCache);
 
+    ext.registerWebhook()
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
   } catch (err) {

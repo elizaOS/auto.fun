@@ -181,48 +181,123 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const marketCapText = formatMarketCap(marketCapUSD);
         const cashtagText = `$${ticker.toUpperCase()}`;
 
-        // Define text styles
-        const cashtagFontSize = 110; // Increased size again
-        const titleFontSize = 60;   // Increased size
-        const dataFontSize = 76;    // Increased size for values
-        const labelFontSize = 34;   // Keep label size the same
-        const fontFamily = 'Arial, sans-serif'; // Ensure Arial
-        // Text colors are now defined above and applied in SVG styles
+        // --- Dynamic Text Styling & Positioning ---
+        const baseCashtagFontSize = 110;
+        const baseTitleFontSize = 54;
+        const dataFontSize = 76;
+        const labelFontSize = 34;
+        // CJK character detection (Unicode range for common CJK ideographs)
+        const cjkRegex = /[\u4E00-\u9FFF]/;
+        const hasCJK = cjkRegex.test(name) || cjkRegex.test(ticker);
+        const fontFamily = hasCJK
+            ? "'Noto Sans CJK', Arial, sans-serif" // Prioritize Noto Sans CJK if CJK chars detected
+            : "'Arial', sans-serif"; // Default to Arial
         const textAnchor = 'end'; // Right justified
+
+        // Calculate dynamic cashtag font size
+        const maxTickerLength = 7;
+        let dynamicCashtagFontSize = baseCashtagFontSize;
+        if (ticker.length > maxTickerLength) {
+            dynamicCashtagFontSize = Math.max(30, Math.floor(baseCashtagFontSize * (maxTickerLength / ticker.length))); // Added min size
+            logger.log(`[OG Image Gen] Ticker "${ticker}" is long (${ticker.length}), reducing cashtag font size to ${dynamicCashtagFontSize}`);
+        }
+
+        // Calculate dynamic title font size and handle line breaking
+        const maxNameLengthSingleLine = 12;
+        const breakNameLength = 24;
+        let dynamicTitleFontSize = baseTitleFontSize;
+        let nameLine1 = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Escape HTML entities
+        let nameLine2 = '';
+        const titleLineHeightFactor = 1.2; // Factor to control line spacing
+
+        if (name.length >= breakNameLength) {
+            dynamicTitleFontSize = 40; // Fixed smaller size for two lines
+            // Find a space near the middle to break the line
+            const middle = Math.floor(name.length / 2);
+            let breakPoint = name.lastIndexOf(' ', middle); // Look for space before middle
+            if (breakPoint === -1) { // No space found before middle, look after
+                breakPoint = name.indexOf(' ', middle);
+            }
+            if (breakPoint !== -1) {
+                nameLine1 = name.substring(0, breakPoint).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                nameLine2 = name.substring(breakPoint + 1).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            } else {
+                // No space found, just split crudely (or maybe truncate?) - simple split for now
+                nameLine1 = name.substring(0, middle).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                nameLine2 = name.substring(middle).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+            logger.log(`[OG Image Gen] Name "${name}" is very long (${name.length}), breaking into two lines and reducing title font size to ${dynamicTitleFontSize}`);
+        } else if (name.length > maxNameLengthSingleLine) {
+            // Scale down more aggressively using a power function (exponent > 1)
+            const scaleFactor = Math.pow(maxNameLengthSingleLine / name.length, 1.5); // Exponent 1.5 for faster scaling
+            dynamicTitleFontSize = Math.max(30, Math.floor(baseTitleFontSize * scaleFactor)); // Ensure minimum size 30
+            logger.log(`[OG Image Gen] Name "${name}" is long (${name.length}), reducing title font size to ${dynamicTitleFontSize} using aggressive scaling`);
+        }
+
+        // Define text styles using dynamic sizes
+        const cashtagStyle = `fill: ${textColorTop}; font-size: ${dynamicCashtagFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor};`;
+        const titleStyle = `fill: ${textColorTop}; font-size: ${dynamicTitleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
+        const labelBottomStyle = `fill: ${labelColorBottom}; font-size: ${labelFontSize}px; font-family: ${fontFamily}; text-anchor: ${textAnchor};`;
+        const valueBottomStyle = `fill: ${valueColorBottom}; font-size: ${dataFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
+
 
         // --- Calculate Text Positions (relative to right-half SVG using textPadding) ---
         const svgRightWidth = rightAreaWidth;
         const svgRightHeight = height;
-        // Use textPadding for the right edge alignment within the SVG
         const textXInSvg = svgRightWidth - textPadding;
 
         // Top section text (within top 40% green area)
-        // Center vertically within the top section (rightTopHeight)
+        // Adjust vertical positioning for consistent top anchor and spacing
         const topSectionCenterY = rightTopHeight / 2;
-        const topTextTotalHeight = cashtagFontSize + titleFontSize * 0.5; // Approx height + spacing
-        const cashtagYInSvg = topSectionCenterY - topTextTotalHeight / 2 + cashtagFontSize * 0.7; // Adjust for baseline
-        const titleYInSvg = cashtagYInSvg + titleFontSize * 1.2; // Space below cashtag
+        const cashtagBaselineAdjust = dynamicCashtagFontSize * 0.75; // Approx baseline position
+        const titleBaselineAdjust = dynamicTitleFontSize * 0.75;    // Approx baseline position
+        const cashtagToTitleGap = 15; // Fixed gap between bottom of cashtag and top of title
+
+        // Calculate total approximate height for vertical centering adjustment
+        let approxTitleHeight = dynamicTitleFontSize;
+        if (nameLine2) {
+            approxTitleHeight += dynamicTitleFontSize * titleLineHeightFactor;
+        }
+        const totalApproxHeight = dynamicCashtagFontSize + cashtagToTitleGap + approxTitleHeight;
+        const additionalTopPadding = 15; // Add 15px extra padding at the top
+        const startYOffset = (topSectionCenterY - totalApproxHeight / 2) + additionalTopPadding;
+
+        // Position Cashtag based on adjusted start Y
+        const cashtagYInSvg = startYOffset + cashtagBaselineAdjust;
+
+        // Position Title Line 1 relative to Cashtag
+        const titleYInSvgLine1 = cashtagYInSvg + (dynamicCashtagFontSize - cashtagBaselineAdjust) + cashtagToTitleGap + titleBaselineAdjust;
+
+        // Position Title Line 2 relative to Line 1
+        let titleYInSvgLine2: number | null = null;
+        if (nameLine2) {
+            titleYInSvgLine2 = titleYInSvgLine1 + dynamicTitleFontSize * titleLineHeightFactor;
+        }
+
 
         // Bottom section text (within bottom 60% black area, relative to top of bottom section)
-        const bottomSectionStartY = rightTopHeight; // Y position where the bottom section starts
         // Use textPadding for bottom edge alignment within the SVG (relative to overall height)
+        // Positions remain relative to the bottom, unaffected by top text changes
         const mcapValueYInSvg = svgRightHeight - textPadding; // Anchor to overall bottom padding
-        const mcapLabelYInSvg = mcapValueYInSvg - dataFontSize * 1.1; // Space above value (uses new dataFontSize)
-        // Decrease gap above market cap block slightly to move price down
+        const mcapLabelYInSvg = mcapValueYInSvg - dataFontSize * 1.1; // Space above value
         const priceValueYInSvg = mcapLabelYInSvg - labelFontSize * 2.5; // Reduced multiplier for smaller gap
-        const priceLabelYInSvg = priceValueYInSvg - dataFontSize * 1.1; // Space above price value (uses new dataFontSize)
+        const priceLabelYInSvg = priceValueYInSvg - dataFontSize * 1.1; // Space above price value
 
+
+        // Generate Name Lines HTML
+        let nameSvgLines = `<text x="${textXInSvg}" y="${titleYInSvgLine1}" style="${titleStyle}">${nameLine1}</text>`;
+        if (nameLine2 && titleYInSvgLine2) {
+            nameSvgLines += `\n            <text x="${textXInSvg}" y="${titleYInSvgLine2}" style="${titleStyle}">${nameLine2}</text>`;
+        }
 
         const svgTextOverlay = `
         <svg width="${svgRightWidth}" height="${svgRightHeight}" viewBox="0 0 ${svgRightWidth} ${svgRightHeight}">
             <style>
-                /* Top Section Styles */
-                .cashtag { fill: ${textColorTop}; font-size: ${cashtagFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor}; } /* Bolder weight */
-                .title { fill: ${textColorTop}; font-size: ${titleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
-
-                /* Bottom Section Styles */
-                .label-bottom { fill: ${labelColorBottom}; font-size: ${labelFontSize}px; font-family: ${fontFamily}; text-anchor: ${textAnchor}; }
-                .value-bottom { fill: ${valueColorBottom}; font-size: ${dataFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
+                /* Define styles directly here using calculated values */
+                .cashtag { ${cashtagStyle} }
+                .title { ${titleStyle} } /* Style for title is now applied directly */
+                .label-bottom { ${labelBottomStyle} }
+                .value-bottom { ${valueBottomStyle} }
             </style>
 
             {/* Background Rects for Right Half - Drawn first */}
@@ -231,7 +306,7 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
 
             {/* Top Aligned Text (On Green) */}
             <text x="${textXInSvg}" y="${cashtagYInSvg}" class="cashtag">${cashtagText}</text>
-            <text x="${textXInSvg}" y="${titleYInSvg}" class="title">${name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
+            ${nameSvgLines} {/* Insert single or double line name SVG */}
 
             {/* Bottom Aligned Text (On Black) */}
             <text x="${textXInSvg}" y="${priceLabelYInSvg}" class="label-bottom">Price</text>
