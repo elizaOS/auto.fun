@@ -137,7 +137,12 @@ export class TokenMigrator {
       } else {
         logger.log(`[Migrate] Running step "${step.name}" for token ${mint}`);
         const { txId, extraData } = await retryOperation(() => step.fn(token), 3, 5000);
-
+        for (const stepName of stepNames) {
+          const raw = await this.redisCache.get(`migration:${mint}:step:${stepName}:result`);
+          if (!raw) continue;
+          const { extraData } = JSON.parse(raw);
+          if (extraData) Object.assign(token, extraData);
+        }
         await safeUpdateTokenInDB({ ...token, lastUpdated: new Date().toISOString() });
         await this.redisCache.set(
           resultKey,
