@@ -32,11 +32,11 @@ export default {
 
         // --- Redirect Logic moved from main.tsx ---
         // Only apply this redirect logic if the request is for the root path '/'
-        if (isRootPath && !hasDevQuery && !isLocalhost) {
-            console.log(`[Worker V6] Root path without ?dev on non-localhost. Redirecting to Twitter.`);
-            // Use a temporary redirect (302)
-            return Response.redirect("https://twitter.com/autodotfun", 302);
-        }
+        // if (isRootPath && !hasDevQuery && !isLocalhost) {
+        //     console.log(`[Worker V6] Root path without ?dev on non-localhost. Redirecting to Twitter.`);
+        //     // Use a temporary redirect (302)
+        //     return Response.redirect("https://twitter.com/autodotfun", 302);
+        // }
 
         // --- Passthrough or Token Rewriting ---
         // For root path with ?dev, localhost root, or any other path:
