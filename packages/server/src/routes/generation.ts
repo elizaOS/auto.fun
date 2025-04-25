@@ -706,10 +706,26 @@ export async function generateMedia(data: {
       throw new Error("No audio URL in response");
     }
 
+    // Download the generated audio
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      throw new Error("Failed to download generated audio");
+    }
+
+    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const audioKey = `audio/${data.prompt.split(":")[0] || "unknown"}-${timestamp}-generation.mp3`;
+    const finalAudioUrl = await uploadToStorage(audioBuffer, {
+      contentType: "audio/mpeg",
+      key: audioKey
+    });
+
     return {
       data: {
         audio: {
-          url: audioUrl,
+          url: finalAudioUrl,
           lyrics: lyricsToUse, // Include the lyrics used (original or generated)
         },
       },
@@ -1552,7 +1568,7 @@ export async function generateImage(
     const timestamp = Date.now();
 
     // Upload to S3 with new directory structure
-    const imageKey = `generations/${mint}/image/generation-${timestamp}.jpg`;
+    const imageKey = `${mint}/${creator || "unknown"}-${timestamp}-generation.jpg`;
     const imageUrl = await uploadToStorage(imageBuffer, {
       contentType: "image/jpeg",
       key: imageKey
@@ -1632,12 +1648,40 @@ export async function generateVideo(
       throw new Error("FAL_API_KEY is not configured");
     }
 
-    // Generate a realistic test video URL
-    const videoUrl = `https://example.com/generated/${mint}/${Date.now()}.mp4`;
+    // Generate video using Fal.ai
+    const videoResult = await generateMedia({
+      prompt,
+      type: MediaType.VIDEO,
+      negative_prompt: negativePrompt,
+      mode: "fast"
+    }) as any;
 
-    // Return media generation data
-    return {
-      id: crypto.randomUUID(),
+    if (!videoResult?.data?.video?.url) {
+      throw new Error("Failed to generate video");
+    }
+
+    // Download the generated video
+    const videoResponse = await fetch(videoResult.data.video.url);
+    if (!videoResponse.ok) {
+      throw new Error("Failed to download generated video");
+    }
+
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const videoKey = `${mint}/${creator || "unknown"}-${timestamp}-generation.mp4`;
+    const videoUrl = await uploadToStorage(videoBuffer, {
+      contentType: "video/mp4",
+      key: videoKey
+    });
+
+    // Create media generation record
+    const generationId = crypto.randomUUID();
+    const now = new Date();
+    const db = getDB();
+    await db.insert(mediaGenerations).values({
+      id: generationId,
       mint,
       type: "video",
       prompt,
@@ -1650,9 +1694,26 @@ export async function generateVideo(
       motionBucketId: 127,
       duration: 2,
       creator: creator || "",
-      timestamp: new Date().toISOString(),
+      timestamp: now
+    });
+
+    return {
+      id: generationId,
+      mint,
+      type: "video",
+      prompt,
+      mediaUrl: videoUrl,
+      negativePrompt: negativePrompt || "",
+      seed: Math.floor(Math.random() * 1000000),
+      numInferenceSteps: 30,
+      numFrames: 24,
+      fps: 30,
+      motionBucketId: 127,
+      duration: 2,
+      creator: creator || "",
+      timestamp: now.toISOString(),
       dailyGenerationCount: 1,
-      lastGenerationReset: new Date().toISOString(),
+      lastGenerationReset: now.toISOString()
     };
   } catch (error) {
     console.error("Error generating video:", error);
