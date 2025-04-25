@@ -47,56 +47,65 @@ export default {
             // so we always fetch first for non-redirected root or other paths.
             const response = await env.ASSETS.fetch(request);
 
-            // --- Token Rewriting Logic ---
-            // Check if it's a token route *after* fetching,
-            // but only proceed if the response is HTML.
-            const tokenPathRegex = /^\/token\/([a-zA-Z0-9]{32,44})$/;
-            const match = url.pathname.match(tokenPathRegex);
+            // Clone response to check headers safely
+            let clonedResponse = new Response(response.body, response);
+            const contentType = clonedResponse.headers.get('Content-Type');
 
-            if (match && match[1]) {
-                 // Clone response to check headers *only* for token route
-                 const clonedResponse = new Response(response.body, response);
-                 const contentType = clonedResponse.headers.get('Content-Type');
+            // Only proceed with rewriting if it's an HTML response
+            if (contentType && contentType.toLowerCase().includes('text/html')) {
+                const tokenPathRegex = /^\/token\/([a-zA-Z0-9]{32,44})$/;
+                const match = url.pathname.match(tokenPathRegex);
+                let ogTags = {};
+                const defaultTitle = 'auto.fun';
 
-                 if (contentType && contentType.toLowerCase().includes('text/html')) {
-                     const mint = match[1];
-                     console.log(`[Worker V6] Rewriting OG tags for token route: ${mint}`);
+                if (match && match[1]) {
+                    // --- Generate Token-Specific OG Tags ---
+                    const mint = match[1];
+                    console.log(`[Worker V6] Rewriting OG tags for token route: ${mint}`);
+                    const serverUrl = env.SERVER_URL || 'https://api.auto.fun'; // Use env var
+                    const dynamicImageUrl = `${serverUrl}/api/og-image/${mint}.png`;
 
-                     // Generate OG Tags for token route
-                     let ogTags = {};
-                     const defaultTitle = 'auto.fun';
-                     const serverUrl = env.SERVER_URL || 'https://api.auto.fun'; // Use env var
-                     const dynamicImageUrl = `${serverUrl}/api/og-image/${mint}.png`;
+                    ogTags['og:title'] = `Token ${mint.substring(0, 4)}...${mint.substring(mint.length - 4)} - ${defaultTitle}`;
+                    ogTags['og:description'] = `View ${mint.substring(0,4)}...${mint.substring(mint.length - 4)} on ${defaultTitle}.`;
+                    ogTags['og:url'] = url.toString();
+                    ogTags['og:image'] = dynamicImageUrl;
+                    ogTags['og:image:type'] = 'image/png';
+                    ogTags['og:image:width'] = '1200';
+                    ogTags['og:image:height'] = '630';
+                    ogTags['twitter:card'] = 'summary_large_image';
+                    ogTags['twitter:image'] = dynamicImageUrl;
+                    ogTags['twitter:title'] = ogTags['og:title'];
+                    ogTags['twitter:description'] = ogTags['og:description'];
+                    // --- End Token OG Tag Generation ---
+                } else {
+                    // --- Generate Default OG Tags ---
+                    console.log(`[Worker V6] Rewriting default OG tags for: ${url.pathname}`);
+                    const defaultImageUrl = `${url.origin}/og.png`; // Use origin + relative path
 
-                     ogTags['og:title'] = `Token ${mint.substring(0, 4)}...${mint.substring(mint.length - 4)} - ${defaultTitle}`;
-                     ogTags['og:description'] = `View ${mint.substring(0,4)}...${mint.substring(mint.length - 4)} on ${defaultTitle}.`;
-                     ogTags['og:url'] = url.toString();
-                     ogTags['og:image'] = dynamicImageUrl;
-                     ogTags['og:image:type'] = 'image/png';
-                     ogTags['og:image:width'] = '1200';
-                     ogTags['og:image:height'] = '630';
-                     ogTags['twitter:card'] = 'summary_large_image';
-                     ogTags['twitter:image'] = dynamicImageUrl;
-                     ogTags['twitter:title'] = ogTags['og:title'];
-                     ogTags['twitter:description'] = ogTags['og:description'];
-                     // --- End OG Tag Generation ---
+                    ogTags['og:title'] = defaultTitle;
+                    ogTags['og:description'] = 'Explore and analyze Solana tokens.'; // Generic description
+                    ogTags['og:url'] = url.toString();
+                    ogTags['og:image'] = defaultImageUrl;
+                    ogTags['og:image:type'] = 'image/png';
+                    ogTags['og:image:width'] = '1200';
+                    ogTags['og:image:height'] = '630';
+                    ogTags['twitter:card'] = 'summary_large_image';
+                    ogTags['twitter:image'] = defaultImageUrl;
+                    ogTags['twitter:title'] = defaultTitle;
+                    ogTags['twitter:description'] = ogTags['og:description'];
+                    // --- End Default OG Tag Generation ---
+                }
 
-                     // Apply Rewriter
-                     return new HTMLRewriter()
-                         .on('head', new MetaTagHandler(ogTags))
-                         .transform(clonedResponse);
-                 } else {
-                      // Token route but not HTML, return original response
-                      console.log(`[Worker V6] Token route not HTML (${contentType}), returning original.`);
-                      return clonedResponse; // Return the cloned one we checked
-                 }
+                // Apply Rewriter with the determined tags
+                return new HTMLRewriter()
+                    .on('head', new MetaTagHandler(ogTags))
+                    .transform(clonedResponse);
+
             } else {
-                 // Not a token route (and not redirected earlier), return original response
-                 console.log(`[Worker V6] Not a token route, returning original fetched response.`);
-                 return response;
+                // Not HTML, return the original response (use the already cloned one)
+                console.log(`[Worker V6] Response is not HTML (${contentType}), returning original.`);
+                return clonedResponse;
             }
-            // --- End Token Rewriting Logic ---
-
         } catch (e) {
              console.error(`[Worker V6] Error during env.ASSETS.fetch for ${url.pathname}:`, e);
              return new Response('Error fetching asset.', { status: 500 });

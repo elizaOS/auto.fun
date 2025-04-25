@@ -53,6 +53,9 @@ router.post("/webhook", async (c) => {
     process.env.HELIUS_WEBHOOK_AUTH_TOKEN
   );
 
+  console.log("authorization", authorization);
+  console.log("HELIUS_WEBHOOK_AUTH_TOKEN", process.env.HELIUS_WEBHOOK_AUTH_TOKEN);
+
   if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
     return c.json(
       {
