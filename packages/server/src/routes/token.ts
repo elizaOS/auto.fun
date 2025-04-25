@@ -1473,7 +1473,6 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 });
 
 tokenRouter.get("/token/:mint", async (c) => {
-  console.log("token/:mint");
   try {
     const mint = c.req.param("mint");
 
