@@ -99,12 +99,12 @@ type VanityResult = {
 };
 type WorkerMessage =
   | {
-      type: "found";
-      workerId: number;
-      publicKey: string;
-      secretKey: number[]; // Worker sends array
-      validated: boolean;
-    }
+    type: "found";
+    workerId: number;
+    publicKey: string;
+    secretKey: number[]; // Worker sends array
+    validated: boolean;
+  }
   | { type: "progress"; workerId: number; count: number }
   | { type: "error"; workerId: number; error: string };
 
@@ -152,9 +152,8 @@ export const FormInput = ({
           <div className="absolute left-3 text-[#8c8c8c]">{leftIndicator}</div>
         )}
         <input
-          className={`w-full bg-[#0F0F0F] py-2.5 px-3 border border-neutral-800 text-white ${
-            inputTag ? "pl-2" : ""
-          } ${leftIndicator ? "pl-10" : ""}`}
+          className={`w-full bg-[#0F0F0F] py-2.5 px-3 border border-neutral-800 text-white ${inputTag ? "pl-2" : ""
+            } ${leftIndicator ? "pl-10" : ""}`}
           {...props}
         />
         {rightIndicator && (
@@ -506,9 +505,8 @@ const FormImageInput = ({
                     maxLength={128}
                     onFocus={() => setNameInputFocused(true)}
                     onBlur={() => setNameInputFocused(false)}
-                    className={`bg-transparent text-white text-xl font-bold border-b-2 ${
-                      nameInputFocused ? "border-white" : "border-gray-500"
-                    } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
+                    className={`bg-transparent text-white text-xl font-bold border-b-2 ${nameInputFocused ? "border-white" : "border-gray-500"
+                      } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
                   />
                 )}
               </div>
@@ -535,9 +533,8 @@ const FormImageInput = ({
                       maxLength={16}
                       onFocus={() => setTickerInputFocused(true)}
                       onBlur={() => setTickerInputFocused(false)}
-                      className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
-                        tickerInputFocused ? "border-white" : "border-gray-500"
-                      } focus:outline-none px-1 py-0.5 max-w-[60%]`}
+                      className={`bg-transparent text-white text-lg font-semibold border-b-2 ${tickerInputFocused ? "border-white" : "border-gray-500"
+                        } focus:outline-none px-1 py-0.5 max-w-[60%]`}
                     />
                   )}
                 </div>
@@ -2811,33 +2808,40 @@ export default function Create() {
       )}
 
       <form
-        className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"
+        className="py-4 px-4 px-auto w-full max-w-5xl flex font-dm-mono flex-col m-auto gap-8 justify-center"
         onSubmit={handleSubmit}
       >
         {/* Tabs Navigation */}
-        <div className="flex items-center md:justify-between flex-col md:flex-row gap-8 mx-auto w-full mb-2">
+        <div className="flex items-center flex-row gap-12 mx-auto w-full mb-2">
           <div className="flex shrink-0 items-center gap-4">
             <img
               src="/create/dicelogo.svg"
-              alt="Coin Machine"
-              className="w-24 h-24"
+              alt="Dice Logo"
+              className="transition-all"
+              style={{ width: "clamp(36px, 8vw, 96px)", height: "clamp(36px, 8vw, 96px)" }}
             />
             <img
               src="/create/coinmachine.svg"
               alt="Coin Machine"
-              className="w-48 h-24"
+              className="transition-all"
+              style={{ width: "clamp(80px, 20vw, 160px)", height: "clamp(40px, 10vw, 80px)" }}
             />
           </div>
-          <div className="flex justify-between items-center text-lg w-full shrink">
+          <div className="flex justify-start sm:gap-6 md:gap-12 items-center text-lg w-full shrink">
             {Object.values(FormTab).map((tab, _) => (
               <button
-                key={tab} // Added key
+                key={tab}
                 type="button"
-                className={`uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none ${
-                  activeTab === tab
+                className={`
+  uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none
+  text-xs px-2
+  sm:text-base sm:px-4
+  whitespace-nowrap truncate
+  ${activeTab === tab
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
-                }`}
+                  }
+` }
                 onClick={() => handleTabChange(tab)}
               >
                 {tab}
@@ -2849,61 +2853,65 @@ export default function Create() {
         {/* Auto Tab Content */}
         {activeTab === FormTab.AUTO && (
           <>
-            <div className="flex">
-              <input
-                type="text"
-                value={userPrompt}
-                onChange={(e) => setUserPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                  }
-                }}
-                placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
-              />
-              <button
-                type="button"
-                onClick={generateFromPrompt}
-                disabled={isProcessingPrompt || !userPrompt.trim()}
-                className="p-0 transition-colors disabled:opacity-50"
-              >
-                <img
-                  src={
-                    isProcessingPrompt
-                      ? "/create/generating.svg"
-                      : "/create/generateup.svg"
-                  }
-                  alt="Generate"
-                  className="w-24 ml-2"
-                  onMouseDown={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generatedown.svg";
-                    }
-                  }}
-                  onMouseUp={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generateup.svg";
-                    }
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generateup.svg";
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    e.preventDefault();
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generateup.svg";
-                    }
-                  }}
-                />
-              </button>
+            <div className="flex flex-col gap-4">
+              <p className="text-white font-satoshi font-bold text-lg underline decoration-[#03FF24] underline-offset-4">COIN CREATION PROMPT</p>
+              <div className="relative flex flex-col md:flex-row md:items-stretch w-full">
+  <textarea
+    value={userPrompt}
+    onChange={(e) => setUserPrompt(e.target.value)}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+      }
+    }}
+    placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
+    rows={3}
+    className="flex-1 my-2 p-2.5 border-b-2 border-[#262626] bg-[#121212] text-white font-satoshi focus:border-b-[#03FF24] focus:ring-0 focus:outline-none resize-none md:my-0 md:pr-[11rem]"
+  />
+  <button
+    type="button"
+    onClick={generateFromPrompt}
+    disabled={isProcessingPrompt || !userPrompt.trim()}
+    className="p-0 transition-colors disabled:opacity-50 w-max h-20 md:h-full md:absolute md:right-0 md:top-0 md:bottom-0 md:my-0 md:rounded-none mr-2"
+    style={{ marginTop: "0.5rem" }}
+  >
+    <img
+      src={
+        isProcessingPrompt
+          ? "/create/generating.svg"
+          : "/create/generateup.svg"
+      }
+      alt="Generate"
+      className="w-32 ml-2 h-24"
+      onMouseDown={(e) => {
+        const img = e.target as HTMLImageElement;
+        if (!isProcessingPrompt) {
+          img.src = "/create/generatedown.svg";
+        }
+      }}
+      onMouseUp={(e) => {
+        const img = e.target as HTMLImageElement;
+        if (!isProcessingPrompt) {
+          img.src = "/create/generateup.svg";
+        }
+      }}
+      onDragStart={(e) => {
+        e.preventDefault();
+        const img = e.target as HTMLImageElement;
+        if (!isProcessingPrompt) {
+          img.src = "/create/generateup.svg";
+        }
+      }}
+      onMouseOut={(e) => {
+        e.preventDefault();
+        const img = e.target as HTMLImageElement;
+        if (!isProcessingPrompt) {
+          img.src = "/create/generateup.svg";
+        }
+      }}
+    />
+  </button>
+</div>
             </div>
             {errors.userPrompt && (
               <div className="text-red-500 text-sm">{errors.userPrompt}</div>
@@ -2984,13 +2992,12 @@ export default function Create() {
                 {/* Enhanced import status with clearer guidance */}
                 {importStatus && (
                   <div
-                    className={`p-3 border  mb-4 ${
-                      importStatus.type === "error"
-                        ? "border-red-500 bg-red-950/20 text-red-400"
-                        : importStatus.type === "warning"
-                          ? "border-yellow-500 bg-yellow-950/20 text-yellow-400"
-                          : "border-green-500 bg-green-950/20 text-[#03FF24]"
-                    }`}
+                    className={`p-3 border  mb-4 ${importStatus.type === "error"
+                      ? "border-red-500 bg-red-950/20 text-red-400"
+                      : importStatus.type === "warning"
+                        ? "border-yellow-500 bg-yellow-950/20 text-yellow-400"
+                        : "border-green-500 bg-green-950/20 text-[#03FF24]"
+                      }`}
                   >
                     <div className="flex items-center gap-2 text-sm">
                       {importStatus.type === "success" ? (
@@ -3036,359 +3043,359 @@ export default function Create() {
         {(activeTab === FormTab.MANUAL ||
           (activeTab === FormTab.AUTO && hasGeneratedToken) ||
           (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-          <div className="grid gap-4">
-            {/* Image & Core Fields */}
-            <div className="flex flex-col gap-3">
-              {/* Image with overlay inputs */}
-              <FormImageInput
-                onChange={(file) => {
-                  if (activeTab === FormTab.MANUAL) {
-                    setImageFile(file);
-                    setManualForm((prev) => ({ ...prev, imageFile: file }));
+            <div className="grid gap-4">
+              {/* Image & Core Fields */}
+              <div className="flex flex-col gap-3">
+                {/* Image with overlay inputs */}
+                <FormImageInput
+                  onChange={(file) => {
+                    if (activeTab === FormTab.MANUAL) {
+                      setImageFile(file);
+                      setManualForm((prev) => ({ ...prev, imageFile: file }));
+                    }
+                  }}
+                  onPromptChange={handlePromptChange}
+                  isGenerating={isGenerating && generatingField === "prompt"}
+                  setIsGenerating={setIsGenerating}
+                  setGeneratingField={setGeneratingField}
+                  onPromptFunctionsChange={(setPrompt, onPromptChange) => {
+                    setPromptFunctions({ setPrompt, onPromptChange });
+                  }}
+                  onPreviewChange={handlePreviewChange}
+                  imageUrl={
+                    activeTab === FormTab.AUTO
+                      ? autoForm.imageUrl
+                      : activeTab === FormTab.IMPORT && hasStoredToken
+                        ? coinDropImageUrl
+                        : undefined
                   }
-                }}
-                onPromptChange={handlePromptChange}
-                isGenerating={isGenerating && generatingField === "prompt"}
-                setIsGenerating={setIsGenerating}
-                setGeneratingField={setGeneratingField}
-                onPromptFunctionsChange={(setPrompt, onPromptChange) => {
-                  setPromptFunctions({ setPrompt, onPromptChange });
-                }}
-                onPreviewChange={handlePreviewChange}
-                imageUrl={
-                  activeTab === FormTab.AUTO
-                    ? autoForm.imageUrl
-                    : activeTab === FormTab.IMPORT && hasStoredToken
-                      ? coinDropImageUrl
-                      : undefined
-                }
-                onDirectPreviewSet={(setter) => {
-                  previewSetterRef.current = setter;
-                }}
-                activeTab={activeTab}
-                nameValue={form.name}
-                onNameChange={(value) => handleChange("name", value)}
-                tickerValue={form.symbol}
-                onTickerChange={(value) => handleChange("symbol", value)}
-                key={`image-input-${activeTab}`} // Force rerender on tab change
-              />
-
-              {/* Description Field */}
-              {activeTab === FormTab.IMPORT ? (
-                <span
-                  className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
-                >
-                  {form.description}
-                </span>
-              ) : (
-                <FormTextArea
-                  value={form.description}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    handleChange("description", e.target.value)
-                  }
-                  label="Description"
-                  minRows={1}
-                  placeholder="Description"
-                  maxLength={2000}
-                  error={errors.description}
-                  onClick={() =>
-                    generateAll(
-                      promptFunctions.setPrompt,
-                      promptFunctions.onPromptChange,
-                    )
-                  } // Pass prompt fns
-                  isLoading={isGenerating && generatingField === "description"}
+                  onDirectPreviewSet={(setter) => {
+                    previewSetterRef.current = setter;
+                  }}
+                  activeTab={activeTab}
+                  nameValue={form.name}
+                  onNameChange={(value) => handleChange("name", value)}
+                  tickerValue={form.symbol}
+                  onTickerChange={(value) => handleChange("symbol", value)}
+                  key={`image-input-${activeTab}`} // Force rerender on tab change
                 />
-              )}
-            </div>
 
-            {/* Vanity Address Section (Only for Auto/Manual) */}
-            {activeTab !== FormTab.IMPORT && (
-              <div className="flex flex-col gap-2">
-                <label className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-                  Generate Contract Address
-                </label>
-                {/* Display Area */}
-                <div className="font-mono text-xs md:text-lg lg:text-xl break-all min-h-[2.5em] flex items-center justify-center">
-                  <span className="mr-2">
-                    {isGeneratingVanity ? (
-                      <span className="animate-pulse">
-                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
-                        <strong>
-                          {displayedPublicKey.slice(-vanitySuffix.length)}
-                        </strong>
-                      </span>
-                    ) : vanityResult ? (
-                      <span className="text-green-400">
-                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
-                        <strong>
-                          {displayedPublicKey.slice(-vanitySuffix.length)}
-                        </strong>
-                      </span>
-                    ) : (
-                      <span className="text-neutral-500">
-                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
-                        <strong>
-                          {displayedPublicKey.slice(-vanitySuffix.length)}
-                        </strong>
-                      </span>
-                    )}
+                {/* Description Field */}
+                {activeTab === FormTab.IMPORT ? (
+                  <span
+                    className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+                  >
+                    {form.description}
                   </span>
-                </div>
-
-                <div className="flex items-center gap-2 mx-auto">
-                  <input
-                    type="text"
-                    value={vanitySuffix}
-                    onChange={(e) => {
-                      stopVanityGeneration(); // Stop generation when suffix changes
-                      setVanitySuffix(e.target.value);
-                    }} // Force uppercase
-                    placeholder="FUN"
-                    maxLength={5}
-                    className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
+                ) : (
+                  <FormTextArea
+                    value={form.description}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      handleChange("description", e.target.value)
+                    }
+                    label="Description"
+                    minRows={1}
+                    placeholder="Description"
+                    maxLength={2000}
+                    error={errors.description}
+                    onClick={() =>
+                      generateAll(
+                        promptFunctions.setPrompt,
+                        promptFunctions.onPromptChange,
+                      )
+                    } // Pass prompt fns
+                    isLoading={isGenerating && generatingField === "description"}
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      stopVanityGeneration(); // Stop existing workers first
-                      // Use a small timeout to allow state updates from stop to settle
-                      setTimeout(() => {
-                        startVanityGeneration(); // Then start with the new suffix
-                      }, 50);
-                    }}
-                  >
-                    <img
-                      src={
-                        isGeneratingVanity
-                          ? "/create/generating.svg"
-                          : "/create/generateup.svg"
-                      }
-                      alt="Generate"
-                      className="w-24 ml-2"
-                      onMouseDown={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        if (!isGeneratingVanity) {
-                          img.src = "/create/generatedown.svg";
-                        }
-                      }}
-                      onMouseUp={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        if (!isGeneratingVanity) {
-                          img.src = "/create/generateup.svg";
-                        }
-                      }}
-                      onDragStart={(e) => {
-                        e.preventDefault();
-                        const img = e.target as HTMLImageElement;
-                        if (!isGeneratingVanity) {
-                          img.src = "/create/generateup.svg";
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        e.preventDefault();
-                        const img = e.target as HTMLImageElement;
-                        if (!isGeneratingVanity) {
-                          img.src = "/create/generateup.svg";
-                        }
-                      }}
-                    />
-                  </button>
-                </div>
-                <p className="mx-auto text-center text-xs text-neutral-500 mt-1">
-                  Choose a custom suffix
-                  <br />
-                  Longer suffixes are slower to generate
-                </p>
-
-                {/* Error/Warning Display */}
-                {suffixError && (
-                  <div
-                    className={`text-xs ${suffixError.startsWith("Warning") || suffixError.startsWith("Note") ? "text-yellow-400" : "text-red-500"} mt-1`}
-                  >
-                    {suffixError}
-                  </div>
                 )}
               </div>
-            )}
 
-            {/* Buy Section (Hide for Import) */}
-            {activeTab !== FormTab.IMPORT && (
-              <div className="flex flex-col gap-3 justify-end uppercase">
-                <div className="flex flex-row gap-3 justify-end uppercase">
-                  <span className="text-white text-xl font-medium relative group">
-                    Buy
-                    <span className="inline-block ml-1 cursor-help">
-                      <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
-                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 shadow-lg z-10 w-64">
-                        {" "}
-                        {/* Added width */}
-                        <p className="text-white mb-2">
-                          Choose how much of the token you want to buy on
-                          launch:
-                        </p>
-                        <p className="text-neutral-400 mb-1">
-                          • <b>SOL</b>: Amount of SOL to invest
-                        </p>
-                        <p className="text-neutral-400 mb-2">
-                          • <b>%</b>: Percentage of token supply to acquire
-                        </p>
-                        <div className="border-t border-neutral-800 pt-2 mt-1">
-                          <p className="text-neutral-400 text-xs">
-                            Total token supply: {TOKEN_SUPPLY.toLocaleString()}{" "}
-                            tokens
-                          </p>
-                          <p className="text-neutral-400 text-xs mt-1">
-                            Pricing follows a bonding curve, your percentage
-                            increases with more SOL.
-                          </p>
-                        </div>
-                        <div className="border-t border-neutral-800 pt-2 mt-1">
-                          <p className="text-neutral-400 text-xs">
-                            Maximum supply of 50% can be purchased prior to coin
-                            launch
-                          </p>
-                        </div>
-                      </div>
+              {/* Vanity Address Section (Only for Auto/Manual) */}
+              {activeTab !== FormTab.IMPORT && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+                    Generate Contract Address
+                  </label>
+                  {/* Display Area */}
+                  <div className="font-mono text-xs md:text-lg lg:text-xl break-all min-h-[2.5em] flex items-center justify-center">
+                    <span className="mr-2">
+                      {isGeneratingVanity ? (
+                        <span className="animate-pulse">
+                          {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                          <strong>
+                            {displayedPublicKey.slice(-vanitySuffix.length)}
+                          </strong>
+                        </span>
+                      ) : vanityResult ? (
+                        <span className="text-green-400">
+                          {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                          <strong>
+                            {displayedPublicKey.slice(-vanitySuffix.length)}
+                          </strong>
+                        </span>
+                      ) : (
+                        <span className="text-neutral-500">
+                          {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                          <strong>
+                            {displayedPublicKey.slice(-vanitySuffix.length)}
+                          </strong>
+                        </span>
+                      )}
                     </span>
-                  </span>
-                  <div className="flex flex-col items-end">
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={buyValue}
-                        onChange={(e) => {
-                          let value = e.target.value.replace(" SOL", "");
-                          value = value.replace(/[^\d.]/g, "");
-                          const decimalCount = (value.match(/\./g) || [])
-                            .length;
-                          if (decimalCount > 1) {
-                            value = value.substring(0, value.lastIndexOf(".")); // Keep only first decimal
-                          }
-                          const parts = value.split(".");
-                          let wholePart = parts[0] || "0"; // Default to 0 if empty
-                          let decimalPart = parts[1] || "";
+                  </div>
 
-                          // Limit whole part length (e.g., 2 digits for SOL up to 99)
-                          if (
-                            wholePart.length >
-                            String(Math.floor(MAX_INITIAL_SOL)).length
-                          ) {
-                            wholePart = wholePart.slice(
-                              0,
-                              String(Math.floor(MAX_INITIAL_SOL)).length,
-                            );
+                  <div className="flex items-center gap-2 mx-auto">
+                    <input
+                      type="text"
+                      value={vanitySuffix}
+                      onChange={(e) => {
+                        stopVanityGeneration(); // Stop generation when suffix changes
+                        setVanitySuffix(e.target.value);
+                      }} // Force uppercase
+                      placeholder="FUN"
+                      maxLength={5}
+                      className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopVanityGeneration(); // Stop existing workers first
+                        // Use a small timeout to allow state updates from stop to settle
+                        setTimeout(() => {
+                          startVanityGeneration(); // Then start with the new suffix
+                        }, 50);
+                      }}
+                    >
+                      <img
+                        src={
+                          isGeneratingVanity
+                            ? "/create/generating.svg"
+                            : "/create/generateup.svg"
+                        }
+                        alt="Generate"
+                        className="w-24 ml-2"
+                        onMouseDown={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          if (!isGeneratingVanity) {
+                            img.src = "/create/generatedown.svg";
                           }
-                          // Limit decimal part length
-                          if (decimalPart.length > 2) {
-                            // Allow 2 decimal places
-                            decimalPart = decimalPart.slice(0, 2);
-                          }
-
-                          value = decimalPart
-                            ? `${wholePart}.${decimalPart}`
-                            : wholePart;
-
-                          // Final numeric check against maxInputSol
-                          const numValue = parseFloat(value);
-                          if (!isNaN(numValue)) {
-                            if (numValue < 0) value = "0";
-                            else if (numValue > maxInputSol)
-                              value = maxInputSol.toString();
-                          } else if (value !== "") {
-                            value = "0"; // Reset invalid non-empty strings
-                          }
-
-                          handleChange("initialSol", value || "0"); // Ensure it's not empty string for state
-                          setBuyValue(value); // Update local buyValue state
                         }}
-                        min="0"
-                        max={maxInputSol.toString()}
-                        step="0.01"
-                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white bg-transparent" // Added bg-transparent
+                        onMouseUp={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          if (!isGeneratingVanity) {
+                            img.src = "/create/generateup.svg";
+                          }
+                        }}
+                        onDragStart={(e) => {
+                          e.preventDefault();
+                          const img = e.target as HTMLImageElement;
+                          if (!isGeneratingVanity) {
+                            img.src = "/create/generateup.svg";
+                          }
+                        }}
+                        onMouseOut={(e) => {
+                          e.preventDefault();
+                          const img = e.target as HTMLImageElement;
+                          if (!isGeneratingVanity) {
+                            img.src = "/create/generateup.svg";
+                          }
+                        }}
                       />
-
-                      <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none">
-                        {" "}
-                        {/* Adjusted positioning */}
-                        SOL
-                      </span>
-                    </div>
-                    {/* {solPrice && Number(buyValue) > 0 && ( ... )} */}
+                    </button>
                   </div>
-                </div>
-                {parseFloat(buyValue as string) > 0 && (
-                  <div className="text-right text-xs text-neutral-400">
-                    ≈{" "}
-                    {calculatePercentage(
-                      calculateTokensFromSol(parseFloat(buyValue as string)),
-                    ).toFixed(2)}{" "}
-                    % of supply
-                  </div>
-                )}
+                  <p className="mx-auto text-center text-xs text-neutral-500 mt-1">
+                    Choose a custom suffix
+                    <br />
+                    Longer suffixes are slower to generate
+                  </p>
 
-                {/* Balance information */}
-                <div className="mt-2 text-right text-xs text-neutral-400">
-                  Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
-                  {isAuthenticated && isFormValid && insufficientBalance && (
-                    <div className="text-red-500 mt-1">
-                      Insufficient SOL balance (need ~0.05 SOL for mint + buy
-                      amount)
+                  {/* Error/Warning Display */}
+                  {suffixError && (
+                    <div
+                      className={`text-xs ${suffixError.startsWith("Warning") || suffixError.startsWith("Note") ? "text-yellow-400" : "text-red-500"} mt-1`}
+                    >
+                      {suffixError}
                     </div>
                   )}
-                  {Number(buyValue) === maxInputSol &&
-                    maxInputSol < MAX_INITIAL_SOL && (
-                      <div className="text-yellow-500 mt-1">
-                        Maximum amount based on your balance
+                </div>
+              )}
+
+              {/* Buy Section (Hide for Import) */}
+              {activeTab !== FormTab.IMPORT && (
+                <div className="flex flex-col gap-3 justify-end uppercase">
+                  <div className="flex flex-row gap-3 justify-end uppercase">
+                    <span className="text-white text-xl font-medium relative group">
+                      Buy
+                      <span className="inline-block ml-1 cursor-help">
+                        <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
+                        <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 shadow-lg z-10 w-64">
+                          {" "}
+                          {/* Added width */}
+                          <p className="text-white mb-2">
+                            Choose how much of the token you want to buy on
+                            launch:
+                          </p>
+                          <p className="text-neutral-400 mb-1">
+                            • <b>SOL</b>: Amount of SOL to invest
+                          </p>
+                          <p className="text-neutral-400 mb-2">
+                            • <b>%</b>: Percentage of token supply to acquire
+                          </p>
+                          <div className="border-t border-neutral-800 pt-2 mt-1">
+                            <p className="text-neutral-400 text-xs">
+                              Total token supply: {TOKEN_SUPPLY.toLocaleString()}{" "}
+                              tokens
+                            </p>
+                            <p className="text-neutral-400 text-xs mt-1">
+                              Pricing follows a bonding curve, your percentage
+                              increases with more SOL.
+                            </p>
+                          </div>
+                          <div className="border-t border-neutral-800 pt-2 mt-1">
+                            <p className="text-neutral-400 text-xs">
+                              Maximum supply of 50% can be purchased prior to coin
+                              launch
+                            </p>
+                          </div>
+                        </div>
+                      </span>
+                    </span>
+                    <div className="flex flex-col items-end">
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={buyValue}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(" SOL", "");
+                            value = value.replace(/[^\d.]/g, "");
+                            const decimalCount = (value.match(/\./g) || [])
+                              .length;
+                            if (decimalCount > 1) {
+                              value = value.substring(0, value.lastIndexOf(".")); // Keep only first decimal
+                            }
+                            const parts = value.split(".");
+                            let wholePart = parts[0] || "0"; // Default to 0 if empty
+                            let decimalPart = parts[1] || "";
+
+                            // Limit whole part length (e.g., 2 digits for SOL up to 99)
+                            if (
+                              wholePart.length >
+                              String(Math.floor(MAX_INITIAL_SOL)).length
+                            ) {
+                              wholePart = wholePart.slice(
+                                0,
+                                String(Math.floor(MAX_INITIAL_SOL)).length,
+                              );
+                            }
+                            // Limit decimal part length
+                            if (decimalPart.length > 2) {
+                              // Allow 2 decimal places
+                              decimalPart = decimalPart.slice(0, 2);
+                            }
+
+                            value = decimalPart
+                              ? `${wholePart}.${decimalPart}`
+                              : wholePart;
+
+                            // Final numeric check against maxInputSol
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                              if (numValue < 0) value = "0";
+                              else if (numValue > maxInputSol)
+                                value = maxInputSol.toString();
+                            } else if (value !== "") {
+                              value = "0"; // Reset invalid non-empty strings
+                            }
+
+                            handleChange("initialSol", value || "0"); // Ensure it's not empty string for state
+                            setBuyValue(value); // Update local buyValue state
+                          }}
+                          min="0"
+                          max={maxInputSol.toString()}
+                          step="0.01"
+                          className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white bg-transparent" // Added bg-transparent
+                        />
+
+                        <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none">
+                          {" "}
+                          {/* Adjusted positioning */}
+                          SOL
+                        </span>
+                      </div>
+                      {/* {solPrice && Number(buyValue) > 0 && ( ... )} */}
+                    </div>
+                  </div>
+                  {parseFloat(buyValue as string) > 0 && (
+                    <div className="text-right text-xs text-neutral-400">
+                      ≈{" "}
+                      {calculatePercentage(
+                        calculateTokensFromSol(parseFloat(buyValue as string)),
+                      ).toFixed(2)}{" "}
+                      % of supply
+                    </div>
+                  )}
+
+                  {/* Balance information */}
+                  <div className="mt-2 text-right text-xs text-neutral-400">
+                    Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
+                    {isAuthenticated && isFormValid && insufficientBalance && (
+                      <div className="text-red-500 mt-1">
+                        Insufficient SOL balance (need ~0.05 SOL for mint + buy
+                        amount)
                       </div>
                     )}
+                    {Number(buyValue) === maxInputSol &&
+                      maxInputSol < MAX_INITIAL_SOL && (
+                        <div className="text-yellow-500 mt-1">
+                          Maximum amount based on your balance
+                        </div>
+                      )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Launch Button */}
-            <div className="flex flex-col items-center gap-3 mt-4">
-              {" "}
-              {/* Added margin-top */}
-              <button
-                type="submit"
-                className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
-                disabled={!canLaunch() || isSubmitting}
-              >
-                <img
-                  src={
-                    isSubmitting || isCreating // Show launching if submitting or creating
-                      ? "/create/launching.svg"
-                      : activeTab === FormTab.IMPORT
-                        ? "/create/importup-thick.svg"
-                        : "/create/launchup.svg"
-                  }
-                  alt="Launch"
-                  className="h-32 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
-                />
-              </button>
-              {/* Validation/Auth Messages */}
-              {!isAuthenticated ? (
-                <p className="text-red-500 text-center text-sm">
-                  Please connect your wallet to create a token.
-                </p>
-              ) : !canLaunch() &&
-                !isSubmitting &&
-                activeTab !== FormTab.IMPORT ? ( // Show only if not launchable and not submitting
-                <p className="text-red-500 text-center text-sm">
-                  Please fill required fields, ensure sufficient SOL, and
-                  generate a vanity address.
-                </p>
-              ) : !canLaunch() &&
-                !isSubmitting &&
-                activeTab === FormTab.IMPORT ? (
-                <p className="text-red-500 text-center text-sm">
-                  Please load token data via the import field above.
-                </p>
-              ) : null}
+              {/* Launch Button */}
+              <div className="flex flex-col items-center gap-3 mt-4">
+                {" "}
+                {/* Added margin-top */}
+                <button
+                  type="submit"
+                  className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
+                  disabled={!canLaunch() || isSubmitting}
+                >
+                  <img
+                    src={
+                      isSubmitting || isCreating // Show launching if submitting or creating
+                        ? "/create/launching.svg"
+                        : activeTab === FormTab.IMPORT
+                          ? "/create/importup-thick.svg"
+                          : "/create/launchup.svg"
+                    }
+                    alt="Launch"
+                    className="h-32 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
+                  />
+                </button>
+                {/* Validation/Auth Messages */}
+                {!isAuthenticated ? (
+                  <p className="text-red-500 text-center text-sm">
+                    Please connect your wallet to create a token.
+                  </p>
+                ) : !canLaunch() &&
+                  !isSubmitting &&
+                  activeTab !== FormTab.IMPORT ? ( // Show only if not launchable and not submitting
+                  <p className="text-red-500 text-center text-sm">
+                    Please fill required fields, ensure sufficient SOL, and
+                    generate a vanity address.
+                  </p>
+                ) : !canLaunch() &&
+                  !isSubmitting &&
+                  activeTab === FormTab.IMPORT ? (
+                  <p className="text-red-500 text-center text-sm">
+                    Please load token data via the import field above.
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </form>
 
       {/* Creation Loading Modal */}
