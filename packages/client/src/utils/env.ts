@@ -109,7 +109,6 @@ let parsedEnv;
 
 try {
   parsedEnv = envSchema.parse(unparsedEnv);
-  console.log("Environment validation successful");
 } catch (error) {
   console.error("ENV VALIDATION ERROR:", error);
   throw error;
