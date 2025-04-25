@@ -501,8 +501,6 @@ export const verifyAuth = async (
       }
     }
 
-    // No valid authentication
-    logger.log("No valid authentication found in verifyAuth");
     c.set("user", null);
     await next();
   } catch (error) {
