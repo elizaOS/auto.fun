@@ -25,9 +25,6 @@ COPY packages/types/package.json ./packages/types/
 # Allow the ngrok postinstall script to run
 RUN bun install
 
-# Ensure ngrok binary is executable
-RUN chmod +x /app/node_modules/ngrok/bin/ngrok || echo "ngrok binary not found or chmod failed, continuing..."
-
 # Copy the application files
 COPY . .
 
