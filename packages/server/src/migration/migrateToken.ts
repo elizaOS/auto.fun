@@ -28,7 +28,7 @@ import {
   // safePostUpdate,
   safeUpdateTokenInDB
 } from "./migrations";
-
+import { v4 as uuidv4 } from "uuid";
 function asBN(x: BN | string) {
   // Redis stored hex strings, so we parse as hex
   return typeof x === "string" ? new BN(x, "hex") : x;
@@ -42,7 +42,7 @@ export class TokenMigrator {
     public provider: AnchorProvider,
     public redisCache: RedisCacheService,
   ) { }
-
+  LOCK_TTL_MS = 2 * 60_000;
   async resetMigration(mint: string): Promise<void> {
     const stepNames = this.getMigrationSteps().map((s) => s.name);
 
@@ -89,7 +89,7 @@ export class TokenMigrator {
     const stepKey = `migration:${mint}:currentStep`;
     console.log("stepKey", stepKey);
     const lockKey = `migration:${mint}:lock`;
-    console.log("lockKey", lockKey);
+
     let rawCurrent: string | null = null;
     let rawLock: string | null = null;
     try {
@@ -104,8 +104,15 @@ export class TokenMigrator {
     console.log("rawCurrent", rawCurrent);
     console.log("rawLock", rawLock);
     const current = rawCurrent && stepNames.includes(rawCurrent) ? rawCurrent : stepNames[0];
+    const lockValue = uuidv4();                    // unique owner id for safe release
+    const gotLock = await this.redisCache.acquireLock(
+      lockKey,
+      lockValue,
+      this.LOCK_TTL_MS,
+    );
 
-    if (rawLock === "true" && !forced) {
+    if (!gotLock && !forced) {
+      // Someone else is working on this token – just bail out
       return { ranStep: null, nextStep: null };
     }
 
@@ -157,7 +164,9 @@ export class TokenMigrator {
       }
 
       await this.redisCache.set(lockKey, "false");
-
+      if (gotLock) {
+        await this.redisCache.releaseLock(lockKey, lockValue);
+      }
       return { ranStep: step.name, nextStep: next };
     } catch (err) {
       await this.redisCache.set(lockKey, "false");
