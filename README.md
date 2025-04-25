@@ -198,6 +198,13 @@ Fill in the following variables in your root `.env` file:
 ## Deployment
 
 *   **Target:** The project is currently deployed to Railway.
+
+### Deploy to Railway
+
+You can deploy your own instance of Auto.fun using the Railway template:
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/template/C7stN0?referralCode=jOQnfR)
+
 *   **CI/CD:** There is no automated CI/CD pipeline set up currently.
 *   **Frontend:** The `packages/client` is a standard Vite React app and can be deployed to platforms like Vercel, Netlify, Cloudflare Pages, or GitHub Pages. Build with `bun run build:client`.
 *   **Backend:** The `packages/server` is a Hono application designed potentially for Cloudflare Workers but runnable as a Node.js server. It can be deployed to platforms like Railway, Fly.io, or traditional servers/VPS. It requires PostgreSQL and Redis databases. Build with `bun run build:server` and start with `bun run start:server`.

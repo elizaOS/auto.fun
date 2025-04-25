@@ -18,9 +18,9 @@ describe("raydium_vault", () => {
 
     it("Initialize Vault Config", async () => {
         let vaultConfig = {
-            executorAuthority: new anchor.web3.PublicKey("autokr9cQkuzhEWg8X9ES6hparYc6wvrtydaHpgYqqY"),
-            emergencyAuthority: signerWallet.publicKey,
-            managerAuthority: signerWallet.publicKey,
+            executorAuthority: new anchor.web3.PublicKey("autozgbVb1EvhrTZTkpLekJRN4sN5hhGYpMMiY9kQ5S"),
+            emergencyAuthority: new anchor.web3.PublicKey("iGkGbxitDUdFhWSewd9gX2QzwTqJQSoFP5pkwvj25YP"),
+            managerAuthority: new anchor.web3.PublicKey("autozgbVb1EvhrTZTkpLekJRN4sN5hhGYpMMiY9kQ5S"),
         };
         const [vault] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from(vaultConfigSeed)],

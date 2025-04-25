@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 // Parse admin addresses from comma-separated string to array
 const parseAdminAddresses = (addressesStr: string | undefined): string[] => {
   if (!addressesStr) return [];

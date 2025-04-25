@@ -255,7 +255,7 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
             logger.error(`[OG Image] Failed to generate image for ${mint}:`, genError);
             // Redirect to a default OG image if generation fails
             // Consider hosting a static default image
-            const defaultOgImage = `${process.env.API_URL || ''}/default-og-image.png`;
+            const defaultOgImage = `/default-og-image.png`;
             logger.warn(`[OG Image] Redirecting to default OG image: ${defaultOgImage}`);
             // You might want to return a 404 or 500 instead, depending on desired behavior
             return c.redirect(defaultOgImage, 302);
@@ -283,7 +283,7 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
         } catch (uploadError) {
             logger.error(`[OG Image] Failed to upload image ${s3Key} to S3:`, uploadError);
             // Handle upload error (e.g., return 500 or default image)
-             const defaultOgImage = `${process.env.API_URL || ''}/default-og-image.png`;
+             const defaultOgImage = `/default-og-image.png`;
             return c.redirect(defaultOgImage, 302);
             // Alternative: return c.text('Failed to store generated image', 500);
         }
@@ -301,7 +301,7 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
     } catch (error) {
         logger.error(`[OG Image] Unexpected error for mint ${mint}:`, error);
         // General error fallback
-        const defaultOgImage = `${process.env.API_URL || ''}/default-og-image.png`;
+        const defaultOgImage = `/default-og-image.png`;
         return c.redirect(defaultOgImage, 302);
         // Alternative: return c.text('Internal Server Error', 500);
     }

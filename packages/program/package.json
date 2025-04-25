@@ -10,6 +10,7 @@
         "./types/autofun.ts": "./types/autofun.ts",
         "./types/raydium.ts": "./types/raydium.ts"
     },
+    "packageManager": "yarn@1.22.22",
     "scripts": {
         "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build && mkdir -p ../types/idl ../types/types && cp target/idl/autofun.json ../types/idl/ && cp target/idl/raydium_vault.json ../types/idl/ && cp target/types/autofun.ts ../types/types/ && echo 'export * from \"./types/autofun.js\"' > index.js",
         "clean": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor clean",
@@ -19,6 +20,8 @@
         "init:autofun_dev": "ENV=dev RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet init_autofun",
         "init:vault_main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet test_init",
         "init:vault_dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet test_init",
+        "accept_authority:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet accept_authority",
+        "accept_authority:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet accept_authority",
         "deploy:vault_dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor deploy --program-name raydium_vault --program-keypair raydium_vault-keypair.json --provider.wallet id.json --provider.cluster devnet",
         "deploy:autofun_dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor deploy --program-name autofun --program-keypair autofun-keypair.json --provider.wallet id.json --provider.cluster devnet",
         "deploy:vault_main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor deploy --program-name raydium_vault --program-keypair raydium_vault-keypair.json --provider.wallet id.json --provider.cluster mainnet",

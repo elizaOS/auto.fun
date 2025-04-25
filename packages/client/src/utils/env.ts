@@ -67,7 +67,7 @@ const unparsedEnv = {
   apiUrl: isDevnet
     ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL
     : import.meta.env.VITE_API_URL,
-  platformFeeWallet: import.meta.env.VITE_PLATFORM_FEE_WALLET,
+  platformFeeWallet: import.meta.env.VITE_FEE_WALLET,
   programId: isDevnet
     ? import.meta.env.VITE_DEV_PROGRAM_ID ||
       "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"

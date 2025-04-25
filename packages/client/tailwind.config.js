@@ -30,7 +30,7 @@ module.exports = {
             secondary: "#8c8c8c",
             disabled: "#505050",
             info: "#a6a6a6",
-            error: "#872C2C"
+            error: "#872C2C",
           },
           icon: {
             primary: "#ffffff",
@@ -41,15 +41,15 @@ module.exports = {
         },
       },
       keyframes: {
-        'fade-in': {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' }
-        }
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
-        'fade-in': 'fade-in 0.2s ease-out'
+        "fade-in": "fade-in 0.2s ease-out",
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate"), require("tailwindcss-animated")],
 };

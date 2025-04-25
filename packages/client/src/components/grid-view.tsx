@@ -19,15 +19,17 @@ export default function GridView({ data }: { data: IToken[] }) {
               <div className="absolute top-0 left-0 p-2 px-3 z-10 group-hover:opacity-100 opacity-0 transition-opacity duration-200">
                 <TokenStatus token={token} />
               </div>
-              <div className="absolute left-0 bottom-0 p-2 px-3 min-w-0 z-10">
-                <div className="flex justify-end items-center gap-2 w-full min-w-0">
-                  {/* <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)]">
-                  {token.name}
-                </div> */}
-                  <div className="text-autofun-text-primary text-lg font-bold font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-                    ${token.ticker}
+              <div className="absolute left-0 bottom-0 p-2 px-3 w-full z-10">
+                <div className="flex items-center gap-4 justify-between">
+                  <div className="flex items-center gap-2 w-full min-w-0">
+                    <div className="text-autofun-text-primary text-lg font-bold font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                      ${token.ticker}
+                    </div>
+                    <Verified isVerified={token?.verified ? true : false} />
                   </div>
-                  <Verified isVerified={token?.verified ? true : false} />
+                  <div className="text-autofun-text-primary text-xs shrink-0 font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                    {fromNow(token.createdAt, true)}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col w-full min-w-0 z-10">
@@ -39,10 +41,6 @@ export default function GridView({ data }: { data: IToken[] }) {
                     Vol {abbreviateNumber(token.volume24h)}
                   </div>
                 </div>
-              </div>
-
-              <div className="absolute bottom-0 right-0 p-2 px-3 text-autofun-text-primary text-xs font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-                {fromNow(token.createdAt, true)}
               </div>
 
               <div className="w-full h-full aspect-square relative">

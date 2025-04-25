@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import dotenv from "dotenv-flow";
 import { Codex } from "@codex-data/sdk";
 
 // Load environment variables

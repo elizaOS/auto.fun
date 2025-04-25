@@ -31,7 +31,7 @@
 //       TOKEN_SUPPLY: process.env.TOKEN_SUPPLY || "1000000000000000",
 //       VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "100",
 //       CURVE_LIMIT: process.env.CURVE_LIMIT || "1130000000",
-//       WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY || "[]",
+//       EXECUTOR_PRIVATE_KEY: process.env.EXECUTOR_PRIVATE_KEY || "[]",
 //       FEE_PERCENTAGE: process.env.FEE_PERCENTAGE || "10",
 //       CODEX_API_KEY: process.env.CODEX_API_KEY || "",
 //       VITE_API_URL: process.env.VITE_API_URL || "",
@@ -74,9 +74,9 @@
 //     if (!env.MAINNET_SOLANA_RPC_URL) {
 //       throw new Error("RPC_URL is not defined in environment variables.");
 //     }
-//     if (!env.WALLET_PRIVATE_KEY) {
+//     if (!env.EXECUTOR_PRIVATE_KEY) {
 //       throw new Error(
-//         "WALLET_PRIVATE_KEY is not defined in environment variables."
+//         "EXECUTOR_PRIVATE_KEY is not defined in environment variables."
 //       );
 //     }
 
@@ -89,7 +89,7 @@
 //     connection = new Connection(process.env.MAINNET_SOLANA_RPC_URL);
 
 //      wallet = Keypair.fromSecretKey(
-//       Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+//       Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
 //      );
 
 //     // Create Anchor provider

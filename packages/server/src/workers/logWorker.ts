@@ -1,8 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import dotenv from "dotenv";
 import { startLogSubscription } from "./subscription";
-
-dotenv.config({ path: "../../../.env" });
 
 const RPC_URL =
    process.env.NETWORK === "devnet"

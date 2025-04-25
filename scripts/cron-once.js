@@ -7,7 +7,7 @@
  * Simplified version of cron-watcher.js for one-time execution.
  */
 
-import dotenv from "dotenv";
+import dotenv from "dotenv-flow";
 import fetch from "node-fetch";
 
 dotenv.config();

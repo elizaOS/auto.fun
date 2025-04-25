@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 import localtunnel from "localtunnel";
-import dotenv from "dotenv";
+import dotenv from "dotenv-flow";
 
 // Load environment variables
 dotenv.config();

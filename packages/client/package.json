@@ -37,6 +37,7 @@
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",
     "dayjs": "^1.11.13",
+    "dotenv": "^16.5.0",
     "lightweight-charts": "^5.0.6",
     "lodash": "^4.17.21",
     "lucide-react": "^0.483.0",
@@ -54,6 +55,8 @@
     "react-toastify": "^11.0.5",
     "react-tooltip": "^5.28.0",
     "tailwind-merge": "^3.0.2",
+    "tailwindcss-animate": "^1.0.7",
+    "tailwindcss-animated": "^2.0.0",
     "three": "^0.174.0",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"

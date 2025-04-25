@@ -69,9 +69,11 @@ export class ExternalToken {
 
   public async registerWebhook() {
     const securityToken = process.env.CODEX_WEBHOOK_AUTH_TOKEN;
-    // if (!securityToken) {
-    //   throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
-    // }
+    if (!securityToken) {
+      throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
+    }
+
+    console.log(`[ExternalToken] Registering webhook for ${this.mint} with Codex`);
 
     try {
       await this.sdk.mutations.createWebhooks({

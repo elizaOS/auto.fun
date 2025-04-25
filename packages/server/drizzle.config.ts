@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
-import dotenv from 'dotenv';
+import dotenv from 'dotenv-flow';
 
 dotenv.config({ path: '../../.env' });
 

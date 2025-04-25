@@ -24,7 +24,7 @@ export const initSdk = async (params: {
   const cluster = process.env.NETWORK as Cluster;
   const connection = new Connection(getRpcUrl());
   const owner: Keypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+    Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
   );
 
   if (raydium) return raydium;
@@ -47,7 +47,7 @@ export const fetchTokenAccountData = async () => {
   const env = process.env;
   const connection = new Connection(getRpcUrl());
   const owner: Keypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
+    Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
   );
   const solAccountResp = await connection.getAccountInfo(owner.publicKey);
   const tokenAccountResp = await connection.getTokenAccountsByOwner(

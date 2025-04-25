@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
 import { createPool, Pool } from "generic-pool";
 import { Redis } from "ioredis";
 import { logger } from "./util";
-dotenv.config();
 
 let globalRedisCachePromise: Promise<RedisCacheService> | null = null;
 

@@ -8,7 +8,6 @@ import ChatSection from "@/components/token-sections/chat";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
-import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import Verified from "@/components/verified";
 import { useTokenBalance } from "@/hooks/use-token-balance";
@@ -124,19 +123,24 @@ export default function Page() {
   useEffect(() => {
     const socket = getSocket();
 
-    // Create a handler function that checks if the token matches the current address
-    const handleTokenUpdate = (token: any) => {
-      // Only update if the token address matches the current page
+    const handleTokenUpdate = (data: unknown) => {
+      const token = data as IToken;
       if (token.mint === address) {
-        queryClient.setQueryData(["token", address], token);
+        const queryKey = ["token", address];
+        const current =
+          queryClient.getQueryData<IToken>(queryKey) || ({} as IToken);
+        const newData = {
+          ...current,
+          ...token,
+        };
+
+        queryClient.setQueryData(queryKey, newData);
       }
     };
 
-    // Add the event listener with our filtered handler
     socket.on("updateToken", handleTokenUpdate);
 
     return () => {
-      // Remove the specific handler when cleaning up
       socket.off("updateToken", handleTokenUpdate);
     };
   }, [address]);
@@ -461,7 +465,7 @@ export default function Page() {
                 <div className="flex items-center justify-between pr-2">
                   <div className="flex">
                     <button
-                      className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
+                      className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
                         activeTab === "chart"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -483,7 +487,7 @@ export default function Page() {
                       />
                     </button>
                     <button
-                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
+                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
                         activeTab === "ai"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -505,7 +509,7 @@ export default function Page() {
                       />
                     </button>
                     <button
-                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
+                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
                         activeTab === "chat"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"

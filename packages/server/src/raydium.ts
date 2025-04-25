@@ -3,9 +3,9 @@ import { Connection, Keypair } from "@solana/web3.js";
 import { getRpcUrl, logger } from "./util";
 
 const getOwner = () => {
-  if (process.env.WALLET_PRIVATE_KEY) {
+  if (process.env.EXECUTOR_PRIVATE_KEY) {
     return Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
     );
   }
   return undefined; // Explicitly return undefined when no key is present

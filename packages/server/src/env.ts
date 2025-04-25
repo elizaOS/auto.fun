@@ -7,7 +7,7 @@ export interface Env {
   TOKEN_SUPPLY: string;
   VIRTUAL_RESERVES: string;
   CURVE_LIMIT: string;
-  WALLET_PRIVATE_KEY: string;
+  EXECUTOR_PRIVATE_KEY: string;
   CODEX_API_KEY: string;
   API_URL: string; // URL for self, for accessing cached assets
   FAL_API_KEY: string;
@@ -38,12 +38,10 @@ export interface Env {
   NEWS_API_KEY?: string;
   PREGENERATED_TOKENS_COUNT?: string;
   HELIUS_WEBHOOK_AUTH_TOKEN: string;
-  CODEX_WEBHOOK_AUTH_TOKEN: string;
-  // Add ADMIN_ADDRESSES to the Env interface
   ADMIN_ADDRESSES?: string;
   MANAGER_MULTISIG_ADDRESS: string;
   FIXED_FEE: string;
-  ACCOUNT_FEE_MULTISIG: string;
+  FEE_WALLET: string;
   DATABASE_URL: string;
   REDIS_HOST: string;
   REDIS_PORT: string;

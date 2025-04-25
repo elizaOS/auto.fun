@@ -1,5 +1,5 @@
 import ngrok from 'ngrok';
-import dotenv from 'dotenv';
+import dotenv from 'dotenv-flow';
 import url from 'node:url'; // To parse API URL
 
 // Load environment variables

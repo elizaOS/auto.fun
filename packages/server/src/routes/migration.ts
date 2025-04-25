@@ -48,13 +48,13 @@ migrationRouter.post("/migration/resume", async (c) => {
         : process.env.MAINNET_SOLANA_RPC_URL || "",
     );
 
-    if (!process.env.WALLET_PRIVATE_KEY) {
+    if (!process.env.EXECUTOR_PRIVATE_KEY) {
       throw new Error("Wallet private key not found");
     }
 
     // Create a wallet using the secret from process.env.
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
     );
 
     // Build an Anchor provider.
@@ -211,13 +211,13 @@ migrationRouter.get("/checkBalance", async (c) => {
       return c.json({ error: "Position NFT not found" }, 404);
     }
 
-    if (!process.env.WALLET_PRIVATE_KEY) {
+    if (!process.env.EXECUTOR_PRIVATE_KEY) {
       throw new Error("Wallet private key not found");
     }
 
     // Create a wallet using the secret from process.env.
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
     );
 
     // Create connection based on the environment setting.

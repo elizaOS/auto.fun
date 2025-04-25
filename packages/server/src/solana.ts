@@ -28,15 +28,15 @@ export function initSolanaConfig() {
   // Create wallet if private key is available
   let wallet: Keypair | undefined;
 
-  if(!process.env.WALLET_PRIVATE_KEY){
-    throw new Error("missing WALLET_PRIVATE_KEY env var");
+  if(!process.env.EXECUTOR_PRIVATE_KEY){
+    throw new Error("missing EXECUTOR_PRIVATE_KEY env var");
   }
 
     try {
       wallet = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+        Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
       );
-      console.log("Created wallet from process.env.WALLET_PRIVATE_KEY");
+      console.log("Created wallet from process.env.EXECUTOR_PRIVATE_KEY");
     } catch (error) {
       console.error("Failed to create wallet from env:", error);
     }

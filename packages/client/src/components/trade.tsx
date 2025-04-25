@@ -45,7 +45,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
-  const isDisabled = ["migrating", "migration_failed", "failed"].includes(
+  const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status,
   );
 
@@ -308,7 +308,11 @@ export default function Trade({ token }: { token: IToken }) {
                   ? "Error"
                   : displayMinReceived}
                 <img
-                  src={isTokenSelling ? "/solana.svg" : token?.image || ""}
+                  src={
+                    isTokenSelling
+                      ? "/solana.svg"
+                      : token?.image || "/placeholder.png"
+                  }
                   alt={isTokenSelling ? "SOL" : token?.name || "token"}
                   className="size-6 m-2"
                 />
@@ -353,28 +357,31 @@ export default function Trade({ token }: { token: IToken }) {
                 </span>
               </div>
             </div>
-            {slippage > 3 ? (
-              <p className="text-orange-500 font-dm-mono text-xs">
-                Your transaction may be frontrun and result in an unfavorable
-                trade
-              </p>
-            ) : null}
+
+            <p
+              className={twMerge([
+                "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
+                slippage > 3 ? "opacity-100" : "h-0 opacity-0",
+              ])}
+            >
+              Your transaction may be frontrun and result in an unfavorable
+              trade
+            </p>
           </div>
 
           {/* Swap Button - Now in the left column below Min Received */}
           <div className="flex justify-center items-center">
             <button
-              disabled={
-                isDisabled ||
+              onClick={onSwap}
+              className={twMerge([
+                "w-full mx-2 cursor-pointer mt-2 transition-opacity duration-200",
+                isStatusDisabled ||
                 insufficientBalance ||
                 isExecutingSwap ||
                 !sellAmount ||
                 sellAmount === 0
-              }
-              onClick={onSwap}
-              className={twMerge([
-                "w-full mx-2 cursor-pointer mt-2",
-                isDisabled ? "cursor-not-allowed! opacity-50" : "",
+                  ? "opacity-50 !cursor-not-allowed"
+                  : "",
               ])}
             >
               <img
@@ -428,7 +435,7 @@ const TokenDisplay = ({
   return (
     <div className="flex items-center justify-end mb-4">
       <SkeletonImage
-        src={isSolana ? "/solana.svg" : token?.image || ""}
+        src={isSolana ? "/solana.svg" : token?.image || "/placeholder.png"}
         alt={token?.name || "token"}
         className="size-4"
       />

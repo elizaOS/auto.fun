@@ -17,6 +17,7 @@ import {
   HoldersSortAttribute,
   RankingDirection,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import Loader from "./loader";
 
 function getPercentageOfTotal(value: number, total: number): string | number {
   if (total === 0) {
@@ -52,6 +53,25 @@ export default function HoldersTable({ token }: { token: IToken }) {
   const supply = token?.tokenSupplyUiAmount;
   const data = query?.data || [];
 
+  if (isLoading) {
+    return <Loader className="h-40" />;
+  }
+
+  if ((data || [])?.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <img
+          className="w-auto grayscale size-16 select-none"
+          src="/dice.svg"
+          alt="logo"
+        />
+        <p className="text-sm font-dm-mono text-autofun-text-secondary">
+          No holders were found.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <Table className="border-0 !rounded-0 !border-spacing-y-0">
       <TableHeader className="relative">
@@ -64,70 +84,40 @@ export default function HoldersTable({ token }: { token: IToken }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {isLoading ? (
-          <TableRow>
-            <TableCell colSpan={4} className="text-center py-8">
-              <div className="flex flex-col items-center gap-2">
-                <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
-                <p className="text-autofun-text-secondary">
-                  Fetching holders from blockchain...
-                </p>
-              </div>
-            </TableCell>
-          </TableRow>
-        ) : data?.length > 0 ? (
-          data.map((holder) => {
-            const formattedAmount: number =
-              (Number(holder?.balance) ? Number(holder.balance) : 0) /
-              10 ** (token.tokenDecimals || 6);
-            return (
-              <TableRow className="hover:bg-white/5" key={holder?.address}>
-                <TableCell className="text-left text-sm">
-                  <Link
-                    to={env.getWalletUrl(holder.address)}
-                    target="_blank"
-                    className="hover:text-autofun-text-highlight"
-                  >
-                    {holder?.address ===
-                    import.meta.env.VITE_BONDING_CURVE_ADDRESS
-                      ? "Bonding Curve"
-                      : shortenAddress(holder?.address)}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-right text-sm">
-                  {formattedAmount.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right text-sm">
-                  {getPercentageOfTotal(formattedAmount, supply)}%
-                </TableCell>
-                <TableCell className="text-sm">
-                  <Link to={env.getWalletUrl(holder.address)} target="_blank">
-                    <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            );
-          })
-        ) : (
-          <TableRow>
-            <TableCell
-              colSpan={4}
-              className="text-center py-8 text-autofun-text-secondary"
-            >
-              <div className="flex flex-col items-center gap-2">
-                <p>No holders data available from blockchain.</p>
-                <Link
-                  to={env.getHolderURL(token?.mint)}
-                  target="_blank"
-                  className="text-autofun-text-highlight hover:underline flex items-center gap-1"
-                >
-                  View all token holders on Solscan{" "}
-                  <ExternalLink className="size-4" />
-                </Link>
-              </div>
-            </TableCell>
-          </TableRow>
-        )}
+        {data?.length > 0
+          ? data.map((holder) => {
+              const formattedAmount: number =
+                (Number(holder?.balance) ? Number(holder.balance) : 0) /
+                10 ** (token.tokenDecimals || 6);
+              return (
+                <TableRow className="hover:bg-white/5" key={holder?.address}>
+                  <TableCell className="text-left text-sm">
+                    <Link
+                      to={env.getWalletUrl(holder.address)}
+                      target="_blank"
+                      className="hover:text-autofun-text-highlight"
+                    >
+                      {holder?.address ===
+                      import.meta.env.VITE_BONDING_CURVE_ADDRESS
+                        ? "Bonding Curve"
+                        : shortenAddress(holder?.address)}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formattedAmount.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {getPercentageOfTotal(formattedAmount, supply)}%
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    <Link to={env.getWalletUrl(holder.address)} target="_blank">
+                      <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          : null}
       </TableBody>
     </Table>
   );
