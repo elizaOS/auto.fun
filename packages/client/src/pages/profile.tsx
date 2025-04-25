@@ -409,8 +409,8 @@ export default function Profile() {
 
   if (!profileData.user) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 mt-32 text-red-400">
-        Error loading profile data. Please try again later.
+      <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto items-center">
+        <Loader />
       </div>
     );
   }

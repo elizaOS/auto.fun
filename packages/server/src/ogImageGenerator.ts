@@ -56,16 +56,13 @@ function formatMarketCap(value: number | null | undefined): string {
 
 // --- Main Generation Function ---
 
-// Function to safely load the logo buffer
-async function loadLogoBuffer(logoPath: string, density: number | null = null): Promise<Buffer | null> {
+// Function to safely load the logo buffer - REMOVED as it's no longer used
+/*
+async function loadLogoBuffer(logoPath: string): Promise<Buffer | null> {
     try {
         // Check if file exists before attempting to read
         if (fs.existsSync(logoPath)) {
-            let sharpInstance = sharp(logoPath);
-            if (density !== null) {
-                sharpInstance = sharp(logoPath, { density });
-            }
-            return await sharpInstance.toBuffer();
+            return await sharp(logoPath).toBuffer();
         } else {
             logger.warn(`[OG Image Gen] Logo file not found at: ${logoPath}`);
             return null;
@@ -75,6 +72,7 @@ async function loadLogoBuffer(logoPath: string, density: number | null = null): 
         return null;
     }
 }
+*/
 
 export async function generateOgImage(mint: string): Promise<Buffer> {
     logger.log(`[OG Image Gen] Starting generation for mint: ${mint}`);
@@ -151,9 +149,10 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
             .resize(leftAreaWidth, height, { fit: 'cover' }) // Cover left half
             .toBuffer();
 
-        // Load and Prepare logo_wide.svg with higher density for better scaling
+        // Load and Prepare logo_wide.svg - REMOVED
+        /*
         const logoWidePath = path.resolve(__dirname, '../static/logo_wide.svg');
-        const logoWideBuffer = await loadLogoBuffer(logoWidePath, 300); // Load with 300 DPI
+        const logoWideBuffer = await loadLogoBuffer(logoWidePath);
         let resizedLogoWideBuffer: Buffer | null = null;
         let logoWideFinalWidth = 0;
         let logoWideFinalHeight = 0;
@@ -162,7 +161,6 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
             const metadata = await sharp(logoWideBuffer).metadata();
             const originalWidth = metadata.width ?? 100;
             const originalHeight = metadata.height ?? 50;
-            // Increase size by 100% from previous (multiply original by 4)
             logoWideFinalWidth = originalWidth * 4;
             logoWideFinalHeight = originalHeight * 4;
 
@@ -170,10 +168,13 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
                 .resize(logoWideFinalWidth, logoWideFinalHeight)
                 .toBuffer();
         }
+        */
 
-        // Calculate wide logo position (Flush Bottom-Left)
+        // Calculate wide logo position - REMOVED
+        /*
         const logoWideX = 0; // Flush left
         const logoWideY = height - logoWideFinalHeight; // Flush bottom
+        */
 
         // Format text data
         const priceText = formatCurrency(priceUSD, priceUSD < 0.01 ? 6 : 2);
@@ -252,11 +253,13 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
             { input: Buffer.from(svgTextOverlay), top: 0, left: width / 2 }
         ];
 
-        // Add wide logo overlay if loaded (position adjusted for reduced padding)
+        // Add wide logo overlay if loaded - REMOVED
+        /*
         if (resizedLogoWideBuffer) {
              const finalLogoX = Math.max(0, Math.round(logoWideX));
              const finalLogoY = Math.max(0, Math.round(logoWideY));
-             if (finalLogoX + logoWideFinalWidth <= width && finalLogoY + logoWideFinalHeight <= height) {
+             // Check bounds before adding
+             if (finalLogoX >= 0 && finalLogoY >= 0 && finalLogoX + logoWideFinalWidth <= width && finalLogoY + logoWideFinalHeight <= height) {
                 compositeOperations.push({
                     input: resizedLogoWideBuffer,
                     top: finalLogoY,
@@ -264,11 +267,12 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
                 });
                 logger.log(`[OG Image Gen] Adding resized logo_wide.svg at (${finalLogoX}, ${finalLogoY})`);
              } else {
-                 logger.warn(`[OG Image Gen] Resized logo_wide.svg position (${finalLogoX}, ${finalLogoY}) with dimensions (${logoWideFinalWidth}x${logoWideFinalHeight}) exceeds canvas bounds. Skipping.`);
+                 logger.warn(`[OG Image Gen] Resized logo_wide.svg position (${finalLogoX}, ${finalLogoY}) with dimensions (${logoWideFinalWidth}x${logoWideFinalHeight}) exceeds canvas bounds or has negative coordinates. Skipping.`);
              }
         } else {
             logger.warn(`[OG Image Gen] logo_wide.svg could not be loaded or resized. Skipping overlay.`);
         }
+        */
 
         const finalImageBuffer = await baseCanvas
             .composite(compositeOperations)
