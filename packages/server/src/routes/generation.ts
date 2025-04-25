@@ -2538,4 +2538,111 @@ app.post("/enhance-and-generate", async (c) => {
   }
 });
 
+/**
+ * Generate an audio using Fal.ai API
+ */
+export async function generateAudio(
+  mint: string,
+  prompt: string,
+  mode: "fast" | "pro" = "fast",
+  creator?: string,
+  lyrics?: string
+): Promise<MediaGeneration> {
+  try {
+    // In test mode, return a test audio
+    if (process.env.NODE_ENV === "test") {
+      return {
+        id: crypto.randomUUID(),
+        mint,
+        type: "audio",
+        prompt,
+        mediaUrl: "https://example.com/test-audio.mp3",
+        negativePrompt: "",
+        seed: 12345,
+        numInferenceSteps: 30,
+        durationSeconds: 10,
+        bpm: 120,
+        creator: creator || "test-creator",
+        timestamp: new Date().toISOString(),
+        dailyGenerationCount: 1,
+        lastGenerationReset: new Date().toISOString(),
+      };
+    }
+
+    // For production, we would call the actual Fal.ai API
+    if (!process.env.FAL_API_KEY) {
+      throw new Error("FAL_API_KEY is not configured");
+    }
+
+    // Generate audio using Fal.ai
+    const audioResult = await generateMedia({
+      prompt,
+      type: MediaType.AUDIO,
+      mode,
+      lyrics,
+      duration_seconds: 10,
+      bpm: 120
+    }) as any;
+
+    if (!audioResult?.data?.audio?.url) {
+      throw new Error("Failed to generate audio");
+    }
+
+    // Download the generated audio
+    const audioResponse = await fetch(audioResult.data.audio.url);
+    if (!audioResponse.ok) {
+      throw new Error("Failed to download generated audio");
+    }
+
+    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const audioKey = `${mint}/${creator || "unknown"}-${timestamp}-generation.mp3`;
+    const audioUrl = await uploadToStorage(audioBuffer, {
+      contentType: "audio/mpeg",
+      key: audioKey
+    });
+
+    // Create media generation record
+    const generationId = crypto.randomUUID();
+    const now = new Date();
+    const db = getDB();
+    await db.insert(mediaGenerations).values({
+      id: generationId,
+      mint,
+      type: "audio",
+      prompt,
+      mediaUrl: audioUrl,
+      negativePrompt: "",
+      seed: Math.floor(Math.random() * 1000000),
+      numInferenceSteps: 30,
+      durationSeconds: 10,
+      bpm: 120,
+      creator: creator || "",
+      timestamp: now
+    });
+
+    return {
+      id: generationId,
+      mint,
+      type: "audio",
+      prompt,
+      mediaUrl: audioUrl,
+      negativePrompt: "",
+      seed: Math.floor(Math.random() * 1000000),
+      numInferenceSteps: 30,
+      durationSeconds: 10,
+      bpm: 120,
+      creator: creator || "",
+      timestamp: now.toISOString(),
+      dailyGenerationCount: 1,
+      lastGenerationReset: now.toISOString()
+    };
+  } catch (error) {
+    console.error("Error generating audio:", error);
+    throw error;
+  }
+}
+
 export default app;
