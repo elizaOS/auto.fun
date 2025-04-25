@@ -18,6 +18,13 @@ import { FilterIcon, X } from "lucide-react"; // Example icons
 import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
 import { Helmet } from "react-helmet";
 
+if (
+  !window.location.href.includes("?dev") &&
+  !window.location.href.includes("localhost")
+) {
+  window.location.href = "https://twitter.com/autodotfun";
+}
+
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
 type TokenSourceType = "all" | "autofun";
