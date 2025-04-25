@@ -103,7 +103,7 @@ export class TokenMigrator {
     }
     console.log("rawCurrent", rawCurrent);
     console.log("rawLock", rawLock);
-    let current = rawCurrent && stepNames.includes(rawCurrent) ? rawCurrent : stepNames[0];
+    const current = rawCurrent && stepNames.includes(rawCurrent) ? rawCurrent : stepNames[0];
 
     if (rawLock === "true" && !forced) {
       return { ranStep: null, nextStep: null };
@@ -407,7 +407,6 @@ export class TokenMigrator {
       if (step.name !== "withdraw") {
         token.status = "locked";
         token.lockedAt = new Date();
-      } else {
       }
       (token.migration as Record<string, any>)[step.name] = {
         status: "success",
