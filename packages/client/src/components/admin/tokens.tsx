@@ -1,17 +1,25 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"; // Import icons
 import CopyButton from "@/components/copy-button";
-import { fetcher, getToken } from "@/utils/api";
-import { usePagination, UsePaginationOptions } from "@/hooks/use-pagination";
-import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
+import Pagination from "@/components/pagination";
+import { usePagination, UsePaginationOptions } from "@/hooks/use-pagination";
 import { IToken } from "@/types";
-import { formatNumber, fromNow, resizeImage } from "@/utils"; // Add fromNow and resizeImage
+import { formatNumber, resizeImage } from "@/utils"; // Add fromNow and resizeImage
+import { fetcher, getToken } from "@/utils/api";
 import { env } from "@/utils/env"; // Import env
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@radix-ui/react-dialog";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"; // Import icons
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import BondingCurveBar from "../bonding-curve-bar"; // Import BondingCurveBar
+import Button from "../button";
 import {
   Table,
   TableBody,
@@ -20,14 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table"; // Import table components
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@radix-ui/react-dialog";
-import Button from "../button";
 
 type SortOrderType = "asc" | "desc";
 
@@ -446,6 +446,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     description: "",
   }); // Add description
 
+  // State for the new image upload
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImageBase64, setSelectedImageBase64] = useState<string | null>(
+    null,
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+
   // --- State for metadata editor ---
   const [metadataContent, setMetadataContent] = useState<string>("");
   const [originalMetadataContent, setOriginalMetadataContent] =
@@ -462,19 +469,45 @@ function AdminTokenDetails({ address }: { address: string }) {
       try {
         // Cast the result to AdminToken with featured and verified properties
         const tokenData = (await getToken({ address })) as IToken;
-        setEditName(tokenData.name || "");
-        setEditTicker(tokenData.ticker || "");
-        setEditImage(tokenData.image || "");
-        setEditUrl(tokenData.url || ""); // Initialize metadata URL
-        setEditDescription(tokenData.description || ""); // Initialize description
-        // Store original details for change detection
-        setOriginalDetails({
-          name: tokenData.name || "",
-          ticker: tokenData.ticker || "",
-          image: tokenData.image || "",
-          url: tokenData.url || "",
-          description: tokenData.description || "", // Store original description
-        });
+
+        // Only update state if the corresponding input isn't focused
+        // to prevent overwriting user edits during refetch
+        if (document.activeElement?.id !== "edit-name") {
+          setEditName(tokenData.name || "");
+        }
+        if (document.activeElement?.id !== "edit-ticker") {
+          setEditTicker(tokenData.ticker || "");
+        }
+        // Image is updated via upload or direct URL edit, don't overwrite during refetch if focused
+        if (document.activeElement?.id !== "edit-image-url") {
+          setEditImage(tokenData.image || "");
+        }
+        if (document.activeElement?.id !== "edit-url") {
+          setEditUrl(tokenData.url || "");
+        }
+        if (document.activeElement?.id !== "edit-description") {
+          setEditDescription(tokenData.description || "");
+        }
+
+        // Update original details ONLY IF they haven't been set yet OR the fetched data differs significantly
+        // This helps prevent stale `originalDetails` if a save happened between refetches
+        if (
+          !originalDetails.name || // First load
+          originalDetails.name !== (tokenData.name || "") ||
+          originalDetails.ticker !== (tokenData.ticker || "") ||
+          originalDetails.image !== (tokenData.image || "") ||
+          originalDetails.url !== (tokenData.url || "") ||
+          originalDetails.description !== (tokenData.description || "")
+        ) {
+          setOriginalDetails({
+            name: tokenData.name || "",
+            ticker: tokenData.ticker || "",
+            image: tokenData.image || "",
+            url: tokenData.url || "",
+            description: tokenData.description || "",
+          });
+        }
+
         return {
           ...tokenData,
           featured: (tokenData as any).featured || false,
@@ -495,7 +528,8 @@ function AdminTokenDetails({ address }: { address: string }) {
       if (
         tokenQuery.data &&
         tokenQuery.data.url &&
-        tokenQuery.data.imported !== 1
+        tokenQuery.data.imported !== 1 &&
+        !tokenQuery.data.url.startsWith("data:") // Avoid fetching data URLs
       ) {
         setIsLoadingMetadata(true);
         setMetadataError(null);
@@ -679,17 +713,24 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: (data) => {
       // data contains { success, message, token }
-      toast.success(`Token details updated successfully`);
-      // Update original details state to prevent immediate re-save
+      toast.success(data.message || `Token details updated successfully`);
+      // Update edit fields AND original details state to prevent immediate re-save
+      const updatedToken = data.token as AdminToken; // Cast to ensure type
+      setEditName(updatedToken.name || "");
+      setEditTicker(updatedToken.ticker || "");
+      setEditImage(updatedToken.image || "");
+      setEditUrl(updatedToken.url || "");
+      setEditDescription(updatedToken.description || "");
       setOriginalDetails({
-        name: data.token.name || "",
-        ticker: data.token.ticker || "",
-        image: data.token.image || "",
-        url: data.token.url || "",
-        description: data.token.description || "", // Update original description
+        name: updatedToken.name || "",
+        ticker: updatedToken.ticker || "",
+        image: updatedToken.image || "",
+        url: updatedToken.url || "",
+        description: updatedToken.description || "",
       });
-      // Invalidate query to refetch potentially changed data
-      tokenQuery.refetch();
+
+      // Optionally refetch all token data if needed, though optimistic update might suffice
+      // tokenQuery.refetch();
     },
     onError: (error) => {
       toast.error(
@@ -742,7 +783,8 @@ function AdminTokenDetails({ address }: { address: string }) {
       } catch (e) {
         /* Keep raw content if formatting fails */
       }
-      setOriginalMetadataContent(savedContent);
+      setOriginalMetadataContent(savedContent); // Update original on success
+      setIsMetadataJsonValid(true); // Should be valid if save succeeded
       // No need to refetch tokenQuery data as the URL doesn't change
     },
     onError: (error) => {
@@ -751,6 +793,81 @@ function AdminTokenDetails({ address }: { address: string }) {
       );
     },
   });
+
+  // --- NEW: Mutation for uploading token image ---
+  const uploadImageMutation = useMutation({
+    mutationFn: async (imageBase64: string) => {
+      if (!imageBase64) throw new Error("No image data provided");
+      return await fetcher(
+        `/api/admin/tokens/${address}/image`,
+        "POST",
+        { imageBase64 }, // Send base64 data in the body
+      );
+    },
+    onSuccess: (data) => {
+      // data contains { success, message, imageUrl, token }
+      toast.success(data.message || "Image uploaded successfully!");
+      const newImageUrl = data.imageUrl;
+      // Update state with the new URL
+      setEditImage(newImageUrl);
+      setOriginalDetails((prev) => ({ ...prev, image: newImageUrl })); // Update original as well
+      // Clear the file input and preview
+      setSelectedImageFile(null);
+      setSelectedImageBase64(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""; // Reset file input
+      }
+      // Refetch might not be strictly necessary if backend returns full token,
+      // but good for consistency if other fields could change implicitly
+      // tokenQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(
+        `Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      // Clear selection on error?
+      // setSelectedImageFile(null);
+      // setSelectedImageBase64(null);
+    },
+  });
+
+  // --- Helper function to handle image selection ---
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Basic validation (type, size)
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file.");
+        return;
+      }
+      // Example size limit: 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image file size should not exceed 5MB.");
+        return;
+      }
+
+      setSelectedImageFile(file);
+
+      // Read file as base64 for preview and upload
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImageBase64(reader.result as string);
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read image file.");
+        setSelectedImageFile(null);
+        setSelectedImageBase64(null);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Function to trigger image upload
+  const handleImageUpload = () => {
+    if (selectedImageBase64) {
+      uploadImageMutation.mutate(selectedImageBase64);
+    }
+  };
 
   // Function to handle saving details
   const handleSaveDetails = () => {
@@ -936,10 +1053,14 @@ function AdminTokenDetails({ address }: { address: string }) {
             </div>
             {/* Ticker (Editable) */}
             <div className="flex flex-col gap-1">
-              <label className="text-autofun-text-secondary text-sm">
+              <label
+                htmlFor="edit-ticker"
+                className="text-autofun-text-secondary text-sm"
+              >
                 Ticker:
               </label>
               <input
+                id="edit-ticker" // Add ID for focus check
                 type="text"
                 value={editTicker}
                 onChange={(e) => setEditTicker(e.target.value)}
@@ -950,10 +1071,11 @@ function AdminTokenDetails({ address }: { address: string }) {
             {/* Image URL (Editable) - ADD/Ensure this is here */}
             <div className="flex flex-col gap-1">
               <label className="text-autofun-text-secondary text-sm">
-                Image URL:
+                Image URL (or Upload New):
               </label>
               <div className="flex items-center space-x-2">
                 <input
+                  id="edit-image-url" // Add ID for focus check
                   type="text"
                   value={editImage} // Bind to editImage state
                   onChange={(e) => setEditImage(e.target.value)} // Update editImage state
@@ -962,7 +1084,7 @@ function AdminTokenDetails({ address }: { address: string }) {
                 />
                 {/* Image Preview */}
                 <img
-                  key={editImage} // Add key to force re-render on src change
+                  key={`preview-${editImage}`} // Add key to force re-render on src change
                   src={editImage || "/placeholder.png"} // Use editImage state, fallback
                   alt="Preview"
                   className="w-10 h-10 rounded-full object-cover border border-neutral-700 flex-shrink-0"
@@ -972,13 +1094,63 @@ function AdminTokenDetails({ address }: { address: string }) {
                   }}
                 />
               </div>
+              {/* --- NEW: Image Uploader --- */}
+              <div className="mt-2 flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*" // Accept only image files
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  className="hidden" // Hide default input
+                  id="image-upload-input"
+                />
+                {/* Custom Button to Trigger File Input */}
+                <Button
+                  variant="outline"
+                  size="small"
+                  onClick={() => fileInputRef.current?.click()} // Trigger hidden input
+                  type="button"
+                  disabled={uploadImageMutation.isPending}
+                >
+                  Choose Image
+                </Button>
+                {/* Preview of selected image */}
+                {selectedImageBase64 && (
+                  <img
+                    src={selectedImageBase64}
+                    alt="Selected preview"
+                    className="w-10 h-10 rounded-full object-cover border border-neutral-600"
+                  />
+                )}
+                {/* Upload Button (only shows if image selected) */}
+                {selectedImageFile && (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleImageUpload}
+                    disabled={
+                      !selectedImageBase64 || uploadImageMutation.isPending
+                    }
+                    type="button"
+                  >
+                    {uploadImageMutation.isPending
+                      ? "Uploading..."
+                      : "Upload Selected"}
+                  </Button>
+                )}
+              </div>
+              {/* --- END: Image Uploader --- */}
             </div>
             {/* Metadata URL (Editable) */}
             <div className="flex flex-col gap-1">
-              <label className="text-autofun-text-secondary text-sm">
+              <label
+                htmlFor="edit-url"
+                className="text-autofun-text-secondary text-sm"
+              >
                 URL:
               </label>
               <input
+                id="edit-url" // Add ID for focus check
                 type="text"
                 value={editUrl}
                 onChange={(e) => setEditUrl(e.target.value)}
@@ -988,10 +1160,14 @@ function AdminTokenDetails({ address }: { address: string }) {
             </div>
             {/* Description (Editable) */}
             <div className="flex flex-col gap-1">
-              <label className="text-autofun-text-secondary text-sm">
+              <label
+                htmlFor="edit-description"
+                className="text-autofun-text-secondary text-sm"
+              >
                 Description:
               </label>
               <textarea
+                id="edit-description" // Add ID for focus check
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 className="w-full bg-autofun-background-input py-2 px-3 border border-neutral-800 text-white min-h-[80px] resize-y"
@@ -1306,6 +1482,20 @@ function AdminTokenDetails({ address }: { address: string }) {
             : token.hidden
               ? "Unhide Token"
               : "Hide Token"}
+        </button>
+      </div>
+
+      {/* Save Details Button */}
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={handleSaveDetails}
+          disabled={updateTokenDetailsMutation.isPending || !detailsChanged}
+          className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-1 flex-row w-fit items-center justify-items-center disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {updateTokenDetailsMutation.isPending
+            ? "Saving Details..."
+            : "Save Details"}
         </button>
       </div>
     </div>

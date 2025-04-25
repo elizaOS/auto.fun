@@ -220,6 +220,8 @@ export class ExternalToken {
             : 0;
 
       const newTokenData = {
+        ticker: token.token?.info?.symbol || token.token?.symbol || "none",
+        name: token.token?.info?.name || token.token?.name || "none",
         mint: this.mint, // Ensure mint is included
         marketCapUSD: marketCap,
         volume24h: token.volume24 ? Number(token.volume24) : 0,

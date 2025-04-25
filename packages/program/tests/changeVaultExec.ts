@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
-import { RaydiumVault } from '../target/types/raydium_vault';
+import type { RaydiumVault } from '../target/types/raydium_vault';
 
 (async () => {
   // Set up the provider from the environment variables
@@ -17,13 +17,13 @@ import { RaydiumVault } from '../target/types/raydium_vault';
   );
 
   // Define the new executor authority public key
-  const newExecutorAuthority = new anchor.web3.PublicKey('42fg4k89w81wp7a4Nt9nvjunfg5WScLeo6tvp44Kjpy7'); // Replace with the actual new executor public key
+  const newExecutorAuthority = new anchor.web3.PublicKey('autozgbVb1EvhrTZTkpLekJRN4sN5hhGYpMMiY9kQ5S'); // Replace with the actual new executor public key
 
   // Call the change_executor_authority function
   try {
   const txSignature = await raydiumProgram.methods.changeExecutorAuthority(newExecutorAuthority).accounts({
     authority: provider.wallet.publicKey, // Current manager authority
-    vaultConfig: vaultConfigPDA,
+    vaultConfig: vaultConfigPDA, // Ensure camelCase is used here too
   }).rpc();
 
   console.log("Transaction sent successfully!");

@@ -22,6 +22,7 @@ wallet = "./id.json"
 
 [scripts]
 change_vault_exec = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeVaultExec.ts"
+change_vault_manager = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeVaultManager.ts"
 check_config = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/checkConfig.ts"
 accept_authority = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/acceptAuthority.ts"
 init_autofun = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initAutofun.ts"

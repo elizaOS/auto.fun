@@ -1,14 +1,15 @@
-import { desc, eq, sql, and, or, count, SQL } from "drizzle-orm";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { and, count, desc, eq, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Hono } from "hono";
-import { verifyAuth } from "../auth";
-import { getDB, tokens, users, Token } from "../db";
-import { logger } from "../logger";
-import { adminAddresses } from "./adminAddresses";
-import { getFeaturedMaxValues, applyFeaturedSort } from "../util";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Buffer } from "node:buffer";
+import { verifyAuth } from "../auth";
+import { getDB, Token, tokens, users } from "../db";
+import { logger } from "../logger";
 import { getS3Client } from "../s3Client"; // Import shared S3 client
+import { applyFeaturedSort, getFeaturedMaxValues } from "../util";
+import { adminAddresses } from "./adminAddresses";
+import { uploadToStorage } from "./files";
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -1141,6 +1142,95 @@ adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) =>
     }
 });
 // --- END METADATA UPDATE ROUTE ---
+
+// --- NEW: Route to upload a new image for a token ---
+adminRouter.post("/tokens/:mint/image", requireAdminOrModerator, async (c) => {
+    try {
+        const mint = c.req.param("mint");
+        if (!mint || mint.length < 32 || mint.length > 44) {
+            return c.json({ error: "Invalid mint address" }, 400);
+        }
+
+        const body = await c.req.json();
+        if (!body.imageBase64) {
+            logger.warn(`[/admin/tokens/:mint/image] Request missing imageBase64 for mint: ${mint}`);
+            return c.json({ error: "Image data (imageBase64) is required" }, 400);
+        }
+
+        // Basic regex to extract content type and base64 data
+        const matches = body.imageBase64.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+            logger.warn(`[/admin/tokens/:mint/image] Invalid image data format for mint: ${mint}`);
+            return c.json({ error: "Invalid image format (expected data:image/...;base64,...)" }, 400);
+        }
+
+        const contentType = matches[1];
+        const imageData = matches[2];
+        const imageBuffer = Buffer.from(imageData, "base64");
+
+        const db = getDB();
+
+        // Check if token exists
+        const tokenData = await db
+            .select({ id: tokens.id, ticker: tokens.ticker }) // Select ticker for filename
+            .from(tokens)
+            .where(eq(tokens.mint, mint))
+            .limit(1);
+
+        if (!tokenData || tokenData.length === 0) {
+            return c.json({ error: "Token not found" }, 404);
+        }
+
+        // Generate filename (e.g., using mint and timestamp for uniqueness)
+        const sanitizedMint = mint.substring(0, 8); // Use part of mint for readability
+        let extension = ".jpg"; // Default
+        if (contentType === "image/png") extension = ".png";
+        else if (contentType === "image/gif") extension = ".gif";
+        else if (contentType === "image/svg+xml") extension = ".svg";
+        else if (contentType === "image/webp") extension = ".webp";
+        const imageFilename = `${sanitizedMint}_${Date.now()}${extension}`;
+        const imageKey = `token-images/${imageFilename}`; // Store in standard token-images path
+
+        // --- Upload Image using shared function ---
+        logger.log(`[/admin/tokens/:mint/image] Uploading new image to Storage key: ${imageKey}`);
+        const imageUrl = await uploadToStorage(imageBuffer, { contentType, key: imageKey });
+        logger.log(`[/admin/tokens/:mint/image] New image uploaded successfully: ${imageUrl}`);
+        // --- End Image Upload ---
+
+        // --- Update Token in Database ---
+        await db
+            .update(tokens)
+            .set({
+                image: imageUrl, // Update the image URL
+                lastUpdated: new Date(),
+            })
+            .where(eq(tokens.mint, mint));
+        logger.log(`[/admin/tokens/:mint/image] Updated token ${mint} image URL in DB.`);
+        // --- End DB Update ---
+
+        // Get the fully updated token data to return
+        const updatedToken = await db
+            .select()
+            .from(tokens)
+            .where(eq(tokens.mint, mint))
+            .limit(1);
+
+        return c.json({
+            success: true,
+            message: "Token image updated successfully",
+            imageUrl: imageUrl, // Return the new URL
+            token: updatedToken[0], // Return the full updated token
+        });
+
+    } catch (error) {
+        logger.error(`Error updating token image for ${c.req.param("mint")}:`, error);
+        return c.json(
+            { error: error instanceof Error ? error.message : "Unknown error updating image" },
+            500
+        );
+    }
+});
+// --- END IMAGE UPLOAD ROUTE ---
 
 // --- NEW: Route to DELETE a token --- 
 adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {

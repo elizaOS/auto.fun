@@ -74,7 +74,7 @@ export const useTokens = (params: UseTokensParams) => {
           console.log("Token has no ticker:", updatedToken);
         }
       } catch (error) {
-        console.error("Failed to parse token update:", error);
+        console.error("Failed to parse token update:", error, token);
       }
     };
 

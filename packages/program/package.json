@@ -44,6 +44,8 @@
         "changeClaimer:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet test_change_claimer",
         "changeVaultExec:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet change_vault_exec",
         "changeVaultExec:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet change_vault_exec",
+        "changeVaultManager:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet change_vault_manager",
+        "changeVaultManager:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet change_vault_manager",
         "deposit:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet test_deposit",
         "deposit:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet test_deposit",
         "update_state:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet update_state",
