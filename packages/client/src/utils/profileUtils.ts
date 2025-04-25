@@ -7,6 +7,8 @@ import { SEED_BONDING_CURVE, useProgram } from "./program";
 import { env } from "./env";
 import { BN } from "@coral-xyz/anchor";
 import { calculateAmountOutSell } from "./swapUtils";
+import { getToken } from "./api";
+import { IToken } from "@/types";
 
 // --- Types for User Profile Data ---
 export interface UserProfileData {
@@ -230,14 +232,25 @@ const useGetProfileTokens = () => {
 
           const tokensHeld =
             tokenAccount.amount / BigInt(10) ** BigInt(env.decimals);
-          const solValue =
-            calculateAmountOutSell(
+          
+          let solValue: number;
+
+          if (bondingCurveAccount.isCompleted) {
+            const mint = bondingCurveAccount.tokenMint.toString()
+            const tokenData = await getToken({ address: mint }) as IToken;
+            const tokenPriceUSD = tokenData.marketCapUSD / tokenData.tokenSupplyUiAmount;
+            const priceSOL = tokenPriceUSD / tokenData.solPriceUSD;
+            solValue = Number(tokensHeld.toString()) * priceSOL;
+          } else {
+            solValue = calculateAmountOutSell(
               bondingCurveAccount.reserveLamport.toNumber(),
               Number(tokenAccount.amount),
               6,
               1,
               bondingCurveAccount.reserveToken.toNumber(),
             ) / LAMPORTS_PER_SOL;
+          }
+          
           return {
             image,
             name,
