@@ -7,7 +7,7 @@ import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
@@ -46,7 +46,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -71,11 +71,13 @@ export default function Trade({ token }: { token: IToken }) {
       displayMinReceived: string;
       convertedAmount: number;
       minReceivedRaw: number;
+      priceImpact: string;
     }> => {
       const empty = {
         displayMinReceived: "0",
         convertedAmount: 0,
         minReceivedRaw: 0,
+        priceImpact: "0",
       };
       if (!program) return empty;
       const style = isTokenSelling ? 1 : 0;
@@ -89,7 +91,7 @@ export default function Trade({ token }: { token: IToken }) {
       const scaleFactor = 10 ** decimalPlaces;
       const amountBN = new BN(Math.round(amount * scaleFactor));
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).div(new BN(scaleFactor)).toNumber()
@@ -100,8 +102,7 @@ export default function Trade({ token }: { token: IToken }) {
         : token?.tokenDecimals
           ? new BN(10 ** token?.tokenDecimals)
           : new BN(1e6);
-
-      const swapAmount =
+      const swapAmountResult =
         token?.status === "locked"
           ? await getSwapAmountJupiter(token.mint, convertedAmountT, style, 0)
           : await getSwapAmount(
@@ -112,8 +113,10 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
+      const swapAmount = swapAmountResult?.estimatedOutput || 0;
+      const priceImpact = swapAmountResult?.priceImpact || "0";
 
       const SCALE_FACTOR = Math.max(1000000, decimals.toNumber());
       const scaledAmount = new BN(swapAmount).mul(new BN(SCALE_FACTOR));
@@ -141,14 +144,27 @@ export default function Trade({ token }: { token: IToken }) {
         displayMinReceived,
         minReceivedRaw: minReceived,
         convertedAmount,
+        priceImpact,
       };
     },
     refetchInterval: 5000,
   });
 
-  const displayMinReceived =
-    displayhMinReceivedQuery?.data?.displayMinReceived || "0";
-  const convertedAmount = displayhMinReceivedQuery?.data?.convertedAmount || 0;
+  const { displayMinReceived, convertedAmount, minReceivedRaw, priceImpact } =
+    useMemo(() => {
+      const data = displayhMinReceivedQuery?.data || {
+        displayMinReceived: "0",
+        convertedAmount: 0,
+        minReceivedRaw: 0,
+        priceImpact: "0",
+      };
+      return {
+        displayMinReceived: data.displayMinReceived,
+        convertedAmount: data.convertedAmount,
+        minReceivedRaw: data.minReceivedRaw,
+        priceImpact: data.priceImpact,
+      };
+    }, [displayhMinReceivedQuery?.data]);
 
   const onSwap = async () => {
     if (!sellAmount) return;
@@ -193,7 +209,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -320,7 +336,18 @@ export default function Trade({ token }: { token: IToken }) {
               </div>
             </div>
           </div>
-
+          <div className="flex items-center justify-between text-sm font-dm-mono text-autofun-text-secondary w-full px-4 mb-2">
+            <span>Price Impact:</span>
+            <span
+              className={twMerge([
+                "text-sm font-dm-mono",
+                Number(priceImpact) > 5 ? "text-red-500" : "",
+              ])}
+            >
+              {priceImpact} %
+            </span>
+            <div></div>
+          </div>
           <div
             className={twMerge([
               "flex items-center gap-2 h-4 m-2 select-none",

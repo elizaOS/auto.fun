@@ -140,7 +140,7 @@ function calculateAmountOutBuy(
 const FEE_BASIS_POINTS = 10000;
 
 export const getSwapAmount = async (
-  program: Program<Autofun>,
+  program: Program<any>,
   amount: number,
   style: number,
   reserveToken: number,
@@ -179,7 +179,10 @@ export const getSwapAmount = async (
     );
   }
 
-  return estimatedOutput;
+  return {
+    estimatedOutput: estimatedOutput,
+    priceImpact: "0",
+  }
 };
 
 export const getSwapAmountJupiter = async (
@@ -189,7 +192,10 @@ export const getSwapAmountJupiter = async (
   slippageBps: number = 100,
 ) => {
   try {
-    if (amount === 0) return 0;
+    if (amount === 0) return {
+      estimatedOutput: 0,
+      priceImpact: "0",
+    }
     // Jupiter uses the following constant to represent SOL
     const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
@@ -207,14 +213,17 @@ export const getSwapAmountJupiter = async (
       const errorMsg = await quoteRes.text();
       throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
     }
-    const quoteResponse = (await quoteRes.json()) as { outAmount: string };
+    const quoteResponse = (await quoteRes.json()) as { outAmount: string, priceImpact: string };
 
     const estimatedOutput = quoteResponse.outAmount;
-    return Number(estimatedOutput);
+    return { estimatedOutput: Number(estimatedOutput), priceImpact: quoteResponse.priceImpact || "0" }; // priceImpact is not available in the quote response
   } catch (error) {
     console.error("Error fetching swap amount from Jupiter:", error);
     // toast.error("Error fetching swap amount from Jupiter");
-    return 0;
+    return {
+      estimatedOutput: 0,
+      priceImpact: "0",
+    }
   }
 };
 
@@ -229,14 +238,14 @@ export const swapIx = async (
   reserveLamport: number,
   configAccount: ConfigAccount,
 ) => {
-  const estimatedOutput = await getSwapAmount(
+  const estimatedOutputResult = await getSwapAmount(
     program,
     amount,
     style,
     reserveToken,
     reserveLamport,
   );
-
+  const estimatedOutput = estimatedOutputResult.estimatedOutput;
   // Apply slippage to estimated output
   const minOutput = new BN(
     Math.floor((estimatedOutput * (10000 - slippageBps)) / 10000),
@@ -271,77 +280,69 @@ export const getJupiterSwapIx = async (
   style: number, // 0 for buy; 1 for sell
   slippageBps: number = 100,
   _connection: Connection,
+  isToken2022: boolean = false,
 ) => {
-  // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
-
-  // @TODO token address is static for now because our project is not deployed to mainnet yet
   const tokenMintAddress = _token.toBase58();
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
-  // --- Platform Fee Setup ---
-  const feePercent = 0.49;
-  const feeBps = feePercent * 100; // This will be 100 bps
-  const platformFeeWallet = env.platformFeeWallet; // Get wallet from env
+  // Only compute/apply a platform fee if we're NOT using Token-2022
+  let feeAccount = undefined;
+  if (isToken2022) {
+    console.log("Using Jupiter platform fee.");
+    const feePercent = 2;
+    const feeBps = Math.round(feePercent * 10); // 0.2% = 200 bps
+    const platformFeeWallet = env.platformFeeTokenAccount;
+    if (platformFeeWallet) {
+      feeAccount = new PublicKey(platformFeeWallet);
+      console.log("Platform fee account:", feeAccount.toBase58());
 
-  if (!platformFeeWallet) {
-    console.warn(
-      "Platform fee wallet address not found in env. Skipping Jupiter platform fee.",
-    );
+    } else {
+      console.warn(
+        "Platform fee wallet address not found in env—skipping Jupiter platform fee."
+      );
+    }
+
   }
 
-  // 1. Get Quote (includes platform fee BPS)
-  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`;
+
+
+  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}` +
+    `&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true` +
+    `${!isToken2022 ? `&platformFeeBps=${(200)}` : ""}`;
   const quoteRes = await fetch(quoteUrl);
-
-  if (!quoteRes.ok) {
-    const errorMsg = await quoteRes.text();
-    throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
-  }
+  if (!quoteRes.ok) throw new Error(await quoteRes.text());
   const quoteResponse = await quoteRes.json();
-
-  // 2. Get Swap Instructions
-  const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
-  const swapRequestBody: any = {
+  const body: {
+    quoteResponse: any;
+    userPublicKey: string;
+    asLegacyTransaction: boolean;
+    dynamicComputeUnitLimit: boolean;
+    dynamicSlippage: boolean;
+    feeAccount?: PublicKey;
+  } = {
     quoteResponse,
     userPublicKey: user.toBase58(),
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-    // --- Add Platform Fee Destination ---
-    ...(platformFeeWallet && {
-      platformFeeAndAccounts: {
-        feeBps: feeBps,
-        feeAccounts: {
-          [outputMint]: platformFeeWallet,
-        },
-      },
-    }),
-  };
-
-  console.log("Jupiter Swap Request Body:", JSON.stringify(swapRequestBody)); // Log the body
-
-  const swapRes = await fetch(swapUrl, {
+  }
+  if (feeAccount) {
+    body.feeAccount = feeAccount
+  }
+  const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(swapRequestBody), // Send the modified body
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
-  if (!swapRes.ok) {
-    const errorMsg = await swapRes.text();
-    throw new Error(`Failed to build Jupiter swap transaction: ${errorMsg}`);
-  }
-  const swapJson = (await swapRes.json()) as any;
-
+  if (!swapRes.ok) throw new Error(await swapRes.text());
+  const swapJson = await swapRes.json();
   if (!swapJson.swapTransaction) {
     throw new Error("Jupiter swap transaction is missing in the response.");
   }
 
   const txBuffer = Buffer.from(swapJson.swapTransaction, "base64");
-  const swapTransaction = Transaction.from(txBuffer);
-
-  return swapTransaction.instructions;
+  return Transaction.from(txBuffer).instructions;
 };
