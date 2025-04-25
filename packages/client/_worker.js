@@ -1,17 +1,15 @@
 // packages/client/_worker.js
 
-// Define the handler for meta tags (same logic as before)
+// MetaTagHandler class needed for token route rewriting
 class MetaTagHandler {
   constructor(tags) {
     this.tags = tags;
   }
 
   element(element) {
-    // Prepend all new tags
     let tagsHtml = '';
     for (const [property, content] of Object.entries(this.tags)) {
       const attrName = property.startsWith('og:') ? 'property' : (property.startsWith('twitter:') ? 'name' : 'property');
-      // Ensure content is a string before replacing quotes
       const safeContent = String(content ?? '');
       const escapedContent = safeContent.replace(/"/g, '&quot;');
       tagsHtml += `<meta ${attrName}="${property}" content="${escapedContent}">\n`;
@@ -21,80 +19,87 @@ class MetaTagHandler {
   }
 }
 
-
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
-        console.log(`[Worker v5] Request: ${url.pathname}, Full URL: ${url.href}`);
+        console.log(`[Worker V6] Request: ${url.pathname}, Full URL: ${url.href}`);
 
-        // API requests go to api.auto.fun and won't hit this worker,
-        // so the check for /api/ is removed.
+        const isRootPath = url.pathname === '/';
+        // Check url.search for query params - more reliable than checking href
+        const hasDevQuery = url.search.includes('dev');
+        // Check hostname for localhost variants
+        const isLocalhost = url.hostname === 'localhost' || url.hostname.endsWith('.localhost') || url.hostname === '127.0.0.1';
 
-        const tokenPathRegex = /^\/token\/([a-zA-Z0-9]{32,44})$/;
-        const match = url.pathname.match(tokenPathRegex);
+        // --- Redirect Logic moved from main.tsx ---
+        // Only apply this redirect logic if the request is for the root path '/'
+        if (isRootPath && !hasDevQuery && !isLocalhost) {
+            console.log(`[Worker V6] Root path without ?dev on non-localhost. Redirecting to Twitter.`);
+            // Use a temporary redirect (302)
+            return Response.redirect("https://twitter.com/autodotfun", 302);
+        }
 
-        // --- Only rewrite for /token/:mint routes --- 
-        if (match && match[1]) {
-            const mint = match[1];
-            console.log(`[Worker v5] Token route matched (${mint}). Fetching and attempting rewrite.`);
-            
-            try {
-                // Fetch the asset for the token page (likely index.html)
-                let response = await env.ASSETS.fetch(request);
-                
-                // Clone response to check headers
-                const clonedResponse = new Response(response.body, response);
-                const contentType = clonedResponse.headers.get('Content-Type');
+        // --- Passthrough or Token Rewriting ---
+        // For root path with ?dev, localhost root, or any other path:
+        // Let Cloudflare Pages handle fetching the asset (index.html, css, js, /token/*)
+        console.log(`[Worker V6] Passing request through to env.ASSETS.fetch for: ${url.pathname}${url.search}`);
+        try {
+            // We still need to potentially rewrite OG tags for /token/* routes,
+            // so we always fetch first for non-redirected root or other paths.
+            const response = await env.ASSETS.fetch(request);
 
-                if (contentType && contentType.toLowerCase().includes('text/html')) {
-                    console.log(`[Worker v5] HTML detected for token route ${mint}. Generating OG tags.`);
-                    
-                    let ogTags = {};
-                    const defaultTitle = 'auto.fun';
-                    const serverUrl = env.SERVER_URL || 'https://api.auto.fun';
-                    const dynamicImageUrl = `${serverUrl}/api/og-image/${mint}.png`;
+            // --- Token Rewriting Logic ---
+            // Check if it's a token route *after* fetching,
+            // but only proceed if the response is HTML.
+            const tokenPathRegex = /^\/token\/([a-zA-Z0-9]{32,44})$/;
+            const match = url.pathname.match(tokenPathRegex);
 
-                    ogTags['og:title'] = `Token ${mint.substring(0, 4)}...${mint.substring(mint.length - 4)} - ${defaultTitle}`;
-                    ogTags['og:description'] = `View ${mint.substring(0,4)}...${mint.substring(mint.length - 4)} on ${defaultTitle}.`;
-                    ogTags['og:url'] = url.toString();
-                    ogTags['og:image'] = dynamicImageUrl;
-                    ogTags['og:image:type'] = 'image/png';
-                    ogTags['og:image:width'] = '1200';
-                    ogTags['og:image:height'] = '630';
-                    ogTags['twitter:card'] = 'summary_large_image';
-                    ogTags['twitter:image'] = dynamicImageUrl;
-                    ogTags['twitter:title'] = ogTags['og:title'];
-                    ogTags['twitter:description'] = ogTags['og:description'];
+            if (match && match[1]) {
+                 // Clone response to check headers *only* for token route
+                 const clonedResponse = new Response(response.body, response);
+                 const contentType = clonedResponse.headers.get('Content-Type');
 
-                    console.log(`[Worker v5] Applying HTMLRewriter for token ${mint}...`);
-                    // Return the *cloned* response transformed
-                    return new HTMLRewriter()
-                        .on('head', new MetaTagHandler(ogTags))
-                        .transform(clonedResponse);
-                } else {
-                    // Not HTML, return the cloned response as-is
-                    console.log(`[Worker v5] Non-HTML (${contentType}) for token route ${mint}, returning original response.`);
-                    return clonedResponse;
-                }
-            } catch (e) {
-                console.error(`[Worker v5] Error fetching/rewriting token route ${mint}:`, e);
-                // Fallback: Try fetching the original request again without rewriting on error
-                try {
-                     return await env.ASSETS.fetch(request);
-                } catch (fallbackError) {
-                    console.error(`[Worker v5] Fallback env.ASSETS.fetch also failed:`, fallbackError);
-                    return new Response('Error processing request.', { status: 500 });
-                }
+                 if (contentType && contentType.toLowerCase().includes('text/html')) {
+                     const mint = match[1];
+                     console.log(`[Worker V6] Rewriting OG tags for token route: ${mint}`);
+
+                     // Generate OG Tags for token route
+                     let ogTags = {};
+                     const defaultTitle = 'auto.fun';
+                     const serverUrl = env.SERVER_URL || 'https://api.auto.fun'; // Use env var
+                     const dynamicImageUrl = `${serverUrl}/api/og-image/${mint}.png`;
+
+                     ogTags['og:title'] = `Token ${mint.substring(0, 4)}...${mint.substring(mint.length - 4)} - ${defaultTitle}`;
+                     ogTags['og:description'] = `View ${mint.substring(0,4)}...${mint.substring(mint.length - 4)} on ${defaultTitle}.`;
+                     ogTags['og:url'] = url.toString();
+                     ogTags['og:image'] = dynamicImageUrl;
+                     ogTags['og:image:type'] = 'image/png';
+                     ogTags['og:image:width'] = '1200';
+                     ogTags['og:image:height'] = '630';
+                     ogTags['twitter:card'] = 'summary_large_image';
+                     ogTags['twitter:image'] = dynamicImageUrl;
+                     ogTags['twitter:title'] = ogTags['og:title'];
+                     ogTags['twitter:description'] = ogTags['og:description'];
+                     // --- End OG Tag Generation ---
+
+                     // Apply Rewriter
+                     return new HTMLRewriter()
+                         .on('head', new MetaTagHandler(ogTags))
+                         .transform(clonedResponse);
+                 } else {
+                      // Token route but not HTML, return original response
+                      console.log(`[Worker V6] Token route not HTML (${contentType}), returning original.`);
+                      return clonedResponse; // Return the cloned one we checked
+                 }
+            } else {
+                 // Not a token route (and not redirected earlier), return original response
+                 console.log(`[Worker V6] Not a token route, returning original fetched response.`);
+                 return response;
             }
-        } else {
-            // --- Not a token route, pass through directly --- 
-            console.log(`[Worker v5] Path ${url.pathname} is not a token route. Passing through.`);
-            try {
-                return await env.ASSETS.fetch(request);
-            } catch (e) {
-                 console.error(`[Worker v5] Error during passthrough env.ASSETS.fetch for ${url.pathname}:`, e);
-                 return new Response('Error fetching asset.', { status: 500 });
-            }
+            // --- End Token Rewriting Logic ---
+
+        } catch (e) {
+             console.error(`[Worker V6] Error during env.ASSETS.fetch for ${url.pathname}:`, e);
+             return new Response('Error fetching asset.', { status: 500 });
         }
     }
 }; 

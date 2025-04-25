@@ -165,7 +165,11 @@ export default function SwapsTable({ token }: { token: IToken }) {
   if ((items || [])?.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2">
-        <img className="w-auto grayscale size-16 select-none" src="/dice.svg" alt="logo" />
+        <img
+          className="w-auto grayscale size-16 select-none"
+          src="/dice.svg"
+          alt="logo"
+        />
         <p className="text-sm font-dm-mono text-autofun-text-secondary">
           No trades were found.
         </p>

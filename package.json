@@ -9,7 +9,7 @@
   "packageManager": "bun@1.2.4",
   "scripts": {
     "cron": "node scripts/cron-once.js",
-    "dev": "cp .env packages/server/.env && concurrently \"turbo run dev\" \"node scripts/cron-watcher.js\" \"node scripts/proxy-webhooks.js\"",
+    "dev": "cp .env packages/server/.env && cp .env.defaults packages/server/.env.defaults && concurrently \"turbo run dev\" \"node scripts/cron-watcher.js\" \"node scripts/proxy-webhooks.js\"",
     "sync-db": "bash scripts/sync-db.sh",
     "build": "turbo run build",
     "build:client": "turbo run build --filter=@autodotfun/client",
