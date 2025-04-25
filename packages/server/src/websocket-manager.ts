@@ -260,7 +260,6 @@ class WebSocketManager {
         this.heartbeatInterval = setInterval(() => {
             this.clients.forEach(async (clientMetadata) => {
                 if (!clientMetadata.isAlive) {
-                    logger.warn(`Client ${clientMetadata.clientId} unresponsive to ping, closing.`);
                     try {
                         clientMetadata.ws.close(1008, "Heartbeat Failure");
                     } catch (e) {
