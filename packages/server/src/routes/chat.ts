@@ -204,20 +204,23 @@ chatRouter.get(
             eq(schema.messages.tier, tier),
           ),
         )
-        .orderBy(asc(schema.messages.timestamp)) // Order by timestamp ascending for chat
+        .orderBy(asc(schema.messages.timestamp))
         .limit(limit)
         .offset(offset);
 
-      // Ensure timestamp is ISO string (D1 might return numbers or strings)
-      const formattedMessages = messages.map((msg) => ({
-        ...msg,
-        timestamp:
-          typeof msg.timestamp === "string"
-            ? msg.timestamp
-            : typeof msg.timestamp === "number"
-              ? new Date(msg.timestamp).toISOString()
-              : new Date().toISOString(), // Fallback if type is unexpected
-      }));
+
+      // Ensure timestamp is properly formatted
+      const formattedMessages = messages.map((msg) => {
+        const formattedMsg = {
+          ...msg,
+          timestamp: msg.timestamp instanceof Date 
+            ? msg.timestamp.toISOString() 
+            : typeof msg.timestamp === 'string' 
+              ? msg.timestamp 
+              : new Date(msg.timestamp).toISOString(),
+        };
+        return formattedMsg;
+      });
 
       return c.json({ success: true, messages: formattedMessages });
     } catch (error) {
@@ -292,8 +295,10 @@ chatRouter.post(
         tier: tier,
         replyCount: 0,
         timestamp: new Date(),
-        media: null, // Assuming media is not provided in the request
+        media: null,
       };
+
+      console.log('Creating new message with timestamp:', newMessageData.timestamp);
 
       const currentDb = db(c);
       await currentDb
@@ -306,11 +311,15 @@ chatRouter.post(
         .where(eq(schema.messages.id, newMessageData.id))
         .limit(1);
 
+      console.log('Retrieved message from DB:', insertedMessage[0]);
+
       if (insertedMessage && insertedMessage.length > 0) {
         const finalMessage = {
           ...insertedMessage[0],
           timestamp: new Date(insertedMessage[0].timestamp).toISOString(),
         };
+
+        console.log('Sending final message with timestamp:', finalMessage.timestamp);
 
         const roomName = `chat:${tokenMint}:${tier}`;
         logger.info(`Broadcasting new message to room: ${roomName}`);

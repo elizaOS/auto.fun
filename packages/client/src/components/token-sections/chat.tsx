@@ -143,7 +143,6 @@ export default function ChatSection() {
     if (!chatContainerRef.current) return;
 
     // Log to debug
-    console.log("Attempting to scroll to bottom, forceScroll:", forceScroll);
 
     const scrollThreshold = 100; // Pixels from bottom
     const isNearBottom =
@@ -157,7 +156,6 @@ export default function ChatSection() {
         if (chatContainerRef.current) {
           chatContainerRef.current.scrollTop =
             chatContainerRef.current.scrollHeight;
-          console.log("Scrolled to bottom");
         }
       }, 10); // Small timeout to ensure DOM updates
     }
@@ -268,7 +266,6 @@ export default function ChatSection() {
             setHasOlderMessages(false);
           }
           setTimeout(() => scrollToBottom(true), 100);
-          console.log("Initial messages loaded, should scroll to bottom");
         } else {
           const now = new Date().toISOString();
           setLatestTimestamp(now);
@@ -467,7 +464,7 @@ export default function ChatSection() {
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
 
-        setChatMessages((prev) => [...sortedOlderMessages, ...prev]);
+        setChatMessages((prev) => [...prev, ...sortedOlderMessages]);
         setOldestTimestamp(sortedOlderMessages[0].timestamp);
         setHasOlderMessages(sortedOlderMessages.length === CHAT_MESSAGE_LIMIT);
 
@@ -526,7 +523,6 @@ export default function ChatSection() {
 
     const subscriptionData = { tokenMint, tier: selectedChatTier };
 
-    console.log("WS: Subscribing to chat room:", subscriptionData);
     socket.emit("subscribeToChat", subscriptionData);
 
     // Confirmation listener (optional but good for debugging)
@@ -552,7 +548,7 @@ export default function ChatSection() {
     // Define handler with type assertion
     const handleNewChatMessage = (data: unknown) => {
       const newMessage = data as ChatMessage;
-      console.log("WS: Received new message:", newMessage);
+      // console.log("WS: Received new message:", newMessage);
 
       // Basic validation
       if (
@@ -575,22 +571,15 @@ export default function ChatSection() {
       }
 
       setChatMessages((prevMessages) => {
-        // Check if message already exists (including optimistic ones)
+        // Check if message already exists
         if (prevMessages.some((msg) => msg.id === newMessage.id)) {
-          // If it exists and the received one is NOT optimistic, update it
-          // (Handles case where optimistic message is confirmed)
-          if (!newMessage.isOptimistic) {
-            return prevMessages.map((msg) =>
-              msg.id === newMessage.id
-                ? { ...newMessage, isOptimistic: false }
-                : msg,
-            );
-          }
-          // Otherwise, ignore the duplicate (e.g., received optimistic echo)
           return prevMessages;
         }
-        // Add the new message if it doesn't exist
-        return [...prevMessages, newMessage];
+        // Add new message and sort by timestamp
+        const newMessages = [...prevMessages, newMessage];
+        return newMessages.sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
       });
 
       // Update latest timestamp if this message is newer
@@ -633,25 +622,6 @@ export default function ChatSection() {
 
     setIsSendingMessage(true);
     setChatError(null);
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMessage: ChatMessage = {
-      id: tempId,
-      author: publicKey.toBase58(),
-      tokenMint: tokenMint,
-      message: imageUrl || chatInput.trim(),
-      tier: selectedChatTier,
-      timestamp: new Date().toISOString(),
-      isOptimistic: true,
-      hasLiked: false,
-    };
-
-    // Optimistically add the message
-    setChatMessages((prev) => [...prev, optimisticMessage]);
-    if (!imageUrl) {
-      setChatInput("");
-    }
-
-    setTimeout(() => scrollToBottom(true), 50);
 
     try {
       // Call the API to post the message
@@ -661,11 +631,9 @@ export default function ChatSection() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            // Consider sending client ID if needed for exclusion on server
-            // 'X-Client-ID': socket?.clientId // Assuming socket wrapper exposes ID
           },
           body: JSON.stringify({
-            message: imageUrl || chatInput.trim(), // Use stored message
+            message: imageUrl || chatInput.trim(),
           }),
         },
       );
@@ -675,8 +643,6 @@ export default function ChatSection() {
         setChatError(
           `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`,
         );
-        // Remove optimistic message on auth error
-        setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
         return;
       }
 
@@ -692,35 +658,20 @@ export default function ChatSection() {
         throw new Error(errorMsg);
       }
 
-      // --- No longer need to handle successful message update here ---
-      // The WebSocket 'newChatMessage' listener will handle adding the confirmed message
-      // and potentially replacing the optimistic one.
-      // We *could* parse the response here to potentially update the optimistic message
-      // with the real ID/timestamp immediately, but the WS listener handles it eventually.
+      // Clear input after successful send
+      if (!imageUrl) {
+        setChatInput("");
+      }
 
-      /* // OLD LOGIC - REMOVED
-      const data: PostMessageResponse = await response.json();
-      if (data.success && data.message) {
-          setChatMessages((prev) => {
-              const filtered = prev.filter((msg) => msg.id !== tempId);
-              if (!filtered.some((m) => m.id === data.message!.id)) {
-                  return [...filtered, data.message!];
-              } return filtered; });
-              if ( !latestTimestamp || new Date(data.message.timestamp).getTime() > new Date(latestTimestamp).getTime() ) {
-                  setLatestTimestamp(data.message.timestamp);
-              }
-              setTimeout(() => scrollToBottom(true), 50);
-          } else {
-              throw new Error(data.error || "Failed to send message");
-          }
-      */
+      // Immediately refresh messages after successful post
+      await fetchChatMessages(selectedChatTier, false);
+      setTimeout(() => scrollToBottom(true), 100);
+
     } catch (error) {
       console.error("Error sending message:", error);
       setChatError(
         error instanceof Error ? error.message : "Could not send message",
       );
-      // Remove optimistic message on general error
-      setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
     } finally {
       setIsSendingMessage(false);
     }
@@ -731,7 +682,6 @@ export default function ChatSection() {
     if (!isChatLoading && chatMessages.length > 0) {
       // Short delay to ensure DOM updates
       setTimeout(() => scrollToBottom(true), 100);
-      console.log("Messages changed, scrolling to bottom");
     }
   }, [chatMessages, isChatLoading, scrollToBottom]);
 
@@ -753,22 +703,21 @@ export default function ChatSection() {
     }
 
     if (date.getFullYear() === now.getFullYear()) {
-      return (
-        date.toLocaleDateString([], { month: "short", day: "numeric" }) +
-        " " +
-        date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      );
+      return date.toLocaleDateString([], { 
+        month: "short", 
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     }
 
-    return (
-      date.toLocaleDateString([], {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }) +
-      " " +
-      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    );
+    return date.toLocaleDateString([], {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
   };
 
   // Function to render the avatar/identity for each message
@@ -830,7 +779,12 @@ export default function ChatSection() {
 
       const data = await response.json();
       if (data.success && data.message) {
-        setChatMessages((prev) => [data.message, ...prev]);
+        setChatMessages((prev) => {
+          const newMessages = [data.message, ...prev];
+          return newMessages.sort((a, b) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+        });
         setImageCaption('');
         setSelectedImage(null);
         setImagePreview(null);
@@ -1072,7 +1026,7 @@ export default function ChatSection() {
                   </p>
                 )}
                 {selectedImage && (
-                  <div className="absolute -top-[320px] left-4 w-full z-10">
+                  <div className="absolute bottom-[80px] left-4 w-full z-10">
                     <div className="relative w-full aspect-square max-w-[400px] border-4 border-[#03FF24] flex items-center justify-center bg-black">
                       <img 
                         src={imagePreview || ''} 
