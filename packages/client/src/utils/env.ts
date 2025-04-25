@@ -86,25 +86,6 @@ const unparsedEnv = {
     parseAdminAddresses(import.meta.env.VITE_ADMIN_ADDRESSES) || [],
 } as const;
 
-// Log all values in unparsedEnv to debug which ones are missing
-console.log("==== ENV VALIDATION DEBUG ====");
-console.log("solanaNetwork:", unparsedEnv.solanaNetwork);
-console.log("rpcUrl:", unparsedEnv.rpcUrl);
-console.log("rpcUrlMainnet:", unparsedEnv.rpcUrlMainnet);
-console.log("virtualReserves:", unparsedEnv.virtualReserves);
-console.log("tokenSupply:", unparsedEnv.tokenSupply);
-console.log("decimals:", unparsedEnv.decimals);
-console.log("apiUrl:", unparsedEnv.apiUrl);
-console.log("platformFeeWallet:", unparsedEnv.platformFeeWallet);
-console.log("programId:", unparsedEnv.programId);
-console.log("appEnv:", unparsedEnv.appEnv);
-console.log("s3PublicUrl:", unparsedEnv.s3PublicUrl);
-console.log("metadataBaseUrl:", unparsedEnv.metadataBaseUrl);
-console.log("imageOptimizationUrl:", unparsedEnv.imageOptimizationUrl);
-console.log("exampleImageUrl:", unparsedEnv.exampleImageUrl);
-console.log("adminAddresses:", unparsedEnv.adminAddresses);
-console.log("=========================");
-
 const envSchema = z.object({
   solanaNetwork: z.string().min(1),
   rpcUrl: z.string().min(1),

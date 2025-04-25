@@ -98,9 +98,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           }
         }
       },
-      complete() {
-        console.log("SWAPS SUBSCRIPTION CLEANED");
-      },
+      complete() {},
       error(error) {
         console.error("SWAPS SUBSCRIPTION: ", error);
       },
@@ -114,7 +112,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink,
+        sink
       );
     }
 
