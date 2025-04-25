@@ -549,12 +549,62 @@ export default function ChatSection() {
 
     // Define handler with type assertion
     const handleNewChatMessage = (data: unknown) => {
-      try {
-        const message = data as ChatMessage;
-        setChatMessages((prev) => [message, ...prev]);
-      } catch (error) {
-        console.error('Error handling new chat message:', error);
+      const newMessage = data as ChatMessage;
+      console.log("WS: Received new message:", newMessage);
+
+      // Basic validation
+      if (
+        !newMessage ||
+        !newMessage.id ||
+        !newMessage.tokenMint ||
+        !newMessage.tier
+      ) {
+        console.warn("WS: Received invalid message format.", newMessage);
+        return;
       }
+
+      // Check if the message belongs to the current context
+      if (
+        newMessage.tokenMint !== tokenMint ||
+        newMessage.tier !== selectedChatTier
+      ) {
+        console.log("WS: Ignoring message from different token/tier.");
+        return;
+      }
+
+      setChatMessages((prevMessages) => {
+        // Check if message already exists (including optimistic ones)
+        if (prevMessages.some((msg) => msg.id === newMessage.id)) {
+          // If it exists and the received one is NOT optimistic, update it
+          // (Handles case where optimistic message is confirmed)
+          if (!newMessage.isOptimistic) {
+            return prevMessages.map((msg) =>
+              msg.id === newMessage.id
+                ? { ...newMessage, isOptimistic: false }
+                : msg,
+            );
+          }
+          // Otherwise, ignore the duplicate (e.g., received optimistic echo)
+          return prevMessages;
+        }
+        // Add the new message if it doesn't exist
+        return [...prevMessages, newMessage];
+      });
+
+      // Update latest timestamp if this message is newer
+      setLatestTimestamp((prevTimestamp) => {
+        if (
+          !prevTimestamp ||
+          new Date(newMessage.timestamp).getTime() >
+            new Date(prevTimestamp).getTime()
+        ) {
+          return newMessage.timestamp;
+        }
+        return prevTimestamp;
+      });
+
+      // Scroll down if near bottom
+      setTimeout(() => scrollToBottom(false), 50);
     };
 
     // Register the handler
@@ -566,7 +616,7 @@ export default function ChatSection() {
       socket.off("newChatMessage", handleNewChatMessage);
       console.log("WS: Unregistered newChatMessage listener.");
     };
-  }, [socket]);
+  }, [socket, tokenMint, selectedChatTier, scrollToBottom]);
 
   // --- Send Chat Message --- *REVISED* (Optimistic update remains, WS handles confirmation)
   const handleSendMessage = async (imageUrl?: string) => {
