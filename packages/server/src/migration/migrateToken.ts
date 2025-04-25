@@ -537,6 +537,7 @@ export class TokenMigrator {
     const raydium = await initSdk({
       loadToken: false,
     });
+    console.log(" initialization of raydium sdk", raydium.cluster);
 
     if (!raydium) throw new Error("Raydium SDK init failed");
     const poolId = token.marketId;
