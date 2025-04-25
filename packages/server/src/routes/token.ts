@@ -1,15 +1,20 @@
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"; // S3 Import
+import {
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3"; // S3 Import
 import {
   AccountInfo,
   Connection,
   ParsedAccountData,
-  PublicKey
+  PublicKey,
 } from "@solana/web3.js";
 import { and, count, eq, or, sql, SQL } from "drizzle-orm";
-import { getTableColumns } from 'drizzle-orm';
+import { getTableColumns } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
-import { Buffer } from 'node:buffer'; // Buffer import
+import { Buffer } from "node:buffer"; // Buffer import
 import { getDB, Token, tokens, users } from "../db";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
@@ -25,7 +30,10 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
-import { updateHoldersCache, processTokenUpdateEvent } from "../tokenSupplyHelpers";
+import {
+  updateHoldersCache,
+  processTokenUpdateEvent,
+} from "../tokenSupplyHelpers";
 import { getS3Client } from "../s3Client"; // Import shared S3 client function
 import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relative to src
 
@@ -40,7 +48,7 @@ const logger = {
 async function validateQueryResults(
   params: { hideImported?: number; status?: string },
   results: Token[] | null | undefined,
-  sqlStrings?: { mainQuerySql?: string }, // Optional parameter for SQL string
+  sqlStrings?: { mainQuerySql?: string } // Optional parameter for SQL string
 ): Promise<void> {
   const { hideImported, status } = params;
   const mainSql = sqlStrings?.mainQuerySql || "N/A";
@@ -63,7 +71,7 @@ async function validateQueryResults(
   }
   if (status === "active") {
     const nonActiveTokensFound = results.filter(
-      (token) => token.status !== "active",
+      (token) => token.status !== "active"
     );
     if (nonActiveTokensFound.length > 0) {
       const details = nonActiveTokensFound
@@ -78,7 +86,7 @@ async function validateQueryResults(
   }
   if (status === "locked") {
     const nonLockedTokensFound = results.filter(
-      (token) => token.status !== "locked",
+      (token) => token.status !== "locked"
     );
     if (nonLockedTokensFound.length > 0) {
       const details = nonLockedTokensFound
@@ -106,9 +114,17 @@ function buildTokensBaseQuery(
     sortBy?: string;
     maxVolume?: number;
     maxHolders?: number;
-  },
+  }
 ): PgSelect {
-  const { hideImported, status, creator, search, sortBy, maxVolume, maxHolders } = params;
+  const {
+    hideImported,
+    status,
+    creator,
+    search,
+    sortBy,
+    maxVolume,
+    maxHolders,
+  } = params;
   // Select specific columns needed eventually (adjust as needed)
   // Selecting all initially, will be refined before sorting
   let query = db.select().from(tokens).$dynamic();
@@ -141,10 +157,10 @@ function buildTokensBaseQuery(
   if (search) {
     conditions.push(
       or(
-        sql`${tokens.name} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
-        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
-        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
-      ),
+        sql`${tokens.name} ILIKE ${"%" + search + "%"}`, // Use standard SQL LIKE
+        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`, // Use standard SQL LIKE
+        sql`${tokens.mint} ILIKE ${"%" + search + "%"}` // Use standard SQL LIKE
+      )
     );
     logger.log(`[Query Build] Adding condition: search LIKE ${search}`);
   }
@@ -164,7 +180,7 @@ function buildTokensCountBaseQuery(
     status?: string;
     creator?: string;
     search?: string;
-  },
+  }
 ): PgSelect {
   let query = db.select({ count: count() }).from(tokens).$dynamic();
   const { hideImported, status, creator, search } = params;
@@ -197,10 +213,10 @@ function buildTokensCountBaseQuery(
   if (search) {
     conditions.push(
       or(
-        sql`${tokens.name} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
-        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
-        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`, // Use standard SQL LIKE
-      ),
+        sql`${tokens.name} ILIKE ${"%" + search + "%"}`, // Use standard SQL LIKE
+        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`, // Use standard SQL LIKE
+        sql`${tokens.mint} ILIKE ${"%" + search + "%"}` // Use standard SQL LIKE
+      )
     );
     logger.log(`[Count Build] Adding condition: search LIKE ${search}`);
   }
@@ -215,13 +231,16 @@ function buildTokensCountBaseQuery(
 const tokenRouter = new Hono<{ Bindings: {} }>();
 
 // --- OG Image Endpoint ---
-tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optionally
-  const mint = c.req.param("mint").replace(/\.png$/, ''); // Remove .png suffix
+tokenRouter.get("/og-image/:mint{.*png?}", async (c) => {
+  // Match .png optionally
+  const mint = c.req.param("mint").replace(/\.png$/, ""); // Remove .png suffix
   // Get query params
   const queryParams = c.req.query();
-  const forceRefresh = queryParams.refresh === 'true';
+  const forceRefresh = queryParams.refresh === "true";
 
-  logger.log(`[GET /og-image/:mint] Request for mint: ${mint}, Refresh: ${forceRefresh}`);
+  logger.log(
+    `[GET /og-image/:mint] Request for mint: ${mint}, Refresh: ${forceRefresh}`
+  );
 
   if (!mint || mint.length < 32 || mint.length > 44) {
     return c.text("Invalid mint address", 400);
@@ -237,13 +256,17 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
     if (!forceRefresh && redisCache) {
       const cachedUrl = await redisCache.get(redisUrlKey);
       if (cachedUrl) {
-        logger.log(`[OG Image] Cache hit for ${mint}, redirecting to ${cachedUrl}`);
+        logger.log(
+          `[OG Image] Cache hit for ${mint}, redirecting to ${cachedUrl}`
+        );
         // Use 302 Found for temporary redirect
         return c.redirect(cachedUrl, 302);
       }
       logger.log(`[OG Image] URL cache miss for ${mint}`);
     } else if (forceRefresh) {
-      logger.log(`[OG Image] Refresh requested, skipping cache check for ${mint}`);
+      logger.log(
+        `[OG Image] Refresh requested, skipping cache check for ${mint}`
+      );
     }
 
     // 2. Cache Miss or Refresh Requested -> Generate Image
@@ -252,11 +275,16 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
     try {
       imageBuffer = await generateOgImage(mint);
     } catch (genError: any) {
-      logger.error(`[OG Image] Failed to generate image for ${mint}:`, genError);
+      logger.error(
+        `[OG Image] Failed to generate image for ${mint}:`,
+        genError
+      );
       // Redirect to a default OG image if generation fails
       // Consider hosting a static default image
       const defaultOgImage = `/default-og-image.png`;
-      logger.warn(`[OG Image] Redirecting to default OG image: ${defaultOgImage}`);
+      logger.warn(
+        `[OG Image] Redirecting to default OG image: ${defaultOgImage}`
+      );
       // You might want to return a 404 or 500 instead, depending on desired behavior
       return c.redirect(defaultOgImage, 302);
       // Alternative: return c.text('Failed to generate image', 500);
@@ -265,23 +293,22 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
     // 3. Upload generated image to S3/R2
     logger.log(`[OG Image] Uploading generated image to S3 key: ${s3Key}`);
     const { publicBaseUrl } = await getS3Client(); // Get base URL for construction
-    let publicUrl = '';
+    let publicUrl = "";
     try {
       // Use the updated uploadWithS3 function with cache control
-      publicUrl = await uploadWithS3(
-        imageBuffer,
-        {
-          filename: `${mint}.png`, // Filename part for uploader
-          contentType: 'image/png',
-          basePath: 'og-images',       // Specify the correct base path
-          cacheControl: `public, max-age=${cacheTTL}` // 4-hour cache
-        }
-      );
+      publicUrl = await uploadWithS3(imageBuffer, {
+        filename: `${mint}.png`, // Filename part for uploader
+        contentType: "image/png",
+        basePath: "og-images", // Specify the correct base path
+        cacheControl: `public, max-age=${cacheTTL}`, // 4-hour cache
+      });
 
       logger.log(`[OG Image] Upload successful, public URL: ${publicUrl}`);
-
     } catch (uploadError) {
-      logger.error(`[OG Image] Failed to upload image ${s3Key} to S3:`, uploadError);
+      logger.error(
+        `[OG Image] Failed to upload image ${s3Key} to S3:`,
+        uploadError
+      );
       // Handle upload error (e.g., return 500 or default image)
       const defaultOgImage = `/default-og-image.png`;
       return c.redirect(defaultOgImage, 302);
@@ -297,7 +324,6 @@ tokenRouter.get("/og-image/:mint{.*png?}", async (c) => { // Match .png optional
     // 5. Redirect to the newly uploaded image
     logger.log(`[OG Image] Redirecting to newly generated image: ${publicUrl}`);
     return c.redirect(publicUrl, 302);
-
   } catch (error) {
     logger.error(`[OG Image] Unexpected error for mint ${mint}:`, error);
     // General error fallback
@@ -322,7 +348,7 @@ tokenRouter.get("/image/:filename", async (c) => {
 
     // Determine potential object key (might be generation or token image)
     const generationMatch = filename.match(
-      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/
     );
 
     let imageKey;
@@ -335,13 +361,16 @@ tokenRouter.get("/image/:filename", async (c) => {
 
     try {
       logger.log(
-        `[/image/:filename] Attempting to get object from S3 key: ${imageKey}`,
+        `[/image/:filename] Attempting to get object from S3 key: ${imageKey}`
       );
-      const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: imageKey });
+      const getCmd = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: imageKey,
+      });
       const objectResponse = await s3Client.send(getCmd);
 
       logger.log(
-        `[/image/:filename] Found object in S3: Size=${objectResponse.ContentLength}, Type=${objectResponse.ContentType}`,
+        `[/image/:filename] Found object in S3: Size=${objectResponse.ContentLength}, Type=${objectResponse.ContentType}`
       );
 
       let contentType = objectResponse.ContentType || "image/jpeg";
@@ -352,7 +381,9 @@ tokenRouter.get("/image/:filename", async (c) => {
 
       const data = await objectResponse.Body?.transformToByteArray();
       if (!data) {
-        logger.error(`[/image/:filename] Image body stream is empty for ${imageKey}`);
+        logger.error(
+          `[/image/:filename] Image body stream is empty for ${imageKey}`
+        );
         return c.json({ error: "Failed to read image content" }, 500);
       }
       const dataBuffer = Buffer.from(data);
@@ -365,39 +396,47 @@ tokenRouter.get("/image/:filename", async (c) => {
       };
 
       logger.log(
-        `[/image/:filename] Serving ${filename} with type ${contentType}`,
+        `[/image/:filename] Serving ${filename} with type ${contentType}`
       );
       return new Response(dataBuffer, {
         headers: {
           "Content-Type": contentType,
-          "Content-Length": objectResponse.ContentLength?.toString() ?? '0',
+          "Content-Length": objectResponse.ContentLength?.toString() ?? "0",
           "Cache-Control": "public, max-age=31536000",
           ...corsHeaders,
         },
       });
-
     } catch (error: any) {
-      if (error.name === 'NoSuchKey') {
+      if (error.name === "NoSuchKey") {
         logger.warn(
-          `[/image/:filename] Image not found in S3 for key: ${imageKey}`,
+          `[/image/:filename] Image not found in S3 for key: ${imageKey}`
         );
         // DEBUG: List files in the directory
         try {
-          const prefix = imageKey.substring(0, imageKey.lastIndexOf('/') + 1);
-          const listCmd = new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix, MaxKeys: 10 });
+          const prefix = imageKey.substring(0, imageKey.lastIndexOf("/") + 1);
+          const listCmd = new ListObjectsV2Command({
+            Bucket: bucketName,
+            Prefix: prefix,
+            MaxKeys: 10,
+          });
           const listResponse = await s3Client.send(listCmd);
-          const keys = listResponse.Contents?.map((o: any) => o.Key ?? 'unknown-key') ?? [];
+          const keys =
+            listResponse.Contents?.map((o: any) => o.Key ?? "unknown-key") ??
+            [];
           logger.log(
-            `[/image/:filename] Files in ${prefix} directory: ${keys.join(", ")}`,
+            `[/image/:filename] Files in ${prefix} directory: ${keys.join(", ")}`
           );
         } catch (listError) {
           logger.error(
-            `[/image/:filename] Error listing files in directory: ${listError}`,
+            `[/image/:filename] Error listing files in directory: ${listError}`
           );
         }
         return c.json({ error: "Image not found" }, 404);
       } else {
-        logger.error(`[/image/:filename] Error fetching image ${imageKey} from S3:`, error);
+        logger.error(
+          `[/image/:filename] Error fetching image ${imageKey} from S3:`,
+          error
+        );
         throw error;
       }
     }
@@ -413,7 +452,7 @@ tokenRouter.get("/metadata/:filename", async (c) => {
   const isTemp = c.req.query("temp") === "true";
 
   logger.log(
-    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`,
+    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`
   );
 
   try {
@@ -425,33 +464,55 @@ tokenRouter.get("/metadata/:filename", async (c) => {
     // Use the shared S3 client getter
     const { client: s3Client, bucketName } = await getS3Client();
 
-    const primaryKey = isTemp ? `token-metadata-temp/${filename}` : `token-metadata/${filename}`;
-    const fallbackKey = isTemp ? `token-metadata/${filename}` : `token-metadata-temp/${filename}`;
+    const primaryKey = isTemp
+      ? `token-metadata-temp/${filename}`
+      : `token-metadata/${filename}`;
+    const fallbackKey = isTemp
+      ? `token-metadata/${filename}`
+      : `token-metadata-temp/${filename}`;
     let objectResponse;
     let objectKey = primaryKey;
 
     try {
-      logger.log(`[/metadata/:filename] Checking primary location: ${primaryKey}`);
-      const getPrimaryCmd = new GetObjectCommand({ Bucket: bucketName, Key: primaryKey });
+      logger.log(
+        `[/metadata/:filename] Checking primary location: ${primaryKey}`
+      );
+      const getPrimaryCmd = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: primaryKey,
+      });
       objectResponse = await s3Client.send(getPrimaryCmd);
     } catch (error: any) {
-      if (error.name === 'NoSuchKey') {
-        logger.log(`[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`);
+      if (error.name === "NoSuchKey") {
+        logger.log(
+          `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`
+        );
         objectKey = fallbackKey;
         try {
-          const getFallbackCmd = new GetObjectCommand({ Bucket: bucketName, Key: fallbackKey });
+          const getFallbackCmd = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: fallbackKey,
+          });
           objectResponse = await s3Client.send(getFallbackCmd);
         } catch (fallbackError: any) {
-          if (fallbackError.name === 'NoSuchKey') {
-            logger.error(`[/metadata/:filename] Metadata not found in either location for ${filename}`);
+          if (fallbackError.name === "NoSuchKey") {
+            logger.error(
+              `[/metadata/:filename] Metadata not found in either location for ${filename}`
+            );
             return c.json({ error: "Metadata not found" }, 404);
           } else {
-            logger.error(`[/metadata/:filename] Error fetching fallback metadata ${fallbackKey}:`, fallbackError);
+            logger.error(
+              `[/metadata/:filename] Error fetching fallback metadata ${fallbackKey}:`,
+              fallbackError
+            );
             throw fallbackError;
           }
         }
       } else {
-        logger.error(`[/metadata/:filename] Error fetching primary metadata ${primaryKey}:`, error);
+        logger.error(
+          `[/metadata/:filename] Error fetching primary metadata ${primaryKey}:`,
+          error
+        );
         throw error;
       }
     }
@@ -459,12 +520,14 @@ tokenRouter.get("/metadata/:filename", async (c) => {
     const contentType = objectResponse.ContentType || "application/json";
     const data = await objectResponse.Body?.transformToString();
     if (data === undefined) {
-      logger.error(`[/metadata/:filename] Metadata body stream is empty for ${objectKey}`);
+      logger.error(
+        `[/metadata/:filename] Metadata body stream is empty for ${objectKey}`
+      );
       return c.json({ error: "Failed to read metadata content" }, 500);
     }
 
     logger.log(
-      `[/metadata/:filename] Found metadata: Key=${objectKey}, Size=${objectResponse.ContentLength}, Type=${contentType}`,
+      `[/metadata/:filename] Found metadata: Key=${objectKey}, Size=${objectResponse.ContentLength}, Type=${contentType}`
     );
 
     const corsHeaders = {
@@ -477,16 +540,18 @@ tokenRouter.get("/metadata/:filename", async (c) => {
 
     logger.log(`[/metadata/:filename] Serving metadata: ${filename}`);
     return new Response(data, { headers: corsHeaders });
-
   } catch (error) {
-    logger.error(`[/metadata/:filename] Error serving metadata ${filename}:`, error);
+    logger.error(
+      `[/metadata/:filename] Error serving metadata ${filename}:`,
+      error
+    );
     return c.json({ error: "Failed to serve metadata JSON" }, 500);
   }
 });
 
 export async function processSwapEvent(
   swap: any,
-  shouldEmitGlobal: boolean = true,
+  shouldEmitGlobal: boolean = true
 ): Promise<void> {
   try {
     // Get WebSocket client
@@ -514,7 +579,7 @@ export async function processSwapEvent(
       const featuredScore = calculateFeaturedScore(
         tokenData[0],
         maxVolume,
-        maxHolders,
+        maxHolders
       );
 
       // Add token data with featuredScore to the swap
@@ -556,14 +621,14 @@ async function processTokenInfo(
   mintPublicKey: PublicKey,
   tokenInfo: AccountInfo<Buffer>,
   connection: Connection,
-  requestor: string,
+  requestor: string
 ) {
   // Check program ID to verify this is an SPL token
   const TOKEN_PROGRAM_ID = new PublicKey(
-    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
   );
   const TOKEN_2022_PROGRAM_ID = new PublicKey(
-    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
   );
 
   const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
@@ -574,7 +639,7 @@ async function processTokenInfo(
       {
         error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
       },
-      400,
+      400
     );
   }
 
@@ -584,7 +649,7 @@ async function processTokenInfo(
   // Get mint info - decimals and authorities
   const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
   logger.log(
-    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`,
+    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`
   );
 
   // Extract basic token info
@@ -610,12 +675,12 @@ async function processTokenInfo(
 
     // Find the tokenMetadata extension if it exists
     const metadataExt = parsedData.info.extensions.find(
-      (ext: any) => ext.extension === "tokenMetadata",
+      (ext: any) => ext.extension === "tokenMetadata"
     );
 
     if (metadataExt && metadataExt.state) {
       logger.log(
-        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`,
+        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`
       );
 
       // Extract metadata directly from the extension
@@ -625,11 +690,11 @@ async function processTokenInfo(
       updateAuthority = metadataExt.state.updateAuthority || null;
 
       logger.log(
-        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`,
+        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`
       );
       logger.log(`[search-token] SPL-2022 metadata - URI: ${uri}`);
       logger.log(
-        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`,
+        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`
       );
 
       foundMetadata = true;
@@ -648,31 +713,31 @@ async function processTokenInfo(
             try {
               const uriData = JSON.parse(uriText);
               logger.log(
-                `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+                `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`
               );
 
               // Extract image and description if available
               if (uriData.image) {
                 imageUrl = uriData.image;
                 logger.log(
-                  `[search-token] Found image URL in URI: ${imageUrl}`,
+                  `[search-token] Found image URL in URI: ${imageUrl}`
                 );
               }
 
               if (uriData.description) {
                 description = uriData.description;
                 logger.log(
-                  `[search-token] Found description in URI: ${description}`,
+                  `[search-token] Found description in URI: ${description}`
                 );
               }
             } catch (parseError) {
               logger.error(
-                `[search-token] Error parsing URI JSON: ${parseError}`,
+                `[search-token] Error parsing URI JSON: ${parseError}`
               );
             }
           } else {
             logger.error(
-              `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+              `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`
             );
           }
         } catch (fetchError) {
@@ -681,7 +746,7 @@ async function processTokenInfo(
       }
     } else {
       logger.log(
-        `[search-token] No tokenMetadata extension found in SPL-2022 token`,
+        `[search-token] No tokenMetadata extension found in SPL-2022 token`
       );
     }
   }
@@ -690,7 +755,7 @@ async function processTokenInfo(
   if (!foundMetadata) {
     // Get metadata PDA
     const METADATA_PROGRAM_ID = new PublicKey(
-      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
     );
     const [metadataAddress] = PublicKey.findProgramAddressSync(
       [
@@ -698,11 +763,11 @@ async function processTokenInfo(
         METADATA_PROGRAM_ID.toBuffer(),
         mintPublicKey.toBuffer(),
       ],
-      METADATA_PROGRAM_ID,
+      METADATA_PROGRAM_ID
     );
 
     logger.log(
-      `[search-token] Metadata address: ${metadataAddress.toString()}`,
+      `[search-token] Metadata address: ${metadataAddress.toString()}`
     );
 
     // Get metadata account data - direct read from chain with no fallbacks
@@ -712,26 +777,26 @@ async function processTokenInfo(
       // For regular SPL tokens, this is an error
       if (isSPL2022) {
         logger.warn(
-          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`,
+          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`
         );
       } else {
         logger.error(
-          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`,
+          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`
         );
         return c.json({ error: "No metadata found for this token" }, 404);
       }
     } else {
       // We found Metaplex metadata
       logger.log(
-        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`,
+        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`
       );
       logger.log(
-        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`,
+        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`
       );
 
       // Direct metadata extraction
       updateAuthority = new PublicKey(
-        metadataAccount.data.slice(1, 33),
+        metadataAccount.data.slice(1, 33)
       ).toString();
       logger.log(`[search-token] Update authority: ${updateAuthority}`);
 
@@ -744,7 +809,7 @@ async function processTokenInfo(
       const nameData = metadataAccount.data.slice(offset, offset + nameLength);
       tokenName = nameData.toString("utf8").replace(/\0/g, "").trim();
       logger.log(
-        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`,
+        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`
       );
       offset += nameLength;
 
@@ -754,11 +819,11 @@ async function processTokenInfo(
       offset += 1;
       const symbolData = metadataAccount.data.slice(
         offset,
-        offset + symbolLength,
+        offset + symbolLength
       );
       tokenSymbol = symbolData.toString("utf8").replace(/\0/g, "").trim();
       logger.log(
-        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`,
+        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`
       );
       offset += symbolLength;
 
@@ -785,31 +850,31 @@ async function processTokenInfo(
             try {
               const uriData = JSON.parse(uriText);
               logger.log(
-                `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+                `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`
               );
 
               // Extract image and description if available
               if (uriData.image) {
                 imageUrl = uriData.image;
                 logger.log(
-                  `[search-token] Found image URL in URI: ${imageUrl}`,
+                  `[search-token] Found image URL in URI: ${imageUrl}`
                 );
               }
 
               if (uriData.description) {
                 description = uriData.description;
                 logger.log(
-                  `[search-token] Found description in URI: ${description}`,
+                  `[search-token] Found description in URI: ${description}`
                 );
               }
             } catch (parseError) {
               logger.error(
-                `[search-token] Error parsing URI JSON: ${parseError}`,
+                `[search-token] Error parsing URI JSON: ${parseError}`
               );
             }
           } else {
             logger.error(
-              `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+              `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`
             );
           }
         } catch (fetchError) {
@@ -846,15 +911,15 @@ async function processTokenInfo(
   // Debug log for final creator check result
   if (isLocalDev) {
     logger.log(
-      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`,
+      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`
     );
   } else if (isCreator) {
     logger.log(
-      `[search-token] Creator check passed - requestor is the token creator.`,
+      `[search-token] Creator check passed - requestor is the token creator.`
     );
   } else {
     logger.log(
-      `[search-token] Creator check failed - requestor is not the token creator.`,
+      `[search-token] Creator check failed - requestor is not the token creator.`
     );
   }
 
@@ -894,7 +959,7 @@ async function checkBlockchainTokenBalance(
   c: any, // Use 'any' type for context or define a specific type
   mint: string,
   address: string,
-  checkMultipleNetworks = false,
+  checkMultipleNetworks = false
 ): Promise<Response> {
   // Return type should be Response for Hono
   // Initialize return data
@@ -917,25 +982,25 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: process.env.NETWORK || "devnet",
-        url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: process.env.NETWORK || "devnet",
+          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
-    `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
+    `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`
   );
 
   // Try each network until we find a balance
   for (const network of networksToCheck) {
     try {
       logger.log(
-        `Checking ${network.name} (${network.url}) for token balance...`,
+        `Checking ${network.name} (${network.url}) for token balance...`
       );
       const connection = new Connection(network.url, "confirmed");
 
@@ -944,19 +1009,19 @@ async function checkBlockchainTokenBalance(
       const userPublicKey = new PublicKey(address);
 
       logger.log(
-        `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
+        `Getting token accounts for ${address} for mint ${mint} on ${network.name}`
       );
 
       // Fetch token accounts with a simple RPC call
       const response = await connection.getTokenAccountsByOwner(
         userPublicKey,
         { mint: mintPublicKey },
-        { commitment: "confirmed" },
+        { commitment: "confirmed" }
       );
 
       // Log the number of accounts found
       logger.log(
-        `Found ${response.value.length} token accounts on ${network.name}`,
+        `Found ${response.value.length} token accounts on ${network.name}`
       );
 
       // If we have accounts, calculate total balance
@@ -979,12 +1044,12 @@ async function checkBlockchainTokenBalance(
               const tokenAmount = Number(amount) / Math.pow(10, decimals);
               networkBalance += tokenAmount;
               logger.log(
-                `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
+                `Account ${pubkey.toString()} has ${tokenAmount} tokens`
               );
             }
           } catch (balanceError) {
             logger.error(
-              `Error getting token account balance: ${balanceError}`,
+              `Error getting token account balance: ${balanceError}`
             );
             // Continue with other accounts
           }
@@ -995,12 +1060,12 @@ async function checkBlockchainTokenBalance(
           balance = networkBalance;
           foundNetwork = network.name;
           logger.log(
-            `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
+            `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`
           );
           break; // Stop checking other networks once we find a balance
         } else {
           logger.log(
-            `No balance found on ${network.name} despite finding accounts`,
+            `No balance found on ${network.name} despite finding accounts`
           );
         }
       } else {
@@ -1008,7 +1073,7 @@ async function checkBlockchainTokenBalance(
       }
     } catch (netError) {
       logger.error(
-        `Error checking ${network.name} for token balance: ${netError}`,
+        `Error checking ${network.name} for token balance: ${netError}`
       );
       // Continue to next network
     }
@@ -1016,7 +1081,7 @@ async function checkBlockchainTokenBalance(
 
   // Return the balance information
   logger.log(
-    `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
+    `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`
   );
   return c.json({
     balance,
@@ -1052,7 +1117,7 @@ tokenRouter.get("/tokens", async (c) => {
   const sortOrder = (queryParams.sortOrder as string) || "desc";
 
   logger.log(
-    `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`,
+    `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`
   );
 
   // --- RE-ENABLE CACHE GET ---
@@ -1064,23 +1129,11 @@ tokenRouter.get("/tokens", async (c) => {
       if (cachedData) {
         logger.log(`Cache hit for ${cacheKey}`);
         const parsedData = JSON.parse(cachedData);
-        // Log retrieved cache data (optional, for debugging)
-        // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
-
-        // Corrected validation check
-        if (
-          parsedData &&
-          Array.isArray(parsedData.tokens)
-          // Removed length check to allow caching empty results
-          // && parsedData.tokens.length > 0
-        ) {
-          logger.log(
-            `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
-          );
-          return c.json(parsedData); // Return cached data
+        if (parsedData && Array.isArray(parsedData.tokens)) {
+          return c.json(parsedData);
         } else {
           logger.warn(
-            `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
+            `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`
           );
         }
       } else {
@@ -1088,7 +1141,6 @@ tokenRouter.get("/tokens", async (c) => {
       }
     } catch (cacheError) {
       logger.error(`Redis cache GET error:`, cacheError);
-      // Continue without cache if GET fails
     }
   }
   // --- END RE-ENABLE CACHE GET ---
@@ -1125,12 +1177,7 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (sortBy === "featured") {
     // REMOVE baseQuery.select - done in builder
-    baseQuery = applyFeaturedSort(
-      baseQuery,
-      maxVolume,
-      maxHolders,
-      sortOrder,
-    );
+    baseQuery = applyFeaturedSort(baseQuery, maxVolume, maxHolders, sortOrder);
     logger.log(`[Query Build] Applied sort: featured weighted`);
   } else {
     // REMOVE baseQuery.select - done in builder
@@ -1143,7 +1190,7 @@ tokenRouter.get("/tokens", async (c) => {
                   WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
                   ELSE 0 
                 END`,
-        sql`${sortColumn} DESC`,
+        sql`${sortColumn} DESC`
       );
       logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
     } else {
@@ -1155,7 +1202,7 @@ tokenRouter.get("/tokens", async (c) => {
   // --- Apply Pagination to Main Query ---
   baseQuery = baseQuery.limit(limit).offset(skip);
   logger.log(
-    `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
+    `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`
   );
 
   // --- Get SQL representation BEFORE execution ---
@@ -1166,9 +1213,7 @@ tokenRouter.get("/tokens", async (c) => {
     mainQuerySqlString = baseQuery.toSQL().sql;
     countQuerySqlString = countQuery.toSQL().sql;
     logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
-    logger.log(
-      `[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`,
-    );
+    logger.log(`[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`);
   } catch (sqlError) {
     logger.error("[SQL Build] Error getting SQL string:", sqlError);
   }
@@ -1194,7 +1239,7 @@ tokenRouter.get("/tokens", async (c) => {
     // tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
     tokensResult = await baseQuery.execute(); // Remove race for simplicity/debugging
     logger.log(
-      `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
+      `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`
     );
     // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
     // const countResult = await Promise.race([
@@ -1212,10 +1257,7 @@ tokenRouter.get("/tokens", async (c) => {
     });
     // --- END VALIDATION CALL ---
   } catch (error) {
-    logger.error(
-      "Token query failed, timed out, or failed validation:",
-      error,
-    );
+    logger.error("Token query failed, timed out, or failed validation:", error);
     tokensResult = []; // Ensure it's an empty array on error
     total = 0;
   }
@@ -1255,7 +1297,7 @@ tokenRouter.get("/tokens", async (c) => {
       responseData.tokens.map(async (t) => {
         const statsJson = await redisCache.get(`token:stats:${t.mint}`);
         if (statsJson) Object.assign(t, JSON.parse(statsJson));
-      }),
+      })
     );
   }
 
@@ -1284,11 +1326,10 @@ tokenRouter.get("/tokens", async (c) => {
       .map((t) => t.mint)
       .join(", ") || "none";
   logger.log(
-    `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`,
+    `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`
   );
 
   return c.json(responseData);
-
 });
 
 tokenRouter.get("/token/:mint/holders", async (c) => {
@@ -1308,25 +1349,28 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const redisCache = await getGlobalRedisCache();
     const holdersListKey = `holders:${mint}`;
     try {
-
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {
         allHolders = JSON.parse(holdersString);
         logger.log(
-          `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`,
+          `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`
         );
         const ts = await redisCache.get(`${holdersListKey}:lastUpdated`);
         if (!ts || Date.now() - new Date(ts).getTime() > 5 * 60_000) {
           // >5 min old (or never set) → refresh in background
           void updateHoldersCache(mint)
-            .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+            .then((cnt) =>
+              logger.log(`Async holders refresh for ${mint}, got ${cnt}`)
+            )
             .catch((err) => logger.error(`Async holders refresh failed:`, err));
         }
       } else {
         logger.log(`No holders found in Redis for key ${holdersListKey}`);
         // Return empty if not found in cache (as updateHoldersCache should populate it)
         void updateHoldersCache(mint)
-          .then((cnt) => logger.log(`Async holders refresh for ${mint}, got ${cnt}`))
+          .then((cnt) =>
+            logger.log(`Async holders refresh for ${mint}, got ${cnt}`)
+          )
           .catch((err) => logger.error(`Async holders refresh failed:`, err));
         return c.json({
           holders: [],
@@ -1377,7 +1421,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
         total: 0,
         error: "Database error",
       },
-      500,
+      500
     );
   }
 });
@@ -1467,7 +1511,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
     logger.error(`Error getting token price: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1508,23 +1552,23 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Get token data and potentially creator profile
     const db = getDB();
     const [tokenResult, solPrice] = await Promise.all([
-      db.select({
-        // Select all fields from tokens table
-        ...getTableColumns(tokens),
-        // Select specific fields from users table, aliased
-        creatorProfile: {
-          address: users.address,
-          displayName: users.display_name,
-          profilePictureUrl: users.profile_picture_url,
-        }
-      })
+      db
+        .select({
+          // Select all fields from tokens table
+          ...getTableColumns(tokens),
+          // Select specific fields from users table, aliased
+          creatorProfile: {
+            address: users.address,
+            displayName: users.display_name,
+            profilePictureUrl: users.profile_picture_url,
+          },
+        })
         .from(tokens)
         .leftJoin(users, eq(tokens.creator, users.address)) // LEFT JOIN users on creator address
         .where(eq(tokens.mint, mint))
         .limit(1),
       getSOLPrice(), // Fetch SOL price concurrently
     ]);
-
 
     if (!tokenResult || tokenResult.length === 0) {
       // Don't cache 404s for the main token endpoint
@@ -1537,7 +1581,9 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(process.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
+    const defaultReserveLamport = Number(
+      process.env.VIRTUAL_RESERVES || 28000000000
+    ); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1581,8 +1627,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Merge ephemeral stats from Redis
     if (redisCache) {
@@ -1607,7 +1653,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     logger.error(`Error getting token: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1663,7 +1709,7 @@ tokenRouter.post("/create-token", async (c) => {
           error: "Token already exists",
           token: existingToken[0],
         },
-        409,
+        409
       );
     }
 
@@ -1673,7 +1719,9 @@ tokenRouter.post("/create-token", async (c) => {
       if (imageBase64) {
         try {
           // Extract the base64 data from the data URL
-          const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+          const imageMatch = imageBase64.match(
+            /^data:(image\/[a-z+]+);base64,(.*)$/
+          );
           if (!imageMatch) {
             throw new Error("Invalid image data URI format");
           }
@@ -1682,16 +1730,15 @@ tokenRouter.post("/create-token", async (c) => {
           const imageBuffer = Buffer.from(base64Data, "base64");
 
           // Generate a unique filename
-          const ext = contentType.split('/')[1] || 'png'; // Extract extension
+          const ext = contentType.split("/")[1] || "png"; // Extract extension
           const filename = `${mintAddress}-${Date.now()}.${ext}`;
 
           // Upload using the uploader function (which now uses S3)
           imageUrl = await uploadWithS3(
             // Pass necessary env vars if uploader expects them (it shouldn't anymore)
             imageBuffer,
-            { filename, contentType, basePath: 'token-images' }
+            { filename, contentType, basePath: "token-images" }
           );
-
         } catch (error) {
           logger.error("Error uploading image via S3 uploader:", error);
           // Continue without image if upload fails
@@ -1774,13 +1821,16 @@ tokenRouter.post("/create-token", async (c) => {
       // Trigger immediate updates for price and holders in the background
       // for both imported and newly created tokens
       logger.log(
-        `Triggering immediate price and holder update for token: ${mintAddress}`,
+        `Triggering immediate price and holder update for token: ${mintAddress}`
       );
 
       if (imported) {
         try {
           const redisCache = await getGlobalRedisCache();
-          const importedToken = await ExternalToken.create(mintAddress, redisCache);
+          const importedToken = await ExternalToken.create(
+            mintAddress,
+            redisCache
+          );
           const { marketData } = await importedToken.registerWebhook();
           // Fetch historical data in the background
           (async () => await importedToken.fetchHistoricalSwapData())();
@@ -1791,7 +1841,7 @@ tokenRouter.post("/create-token", async (c) => {
         } catch (webhookError) {
           logger.error(
             `Failed to register webhook for imported token ${mintAddress}:`,
-            webhookError,
+            webhookError
           );
           // Continue even if webhook registration fails, especially locally
         }
@@ -1800,10 +1850,14 @@ tokenRouter.post("/create-token", async (c) => {
       // For non-imported tokens, generate additional images in the background
       if (!imported) {
         logger.log(
-          `Triggering background image generation for new token: ${mintAddress}`,
+          `Triggering background image generation for new token: ${mintAddress}`
         );
         // Use a simple async call if waitUntil is not available
-        (async () => await generateAdditionalTokenImages(mintAddress, description || ""))();
+        (async () =>
+          await generateAdditionalTokenImages(
+            mintAddress,
+            description || ""
+          ))();
       }
 
       return c.json({ success: true, token: tokenData });
@@ -1815,7 +1869,7 @@ tokenRouter.post("/create-token", async (c) => {
           : "Unknown error creating token record";
       return c.json(
         { error: "Failed to create token record", details: errorMessage },
-        500,
+        500
       );
     }
   } catch (error) {
@@ -1824,7 +1878,7 @@ tokenRouter.post("/create-token", async (c) => {
       error instanceof Error ? error.message : "Unknown internal server error";
     return c.json(
       { error: "Internal server error", details: errorMessage },
-      500,
+      500
     );
   }
 });
@@ -1868,7 +1922,7 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     logger.error("Error initiating holders data refresh:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1885,7 +1939,11 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
   // Get the token to check permissions and get metadata URL
   const tokenDataResult = await db
-    .select({ creator: tokens.creator, url: tokens.url, imported: tokens.imported })
+    .select({
+      creator: tokens.creator,
+      url: tokens.url,
+      imported: tokens.imported,
+    })
     .from(tokens)
     .where(eq(tokens.mint, mint))
     .limit(1);
@@ -1929,13 +1987,20 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
   // Update metadata in storage (S3 API) only if it's NOT an imported token
   // AND if there were actually relevant social fields updated (check updateData)
-  if (currentTokenData?.imported === 0 && Object.keys(updateData).some(key => allowedUpdateFields.includes(key))) {
+  if (
+    currentTokenData?.imported === 0 &&
+    Object.keys(updateData).some((key) => allowedUpdateFields.includes(key))
+  ) {
     try {
       const originalUrl = currentTokenData.url;
       if (originalUrl) {
         let objectKey = "";
         // Get S3 details - client needed later, base URL for parsing
-        const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
+        const {
+          client: s3Client,
+          bucketName,
+          publicBaseUrl,
+        } = await getS3Client();
 
         try {
           const url = new URL(originalUrl);
@@ -1946,19 +2011,26 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           }
           // Fallback: try to infer based on common patterns if base URL doesn't match
           else {
-            const parts = url.pathname.split("/").filter(p => p);
+            const parts = url.pathname.split("/").filter((p) => p);
             if (parts.length >= 2) {
-              objectKey = parts.slice(-2).join('/');
+              objectKey = parts.slice(-2).join("/");
             } else if (parts.length === 1) {
               objectKey = parts[0];
             }
             if (!objectKey) {
-              throw new Error("Could not parse object key from metadata URL structure");
+              throw new Error(
+                "Could not parse object key from metadata URL structure"
+              );
             }
-            logger.warn(`[Metadata Update] Could not parse object key using current base URL (${publicBaseUrl}), using inferred key: ${objectKey} from URL: ${originalUrl}`);
+            logger.warn(
+              `[Metadata Update] Could not parse object key using current base URL (${publicBaseUrl}), using inferred key: ${objectKey} from URL: ${originalUrl}`
+            );
           }
         } catch (urlParseError) {
-          logger.error(`[Metadata Update] Failed to parse original metadata URL: ${originalUrl}`, urlParseError);
+          logger.error(
+            `[Metadata Update] Failed to parse original metadata URL: ${originalUrl}`,
+            urlParseError
+          );
           throw new Error("Could not parse metadata URL to get object key.");
         }
 
@@ -1972,15 +2044,24 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
         // Fetch existing metadata content
         try {
-          logger.log(`[Metadata Update] Fetching existing metadata from Bucket: ${bucketName}, Key: ${objectKey}`);
-          const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
+          logger.log(
+            `[Metadata Update] Fetching existing metadata from Bucket: ${bucketName}, Key: ${objectKey}`
+          );
+          const getCmd = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: objectKey,
+          });
           const response = await s3Client.send(getCmd);
           const jsonString = await response.Body?.transformToString();
           if (!jsonString) throw new Error("Empty metadata content retrieved.");
           existingMetadata = JSON.parse(jsonString);
-          logger.log(`[Metadata Update] Successfully fetched existing metadata.`);
+          logger.log(
+            `[Metadata Update] Successfully fetched existing metadata.`
+          );
         } catch (fetchErr: any) {
-          logger.warn(`[Metadata Update] Failed to fetch or parse existing metadata from S3 (${objectKey}): ${fetchErr.name || fetchErr.message}. Skipping S3 update.`);
+          logger.warn(
+            `[Metadata Update] Failed to fetch or parse existing metadata from S3 (${objectKey}): ${fetchErr.name || fetchErr.message}. Skipping S3 update.`
+          );
           existingMetadata = null; // Ensure it's null so update doesn't proceed
         }
 
@@ -1989,15 +2070,35 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           existingMetadata.properties = existingMetadata.properties || {};
           let metadataChanged = false;
           // Update properties only if they were changed in updateData
-          if (updateData.website !== undefined) { existingMetadata.properties.website = updateData.website; metadataChanged = true; }
-          if (updateData.twitter !== undefined) { existingMetadata.properties.twitter = updateData.twitter; metadataChanged = true; }
-          if (updateData.telegram !== undefined) { existingMetadata.properties.telegram = updateData.telegram; metadataChanged = true; }
-          if (updateData.discord !== undefined) { existingMetadata.properties.discord = updateData.discord; metadataChanged = true; }
-          if (updateData.farcaster !== undefined) { existingMetadata.properties.farcaster = updateData.farcaster; metadataChanged = true; }
+          if (updateData.website !== undefined) {
+            existingMetadata.properties.website = updateData.website;
+            metadataChanged = true;
+          }
+          if (updateData.twitter !== undefined) {
+            existingMetadata.properties.twitter = updateData.twitter;
+            metadataChanged = true;
+          }
+          if (updateData.telegram !== undefined) {
+            existingMetadata.properties.telegram = updateData.telegram;
+            metadataChanged = true;
+          }
+          if (updateData.discord !== undefined) {
+            existingMetadata.properties.discord = updateData.discord;
+            metadataChanged = true;
+          }
+          if (updateData.farcaster !== undefined) {
+            existingMetadata.properties.farcaster = updateData.farcaster;
+            metadataChanged = true;
+          }
 
           if (metadataChanged) {
-            const buf = Buffer.from(JSON.stringify(existingMetadata, null, 2), 'utf8'); // Pretty print
-            logger.log(`[Metadata Update] Attempting to overwrite S3 object. Bucket: ${bucketName}, Key: ${objectKey}`);
+            const buf = Buffer.from(
+              JSON.stringify(existingMetadata, null, 2),
+              "utf8"
+            ); // Pretty print
+            logger.log(
+              `[Metadata Update] Attempting to overwrite S3 object. Bucket: ${bucketName}, Key: ${objectKey}`
+            );
             const putCmd = new PutObjectCommand({
               Bucket: bucketName,
               Key: objectKey,
@@ -2005,16 +2106,25 @@ tokenRouter.post("/token/:mint/update", async (c) => {
               ContentType: "application/json",
             });
             await s3Client.send(putCmd);
-            logger.log(`[Metadata Update] Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`);
+            logger.log(
+              `[Metadata Update] Overwrote S3 object at key ${objectKey}; URL remains ${originalUrl}`
+            );
           } else {
-            logger.log(`[Metadata Update] No relevant social fields changed. Skipping S3 PutObject.`);
+            logger.log(
+              `[Metadata Update] No relevant social fields changed. Skipping S3 PutObject.`
+            );
           }
         }
       } else {
-        logger.warn(`[Metadata Update] Token ${mint} has no metadata URL, cannot update S3 metadata.`);
+        logger.warn(
+          `[Metadata Update] Token ${mint} has no metadata URL, cannot update S3 metadata.`
+        );
       }
     } catch (e) {
-      logger.error("[Metadata Update] Error during S3 metadata update process:", e);
+      logger.error(
+        "[Metadata Update] Error during S3 metadata update process:",
+        e
+      );
     }
   }
 
@@ -2043,8 +2153,16 @@ tokenRouter.post("/token/:mint/update", async (c) => {
       token: updatedTokenResult[0],
     });
   } else {
-    logger.error(`Failed to fetch updated token data for ${mint} after update.`);
-    return c.json({ success: false, message: "Token updated in DB, but failed to fetch result." }, 500);
+    logger.error(
+      `Failed to fetch updated token data for ${mint} after update.`
+    );
+    return c.json(
+      {
+        success: false,
+        message: "Token updated in DB, but failed to fetch result.",
+      },
+      500
+    );
   }
 });
 
@@ -2068,7 +2186,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     const checkOnChain = c.req.query("onchain") === "true";
 
     logger.log(
-      `Checking token balance for ${address} on ${mint}, onChain: ${checkOnChain}`,
+      `Checking token balance for ${address} on ${mint}, onChain: ${checkOnChain}`
     );
 
     // --- BEGIN REDIS CACHE CHECK (only if not forcing on-chain check) ---
@@ -2114,7 +2232,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     // If token doesn't exist in our database, and we are forcing on-chain check
     if (!tokenInfo && checkOnChain) {
       logger.log(
-        `Token ${mint} not found in database, but forcing on-chain check.`,
+        `Token ${mint} not found in database, but forcing on-chain check.`
       );
       // Pass c context to the helper function
       return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network if token isn't known
@@ -2153,7 +2271,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     } catch (redisError) {
       logger.error(
         `CheckBalance: Failed to get holders from Redis for ${mint}:`,
-        redisError,
+        redisError
       );
       // Continue, will likely result in 0 balance if not creator
     }
@@ -2179,7 +2297,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       };
     } else if (isCreator) {
       logger.log(
-        `Creator ${address} not found in Redis holders for ${mint}, checking on-chain.`,
+        `Creator ${address} not found in Redis holders for ${mint}, checking on-chain.`
       );
       // User is the creator but not in holders table, might have balance on-chain
       // Pass c context to the helper function
@@ -2214,7 +2332,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     logger.error(`Error checking token balance: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -2254,7 +2372,7 @@ tokenRouter.post("/search-token", async (c) => {
         error: "Token already imported",
         token: existingToken[0],
       },
-      409,
+      409
     );
   }
 
@@ -2269,7 +2387,7 @@ tokenRouter.post("/search-token", async (c) => {
         mintPublicKey,
         tokenInfo,
         connection,
-        requestor,
+        requestor
       );
     } else {
       logger.error(`[search-token] Token ${mint} not found on mainnet`);
@@ -2323,7 +2441,7 @@ async function uploadImportImage(c: Context) {
     const imageUrl = await uploadWithS3(
       // Env no longer needed here
       imageBuffer,
-      { filename: imageFilename, contentType, basePath: 'token-images' }
+      { filename: imageFilename, contentType, basePath: "token-images" }
     );
 
     return c.json({ success: true, imageUrl });
