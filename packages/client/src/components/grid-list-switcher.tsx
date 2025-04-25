@@ -1,12 +1,30 @@
 import Button from "./button";
 import { Grid, List } from "lucide-react";
 import { useViewMode } from "@/hooks/use-view-mode";
+import { useEffect } from "react";
 
 export default function GridListSwitcher() {
   const [activeTab, setActiveTab] = useViewMode();
 
+  // Load saved view mode on component mount
+  useEffect(() => {
+    const savedViewMode = localStorage.getItem("viewMode");
+    if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
+      setActiveTab(savedViewMode);
+    }
+  }, [setActiveTab]);
+
+  // Toggle view mode and save to localStorage
   const toggleViewMode = () => {
-    setActiveTab(activeTab === "grid" ? "list" : "grid");
+    const newMode = activeTab === "grid" ? "list" : "grid";
+    setActiveTab(newMode);
+    localStorage.setItem("viewMode", newMode);
+  };
+
+  // Save to localStorage when activeTab changes directly
+  const handleSetActiveTab = (mode) => {
+    setActiveTab(mode);
+    localStorage.setItem("viewMode", mode);
   };
 
   return (
@@ -15,7 +33,7 @@ export default function GridListSwitcher() {
       <div className="hidden sm:flex items-center gap-1">
         <Button
           variant={activeTab === "grid" ? "primary" : "outline"}
-          onClick={() => setActiveTab("grid")}
+          onClick={() => handleSetActiveTab("grid")}
           aria-label="grid"
           className="p-2"
         >
@@ -23,7 +41,7 @@ export default function GridListSwitcher() {
         </Button>
         <Button
           variant={activeTab === "list" ? "primary" : "outline"}
-          onClick={() => setActiveTab("list")}
+          onClick={() => handleSetActiveTab("list")}
           className="p-2"
           aria-label="list"
         >
