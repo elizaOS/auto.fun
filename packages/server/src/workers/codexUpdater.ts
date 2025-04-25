@@ -11,7 +11,7 @@ const JOB_QUEUE_KEY = 'batch:jobs';
 const THROTTLE_MS = Number(process.env.THROTTLE_MS) || 2000;
 const HEARTBEAT_MS = 5 * 60 * 1000; // 5 minutes
 
-let running = true;
+const running = true;
 let heartbeatInterval: NodeJS.Timeout;
 
 async function sleep(ms: number) {
