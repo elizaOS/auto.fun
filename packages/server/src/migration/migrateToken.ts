@@ -294,8 +294,10 @@ export class TokenMigrator {
 
       logger.log(`[Migrate] Running step "${step.name}" for token ${mint}`);
       const result = await retryOperation(() => step.fn(token), 3, 2000);
-      if (step.name !== "withdraw" && step.name !== "createPool") {
+      if (step.name !== "withdraw") {
         token.status = "locked";
+      } else {
+        token.status = "migrating";
       }
       (token.migration as Record<string, any>)[step.name] = {
         status: "success",
@@ -334,6 +336,17 @@ export class TokenMigrator {
         mint: token.mint,
         lastUpdated: new Date().toISOString(),
       });
+      const RETRY_DELAY_MS = 60_000;
+
+      logger.log(`[Migrate] Will retry token ${mint} in ${RETRY_DELAY_MS / 1000}s`);
+      setTimeout(() => {
+        this.migrateToken(token).catch(e =>
+          logger.error(`[Migrate] Retry for ${mint} failed:`, e)
+        );
+      }, RETRY_DELAY_MS);
+
+      // done with this invocation
+      return;
     }
   }
 
