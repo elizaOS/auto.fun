@@ -4,7 +4,7 @@
     "types": ["node", "mocha"],
     "typeRoots": ["./node_modules/@types"],
     "lib": ["es2015"],
-    "module": "commonjs",
+    "module": "preserve",
     "target": "es6",
     "noEmit": true
   },

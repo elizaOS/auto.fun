@@ -14,7 +14,7 @@ autofun = "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 raydium_vault = "autoFENwXX1Y3V4pkUdJw7WzhF1ZT6xQsyJWkLqBcta"
 
 [registry]
-url = "https://staked.helius-rpc.com?api-key=3e7503c3-c6b2-44ac-98d4-c309cbcb4074"
+url = "https://staked.helius-rpc.com/?api-key=67ea9085-1406-4db8-8872-38ac77950d7a"
 
 [provider]
 cluster = "mainnet"
@@ -41,7 +41,7 @@ upgradeable = false
 
 [test.validator]
 bind_address = "0.0.0.0"
-url = "https://staked.helius-rpc.com?api-key=3e7503c3-c6b2-44ac-98d4-c309cbcb4074"
+url = "https://staked.helius-rpc.com/?api-key=67ea9085-1406-4db8-8872-38ac77950d7a"
 ledger = ".anchor/test-ledger"
 rpc_port = 8899
 
