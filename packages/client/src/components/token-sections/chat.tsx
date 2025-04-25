@@ -571,22 +571,38 @@ export default function ChatSection() {
       }
 
       setChatMessages((prevMessages) => {
-        // Check if message already exists (including optimistic ones)
-        if (prevMessages.some((msg) => msg.id === newMessage.id)) {
-          // If it exists and the received one is NOT optimistic, update it
-          // (Handles case where optimistic message is confirmed)
-          if (!newMessage.isOptimistic) {
-            return prevMessages.map((msg) =>
-              msg.id === newMessage.id
-                ? { ...newMessage, isOptimistic: false }
-                : msg,
-            );
-          }
-          // Otherwise, ignore the duplicate (e.g., received optimistic echo)
+        const isOwnMessage = newMessage.author === publicKey?.toBase58();
+        const existingById = prevMessages.find((msg) => msg.id === newMessage.id);
+
+        // If message already exists by real ID, ignore to prevent duplicates.
+        if (existingById) {
+          console.log("WS: Message already exists by ID, ignoring:", newMessage.id);
           return prevMessages;
         }
-        // Add the new message if it doesn't exist
-        return [...prevMessages, newMessage];
+
+        // If it's a message from the current user, try to replace the optimistic version
+        if (isOwnMessage) {
+          const optimisticIndex = prevMessages.findIndex(
+            (msg) => msg.isOptimistic && msg.author === newMessage.author
+            // Consider adding content check for robustness if needed: && msg.message === newMessage.message
+          );
+
+          if (optimisticIndex !== -1) {
+            console.log("WS: Replacing optimistic message with confirmed:", newMessage.id);
+            const updatedMessages = [...prevMessages];
+            // Replace the optimistic message with the confirmed one from WebSocket
+            updatedMessages[optimisticIndex] = { ...newMessage, isOptimistic: false };
+            return updatedMessages;
+          } else {
+            // Own message, but no matching optimistic message found. Add it.
+            console.log("WS: Own confirmed message received, but no matching optimistic message found. Adding:", newMessage.id);
+            return [...prevMessages, { ...newMessage, isOptimistic: false }];
+          }
+        } else {
+          // Message from another user, and it doesn't exist by ID yet. Add it.
+          console.log("WS: Adding message from other user:", newMessage.id);
+          return [...prevMessages, { ...newMessage, isOptimistic: false }]; // Ensure isOptimistic is false for others
+        }
       });
 
       // Update latest timestamp if this message is newer
@@ -641,6 +657,7 @@ export default function ChatSection() {
       hasLiked: false, // Assuming default
     };
 
+    setChatMessages((prev) => [...prev, optimisticMessage]);
     const messageToSend = chatInput.trim(); // Store message before clearing input
     setChatInput("");
 
