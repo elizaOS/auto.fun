@@ -64,50 +64,39 @@ export const useSwap = () => {
     try {
       if (token.imported === 1 || token.status === "locked") {
         console.log(`Swap initiated for imported/locked token: ${token.mint}`);
-        if (token.isToken2022 === 1) {
-          console.warn(
-            `Token ${token.mint} is Token-2022. Jupiter swap is not supported.`,
+
+        useJupiter = true;
+        try {
+          const mainnetConnection = new Connection(
+            env.rpcUrlMainnet,
+            "confirmed",
           );
-          toast.error(
-            "Swapping Token-2022 tokens is not supported via this interface.",
+          const jupiterIxs = await getJupiterSwapIx(
+            wallet.publicKey,
+            new PublicKey(tokenAddress),
+            swapAmount,
+            numericStyle,
+            slippageBps,
+            mainnetConnection,
+            token.isToken2022 === 1,
           );
-          throw new Error("Token-2022 swaps not supported.");
-        } else {
+          ixs = jupiterIxs;
           console.log(
-            `Attempting Jupiter swap for standard SPL token: ${token.mint}`,
+            `Successfully got Jupiter instructions for ${token.mint}`,
           );
-          useJupiter = true;
-          try {
-            const mainnetConnection = new Connection(
-              env.rpcUrlMainnet,
-              "confirmed",
-            );
-            const jupiterIxs = await getJupiterSwapIx(
-              wallet.publicKey,
-              new PublicKey(tokenAddress),
-              swapAmount,
-              numericStyle,
-              slippageBps,
-              mainnetConnection,
-            );
-            ixs = jupiterIxs;
-            console.log(
-              `Successfully got Jupiter instructions for ${token.mint}`,
-            );
-          } catch (jupiterError) {
-            console.error(
-              `Jupiter swap instruction fetch failed for ${token.mint}:`,
-              jupiterError,
-            );
-            const errorMsg =
-              jupiterError instanceof Error
-                ? jupiterError.message
-                : String(jupiterError);
-            toast.error(
-              `Jupiter routing failed: ${errorMsg}. Unable to complete swap.`,
-            );
-            throw new Error(`Jupiter swap failed: ${errorMsg}`);
-          }
+        } catch (jupiterError) {
+          console.error(
+            `Jupiter swap instruction fetch failed for ${token.mint}:`,
+            jupiterError,
+          );
+          const errorMsg =
+            jupiterError instanceof Error
+              ? jupiterError.message
+              : String(jupiterError);
+          toast.error(
+            `Jupiter routing failed: ${errorMsg}. Unable to complete swap.`,
+          );
+          throw new Error(`Jupiter swap failed: ${errorMsg}`);
         }
       } else {
         console.log(`Using internal bonding curve swap for ${token.mint}`);

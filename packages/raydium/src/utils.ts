@@ -131,6 +131,7 @@ export const sendNftTo = async (
       nftMinted,
       recvWallet,
     );
+
     // 1) If recipient ATA doesn't exist, create it
     const toAtaInfo = await connection.getAccountInfo(bobTokenAccount);
     const instructions = [] as TransactionInstruction[];

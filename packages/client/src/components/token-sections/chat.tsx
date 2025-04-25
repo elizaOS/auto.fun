@@ -6,7 +6,7 @@ import useAuthentication, { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { RefreshCw, Send, Image as ImageIcon } from "lucide-react";
+import { RefreshCw, Send, Image as ImageIcon, Maximize, Minimize } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
@@ -14,6 +14,7 @@ import { getSocket } from "@/utils/socket"; // Import WebSocket utility
 import { ChatImage } from '../chat/ChatImage';
 import { getAuthToken } from "@/utils/auth";
 import { toast } from "react-toastify";
+import { clsx } from "clsx"; // Import clsx for conditional classes
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -104,6 +105,7 @@ export default function ChatSection() {
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null);
+  const [isChatFullscreen, setIsChatFullscreen] = useState(false);
 
   // --- Pagination State ---
   const [oldestTimestamp, setOldestTimestamp] = useState<string | null>(null);
@@ -839,15 +841,48 @@ export default function ChatSection() {
     }
   };
 
+  // Effect to manage body scroll based on fullscreen state
+  useEffect(() => {
+    if (isChatFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Cleanup function to reset overflow when component unmounts
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isChatFullscreen]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-col my-2">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div
+          className={clsx(
+            "flex flex-col md:flex-row gap-4",
+            isChatFullscreen &&
+              "fixed inset-0 z-50 bg-black p-2 flex flex-col z-10000", // Use flex-col for fullscreen container
+          )}
+        >
           {/* Content Area */}
-          <div className="flex flex-col grow w-full">
-            <div className="flex flex-col h-[70vh] bg-black border-t-1 border-gray-700">
+          <div
+            className={clsx(
+              "flex flex-col grow w-full",
+              isChatFullscreen && "overflow-hidden", // Contain children within fullscreen
+            )}
+          >
+            <div
+              className={clsx(
+                "flex flex-col border-t-1 border-gray-700",
+                isChatFullscreen
+                  ? "grow" // Let this inner container grow to fill Content Area
+                  : "h-[70vh]", // Original height
+              )}
+            >
               {/* Tier Selection Header */}
-              <div className="flex justify-between items-center p-2">
+              <div className="flex justify-between items-center p-2 flex-shrink-0">
+                {" "}
+                {/* Ensure header doesn't grow */}
                 <div className="flex gap-2">
                   {CHAT_TIERS.map((tier) => {
                     const isEligible = eligibleChatTiers.includes(tier);
@@ -870,34 +905,17 @@ export default function ChatSection() {
                     );
                   })}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="small"
-                    variant="outline"
-                    onClick={() => {
-                      setOldestTimestamp(null);
-                      setHasOlderMessages(true);
-                      fetchChatMessages(selectedChatTier, false);
-                    }}
-                    disabled={
-                      isRefreshingMessages ||
-                      isChatLoading ||
-                      isLoadingOlderMessages
-                    }
-                    className="p-1"
-                  >
-                    <RefreshCw
-                      size={16}
-                      className={
-                        isRefreshingMessages ||
-                        (isChatLoading && !isRefreshingMessages)
-                          ? "animate-spin"
-                          : ""
-                      }
-                    />
-                  </Button>
-                </div>
+                {/* Fullscreen Button - Mobile Only */}
+                <button
+                  onClick={() => setIsChatFullscreen(!isChatFullscreen)}
+                  className="md:hidden p-1 text-gray-400 hover:text-white"
+                >
+                  {isChatFullscreen ? (
+                    <Minimize size={20} />
+                  ) : (
+                    <Maximize size={20} />
+                  )}
+                </button>
               </div>
 
               {/* Message Display Area */}
@@ -1022,7 +1040,37 @@ export default function ChatSection() {
               </div>
 
               {/* Chat input */}
-              <div className="p-4 pt-24 border-t-2 border-[#03FF24]/30 relative">
+              <div className="p-2 flex-shrink-0">
+                {showScrollButton && (
+                  <button
+                    onClick={() => scrollToBottom(true)}
+                    className="fixed bottom-24 right-4 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                )}
+                {!canChatInSelectedTier && publicKey && (
+                  <p className="text-center text-yellow-500 text-sm mb-2">
+                    You need {getTierThreshold(selectedChatTier).toLocaleString()}+ tokens to chat here.
+                  </p>
+                )}
+                {!publicKey && (
+                  <p className="text-center text-yellow-500 text-sm mb-2">
+                    Connect your wallet to chat.
+                  </p>
+                )}
                 {selectedImage && (
                   <div className="absolute -top-[320px] left-4 w-full z-10">
                     <div className="relative w-full aspect-square max-w-[400px] border-4 border-[#03FF24] flex items-center justify-center bg-black">
@@ -1088,28 +1136,33 @@ export default function ChatSection() {
                     </div>
                   </div>
                 )}
-                <div className="flex items-center space-x-4">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      placeholder={selectedImage 
-                        ? `Add a message with your image to ${formatTierLabel(selectedChatTier)} chat`
-                        : `Message in ${formatTierLabel(selectedChatTier)} chat`}
-                      value={selectedImage ? imageCaption : chatInput}
-                      onChange={(e) => selectedImage ? setImageCaption(e.target.value) : setChatInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey && !isSendingMessage && canChatInSelectedTier) {
-                          e.preventDefault();
-                          if (selectedImage) {
-                            uploadImage();
-                          } else {
-                            handleSendMessage();
-                          }
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={selectedImage ? imageCaption : chatInput}
+                    onChange={(e) => selectedImage ? setImageCaption(e.target.value) : setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !isSendingMessage && canChatInSelectedTier) {
+                        e.preventDefault();
+                        if (selectedImage) {
+                          uploadImage();
+                        } else {
+                          handleSendMessage();
                         }
-                      }}
-                      className="w-full h-10 border-2 border-[#03FF24] bg-black text-white focus:outline-none focus:border-[#03FF24] px-3 text-sm"
-                    />
-                  </div>
+                      }
+                    }}
+                    placeholder={
+                      !isAuthenticated
+                        ? "Connect wallet to chat"
+                        : !eligibleChatTiers.includes(selectedChatTier)
+                          ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens`
+                          : selectedImage
+                            ? `Add a message with your image to ${formatTierLabel(selectedChatTier)} chat`
+                            : `Message in ${formatTierLabel(selectedChatTier)} chat...`
+                    }
+                    disabled={!canChatInSelectedTier || isSendingMessage}
+                    className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm rounded-md disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
                   <div className="flex items-center space-x-2">
                     <label className="cursor-pointer">
                       <input
@@ -1125,7 +1178,7 @@ export default function ChatSection() {
                     <button
                       onClick={() => selectedImage ? uploadImage() : handleSendMessage()}
                       disabled={selectedImage ? isUploadingImage : !chatInput.trim()}
-                      className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 transition-all flex items-center justify-center"
+                      className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 transition-all flex items-center justify-center rounded-md"
                     >
                       {isUploadingImage ? (
                         <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin"></div>

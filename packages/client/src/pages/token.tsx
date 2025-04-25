@@ -595,7 +595,7 @@ export default function Page() {
               </div>
 
               {/* Bonding Curve */}
-              {token?.imported === 0 && (
+              {token?.imported === 0 && token?.curveProgress < 100 && (
                 <div className="flex flex-col gap-3.5 p-2">
                   <div className="flex justify-between gap-3.5 items-center">
                     <p className="font-medium font-satoshi">Progress</p>
@@ -672,6 +672,14 @@ export default function Page() {
               {/* Price Display - Now below bonding curve */}
               <div className="py-4 px-3">
                 <div className="flex justify-between flex-col">
+                  <div className="flex flex-col gap-1 items-center py-4">
+                    <span className="font-dm-mono text-autofun-text-secondary">
+                      Total Supply
+                    </span>
+                    <span className="text-xl font-dm-mono text-autofun-text-primary">
+                      {token?.tokenSupplyUiAmount?.toLocaleString()}
+                    </span>
+                  </div>
                   <div className="flex flex-col gap-1 items-center py-4">
                     <span className="font-dm-mono text-autofun-text-secondary">
                       Price USD

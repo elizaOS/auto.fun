@@ -1,8 +1,9 @@
+/// <reference types="mocha" />
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { RaydiumVault } from "../target/types/raydium_vault";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
-import { vaultConfigSeed } from "./utils";
+import type { RaydiumVault } from "../target/types/raydium_vault";
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet.js";
+import { vaultConfigSeed } from "./utils.ts";
 
 describe("raydium_vault", () => {
     // Configure the client to use the local cluster.

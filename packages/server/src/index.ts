@@ -290,7 +290,7 @@ function startMigrationWorker(network?: string) {
       `Migration worker${network ? ` (${network})` : ""} exited with ${signal ? `signal ${signal}` : `code ${code}`
       }`
     );
-    // we do NOT restart it, per your request
+    // we do NOT restart it
     migrationWorkerChild = null;
   });
 }

@@ -159,7 +159,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   if (!isCodex ? isLoading : query?.isPending) {
-    return <Loader className="h-40" />;
+    return <></>;
   }
 
   if ((items || [])?.length === 0) {

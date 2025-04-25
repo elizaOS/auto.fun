@@ -8,9 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 pnpm-lock.yaml
 stats.html
-.env
-.env.local
-.env.test
+.env*
 
 node_modules
 dist
@@ -29,7 +27,6 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
 .wrangler
 .dev.vars
 

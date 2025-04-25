@@ -45,9 +45,9 @@ export type ChartTable = {
 
 export const TokenSchema = z
   .object({
-    name: z.string(),
+    name: z.string().nullish(),
     url: z.string().nullish(),
-    ticker: z.string(),
+    ticker: z.string().nullish(),
     createdAt: z.string().datetime(),
     mint: z.string(),
     image: z.string().nullish(),
@@ -65,6 +65,7 @@ export const TokenSchema = z
         "harvested",
         "migration_failed",
         "partner_import",
+        "undefined",
       ])
       .nullish(),
     liquidity: z.number().nullish(),
@@ -78,7 +79,7 @@ export const TokenSchema = z
     twitter: z.string().nullish(),
     telegram: z.string().nullish(),
     farcaster: z.string().nullish(),
-    creator: z.string(),
+    creator: z.string().nullish(),
     volume24h: z.number().nullish(),
     website: z.string().nullish(),
     tokenPriceUSD: z.number().nullish(),

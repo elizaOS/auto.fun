@@ -10,8 +10,9 @@ import { getGlobalRedisCache } from "../redis";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
-import { createTokenPrompt } from "./generation-prompts/create-token";
-import { enhancePrompt } from "./generation-prompts/enhance-prompt";
+import { createTokenPrompt } from "../prompts/create-token";
+import { enhancePrompt } from "../prompts/enhance-prompt";
+import { uploadToStorage } from "./files";
 
 // Enum for media types
 export enum MediaType {
@@ -705,10 +706,26 @@ export async function generateMedia(data: {
       throw new Error("No audio URL in response");
     }
 
+    // Download the generated audio
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      throw new Error("Failed to download generated audio");
+    }
+
+    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const audioKey = `audio/${data.prompt.split(":")[0] || "unknown"}-${timestamp}-generation.mp3`;
+    const finalAudioUrl = await uploadToStorage(audioBuffer, {
+      contentType: "audio/mpeg",
+      key: audioKey
+    });
+
     return {
       data: {
         audio: {
-          url: audioUrl,
+          url: finalAudioUrl,
           lyrics: lyricsToUse, // Include the lyrics used (original or generated)
         },
       },
@@ -1512,36 +1529,56 @@ export async function generateImage(
   creator?: string
 ): Promise<MediaGeneration> {
   try {
-    // In test mode, return a test image
-    if (process.env.NODE_ENV === "test") {
-      return {
-        id: crypto.randomUUID(),
-        mint,
-        type: "image",
-        prompt,
-        mediaUrl: "https://example.com/test-image.png",
-        negativePrompt: negativePrompt || "",
-        seed: 12345,
-        numInferenceSteps: 30,
-        creator: creator || "test-creator",
-        timestamp: new Date().toISOString(),
-        dailyGenerationCount: 1,
-        lastGenerationReset: new Date().toISOString(),
-      };
+    // Check if user has privileges and available generations
+    const db = getDB();
+    const userGenerations = await db
+      .select()
+      .from(mediaGenerations)
+      .where(
+        and(
+          eq(mediaGenerations.mint, mint),
+          eq(mediaGenerations.creator, creator || ""),
+          gte(mediaGenerations.timestamp, new Date(Date.now() - 24 * 60 * 60 * 1000))
+        )
+      );
+
+    if (userGenerations.length >= 10) {
+      throw new Error("Daily generation limit reached");
     }
 
-    // For production, we would call the actual Fal.ai API
-    // This is simplified for the test scenario
-    if (!process.env.FAL_API_KEY) {
-      throw new Error("FAL_API_KEY is not configured");
+    // Generate image using Fal.ai
+    const imageResult = await generateMedia({
+      prompt,
+      type: MediaType.IMAGE,
+      negative_prompt: negativePrompt,
+      mode: "fast"
+    }) as any;
+
+    if (!imageResult?.data?.images?.[0]?.url) {
+      throw new Error("Failed to generate image");
     }
 
-    // Generate a realistic test image URL
-    const imageUrl = `https://example.com/generated/${mint}/${Date.now()}.png`;
+    // Download the generated image
+    const imageResponse = await fetch(imageResult.data.images[0].url);
+    if (!imageResponse.ok) {
+      throw new Error("Failed to download generated image");
+    }
 
-    // Return media generation data
-    return {
-      id: crypto.randomUUID(),
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const imageKey = `${mint}/${creator || "unknown"}-${timestamp}-generation.jpg`;
+    const imageUrl = await uploadToStorage(imageBuffer, {
+      contentType: "image/jpeg",
+      key: imageKey
+    });
+
+    // Create media generation record
+    const generationId = crypto.randomUUID();
+    const now = new Date();
+    await db.insert(mediaGenerations).values({
+      id: generationId,
       mint,
       type: "image",
       prompt,
@@ -1550,9 +1587,22 @@ export async function generateImage(
       seed: Math.floor(Math.random() * 1000000),
       numInferenceSteps: 30,
       creator: creator || "",
-      timestamp: new Date().toISOString(),
-      dailyGenerationCount: 1,
-      lastGenerationReset: new Date().toISOString(),
+      timestamp: now
+    });
+
+    return {
+      id: generationId,
+      mint,
+      type: "image",
+      prompt,
+      mediaUrl: imageUrl,
+      negativePrompt: negativePrompt || "",
+      seed: Math.floor(Math.random() * 1000000),
+      numInferenceSteps: 30,
+      creator: creator || "",
+      timestamp: now.toISOString(),
+      dailyGenerationCount: userGenerations.length + 1,
+      lastGenerationReset: now.toISOString()
     };
   } catch (error) {
     console.error("Error generating image:", error);
@@ -1598,12 +1648,40 @@ export async function generateVideo(
       throw new Error("FAL_API_KEY is not configured");
     }
 
-    // Generate a realistic test video URL
-    const videoUrl = `https://example.com/generated/${mint}/${Date.now()}.mp4`;
+    // Generate video using Fal.ai
+    const videoResult = await generateMedia({
+      prompt,
+      type: MediaType.VIDEO,
+      negative_prompt: negativePrompt,
+      mode: "fast"
+    }) as any;
 
-    // Return media generation data
-    return {
-      id: crypto.randomUUID(),
+    if (!videoResult?.data?.video?.url) {
+      throw new Error("Failed to generate video");
+    }
+
+    // Download the generated video
+    const videoResponse = await fetch(videoResult.data.video.url);
+    if (!videoResponse.ok) {
+      throw new Error("Failed to download generated video");
+    }
+
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+    const timestamp = Date.now();
+
+    // Upload to S3 with new directory structure
+    const videoKey = `${mint}/${creator || "unknown"}-${timestamp}-generation.mp4`;
+    const videoUrl = await uploadToStorage(videoBuffer, {
+      contentType: "video/mp4",
+      key: videoKey
+    });
+
+    // Create media generation record
+    const generationId = crypto.randomUUID();
+    const now = new Date();
+    const db = getDB();
+    await db.insert(mediaGenerations).values({
+      id: generationId,
       mint,
       type: "video",
       prompt,
@@ -1616,9 +1694,26 @@ export async function generateVideo(
       motionBucketId: 127,
       duration: 2,
       creator: creator || "",
-      timestamp: new Date().toISOString(),
+      timestamp: now
+    });
+
+    return {
+      id: generationId,
+      mint,
+      type: "video",
+      prompt,
+      mediaUrl: videoUrl,
+      negativePrompt: negativePrompt || "",
+      seed: Math.floor(Math.random() * 1000000),
+      numInferenceSteps: 30,
+      numFrames: 24,
+      fps: 30,
+      motionBucketId: 127,
+      duration: 2,
+      creator: creator || "",
+      timestamp: now.toISOString(),
       dailyGenerationCount: 1,
-      lastGenerationReset: new Date().toISOString(),
+      lastGenerationReset: now.toISOString()
     };
   } catch (error) {
     console.error("Error generating video:", error);
@@ -2242,4 +2337,205 @@ app.post("/mark-token-used", async (c) => {
     );
   }
 });
+// Endpoint to enhance a prompt and generate media
+app.post("/enhance-and-generate", async (c) => {
+  try {
+    // Verify authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ success: false, error: "Authentication required" }, 401);
+    }
+
+    // Verify and parse required fields
+    const GenerationSchema = z.object({
+      tokenMint: z.string().min(32).max(44),
+      userPrompt: z.string().min(3).max(1000),
+      mediaType: z
+        .enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO])
+        .default(MediaType.IMAGE),
+      mode: z.enum(["fast", "pro"]).default("fast"),
+      image_url: z.string().optional(), // For image-to-video
+      lyrics: z.string().optional(), // For music generation
+    });
+
+    const body = await c.req.json();
+    const { tokenMint, userPrompt, mediaType, mode, image_url, lyrics } =
+      GenerationSchema.parse(body);
+
+    logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
+    logger.log(`Original prompt: ${userPrompt}`);
+    logger.log(`Media type: ${mediaType}, Mode: ${mode}`);
+
+    // Get token metadata from database
+    const db = getDB();
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    if (!existingToken || existingToken.length === 0) {
+      return c.json(
+        {
+          success: false,
+          error: "Token not found. Please provide a valid token mint address.",
+        },
+        404
+      );
+    }
+
+    const token = existingToken[0];
+    const tokenMetadata = {
+      name: token.name || "",
+      symbol: token.ticker || "",
+      description: token.description || "",
+      prompt: "",
+    };
+
+    // Check rate limits for the user on this token
+    const rateLimit = await checkRateLimits(
+      tokenMint,
+      mediaType,
+      user.publicKey
+    );
+
+    if (!rateLimit.allowed) {
+      // Check if failure is due to token ownership requirement
+      if (
+        rateLimit.message &&
+        rateLimit.message.includes("tokens to use this feature")
+      ) {
+        return c.json(
+          {
+            success: false,
+            error: "Insufficient token balance",
+            message: rateLimit.message,
+            type: "OWNERSHIP_REQUIREMENT",
+            minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
+          },
+          403
+        );
+      }
+      // Otherwise it's a standard rate limit error
+      return c.json(
+        {
+          success: false,
+          error: "Rate limit exceeded. Please try again later.",
+          limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
+          cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
+          message: `You can generate up to ${RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY} ${mediaType}s per day.`,
+          remaining: rateLimit.remaining,
+        },
+        429
+      );
+    }
+
+    // Check specific token requirements for the selected mode
+    const ownershipCheck = await checkTokenOwnership(
+      tokenMint,
+      user.publicKey,
+      mode,
+      mediaType
+    );
+
+    if (!ownershipCheck.allowed) {
+      // Determine the right minimum based on mode and type
+      let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+      if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
+        minimumRequired =
+          mode === "pro"
+            ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+            : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      } else if (mediaType === MediaType.IMAGE && mode === "pro") {
+        minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      }
+
+      return c.json(
+        {
+          success: false,
+          error: "Insufficient token balance",
+          message:
+            ownershipCheck.message ||
+            `You need at least ${minimumRequired} tokens to use this feature.`,
+          type: "OWNERSHIP_REQUIREMENT",
+          minimumRequired,
+        },
+        403
+      );
+    }
+
+    // Use AI to enhance the prompt
+    const enhancedPrompt = await generateEnhancedPrompt(
+      userPrompt,
+      tokenMetadata,
+      mediaType
+    );
+
+    if (!enhancedPrompt) {
+      return c.json(
+        {
+          success: false,
+          error: "Failed to enhance the prompt. Please try again.",
+        },
+        500
+      );
+    }
+
+    logger.log(`Enhanced prompt: ${enhancedPrompt}`);
+
+    // Generate the media with the enhanced prompt
+    let result;
+    if (mediaType === MediaType.IMAGE) {
+      result = await generateImage(tokenMint, enhancedPrompt, mode, user.publicKey);
+    } else if (mediaType === MediaType.VIDEO) {
+      result = await generateVideo(tokenMint, enhancedPrompt, mode, user.publicKey, image_url);
+    } else if (mediaType === MediaType.AUDIO) {
+      result = await generateAudio(tokenMint, enhancedPrompt, mode, user.publicKey, lyrics);
+    } else {
+      return c.json({ error: "Unsupported media type" }, 400);
+    }
+
+    // Save generation to database
+    const generationId = crypto.randomUUID();
+    try {
+      await db.insert(mediaGenerations).values([
+        {
+          id: generationId,
+          mint: tokenMint,
+          type: mediaType,
+          prompt: enhancedPrompt,
+          mediaUrl: result.mediaUrl,
+          creator: user.publicKey,
+          timestamp: new Date(),
+        },
+      ]);
+      console.log(`Generation saved to database with ID: ${generationId}`);
+    } catch (dbError) {
+      console.error("Error saving generation to database:", dbError);
+    }
+
+    return c.json({
+      success: true,
+      ...result,
+      enhancedPrompt,
+      originalPrompt: userPrompt,
+      generationId,
+      remainingGenerations: rateLimit.remaining - 1,
+      resetTime: new Date(
+        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS
+      ).toISOString(),
+    });
+
+  } catch (error) {
+    logger.error("Error in enhance-and-generate endpoint:", error);
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error generating media",
+      },
+      500
+    );
+  }
+});
+
 export default app;

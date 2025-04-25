@@ -1,7 +1,6 @@
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Hono } from "hono";
 import { Buffer } from 'node:buffer'; // Ensure Buffer is available
-import { logger } from "../util";
 import { getS3Client } from "../s3Client"; // Import shared S3 client function
 import { User } from "../db";
 import { Socket } from "socket.io";
@@ -17,9 +16,10 @@ const DEFAULT_MINIO_BUCKET_FILES = "autofun";
 // Singleton S3 Client instance
 const s3ClientInstance: S3Client | null = null;
 const isUsingMinioFiles = false; // Flag for files S3 client
+import { logger } from "../util";
 
 // Helper function to upload to R2/MinIO
-async function uploadToStorage(buffer: Buffer, options: { contentType: string, key: string }): Promise<string> {
+export async function uploadToStorage(buffer: Buffer, options: { contentType: string, key: string }): Promise<string> {
   // Use the shared S3 client getter
   const { client: s3Client, bucketName, publicBaseUrl } = await getS3Client();
 

@@ -6,11 +6,6 @@ type PolicySection = {
 
 const PRIVACY_POLICY: PolicySection[] = [
   {
-    header: "Privacy Policy",
-    subheader: "Last Modified",
-    content: "1st April, 2025",
-  },
-  {
     header: "Introduction",
     subheader: "Overview",
     content:
@@ -140,8 +135,14 @@ const PRIVACY_POLICY: PolicySection[] = [
 const PrivacyPolicy = () => {
   return (
     <div className="flex flex-col flex-1 min-h-[100vh]">
-      <div className="max-w-4xl mx-auto p-6 text-white">
+      <div className="max-w-4xl mx-auto p-12 text-white">
         <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4">
+            <h1 className="text-6xl font-bold">Privacy Policy</h1>
+            <div className="text-xl font-medium">
+              Last Modified April 1st, 2025
+            </div>
+          </div>
           {PRIVACY_POLICY.map((item, _) => (
             <div className="flex flex-col gap-4">
               <div className="text-3xl font-bold">{item.header}</div>

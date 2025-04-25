@@ -56,7 +56,8 @@ function formatMarketCap(value: number | null | undefined): string {
 
 // --- Main Generation Function ---
 
-// Function to safely load the logo buffer
+// Function to safely load the logo buffer - REMOVED as it's no longer used
+/*
 async function loadLogoBuffer(logoPath: string): Promise<Buffer | null> {
     try {
         // Check if file exists before attempting to read
@@ -71,6 +72,7 @@ async function loadLogoBuffer(logoPath: string): Promise<Buffer | null> {
         return null;
     }
 }
+*/
 
 export async function generateOgImage(mint: string): Promise<Buffer> {
     logger.log(`[OG Image Gen] Starting generation for mint: ${mint}`);
@@ -128,19 +130,27 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const height = 630;
         const sidePadding = 50;   // Padding for elements near the left edge
         const textPadding = 60;   // <<< CONSISTENT PADDING for text area (top, right, bottom)
+        const rightBgColorTop = '#03FF24'; // Green
+        const rightBgColorBottom = '#000000'; // Black
+        const textColorTop = '#000000'; // Black
+        const labelColorBottom = '#FFFFFF'; // White
+        const valueColorBottom = '#03FF24'; // Green
 
         // Left Area Dimensions
         const leftAreaWidth = width / 2;
 
-        // Right Area Dimensions
+        // Right Area Dimensions & Split
         const rightAreaWidth = width / 2;
+        const rightTopHeight = height * 0.4; // Make top section 40% of height
+        const rightBottomHeight = height * 0.6; // Bottom section is 60%
 
         // Prepare base image (token logo) - Resize to fill left half
         const baseImageProcessed = await sharp(imageBuffer)
             .resize(leftAreaWidth, height, { fit: 'cover' }) // Cover left half
             .toBuffer();
 
-        // Load and Prepare logo_wide.svg
+        // Load and Prepare logo_wide.svg - REMOVED
+        /*
         const logoWidePath = path.resolve(__dirname, '../static/logo_wide.svg');
         const logoWideBuffer = await loadLogoBuffer(logoWidePath);
         let resizedLogoWideBuffer: Buffer | null = null;
@@ -151,17 +161,20 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
             const metadata = await sharp(logoWideBuffer).metadata();
             const originalWidth = metadata.width ?? 100;
             const originalHeight = metadata.height ?? 50;
-            logoWideFinalWidth = originalWidth * 2;
-            logoWideFinalHeight = originalHeight * 2;
+            logoWideFinalWidth = originalWidth * 4;
+            logoWideFinalHeight = originalHeight * 4;
 
             resizedLogoWideBuffer = await sharp(logoWideBuffer)
                 .resize(logoWideFinalWidth, logoWideFinalHeight)
                 .toBuffer();
         }
+        */
 
-        // Calculate wide logo position (Bottom-Left)
-        const logoWideX = sidePadding; // Use left side padding
-        const logoWideY = height - logoWideFinalHeight - sidePadding; // Use bottom padding consistent with left
+        // Calculate wide logo position - REMOVED
+        /*
+        const logoWideX = 0; // Flush left
+        const logoWideY = height - logoWideFinalHeight; // Flush bottom
+        */
 
         // Format text data
         const priceText = formatCurrency(priceUSD, priceUSD < 0.01 ? 6 : 2);
@@ -169,75 +182,84 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const cashtagText = `$${ticker.toUpperCase()}`;
 
         // Define text styles
-        const cashtagFontSize = 84;
-        const titleFontSize = 48;
-        const dataFontSize = 68;
-        const labelFontSize = 34;
-        const fontFamily = 'Arial, sans-serif';
-        const textColor = '#000000';
-        const labelColor = '#555555';
+        const cashtagFontSize = 110; // Increased size again
+        const titleFontSize = 60;   // Increased size
+        const dataFontSize = 76;    // Increased size for values
+        const labelFontSize = 34;   // Keep label size the same
+        const fontFamily = 'Arial, sans-serif'; // Ensure Arial
+        // Text colors are now defined above and applied in SVG styles
         const textAnchor = 'end'; // Right justified
 
-        // --- Calculate Text Positions (relative to right-half SVG using textPadding) --- 
+        // --- Calculate Text Positions (relative to right-half SVG using textPadding) ---
         const svgRightWidth = rightAreaWidth;
         const svgRightHeight = height;
         // Use textPadding for the right edge alignment within the SVG
         const textXInSvg = svgRightWidth - textPadding;
 
-        // Top-aligned text (using textPadding for top margin)
-        const cashtagYInSvg = textPadding + cashtagFontSize;
-        const titleYInSvg = cashtagYInSvg + titleFontSize * 1.2;
+        // Top section text (within top 40% green area)
+        // Center vertically within the top section (rightTopHeight)
+        const topSectionCenterY = rightTopHeight / 2;
+        const topTextTotalHeight = cashtagFontSize + titleFontSize * 0.5; // Approx height + spacing
+        const cashtagYInSvg = topSectionCenterY - topTextTotalHeight / 2 + cashtagFontSize * 0.7; // Adjust for baseline
+        const titleYInSvg = cashtagYInSvg + titleFontSize * 1.2; // Space below cashtag
 
-        // Bottom-aligned text (using textPadding for bottom margin)
-        const mcapValueYInSvg = svgRightHeight - textPadding; // Anchor to bottom padding
-        const mcapLabelYInSvg = mcapValueYInSvg - dataFontSize * 1.1; // Space above value
-        const priceValueYInSvg = mcapLabelYInSvg - labelFontSize * 1.8; // Space above label
-        const priceLabelYInSvg = priceValueYInSvg - dataFontSize * 1.1; // Space above value
+        // Bottom section text (within bottom 60% black area, relative to top of bottom section)
+        const bottomSectionStartY = rightTopHeight; // Y position where the bottom section starts
+        // Use textPadding for bottom edge alignment within the SVG (relative to overall height)
+        const mcapValueYInSvg = svgRightHeight - textPadding; // Anchor to overall bottom padding
+        const mcapLabelYInSvg = mcapValueYInSvg - dataFontSize * 1.1; // Space above value (uses new dataFontSize)
+        // Decrease gap above market cap block slightly to move price down
+        const priceValueYInSvg = mcapLabelYInSvg - labelFontSize * 2.5; // Reduced multiplier for smaller gap
+        const priceLabelYInSvg = priceValueYInSvg - dataFontSize * 1.1; // Space above price value (uses new dataFontSize)
+
 
         const svgTextOverlay = `
         <svg width="${svgRightWidth}" height="${svgRightHeight}" viewBox="0 0 ${svgRightWidth} ${svgRightHeight}">
             <style>
-                .cashtag { fill: ${textColor}; font-size: ${cashtagFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
-                .title { fill: ${textColor}; font-size: ${titleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
-                .label { fill: ${labelColor}; font-size: ${labelFontSize}px; font-family: ${fontFamily}; text-anchor: ${textAnchor}; }
-                .value { fill: ${textColor}; font-size: ${dataFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
+                /* Top Section Styles */
+                .cashtag { fill: ${textColorTop}; font-size: ${cashtagFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor}; } /* Bolder weight */
+                .title { fill: ${textColorTop}; font-size: ${titleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
+
+                /* Bottom Section Styles */
+                .label-bottom { fill: ${labelColorBottom}; font-size: ${labelFontSize}px; font-family: ${fontFamily}; text-anchor: ${textAnchor}; }
+                .value-bottom { fill: ${valueColorBottom}; font-size: ${dataFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor}; }
             </style>
-            {/* Top Aligned */}
+
+            {/* Background Rects for Right Half - Drawn first */}
+            <rect x="0" y="0" width="${svgRightWidth}" height="${svgRightHeight}" fill="${rightBgColorBottom}" />
+            <rect x="0" y="0" width="${svgRightWidth}" height="${rightTopHeight}" fill="${rightBgColorTop}" />
+
+            {/* Top Aligned Text (On Green) */}
             <text x="${textXInSvg}" y="${cashtagYInSvg}" class="cashtag">${cashtagText}</text>
             <text x="${textXInSvg}" y="${titleYInSvg}" class="title">${name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
 
-            {/* Bottom Aligned */}
-            <text x="${textXInSvg}" y="${priceLabelYInSvg}" class="label">Price</text>
-            <text x="${textXInSvg}" y="${priceValueYInSvg}" class="value">${priceText}</text>
+            {/* Bottom Aligned Text (On Black) */}
+            <text x="${textXInSvg}" y="${priceLabelYInSvg}" class="label-bottom">Price</text>
+            <text x="${textXInSvg}" y="${priceValueYInSvg}" class="value-bottom">${priceText}</text>
 
-            <text x="${textXInSvg}" y="${mcapLabelYInSvg}" class="label">Market Cap</text>
-            <text x="${textXInSvg}" y="${mcapValueYInSvg}" class="value">${marketCapText}</text>
+            <text x="${textXInSvg}" y="${mcapLabelYInSvg}" class="label-bottom">Market Cap</text>
+            <text x="${textXInSvg}" y="${mcapValueYInSvg}" class="value-bottom">${marketCapText}</text>
         </svg>
         `;
 
         // 4. Create Background and Composite
-        const leftBg = sharp({ create: { width: width / 2, height: height, channels: 4, background: { r: 18, g: 18, b: 18, alpha: 1 } } }).png();
-        const rightBg = sharp({ create: { width: width / 2, height: height, channels: 4, background: '#03FF24' } }).png();
-
-        const [leftBuffer, rightBuffer] = await Promise.all([leftBg.toBuffer(), rightBg.toBuffer()]);
-
+        // Base canvas is transparent
         const baseCanvas = sharp({ create: { width: width, height: height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
 
         const compositeOperations = [
-            // Background layers first
-            { input: leftBuffer, top: 0, left: 0 },
-            { input: rightBuffer, top: 0, left: width / 2 },
-            // Token image covering left half
-            { input: baseImageProcessed, top: 0, left: 0 }, 
-            // Text SVG covering right half
+             // Token image covering left half (Drawn first)
+            { input: baseImageProcessed, top: 0, left: 0 },
+            // Text SVG covering right half (includes its own background rects now)
             { input: Buffer.from(svgTextOverlay), top: 0, left: width / 2 }
         ];
 
-        // Add wide logo overlay if loaded (position adjusted for consistent side/bottom padding)
+        // Add wide logo overlay if loaded - REMOVED
+        /*
         if (resizedLogoWideBuffer) {
              const finalLogoX = Math.max(0, Math.round(logoWideX));
              const finalLogoY = Math.max(0, Math.round(logoWideY));
-             if (finalLogoX + logoWideFinalWidth <= width && finalLogoY + logoWideFinalHeight <= height) {
+             // Check bounds before adding
+             if (finalLogoX >= 0 && finalLogoY >= 0 && finalLogoX + logoWideFinalWidth <= width && finalLogoY + logoWideFinalHeight <= height) {
                 compositeOperations.push({
                     input: resizedLogoWideBuffer,
                     top: finalLogoY,
@@ -245,11 +267,12 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
                 });
                 logger.log(`[OG Image Gen] Adding resized logo_wide.svg at (${finalLogoX}, ${finalLogoY})`);
              } else {
-                 logger.warn(`[OG Image Gen] Resized logo_wide.svg position (${finalLogoX}, ${finalLogoY}) with dimensions (${logoWideFinalWidth}x${logoWideFinalHeight}) exceeds canvas bounds. Skipping.`);
+                 logger.warn(`[OG Image Gen] Resized logo_wide.svg position (${finalLogoX}, ${finalLogoY}) with dimensions (${logoWideFinalWidth}x${logoWideFinalHeight}) exceeds canvas bounds or has negative coordinates. Skipping.`);
              }
         } else {
             logger.warn(`[OG Image Gen] logo_wide.svg could not be loaded or resized. Skipping overlay.`);
         }
+        */
 
         const finalImageBuffer = await baseCanvas
             .composite(compositeOperations)

@@ -124,7 +124,7 @@ export const isDevnet = (connection: anchor.web3.Connection): boolean => {
     return connection.rpcEndpoint == devnetEndpoint;
 };
 
-module.exports = {
+export const utils = {
     sendSolTo,
     sendTokenTo,
     isDevnet,
