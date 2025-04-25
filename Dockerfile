@@ -22,15 +22,14 @@ COPY packages/server/package.json ./packages/server/
 COPY packages/types/package.json ./packages/types/
 
 # Install dependencies
-RUN bun install --ignore-scripts
+# Allow the ngrok postinstall script to run
+RUN bun install
+
+# Ensure ngrok binary is executable
+RUN chmod +x /app/node_modules/ngrok/bin/ngrok || echo "ngrok binary not found or chmod failed, continuing..."
 
 # Copy the application files
 COPY . .
-
-# Create placeholder for proxy-webhooks.js if it doesn't exist or is empty
-RUN if [ ! -s scripts/proxy-webhooks.js ]; then \
-    echo 'console.log("Proxy webhook script is not implemented. Using environment webhook URL.");' > scripts/proxy-webhooks.js; \
-    fi
 
 # Expose the port your app runs on
 EXPOSE 3000
@@ -42,8 +41,6 @@ RUN chmod +x scripts/*.js scripts/*.sh
 
 # Set up environment variable for tunnel
 ENV USE_TUNNEL=true
-# WEBHOOK_PUBLIC_URL will be set by docker-compose env_file or tunnel script
-# ENV WEBHOOK_PUBLIC_URL=http://localhost:8787
 
-# Run the db sync script first, then the dev:docker command (env vars loaded by docker-compose)
-CMD ["sh", "-c", "scripts/sync-db-docker.sh && bun run dev:docker"]
+# Run the db sync script first, then setup webhook, then start the app
+CMD ["sh", "-c", "scripts/sync-db-docker.sh && scripts/background-webhook.sh && bun run dev:docker"]

@@ -31,8 +31,6 @@ services:
       - WAIT_FOR_POSTGRES=true
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      # EXECUTOR_PRIVATE_KEY should be loaded from the copied .env file
-    # env_file: (Removed - will use Dockerfile CMD copy)
     depends_on:
       postgres:
         condition: service_healthy

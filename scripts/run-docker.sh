@@ -21,19 +21,6 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Check if proxy-webhooks.js exists and has content
-if [ ! -s scripts/proxy-webhooks.js ]; then
-  echo -e "${YELLOW}Warning: scripts/proxy-webhooks.js is empty or missing${NC}"
-  echo -e "This might cause issues with the webhook proxy functionality"
-fi
-
-# Check if setup-webhook-docker.js exists
-if [ ! -f scripts/setup-webhook-docker.js ]; then
-  echo -e "${YELLOW}Warning: scripts/setup-webhook-docker.js is missing${NC}"
-  echo -e "Webhook tunneling in Docker will not work without this file."
-  echo -e "Please create this file first for webhook functionality."
-fi
-
 # Check Docker and Docker Compose are installed
 if ! command -v docker &> /dev/null; then
   echo -e "${RED}Error: Docker is not installed!${NC}"
@@ -67,4 +54,4 @@ echo -e "Run ${YELLOW}docker compose logs -f app${NC} to view application logs"
 echo -e "Run ${YELLOW}docker compose down${NC} to stop the services"
 echo -e "\n${YELLOW}Webhook Information:${NC}"
 echo -e "To check the webhook tunnel status, run: ${YELLOW}docker compose logs app | grep 'Tunnel created'${NC}"
-echo -e "To view the webhook ID, run: ${YELLOW}docker compose logs app | grep 'Webhook ID'${NC}" 
+echo -e "To view the webhook ID, run: ${YELLOW}docker compose logs app | grep 'Webhook ID'${NC}"
