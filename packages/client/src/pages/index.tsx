@@ -218,7 +218,7 @@ export default function Page() {
             </Button>
             <GridListSwitcher />
             {isFilterOpen && (
-              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
+              <div className="absolute right-0 sm:right-0 sm:left-auto mt-8 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-sm font-dm-mono font-medium text-foreground">
                     Filters

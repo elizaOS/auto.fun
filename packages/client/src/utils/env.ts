@@ -68,13 +68,12 @@ const unparsedEnv = {
     ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL
     : import.meta.env.VITE_API_URL,
   platformFeeWallet: import.meta.env.VITE_FEE_WALLET,
-  platformFeeTokenAccount:
-    import.meta.env.VITE_FEE_TOKEN_ACCOUNT || undefined,
+  platformFeeTokenAccount: import.meta.env.VITE_FEE_TOKEN_ACCOUNT || undefined,
   programId: isDevnet
     ? import.meta.env.VITE_DEV_PROGRAM_ID ||
-    "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
+      "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
     : import.meta.env.VITE_PROGRAM_ID ||
-    "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
+      "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   appEnv: process.env.NODE_ENV,
   s3PublicUrl:
     import.meta.env.VITE_S3_PUBLIC_URL || import.meta.env.VITE_R2_PUBLIC_URL,

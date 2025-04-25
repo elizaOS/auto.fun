@@ -98,7 +98,6 @@ export const useSwap = () => {
           );
           throw new Error(`Jupiter swap failed: ${errorMsg}`);
         }
-
       } else {
         console.log(`Using internal bonding curve swap for ${token.mint}`);
         useJupiter = false;

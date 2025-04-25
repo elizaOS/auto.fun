@@ -182,7 +182,7 @@ export const getSwapAmount = async (
   return {
     estimatedOutput: estimatedOutput,
     priceImpact: "0",
-  }
+  };
 };
 
 export const getSwapAmountJupiter = async (
@@ -192,10 +192,11 @@ export const getSwapAmountJupiter = async (
   slippageBps: number = 100,
 ) => {
   try {
-    if (amount === 0) return {
-      estimatedOutput: 0,
-      priceImpact: "0",
-    }
+    if (amount === 0)
+      return {
+        estimatedOutput: 0,
+        priceImpact: "0",
+      };
     // Jupiter uses the following constant to represent SOL
     const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
@@ -213,17 +214,23 @@ export const getSwapAmountJupiter = async (
       const errorMsg = await quoteRes.text();
       throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
     }
-    const quoteResponse = (await quoteRes.json()) as { outAmount: string, priceImpact: string };
+    const quoteResponse = (await quoteRes.json()) as {
+      outAmount: string;
+      priceImpact: string;
+    };
 
     const estimatedOutput = quoteResponse.outAmount;
-    return { estimatedOutput: Number(estimatedOutput), priceImpact: quoteResponse.priceImpact || "0" }; // priceImpact is not available in the quote response
+    return {
+      estimatedOutput: Number(estimatedOutput),
+      priceImpact: quoteResponse.priceImpact || "0",
+    }; // priceImpact is not available in the quote response
   } catch (error) {
     console.error("Error fetching swap amount from Jupiter:", error);
     // toast.error("Error fetching swap amount from Jupiter");
     return {
       estimatedOutput: 0,
       priceImpact: "0",
-    }
+    };
   }
 };
 
@@ -297,20 +304,17 @@ export const getJupiterSwapIx = async (
     if (platformFeeWallet) {
       feeAccount = new PublicKey(platformFeeWallet);
       console.log("Platform fee account:", feeAccount.toBase58());
-
     } else {
       console.warn(
-        "Platform fee wallet address not found in env—skipping Jupiter platform fee."
+        "Platform fee wallet address not found in env—skipping Jupiter platform fee.",
       );
     }
-
   }
 
-
-
-  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}` +
+  const quoteUrl =
+    `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}` +
     `&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true` +
-    `${!isToken2022 ? `&platformFeeBps=${(200)}` : ""}`;
+    `${!isToken2022 ? `&platformFeeBps=${200}` : ""}`;
   const quoteRes = await fetch(quoteUrl);
   if (!quoteRes.ok) throw new Error(await quoteRes.text());
   const quoteResponse = await quoteRes.json();
@@ -327,9 +331,9 @@ export const getJupiterSwapIx = async (
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-  }
+  };
   if (feeAccount) {
-    body.feeAccount = feeAccount
+    body.feeAccount = feeAccount;
   }
   const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
     method: "POST",

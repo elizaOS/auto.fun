@@ -10,8 +10,8 @@ import { getGlobalRedisCache } from "../redis";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
-import { createTokenPrompt } from "./generation-prompts/create-token";
-import { enhancePrompt } from "./generation-prompts/enhance-prompt";
+import { createTokenPrompt } from "../prompts/create-token";
+import { enhancePrompt } from "../prompts/enhance-prompt";
 
 // Enum for media types
 export enum MediaType {
@@ -2242,4 +2242,329 @@ app.post("/mark-token-used", async (c) => {
     );
   }
 });
+
+// Endpoint to enhance a prompt and generate media
+app.post("/enhance-and-generate", async (c) => {
+  try {
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ success: false, error: "Authentication required" }, 401);
+    }
+
+    // Verify and parse required fields
+    const GenerationSchema = z.object({
+      tokenMint: z.string().min(32).max(44),
+      userPrompt: z.string().min(3).max(1000),
+      mediaType: z
+        .enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO])
+        .default(MediaType.IMAGE),
+      mode: z.enum(["fast", "pro"]).default("fast"),
+      image_url: z.string().optional(), // For image-to-video
+      lyrics: z.string().optional(), // For music generation
+    });
+
+    const body = await c.req.json();
+    const { tokenMint, userPrompt, mediaType, mode, image_url, lyrics } =
+      GenerationSchema.parse(body);
+
+    logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
+    logger.log(`Original prompt: ${userPrompt}`);
+    logger.log(`Media type: ${mediaType}, Mode: ${mode}`);
+
+    // Get token metadata from database if available
+    const db = getDB();
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    let tokenMetadata = {
+      name: "",
+      symbol: "",
+      description: "",
+      prompt: "",
+    };
+
+    if (existingToken && existingToken.length > 0) {
+      const token = existingToken[0];
+      tokenMetadata = {
+        name: token.name || "",
+        symbol: token.ticker || "",
+        description: token.description || "",
+        prompt: "", // We don't store a separate prompt field currently
+      };
+    }
+
+    if (!existingToken || existingToken.length === 0) {
+      // For development, allow generation even if token doesn't exist in DB
+      if (
+        process.env.NODE_ENV !== "development" &&
+        process.env.NODE_ENV !== "test"
+      ) {
+        return c.json(
+          {
+            success: false,
+            error:
+              "Token not found. Please provide a valid token mint address.",
+          },
+          404
+        );
+      }
+      console.log("Token not found in DB, but proceeding in development mode");
+    }
+
+    // Check rate limits for the user on this token
+    const rateLimit = await checkRateLimits(
+      tokenMint,
+      mediaType,
+      user.publicKey
+    );
+
+    if (!rateLimit.allowed) {
+      // Check if failure is due to token ownership requirement
+      if (
+        rateLimit.message &&
+        rateLimit.message.includes("tokens to use this feature")
+      ) {
+        return c.json(
+          {
+            success: false,
+            error: "Insufficient token balance",
+            message: rateLimit.message,
+            type: "OWNERSHIP_REQUIREMENT",
+            minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
+          },
+          403
+        );
+      }
+      // Otherwise it's a standard rate limit error
+      return c.json(
+        {
+          success: false,
+          error: "Rate limit exceeded. Please try again later.",
+          limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
+          cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
+          message: `You can generate up to ${RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
+            } ${mediaType}s per day.`,
+          remaining: rateLimit.remaining,
+        },
+        429
+      );
+    }
+
+    // Check specific token requirements for the selected mode
+    const ownershipCheck = await checkTokenOwnership(
+      tokenMint,
+      user.publicKey,
+      mode,
+      mediaType
+    );
+
+    if (!ownershipCheck.allowed) {
+      // Determine the right minimum based on mode and type
+      let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+      if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
+        minimumRequired =
+          mode === "pro"
+            ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+            : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      } else if (mediaType === MediaType.IMAGE && mode === "pro") {
+        minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      }
+
+      return c.json(
+        {
+          success: false,
+          error: "Insufficient token balance",
+          message:
+            ownershipCheck.message ||
+            `You need at least ${minimumRequired} tokens to use this feature.`,
+          type: "OWNERSHIP_REQUIREMENT",
+          minimumRequired,
+        },
+        403
+      );
+    }
+
+    // Use AI to enhance the prompt
+    console.log(`Enhancing prompt with token metadata for ${mediaType}`);
+    // Pass env to generateEnhancedPrompt
+    const enhancedPrompt = await generateEnhancedPrompt(
+      userPrompt,
+      tokenMetadata,
+      mediaType
+    );
+
+    if (!enhancedPrompt) {
+      return c.json(
+        {
+          success: false,
+          error: "Failed to enhance the prompt. Please try again.",
+        },
+        500
+      );
+    }
+
+    logger.log(`Enhanced prompt: ${enhancedPrompt}`);
+
+    // Generate the media with the enhanced prompt
+    console.log(`Generating ${mediaType} with enhanced prompt in ${mode} mode`);
+
+    // Prepare generation parameters
+    const generationParams: any = {
+      prompt: enhancedPrompt,
+      type: mediaType,
+      mode,
+    };
+
+    // Add optional parameters based on media type
+    if (mediaType === MediaType.VIDEO && image_url) {
+      generationParams.image_url = image_url;
+    }
+
+    if (mediaType === MediaType.AUDIO && lyrics) {
+      generationParams.lyrics = lyrics;
+    }
+
+    const result = (await generateMedia(generationParams)) as any;
+
+    console.log(
+      "Media generation result:",
+      JSON.stringify(result).substring(0, 200) + "..."
+    );
+
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
+
+    let mediaUrl: string = ""; // Initialize with empty string
+
+    if (result && typeof result === "object") {
+      // Handle video result formats
+      if (mediaType === MediaType.VIDEO) {
+        if (result.video?.url) {
+          mediaUrl = result.video.url;
+        } else if (result.urls?.video) {
+          // For pixverse models
+          mediaUrl = result.urls.video;
+        } else if (result.data?.video?.url) {
+          // For data.video.url structure
+          mediaUrl = result.data.video.url;
+        }
+      }
+      // Handle audio result formats
+      else if (mediaType === MediaType.AUDIO) {
+        if (result.audio_file?.url) {
+          mediaUrl = result.audio_file.url;
+        } else if (result.data?.audio_file?.url) {
+          // For diffrhythm model
+          mediaUrl = result.data.audio_file.url;
+        } else if (result.output?.audio) {
+          mediaUrl = result.output.audio;
+        } else if (result.data?.audio?.url) {
+          mediaUrl = result.data.audio.url;
+        }
+      }
+      // Handle image result formats
+      else if (result.data?.images && result.data.images.length > 0) {
+        mediaUrl = result.data.images[0].url;
+      } else if (result.image?.url) {
+        // For flux ultra
+        mediaUrl = result.image.url;
+      }
+      // Handle any other format
+      else if (result.url) {
+        mediaUrl = result.url;
+      }
+    }
+    // Last resort - if the result itself is a string URL
+    else if (typeof result === "string") {
+      mediaUrl = result;
+    }
+
+    if (!mediaUrl) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to generate ${mediaType}. Please try again.`,
+        },
+        500
+      );
+    }
+
+    // Save generation to database
+    const generationId = crypto.randomUUID();
+    try {
+      await db.insert(mediaGenerations).values([
+        {
+          id: generationId,
+          mint: tokenMint,
+          type: mediaType,
+          prompt: enhancedPrompt,
+          mediaUrl,
+          creator: user.publicKey,
+          timestamp: new Date(),
+        },
+      ]);
+      console.log(`Generation saved to database with ID: ${generationId}`);
+    } catch (dbError) {
+      // Log but continue - don't fail the request just because we couldn't save to DB
+      console.error("Error saving generation to database:", dbError);
+    }
+
+    // Return successful response
+    interface GenerationResponse {
+      success: boolean;
+      mediaUrl: string;
+      enhancedPrompt: string;
+      originalPrompt: string;
+      generationId: string;
+      remainingGenerations: number;
+      resetTime: string;
+      lyrics?: string;
+    }
+
+    const response: GenerationResponse = {
+      success: true,
+      mediaUrl,
+      enhancedPrompt,
+      originalPrompt: userPrompt,
+      generationId,
+      remainingGenerations: rateLimit.remaining - 1,
+      resetTime: new Date(
+        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS
+      ).toISOString(),
+    };
+
+    // Add lyrics to response if available
+    if (mediaType === MediaType.AUDIO) {
+      if (result.data?.lyrics) {
+        response.lyrics = result.data.lyrics;
+      } else if (result.lyrics) {
+        response.lyrics = result.lyrics;
+      } else if (generationParams.lyrics) {
+        response.lyrics = generationParams.lyrics;
+      } else if (result.data?.audio?.lyrics) {
+        response.lyrics = result.data.audio.lyrics;
+      }
+    }
+
+    return c.json(response);
+  } catch (error) {
+    logger.error("Error in enhance-and-generate endpoint:", error);
+    return c.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error generating media",
+      },
+      500
+    );
+  }
+});
+
 export default app;
