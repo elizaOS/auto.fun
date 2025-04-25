@@ -13,6 +13,7 @@ import { useInView } from "react-intersection-observer";
 import { getSocket } from "@/utils/socket"; // Import WebSocket utility
 import { ChatImage } from '../chat/ChatImage';
 import { getAuthToken } from "@/utils/auth";
+import { toast } from "react-toastify";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -61,6 +62,7 @@ interface ChatMessage {
   timestamp: string;
   isOptimistic?: boolean; // Flag for optimistically added messages
   hasLiked?: boolean; // Add hasLiked field
+  media?: string; // Added media field
 }
 
 // API Response Types for Chat
@@ -547,65 +549,15 @@ export default function ChatSection() {
 
     // Define handler with type assertion
     const handleNewChatMessage = (data: unknown) => {
-      const newMessage = data as ChatMessage; // Assert data is ChatMessage
-      console.log("WS: Received new message:", newMessage);
-
-      // Basic validation
-      if (
-        !newMessage ||
-        !newMessage.id ||
-        !newMessage.tokenMint ||
-        !newMessage.tier
-      ) {
-        console.warn("WS: Received invalid message format.", newMessage);
-        return;
+      try {
+        const message = data as ChatMessage;
+        setChatMessages((prev) => [message, ...prev]);
+      } catch (error) {
+        console.error('Error handling new chat message:', error);
       }
-
-      // Check if the message belongs to the current context
-      if (
-        newMessage.tokenMint !== tokenMint ||
-        newMessage.tier !== selectedChatTier
-      ) {
-        console.log("WS: Ignoring message from different token/tier.");
-        return;
-      }
-
-      setChatMessages((prevMessages) => {
-        // Check if message already exists (including optimistic ones)
-        if (prevMessages.some((msg) => msg.id === newMessage.id)) {
-          // If it exists and the received one is NOT optimistic, update it
-          // (Handles case where optimistic message is confirmed)
-          if (!newMessage.isOptimistic) {
-            return prevMessages.map((msg) =>
-              msg.id === newMessage.id
-                ? { ...newMessage, isOptimistic: false }
-                : msg,
-            );
-          }
-          // Otherwise, ignore the duplicate (e.g., received optimistic echo)
-          return prevMessages;
-        }
-        // Add the new message if it doesn't exist
-        return [...prevMessages, newMessage];
-      });
-
-      // Update latest timestamp if this message is newer
-      setLatestTimestamp((prevTimestamp) => {
-        if (
-          !prevTimestamp ||
-          new Date(newMessage.timestamp).getTime() >
-            new Date(prevTimestamp).getTime()
-        ) {
-          return newMessage.timestamp;
-        }
-        return prevTimestamp;
-      });
-
-      // Scroll down if near bottom
-      setTimeout(() => scrollToBottom(false), 50);
     };
 
-    // Register the handler (type now matches expected (data: unknown) => void)
+    // Register the handler
     socket.on("newChatMessage", handleNewChatMessage);
     console.log("WS: Registered newChatMessage listener.");
 
@@ -614,7 +566,7 @@ export default function ChatSection() {
       socket.off("newChatMessage", handleNewChatMessage);
       console.log("WS: Unregistered newChatMessage listener.");
     };
-  }, [socket, tokenMint, selectedChatTier, scrollToBottom]); // Dependencies needed
+  }, [socket]);
 
   // --- Send Chat Message --- *REVISED* (Optimistic update remains, WS handles confirmation)
   const handleSendMessage = async (imageUrl?: string) => {
@@ -808,44 +760,32 @@ export default function ChatSection() {
   const uploadImage = async () => {
     if (!selectedImage) return;
 
-    setIsUploadingImage(true);
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedImage);
-      reader.onloadend = async () => {
-        const base64Image = reader.result as string;
-        const authToken = getAuthToken();
+      const response = await fetchWithAuth(`${env.apiUrl}/api/chat/${tokenMint}/${selectedChatTier}/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageBase64: imagePreview,
+          caption: imageCaption
+        })
+      });
 
-        const response = await fetch(`${env.apiUrl}/api/uploadImage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-          },
-          body: JSON.stringify({
-            image: base64Image,
-            caption: imageCaption,
-          }),
-        });
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
 
-        if (!response.ok) {
-          throw new Error('Failed to upload image');
-        }
-
-        const data = await response.json();
-        if (data.success && data.imageUrl) {
-          await handleSendMessage(data.imageUrl);
-          setSelectedImage(null);
-          setImagePreview(null);
-          setImageCaption('');
-        } else {
-          console.log('Failed to upload image');
-        }
-      };
+      const data = await response.json();
+      if (data.success && data.message) {
+        setChatMessages((prev) => [data.message, ...prev]);
+        setImageCaption('');
+        setSelectedImage(null);
+        setImagePreview(null);
+      }
     } catch (error) {
-      console.log('Error uploading image:', error);
-    } finally {
-      setIsUploadingImage(false);
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
     }
   };
 
@@ -1006,13 +946,20 @@ export default function ChatSection() {
                           </span>
                         </div>
 
-                        {msg.message.startsWith('http') ? (
-                          <div className="relative w-full max-w-[500px] aspect-square border-2 border-[#03FF24] my-2 flex items-center justify-center bg-black">
-                            <img 
-                              src={msg.message} 
-                              alt="Chat image" 
-                              className="w-full h-full object-contain"
-                            />
+                        {msg.media ? (
+                          <div className="flex flex-col gap-2">
+                            <div className="relative w-full max-w-[500px] aspect-square border-2 border-[#03FF24] my-2 flex items-center justify-center bg-black">
+                              <img 
+                                src={msg.media} 
+                                alt="Chat image" 
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            {msg.message && (
+                              <p className="text-sm break-words whitespace-pre-wrap my-1">
+                                {msg.message}
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <p className="text-sm break-words whitespace-pre-wrap my-1">

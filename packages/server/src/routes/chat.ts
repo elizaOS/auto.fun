@@ -292,6 +292,7 @@ chatRouter.post(
         tier: tier,
         replyCount: 0,
         timestamp: new Date(),
+        media: null, // Assuming media is not provided in the request
       };
 
       const currentDb = db(c);
@@ -636,17 +637,19 @@ chatRouter.post("/chat/:mint", async (c) => {
     // Create the message
     const messageData = {
       id: crypto.randomUUID(),
+      author: user.publicKey,
+      tokenMint: mint,
       message: body.message,
       parentId: body.parentId || null,
-      tokenMint: mint,
-      author: user.publicKey,
       replyCount: 0,
       likes: 0,
       timestamp: new Date(),
+      tier: "1",
+      media: body.media || null,
     };
 
     // Insert the message
-    await db.insert(messages).values([messageData]).onConflictDoNothing();
+    await db.insert(messages).values(messageData).onConflictDoNothing();
 
     // If this is a reply, increment the parent's replyCount
     if (body.parentId) {
@@ -673,7 +676,7 @@ chatRouter.post("/chat/:tokenMint/:tier/upload-image", async (c) => {
   try {
     const user = c.get("user");
     const { tokenMint, tier } = c.req.param();
-    const { imageBase64 } = await c.req.json();
+    const { imageBase64, caption } = await c.req.json();
 
     if (!user) {
       return c.json({ error: "Authentication required" }, 401);
@@ -684,7 +687,7 @@ chatRouter.post("/chat/:tokenMint/:tier/upload-image", async (c) => {
     }
 
     // Validate tier
-    if (!["1k", "10k", "100k", "1M"].includes(tier)) {
+    if (!["1k", "100k", "1M"].includes(tier)) {
       return c.json({ error: "Invalid tier" }, 400);
     }
 
@@ -708,7 +711,7 @@ chatRouter.post("/chat/:tokenMint/:tier/upload-image", async (c) => {
     // Generate filename with wallet ID and timestamp
     const timestamp = Date.now();
     const filename = `${user.publicKey}-${timestamp}${extension}`;
-    const imageKey = `generations/tokens/${tokenMint}/${tier}/${filename}`;
+    const imageKey = `chat-images/${tokenMint}/${tier}/${filename}`;
 
     // Upload using the uploader function
     const imageUrl = await uploadWithS3(
@@ -716,9 +719,57 @@ chatRouter.post("/chat/:tokenMint/:tier/upload-image", async (c) => {
       { 
         filename,
         contentType,
-        basePath: `generations/tokens/${tokenMint}/${tier}`
+        basePath: `chat-images/${tokenMint}/${tier}`
       }
     );
+
+    // Validate that the image URL is from auto.fun domain
+    if (!imageUrl.includes('.auto.fun')) {
+      logger.error(`Rejected non-auto.fun image URL: ${imageUrl}`);
+      return c.json({ error: "Invalid image URL domain" }, 400);
+    }
+
+    // Create a new message with the image URL
+    const messageData = {
+      id: crypto.randomUUID(),
+      author: user.publicKey,
+      tokenMint: tokenMint,
+      message: caption || "",
+      parentId: null,
+      replyCount: 0,
+      likes: 0,
+      timestamp: new Date(),
+      tier: tier,
+      media: imageUrl
+    };
+
+    const currentDb = db(c);
+    await currentDb.insert(schema.messages).values(messageData);
+
+    const insertedMessage = await currentDb
+      .select()
+      .from(schema.messages)
+      .where(eq(schema.messages.id, messageData.id))
+      .limit(1);
+
+    if (insertedMessage && insertedMessage.length > 0) {
+      const finalMessage = {
+        ...insertedMessage[0],
+        timestamp: new Date(insertedMessage[0].timestamp).toISOString(),
+      };
+
+      const roomName = `chat:${tokenMint}:${tier}`;
+      logger.info(`Broadcasting new message to room: ${roomName}`);
+      webSocketManager.broadcastToRoom(
+        roomName,
+        'newChatMessage',
+        finalMessage
+      ).catch((err: Error) => {
+        logger.error(`Error broadcasting message to room ${roomName}:`, err);
+      });
+
+      return c.json({ success: true, message: finalMessage }, 201);
+    }
 
     return c.json({ success: true, imageUrl });
   } catch (error) {
