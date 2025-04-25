@@ -401,10 +401,6 @@ class WebSocketManager {
                 }
             }
         });
-
-        if (count > 0) {
-            logger.log(`Broadcasted event ${event} to ${count} locally connected clients in room ${roomName}.`);
-        }
     }
 
     // --- Send Direct Message to Client ---

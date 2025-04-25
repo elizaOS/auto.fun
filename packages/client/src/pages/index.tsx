@@ -46,7 +46,7 @@ export default function Page() {
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
-    "all",
+    "autofun",
   );
   const [bondingStatus, setBondingStatus] =
     useUrlSearchParams<BondingStatusType>("status", "all");
