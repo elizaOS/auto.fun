@@ -33,6 +33,7 @@ import path from "node:path";
 import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
 import { resumeMigrationsOnStart } from "./migration/resumeMigrationsOnStart";
+import "./workers/scheduler";
 let migrationWorkerChild: ReturnType<typeof fork> | null = null;
 
 // Define Variables type matching the original Hono app
@@ -295,3 +296,18 @@ function startMigrationWorker(network?: string) {
 }
 
 startMigrationWorker();
+
+const sched = fork(
+  path.join(__dirname, "workers", "scheduler.ts"),
+  { env: process.env, stdio: "inherit" }
+);
+
+sched.on("exit", (code, signal) => {
+  console.error(`Scheduler exited (${signal || code}), restarting…`);
+  setTimeout(() => {
+    fork(path.join(__dirname, "workers", "scheduler.ts"), {
+      env: process.env,
+      stdio: "inherit",
+    });
+  }, 1000);
+});
