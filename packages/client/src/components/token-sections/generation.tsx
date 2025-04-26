@@ -7,6 +7,7 @@ import Button from "../button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import Loader from "../loader";
 import CopyButton from "../copy-button";
+import AudioPlayer from "../audio-player";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -2037,14 +2038,7 @@ export default function CommunityTab() {
 
                   {/* Audio Player */}
                   <div className="w-full">
-                    <audio
-                      src={generatedImage}
-                      controls
-                      className="w-full"
-                      autoPlay
-                    >
-                      Your browser does not support the audio element.
-                    </audio>
+                    <AudioPlayer src={generatedImage} />
                   </div>
                 </div>
               ) : communityTab === "Video" &&

@@ -10,6 +10,7 @@ import { Icons } from "../icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/utils/api";
 import { useWallet } from "@solana/wallet-adapter-react";
+import AudioPlayer from "../audio-player";
 
 type FormData = {
   links: {
@@ -770,13 +771,7 @@ export default function AdminTab() {
               {existingAudioUrl && !selectedAudioFile && (
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col gap-2 mb-4">
-                    <audio 
-                      controls 
-                      className="w-full max-w-md [&::-webkit-media-controls-panel]:bg-[#03FF24] [&::-webkit-media-controls-panel]:rounded-none [&::-webkit-media-controls-current-time-display]:text-black [&::-webkit-media-controls-time-remaining-display]:text-black [&::-webkit-media-controls-timeline]:bg-[#03FF24] [&::-webkit-media-controls-timeline]:rounded-none [&::-webkit-media-controls-play-button]:text-black [&::-webkit-media-controls-volume-slider]:bg-[#03FF24] [&::-webkit-media-controls-volume-slider]:rounded-none [&::-webkit-media-controls-mute-button]:text-black [&::-webkit-media-controls-enclosure]:bg-[#03FF24] [&::-webkit-media-controls]:text-black [&::-webkit-media-controls-timeline-container]:bg-[#03FF24] [&::-webkit-media-controls-enclosure]:rounded-none [&::-webkit-media-controls-panel]:rounded-none [&::-webkit-media-controls-volume-slider-container]:rounded-none [&::-webkit-media-controls-timeline-container]:rounded-none"
-                      src={existingAudioUrl}
-                    >
-                      Your browser does not support the audio element.
-                    </audio>
+                    <AudioPlayer src={existingAudioUrl} />
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     <div className="flex relative w-full">
