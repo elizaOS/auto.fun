@@ -68,6 +68,7 @@ export default function AdminTab() {
   const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [existingAudioUrl, setExistingAudioUrl] = useState<string | null>(null);
+  const [audioTimestamp, setAudioTimestamp] = useState<number>(Date.now());
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Extract token mint from URL if not found in params
@@ -511,6 +512,7 @@ export default function AdminTab() {
 
       toast.success("Audio context uploaded successfully");
       setSelectedAudioFile(null);
+      setAudioTimestamp(Date.now());
       if (audioInputRef.current) {
         audioInputRef.current.value = "";
       }
@@ -771,7 +773,7 @@ export default function AdminTab() {
               {existingAudioUrl && !selectedAudioFile && (
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col gap-2 mb-4">
-                    <AudioPlayer src={existingAudioUrl} />
+                    <AudioPlayer src={`${existingAudioUrl}?t=${audioTimestamp}`} />
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     <div className="flex relative w-full">
