@@ -28,6 +28,9 @@ export default function SearchBar() {
     },
     enabled: searchQuery.length >= 2,
     staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const debouncedSetSearchQuery = useCallback(
