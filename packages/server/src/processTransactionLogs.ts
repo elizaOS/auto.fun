@@ -437,7 +437,7 @@ export async function processTransactionLogs(
             // Update in database
             await updateTokenInDB(tokenData);
             // migrate token
-            await tokenMigrator.migrateToken(token);
+            // await tokenMigrator.migrateToken(token);
 
             // Notify clients
             // await wsClient.emit(`token-${mintAddress}`, "updateToken", tokenData);
@@ -572,7 +572,7 @@ export async function migrateTokensFromList(
       // Update in database
       await updateTokenInDB(token);
       // migrate token
-      await tokenMigrator.migrateToken(token);
+      // await tokenMigrator.migrateToken(token);
    }
 }
 

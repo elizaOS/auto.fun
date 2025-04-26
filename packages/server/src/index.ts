@@ -264,38 +264,6 @@ export default {
 // startLogWorker();
 
 
-function startMigrationWorker(network?: string) {
-  const workerEnv = {
-    ...process.env,
-    ...(network ? { NETWORK: network } : {}),
-  };
-  if (migrationWorkerChild) {
-    logger.info("Migration worker already running, skipping spawn");
-    return;
-  }
-  const script = path.join(__dirname, "workers/migrationWorker.ts");
-  const child = fork(script, [], { env: workerEnv });
-
-  migrationWorkerChild = child;
-  logger.info(
-    `🚀 Started migration worker${network ? ` (${network})` : ""} with PID`,
-    child.pid
-  );
-  child.on("error", (err) => {
-    logger.error(`❌ Migration worker${network ? ` (${network})` : ""} failed:`, err);
-  });
-
-  child.on("exit", (code, signal) => {
-    logger.info(
-      `Migration worker${network ? ` (${network})` : ""} exited with ${signal ? `signal ${signal}` : `code ${code}`
-      }`
-    );
-    // we do NOT restart it
-    migrationWorkerChild = null;
-  });
-}
-
-startMigrationWorker();
 
 // const sched = fork(
 //   path.join(__dirname, "workers", "scheduler.ts"),
