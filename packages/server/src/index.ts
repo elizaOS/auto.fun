@@ -34,7 +34,7 @@ import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
 // import { resumeMigrationsOnStart } from "./migration/resumeMigrationsOnStart";
 // import "./workers/scheduler";
-let migrationWorkerChild: ReturnType<typeof fork> | null = null;
+const migrationWorkerChild: ReturnType<typeof fork> | null = null;
 
 // Define Variables type matching the original Hono app
 interface AppVariables {

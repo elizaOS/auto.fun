@@ -82,7 +82,7 @@ export const useSwap = () => {
         try {
           const mainnetConnection = new Connection(
             env.rpcUrlMainnet,
-            "confirmed"
+            "confirmed",
           );
           const jupiterIxs = await getJupiterSwapIx(
             wallet.publicKey,
@@ -91,23 +91,23 @@ export const useSwap = () => {
             numericStyle,
             slippageBps,
             mainnetConnection,
-            token.isToken2022 === 1
+            token.isToken2022 === 1,
           );
           ixs = jupiterIxs;
           console.log(
-            `Successfully got Jupiter instructions for ${token.mint}`
+            `Successfully got Jupiter instructions for ${token.mint}`,
           );
         } catch (jupiterError) {
           console.error(
             `Jupiter swap instruction fetch failed for ${token.mint}:`,
-            jupiterError
+            jupiterError,
           );
           const errorMsg =
             jupiterError instanceof Error
               ? jupiterError.message
               : String(jupiterError);
           toast.error(
-            `Jupiter routing failed: ${errorMsg}. Unable to complete swap.`
+            `Jupiter routing failed: ${errorMsg}. Unable to complete swap.`,
           );
           throw new Error(`Jupiter swap failed: ${errorMsg}`);
         }
@@ -119,7 +119,7 @@ export const useSwap = () => {
             Buffer.from(SEED_BONDING_CURVE),
             new PublicKey(tokenAddress).toBytes(),
           ],
-          program.programId
+          program.programId,
         );
         const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
         const config = await getConfigAccount(program);
@@ -133,7 +133,7 @@ export const useSwap = () => {
           program,
           curve.reserveToken.toNumber(),
           curve.reserveLamport.toNumber(),
-          config
+          config,
         );
         ixs = [internalIx];
 
@@ -155,7 +155,7 @@ export const useSwap = () => {
         ixs.push(
           ComputeBudgetProgram.setComputeUnitPrice({
             microLamports: feeLamports,
-          })
+          }),
         );
         console.log(`Using internal swap with priority fee: ${solFee} SOL`);
       }
@@ -175,7 +175,7 @@ export const useSwap = () => {
         console.error("Transaction simulation failed:", simulation.value.err);
         console.error("Simulation Logs:", simulation.value.logs);
         throw new Error(
-          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`
+          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
         );
       }
       console.log("Transaction simulation successful.");
@@ -194,16 +194,16 @@ export const useSwap = () => {
         } catch (jitoError) {
           console.error(
             "Failed to send through Jito, falling back to standard send:",
-            jitoError
+            jitoError,
           );
           signature = await wallet.sendTransaction(versionedTx, connection);
           console.log(
-            `Standard transaction sent after Jito fail, signature: ${signature}`
+            `Standard transaction sent after Jito fail, signature: ${signature}`,
           );
         }
       } else {
         console.log(
-          `Sending standard transaction (Jupiter=${useJupiter}, Internal=${!useJupiter}, JitoEnabled=${isProtectionEnabled})...`
+          `Sending standard transaction (Jupiter=${useJupiter}, Internal=${!useJupiter}, JitoEnabled=${isProtectionEnabled})...`,
         );
         signature = await wallet.sendTransaction(versionedTx, connection);
         console.log(`Standard transaction sent, signature: ${signature}`);
@@ -213,7 +213,7 @@ export const useSwap = () => {
         toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
       } else {
         toast.warning(
-          "Transaction potentially sent, but signature was not received."
+          "Transaction potentially sent, but signature was not received.",
         );
       }
     } catch (error) {
