@@ -62,7 +62,7 @@ export const useSwap = () => {
     const swapAmount = style === "buy" ? amountLamports : amountTokens;
 
     try {
-      if (token.imported === 1 || token.status === "locked") {
+      if (token.imported === 1 || token.status === "locked" || token.status === "migrated") {
         console.log(`Swap initiated for imported/locked token: ${token.mint}`);
 
         useJupiter = true;
