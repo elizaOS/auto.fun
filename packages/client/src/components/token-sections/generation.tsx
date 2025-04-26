@@ -1374,6 +1374,11 @@ export default function CommunityTab() {
         requestBody.lyrics = editableLyrics;
       }
 
+      // Add cache buster to reference_audio_url if it exists
+      if (requestBody.reference_audio_url) {
+        requestBody.reference_audio_url = `${requestBody.reference_audio_url}?t=${Date.now()}`;
+      }
+
       // Call the API endpoint
       const response = await fetch(apiUrl, {
         method: "POST",

@@ -689,7 +689,7 @@ export async function generateMedia(data: {
       const listResponse = await s3Client.send(listCmd);
       const audioContextKey = listResponse.Contents?.[0]?.Key;
       if (audioContextKey) {
-        referenceAudioUrl = `${process.env.S3_PUBLIC_URL}/${audioContextKey}`;
+        referenceAudioUrl = `${process.env.S3_PUBLIC_URL}/${audioContextKey}?t=${Date.now()}`;
         logger.log("Using existing audio context file:", referenceAudioUrl);
       } else {
         logger.log("No existing audio context file found, using default");
