@@ -388,7 +388,7 @@ export default function CommunityTab() {
       }
 
       // Log API URL to help debug
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${env.apiUrl}/api/generation/enhance-and-generate`;
 
       // Create headers
       const headers: Record<string, string> = {
@@ -608,7 +608,7 @@ export default function CommunityTab() {
       }
 
       // API endpoint
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${env.apiUrl}/api/generation/enhance-and-generate`;
 
       // Create headers
       const headers: Record<string, string> = {
@@ -1340,7 +1340,7 @@ export default function CommunityTab() {
       }
 
       // API endpoint
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${env.apiUrl}/api/generation/enhance-and-generate`;
       // Create headers
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
