@@ -750,55 +750,61 @@ export default function AdminTab() {
           <h4 className="text-md font-semibold mb-3 text-autofun-text-secondary">
             Audio Context
           </h4>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 max-w-2xl">
             <p className="text-sm text-autofun-text-secondary">
-              Upload an audio file to use as context for music generation. This will be used instead of the default Google audio context.
+              Upload an audio file to use as context for music generation. This will be used instead of the default audio context.
             </p>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-autofun-text-secondary">
-                Audio File
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleAudioSelect}
-                  ref={audioInputRef}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => audioInputRef.current?.click()}
-                  className="px-4 py-2 text-sm bg-autofun-background-input hover:bg-autofun-background-input/80 text-autofun-text-secondary border border-autofun-border rounded transition-colors"
-                >
-                  Select File
-                </button>
-                {selectedAudioFile && (
-                  <span className="text-sm text-autofun-text-secondary">
-                    {selectedAudioFile.name}
-                  </span>
-                )}
-                {existingAudioUrl && !selectedAudioFile && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-autofun-text-secondary">
-                      Current: {existingAudioUrl.split('/').pop()}
-                    </span>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioSelect}
+                ref={audioInputRef}
+                className="hidden"
+              />
+              {selectedAudioFile && (
+                <span className="text-sm text-autofun-text-secondary">
+                  {selectedAudioFile.name}
+                </span>
+              )}
+              {existingAudioUrl && !selectedAudioFile && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 mb-4">
+                    <audio 
+                      controls 
+                      className="w-full max-w-md [&::-webkit-media-controls-panel]:bg-[#03FF24] [&::-webkit-media-controls-panel]:rounded-none [&::-webkit-media-controls-current-time-display]:text-black [&::-webkit-media-controls-time-remaining-display]:text-black [&::-webkit-media-controls-timeline]:bg-[#03FF24] [&::-webkit-media-controls-timeline]:rounded-none [&::-webkit-media-controls-play-button]:text-black [&::-webkit-media-controls-volume-slider]:bg-[#03FF24] [&::-webkit-media-controls-volume-slider]:rounded-none [&::-webkit-media-controls-mute-button]:text-black [&::-webkit-media-controls-enclosure]:bg-[#03FF24] [&::-webkit-media-controls]:text-black [&::-webkit-media-controls-timeline-container]:bg-[#03FF24] [&::-webkit-media-controls-enclosure]:rounded-none [&::-webkit-media-controls-panel]:rounded-none [&::-webkit-media-controls-volume-slider-container]:rounded-none [&::-webkit-media-controls-timeline-container]:rounded-none"
+                      src={existingAudioUrl}
+                    >
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                    <div className="flex relative w-full">
+                      <div className="bg-autofun-background-input flex justify-between py-2 pl-1 pr-3 min-w-0 w-full relative">
+                        <span className="mx-auto w-0 flex-1 min-w-0 block text-sm text-autofun-text-secondary truncate pr-6 pl-1">
+                          {existingAudioUrl.replace(/^https?:\/\//, '')}
+                        </span>
+                      </div>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-autofun-background-input">
+                        <CopyButton text={existingAudioUrl} />
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => audioInputRef.current?.click()}
-                      className="text-sm text-[#03FF24] hover:text-[#03FF24]/80 transition-colors"
+                      className="text-sm text-[#03FF24] hover:text-[#03FF24]/80 transition-colors ml-2"
                     >
                       Replace
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               {selectedAudioFile && (
                 <button
                   type="button"
                   onClick={handleAudioUpload}
                   disabled={isUploadingAudio}
-                  className="px-4 py-2 text-sm bg-[#03FF24] text-black hover:bg-[#03FF24]/80 rounded transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-sm bg-[#03FF24] text-black hover:bg-[#03FF24]/80 transition-colors disabled:opacity-50 w-fit"
                 >
                   {isUploadingAudio ? "Uploading..." : "Upload"}
                 </button>
