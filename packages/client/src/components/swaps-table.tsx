@@ -118,7 +118,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink
+        sink,
       );
     }
 
