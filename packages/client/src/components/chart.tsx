@@ -23,18 +23,18 @@ interface ChartProps {
 }
 
 export default function Chart({ token }: ChartProps) {
-  if (token.status === 'bonded') {
+  if (token.status === 'migrated' || token.status === 'locked') {
     return (
       <div
-        className="w-full min-h-[450px] relative"
-        style={{ width: "100%", height: "100%" }}
+        className="w-full min-h-[500px] relative"
       >
         <iframe
           height="100%"
           width="100%"
+          className="min-h-[500px] mt-2"
           id="geckoterminal-embed"
           title="GeckoTerminal Embed"
-          src={`https://www.geckoterminal.com/solana/pools/${token.mint}?embed=1&info=0&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=1m`}
+          src={`https://www.geckoterminal.com/solana/pools/${token.mint}?embed=1&info=0&swaps=0&grayscale=1&light_chart=0&chart_type=market_cap&resolution=1m`}
           allow="clipboard-write"
           allowFullScreen
         />
@@ -265,7 +265,7 @@ export default function Chart({ token }: ChartProps) {
   return (
     <div
       ref={chartContainerRef}
-      className="w-full min-h-[450px] relative"
+      className="w-full min-h-[500px] relative"
       style={{ width: "100%", height: "100%" }}
     >
       <div
