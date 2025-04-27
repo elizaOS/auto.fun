@@ -1658,18 +1658,20 @@ export default function Create() {
         }
 
         // Get a pre-generated token
-        const response = await fetch(env.apiUrl + "/api/pre-generated-token", {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to get pre-generated token");
-        }
+        const response = await fetch(
+          env.apiUrl + "/api/generation/pre-generated-token",
+          {
+            method: "GET",
+            headers,
+            credentials: "include",
+          },
+        );
+        console.log("response", response);
 
         const data = (await response.json()) as PreGeneratedTokenResponse;
         const { token } = data;
+
+        console.log("token", token);
 
         // Store token ID for later use when creating
         if (token.id) {
@@ -2495,7 +2497,7 @@ export default function Create() {
 
           // Get a pre-generated token
           const response = await fetch(
-            env.apiUrl + "/api/pre-generated-token",
+            env.apiUrl + "/api/generation/pre-generated-token",
             {
               method: "GET",
               headers,
@@ -2806,12 +2808,12 @@ export default function Create() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      {/* {showCoinDrop ? (
+      {showCoinDrop ? (
         <CoinDrop
           imageUrl={coinDropImageUrl || undefined}
           onCancel={handleCoinDropCancel}
         />
-      ) : null} */}
+      ) : null}
 
       <form
         className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"

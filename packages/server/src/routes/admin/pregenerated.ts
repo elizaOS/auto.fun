@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getDB, preGeneratedTokens } from "../../db"; // Assuming Token type exists or adjust as needed
 import { logger } from "../../util";
-import { checkAndReplenishTokens } from "../generation";
+import { checkAndReplenishTokens } from "../../generation";
 
 const PreGeneratedTokenUpdateSchema = z.object({
   name: z.string().min(1).optional(),

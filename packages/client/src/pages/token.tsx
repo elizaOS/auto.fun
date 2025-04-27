@@ -87,6 +87,31 @@ function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
   );
 }
 
+const LAST_TOKEN_TABS_KEY = "lastTokenTabs";
+
+// Helper to safely get tabs object from localStorage
+const getLastTabs = (): Record<string, string> => {
+  try {
+    const stored = localStorage.getItem(LAST_TOKEN_TABS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (e) {
+    console.error("Error reading last tabs from localStorage:", e);
+    return {};
+  }
+};
+
+// Helper to safely set tabs object in localStorage
+const setLastTab = (address: string, tab: string) => {
+  if (!address) return;
+  try {
+    const currentTabs = getLastTabs();
+    currentTabs[address] = tab;
+    localStorage.setItem(LAST_TOKEN_TABS_KEY, JSON.stringify(currentTabs));
+  } catch (e) {
+    console.error("Error writing last tab to localStorage:", e);
+  }
+};
+
 export default function Page() {
   const params = useParams<{ address: string }>();
   const address = params?.address;
@@ -100,7 +125,42 @@ export default function Page() {
     : false;
   // ---- End Moderator Check ----
 
-  const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">("chart");
+  // ---- State for active tab ----
+  // Initialize with default, effect will override from localStorage
+  const [activeTab, setActiveTab] = useState<
+    "chart" | "ai" | "agents" | "chat"
+  >("chart");
+  const isInitialMount = useRef(true); // Ref to track initial mount
+
+  // Effect to READ last tab from localStorage on mount/address change
+  useEffect(() => {
+    if (address) {
+      const lastTabs = getLastTabs();
+      const savedTab = lastTabs[address];
+      if (savedTab && ["chart", "ai", "agents", "chat"].includes(savedTab)) {
+        setActiveTab(savedTab as typeof activeTab);
+      }
+      else {
+        setActiveTab("chart"); // Default if no valid saved tab
+      }
+       // Ensure initial mount flag is handled correctly after first render potential
+       requestAnimationFrame(() => {
+         isInitialMount.current = false;
+       });
+    }
+    // Reset initial mount flag when address changes
+    return () => {
+        isInitialMount.current = true;
+    };
+  }, [address]);
+
+  // Effect to WRITE active tab to localStorage on change
+  useEffect(() => {
+    // Don't write during initial mount/restore phase
+    if (!isInitialMount.current && address) {
+      setLastTab(address, activeTab);
+    }
+  }, [activeTab, address]);
 
   // Fetch token details from API
   const tokenQuery = useQuery({
@@ -377,9 +437,6 @@ export default function Page() {
                 </div>
               )}
 
-              {/* Agents Section */}
-              <AgentsSection isCreator={token?.creator === normalizedWallet} />
-
               {/* Social Links */}
               {token?.creator !== normalizedWallet &&
                 (() => {
@@ -487,7 +544,7 @@ export default function Page() {
                       />
                     </button>
                     <button
-                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                      className={`px-4 py-3 mx-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
                         activeTab === "ai"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -507,6 +564,17 @@ export default function Page() {
                         }`}
                         alt="chart icon"
                       />
+                    </button>
+                    <button
+                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                        activeTab === "agents"
+                          ? "bg-autofun-background-highlight text-black"
+                          : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
+                      }`}
+                      onClick={() => setActiveTab("agents")}
+                      style={{ marginTop: "-2px", paddingTop: "14px" }}
+                    >
+                      Agents
                     </button>
                     <button
                       className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
@@ -531,7 +599,7 @@ export default function Page() {
                       />
                     </button>
                   </div>
-                  {activeTab === "chart" ? null : (
+                  {activeTab === "chart" || activeTab === "agents" ? null : (
                     <div
                       id="media-selector-container"
                       className="flex space-x-2 items-center"
@@ -554,6 +622,11 @@ export default function Page() {
                     <GenerationSection />
                   </div>
                 )}
+                {activeTab === "agents" && (
+                  <div id="agents" className="scroll-mt-16">
+                    <AgentsSection tokenData={token} isCreator={isTokenOwner} />
+                  </div>
+                )}
                 {activeTab === "chat" && (
                   <div id="chat" className="mt-2 flex flex-col gap-2">
                     {/* Link to standalone chat page */}
@@ -565,7 +638,9 @@ export default function Page() {
                         Open Full Chat Page ↗
                       </Link>
                     </div>
-                    <Chat />
+                    <div className="max-h-[60vh]">
+                      <Chat />
+                    </div>
                   </div>
                 )}
               </div>
