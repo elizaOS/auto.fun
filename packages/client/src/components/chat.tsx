@@ -5,23 +5,20 @@ import Loader from "@/components/loader";
 import useAuthentication, { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { env } from "@/utils/env";
+import { getSocket } from "@/utils/socket"; // Import WebSocket utility
 import { useWallet } from "@solana/wallet-adapter-react";
+import { clsx } from "clsx"; // Import clsx for conditional classes
 import {
+  Image as ImageIcon,
   RefreshCw,
   Send,
-  Image as ImageIcon,
-  Maximize,
-  Minimize,
   User as UserIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useParams, Link } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
-import { getSocket } from "@/utils/socket"; // Import WebSocket utility
-import { ChatImage } from "../chat/ChatImage";
-import { getAuthToken } from "@/utils/auth";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { clsx } from "clsx"; // Import clsx for conditional classes
+import { ChatImage } from "./chat/ChatImage";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -99,7 +96,7 @@ const CHAT_MESSAGE_LIMIT = 50; // Define limit constant
 // --- Chat Types ---
 // ... existing code ...
 
-export default function ChatSection() {
+export default function Chat() {
   const { publicKey } = useWallet();
   const { isAuthenticated, isAuthenticating } = useAuthentication();
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -572,11 +569,11 @@ export default function ChatSection() {
       }
     };
 
-    socket.on("newChatMessage", handleNewMessage);
+    socket.on("newChatMessage", handleNewMessage as (data: unknown) => void);
     console.log("WS: Registered newChatMessage listener.");
 
     return () => {
-      socket.off("newChatMessage", handleNewMessage);
+      socket.off("newChatMessage", handleNewMessage as (data: unknown) => void);
       console.log("WS: Unregistered newChatMessage listener.");
     };
   }, [
@@ -956,10 +953,11 @@ export default function ChatSection() {
                       {/* Media rendering */}
                       {msg.media ? (
                         <div className="flex flex-col gap-1 mt-1">
-                          {/* Simplify ChatImage props */}
                           <ChatImage
+                            author={msg.author}
                             imageUrl={msg.media}
                             caption={msg.message || undefined}
+                            timestamp={msg.timestamp}
                           />
                         </div>
                       ) : (
@@ -1129,7 +1127,7 @@ export default function ChatSection() {
                 className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
               >
                 {isSendingMessage ? (
-                  <Loader size={20} className="text-black border-black" />
+                  <Loader className="text-black border-black" />
                 ) : (
                   <Send size={18} />
                 )}

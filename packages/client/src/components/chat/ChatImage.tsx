@@ -7,12 +7,7 @@ interface ChatImageProps {
   timestamp: string;
 }
 
-export const ChatImage: React.FC<ChatImageProps> = ({
-  imageUrl,
-  caption,
-  author,
-  timestamp,
-}) => {
+export const ChatImage: React.FC<ChatImageProps> = ({ imageUrl, caption }) => {
   return (
     <div className="max-w-md mx-auto overflow-hidden">
       <div className="relative">
@@ -27,12 +22,6 @@ export const ChatImage: React.FC<ChatImageProps> = ({
             {caption}
           </div>
         )}
-      </div>
-      <div className="p-4">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>{author}</span>
-          <span>{timestamp && new Date(timestamp)?.toLocaleString()}</span>
-        </div>
       </div>
     </div>
   );
