@@ -205,7 +205,7 @@ export const getSwapAmountJupiter = async (
     const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
     // 1. Get a quote from Jupiter.
-    const feePercent = 0.2;
+    const feePercent = 1;
     const feeBps = feePercent * 100;
     const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
     const quoteRes = await fetch(quoteUrl);
@@ -296,10 +296,11 @@ export const getJupiterSwapIx = async (
 
   // Only compute/apply a platform fee if we're NOT using Token-2022
   let feeAccount = undefined;
+  const feePercent = 10;
+  const feeBps = Math.round(feePercent * 10); // 1% = 100 bps
   if (!isToken2022) {
     console.log("Using Jupiter platform fee.");
-    const feePercent = 2;
-    const feeBps = Math.round(feePercent * 10); // 0.2% = 200 bps
+
     const platformFeeWallet = env.platformFeeTokenAccount;
     if (platformFeeWallet) {
       feeAccount = new PublicKey(platformFeeWallet);
@@ -314,7 +315,7 @@ export const getJupiterSwapIx = async (
   const quoteUrl =
     `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}` +
     `&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true` +
-    `${!isToken2022 ? `&platformFeeBps=${200}` : ""}`;
+    `${!isToken2022 ? `&platformFeeBps=${feeBps}` : ""}`;
   const quoteRes = await fetch(quoteUrl);
   if (!quoteRes.ok) throw new Error(await quoteRes.text());
   const quoteResponse = await quoteRes.json();

@@ -547,43 +547,46 @@ async function handleCurveComplete(
       return null;
     }
 
+
+    // const connection = new Connection(
+    //   process.env.NETWORK === "devnet"
+    //     ? process.env.DEVNET_SOLANA_RPC_URL!
+    //     : process.env.MAINNET_SOLANA_RPC_URL!,
+    // );
+    // const wallet = Keypair.fromSecretKey(
+    //   Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
+    // );
+    // const provider = new AnchorProvider(
+    //   connection,
+    //   new Wallet(wallet),
+    //   AnchorProvider.defaultOptions(),
+    // );
+    // const program = new Program<RaydiumVault>(
+    //   raydium_vault_IDL as any,
+    //   provider,
+    // );
+    // const autofunProgram = new Program<Autofun>(idl as any, provider);
+    const redisCache = await getGlobalRedisCache();
+
+    // const tokenMigrator = new TokenMigrator(
+    //   connection,
+    //   new Wallet(wallet),
+    //   program,
+    //   autofunProgram,
+    //   provider,
+    //   redisCache
+    // );
     const tokenData: Partial<TokenData> = {
       mint: mintAddress,
       status: "migrating",
       lastUpdated: new Date().toISOString(),
     };
 
-    const connection = new Connection(
-      process.env.NETWORK === "devnet"
-        ? process.env.DEVNET_SOLANA_RPC_URL!
-        : process.env.MAINNET_SOLANA_RPC_URL!,
-    );
-    const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
-    );
-    const provider = new AnchorProvider(
-      connection,
-      new Wallet(wallet),
-      AnchorProvider.defaultOptions(),
-    );
-    const program = new Program<RaydiumVault>(
-      raydium_vault_IDL as any,
-      provider,
-    );
-    const autofunProgram = new Program<Autofun>(idl as any, provider);
-    const redisCache = await getGlobalRedisCache();
-
-    const tokenMigrator = new TokenMigrator(
-      connection,
-      new Wallet(wallet),
-      program,
-      autofunProgram,
-      provider,
-      redisCache
-    );
-
-    await updateTokenInDB(tokenData);
-    await tokenMigrator.resumeOneStep(token.mint, true);
+    await updateTokenInDB({
+      ...token,
+      ...tokenData,
+    });
+    // await tokenMigrator.resumeOneStep(token.mint, true);
     await wsClient.emit(
       `token-${mintAddress}`,
       "updateToken",

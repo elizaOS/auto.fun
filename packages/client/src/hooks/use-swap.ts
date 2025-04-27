@@ -61,8 +61,21 @@ export const useSwap = () => {
     const numericStyle = style === "buy" ? 0 : 1;
     const swapAmount = style === "buy" ? amountLamports : amountTokens;
 
+    /** If token is currently migration, or has failed or if status does not exist, we should never even get here */
+    if (
+      token?.status === "migrating" ||
+      token?.status === "migration_failed" ||
+      !token?.status
+    ) {
+      return;
+    }
+
     try {
-      if (token.imported === 1 || token.status === "locked") {
+      if (
+        token.imported === 1 ||
+        token.status === "locked" ||
+        token.status === "migrated"
+      ) {
         console.log(`Swap initiated for imported/locked token: ${token.mint}`);
 
         useJupiter = true;
