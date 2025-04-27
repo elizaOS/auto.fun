@@ -36,7 +36,7 @@ export async function startMonitoringBatch(
   for (const mint of batch) {
     try {
       const ext = await ExternalToken.create(mint, redisCache);
-      await ext.registerWebhook();
+      // await ext.registerWebhook();
       logger.info(`Monitoring: Successfully registered webhook for ${mint}.`);
     } catch (err) {
       logger.error(`Monitoring: Failed to register webhook for ${mint}:`, err);
