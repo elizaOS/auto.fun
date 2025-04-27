@@ -9,14 +9,9 @@ import {
 } from "lightweight-charts";
 import { getSocket, Socket } from "@/utils/socket";
 import { getChartTable } from "@/utils/api";
-import { Codex } from "@codex-data/sdk";
-import { SymbolType } from "@codex-data/sdk/dist/sdk/generated/graphql";
-import { networkId, useCodex } from "@/utils";
 import { IToken } from "@/types";
 import Loader from "./loader";
 import { twMerge } from "tailwind-merge";
-
-const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 interface ChartProps {
   token: IToken;
@@ -29,105 +24,56 @@ export default function Chart({ token }: ChartProps) {
 
   const mint = token.mint;
 
-  const isCodex = useCodex(token);
-  const pairId = `${mint}:${networkId}`;
+  const useCoingecko =
+    token?.imported === 1 ||
+    token.status === "migrated" ||
+    token.status === "locked";
 
   const query = useQuery({
-    queryKey: ["token", mint, "chart", isCodex],
+    queryKey: ["token", mint, "chart"],
     queryFn: async () => {
-      let from = 0;
       const to = Math.floor(new Date().getTime() / 1000.0);
+      const from = to - 21600 * 2;
 
-      from = isCodex ? to - 21600 : to - 21600 * 2; // Codex = 6 hours, Prebonded = 12h
-      if (token?.imported === 0 && token?.lockedAt && isCodex) {
-        // use the lock time if available and more recent than 6 hours ago
-        const lockTime = Math.floor(
-          new Date(token.lockedAt).getTime() / 1000.0,
-        );
-        const sixHoursAgo = Math.floor(new Date().getTime() / 1000.0) - 21600;
-        from = Math.max(lockTime, sixHoursAgo);
+      const data = await getChartTable({
+        pairIndex: 10,
+        from,
+        to,
+        range: 1,
+        token: mint,
+      });
+
+      if (!data?.table?.length) {
+        const lastKnownPrice = Number(token?.tokenPriceUSD) || 0;
+        if (isNaN(lastKnownPrice)) return [];
+
+        return [
+          {
+            time: Math.floor(Date.now() / 1000) * 1000,
+            open: lastKnownPrice,
+            high: lastKnownPrice,
+            low: lastKnownPrice,
+            close: lastKnownPrice,
+            volume: 0,
+          },
+        ];
       }
 
-      if (isCodex) {
-        const { getBars } = await codex.queries.getBars({
-          from,
-          to,
-          symbol: pairId,
-          resolution: "1",
-          symbolType: SymbolType.Token,
-        });
-
-        if (!getBars) return [];
-
-        const candleCount = getBars.o.length;
-        const bars = [];
-
-        for (let i = 0; i < candleCount; i++) {
-          const open = Number(getBars.o[i]);
-          const high = Number(getBars.h[i]);
-          const low = Number(getBars.l[i]);
-          const close = Number(getBars.c[i]);
-          const time = Number(getBars.t[i]);
-
-          if (
-            !isNaN(open) &&
-            !isNaN(high) &&
-            !isNaN(low) &&
-            !isNaN(close) &&
-            !isNaN(time)
-          ) {
-            bars.push({
-              open,
-              high,
-              low,
-              close,
-              volume: parseFloat(getBars?.volume?.[i] || "0"),
-              time,
-            });
-          }
-        }
-
-        return bars;
-      } else {
-        const data = await getChartTable({
-          pairIndex: 10,
-          from,
-          to,
-          range: 1,
-          token: mint,
-        });
-
-        if (!data?.table?.length) {
-          const lastKnownPrice = Number(token?.tokenPriceUSD) || 0;
-          if (isNaN(lastKnownPrice)) return [];
-
-          return [
-            {
-              time: Math.floor(Date.now() / 1000) * 1000,
-              open: lastKnownPrice,
-              high: lastKnownPrice,
-              low: lastKnownPrice,
-              close: lastKnownPrice,
-              volume: 0,
-            },
-          ];
-        }
-
-        return data.table.filter(
-          (candle) =>
-            !isNaN(Number(candle.open)) &&
-            !isNaN(Number(candle.high)) &&
-            !isNaN(Number(candle.low)) &&
-            !isNaN(Number(candle.close)) &&
-            !isNaN(Number(candle.time)),
-        );
-      }
+      return data.table.filter(
+        (candle) =>
+          !isNaN(Number(candle.open)) &&
+          !isNaN(Number(candle.high)) &&
+          !isNaN(Number(candle.low)) &&
+          !isNaN(Number(candle.close)) &&
+          !isNaN(Number(candle.time)),
+      );
     },
     staleTime: 60 * 1000,
-    refetchInterval: isCodex ? 10_000 : 5_000,
+    refetchInterval: 10_000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
     refetchOnReconnect: false,
+    enabled: !useCoingecko,
   });
 
   const chartData = query?.data;
@@ -205,9 +151,7 @@ export default function Chart({ token }: ChartProps) {
     let socket: Socket | undefined;
 
     /** Handle Websockets for improts and bonded tokens */
-    if (isCodex) {
-      // TODO - Implement websockets once we know how
-    } else {
+    if (!useCoingecko) {
       /** Handle incoming data for non-bonded tokens */
       socket = getSocket();
       socket.on("newCandle", (data: any) => {
@@ -227,14 +171,12 @@ export default function Chart({ token }: ChartProps) {
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      if (isCodex) {
-        // TODO - Implement websockets once we know how
-      } else if (socket) {
+      if (!useCoingecko && socket) {
         socket.off("newCandle");
       }
       chart.remove();
     };
-  }, [mint, isCodex]);
+  }, [mint, useCoingecko]);
 
   useEffect(() => {
     if (chartData && chartData.length > 0 && candlestickSeriesRef.current) {
@@ -243,7 +185,7 @@ export default function Chart({ token }: ChartProps) {
     }
   }, [chartData]);
 
-  if (token.status === "migrated" || token.status === "locked") {
+  if (useCoingecko) {
     return (
       <div className="w-full min-h-[500px] relative">
         <iframe
