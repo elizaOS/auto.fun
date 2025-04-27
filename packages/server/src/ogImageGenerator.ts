@@ -78,7 +78,6 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
     logger.log(`[OG Image Gen] Starting generation for mint: ${mint}`);
     const db = getDB();
 
-    try {
         // 1. Fetch Token Data (including ticker)
         const tokenDataResult = await db
             .select({
@@ -182,8 +181,8 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const cashtagText = `$${ticker.toUpperCase()}`;
 
         // --- Dynamic Text Styling & Positioning ---
-        const baseCashtagFontSize = 110;
-        const baseTitleFontSize = 54;
+        const baseCashtagFontSize = 100;
+        const baseTitleFontSize = 50;
         const dataFontSize = 76;
         const labelFontSize = 34;
         // CJK character detection (Unicode range for common CJK ideographs)
@@ -198,7 +197,7 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const maxTickerLength = 7;
         let dynamicCashtagFontSize = baseCashtagFontSize;
         if (ticker.length > maxTickerLength) {
-            dynamicCashtagFontSize = Math.max(30, Math.floor(baseCashtagFontSize * (maxTickerLength / ticker.length))); // Added min size
+            dynamicCashtagFontSize = Math.max(30, Math.floor(baseCashtagFontSize * Math.pow(maxTickerLength / ticker.length, 1.2))); // Added min size
             logger.log(`[OG Image Gen] Ticker "${ticker}" is long (${ticker.length}), reducing cashtag font size to ${dynamicCashtagFontSize}`);
         }
 
@@ -226,14 +225,20 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
                 nameLine1 = name.substring(0, middle).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 nameLine2 = name.substring(middle).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             }
+            
             logger.log(`[OG Image Gen] Name "${name}" is very long (${name.length}), breaking into two lines and reducing title font size to ${dynamicTitleFontSize}`);
         } else if (name.length > maxNameLengthSingleLine) {
             // Scale down more aggressively using a power function (exponent > 1)
-            const scaleFactor = Math.pow(maxNameLengthSingleLine / name.length, 1.5); // Exponent 1.5 for faster scaling
+            const scaleFactor = Math.pow(maxNameLengthSingleLine / name.length, 1.6); // Exponent 1.5 for faster scaling
             dynamicTitleFontSize = Math.max(30, Math.floor(baseTitleFontSize * scaleFactor)); // Ensure minimum size 30
+
+            console.log('*** scaleFactor', scaleFactor);
+            console.log('*** dynamicTitleFontSize', dynamicTitleFontSize)
+
+
             logger.log(`[OG Image Gen] Name "${name}" is long (${name.length}), reducing title font size to ${dynamicTitleFontSize} using aggressive scaling`);
         }
-
+ 
         // Define text styles using dynamic sizes
         const cashtagStyle = `fill: ${textColorTop}; font-size: ${dynamicCashtagFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor};`;
         const titleStyle = `fill: ${textColorTop}; font-size: ${dynamicTitleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
@@ -357,8 +362,4 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         logger.log(`[OG Image Gen] Successfully generated image for ${mint}`);
         return finalImageBuffer;
 
-    } catch (error) {
-        logger.error(`[OG Image Gen] Failed to generate OG image for ${mint}:`, error);
-        throw error;
-    }
 } 
