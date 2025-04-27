@@ -9,6 +9,7 @@ import { getDB, users } from "./db";
 import { Env } from "./env";
 import { logger } from "./util";
 import { ensureUserProfile } from "./routes/user";
+import { getGlobalRedisCache } from "./redis";
 
 // Define the AuthTokenData interface here to fix TypeScript errors
 interface AuthTokenData {
@@ -45,12 +46,11 @@ interface AuthTokenData {
 /**
  * Validates a JWT token
  */
-async function validateJwtToken(
-  token: string,
-): Promise<AuthTokenData | null> {
+async function validateJwtToken(token: string): Promise<AuthTokenData | null> {
   try {
     // For development, always use a standard salt if not provided
-    const salt = process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
+    const salt =
+      process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
 
     // Verify the JWT token
     const isValid = await jwt.verify(token, salt);
@@ -117,11 +117,12 @@ async function validateJwtToken(
 // Create a JWT token
 async function createJwtToken(
   publicKey: string,
-  privileges: string[] = [],
+  privileges: string[] = []
 ): Promise<string> {
   try {
     // For development, always use a standard salt if not provided
-    const salt = process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
+    const salt =
+      process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
 
     // Generate a unique JWT ID (jti) using UUID
     const tokenId = crypto.randomUUID();
@@ -141,7 +142,7 @@ async function createJwtToken(
         // Custom claims
         privileges, // User privileges
       },
-      salt,
+      salt
     );
 
     logger.log(`Created JWT token for wallet ${publicKey.substring(0, 8)}...`);
@@ -242,7 +243,7 @@ export const authenticate = async (c: AppContext) => {
           logger.error("JWT token creation failed:", jwtError);
           return c.json(
             { message: "Authentication failed during token creation" },
-            500,
+            500
           );
         }
       } catch (siweError) {
@@ -268,7 +269,7 @@ export const authenticate = async (c: AppContext) => {
           // Add extra logging for troubleshooting
           logger.log(
             "About to decode signature:",
-            signature.substring(0, 10) + "...",
+            signature.substring(0, 10) + "..."
           );
 
           let signatureBytes;
@@ -276,13 +277,13 @@ export const authenticate = async (c: AppContext) => {
             signatureBytes = bs58.decode(signature);
             logger.log(
               "Signature decoded successfully, length:",
-              signatureBytes.length,
+              signatureBytes.length
             );
           } catch (decodeError) {
             logger.error("Failed to decode signature:", decodeError);
             return c.json(
               { message: "Invalid signature encoding, expected base58" },
-              400,
+              400
             );
           }
 
@@ -290,7 +291,7 @@ export const authenticate = async (c: AppContext) => {
           const verified = nacl.sign.detached.verify(
             messageBytes,
             signatureBytes,
-            publicKeyObj.toBytes(),
+            publicKeyObj.toBytes()
           );
 
           logger.log("Signature verification result:", verified);
@@ -312,7 +313,7 @@ export const authenticate = async (c: AppContext) => {
               logger.error("JWT token creation failed:", jwtError);
               return c.json(
                 { message: "Authentication failed during token creation" },
-                500,
+                500
               );
             }
           } else {
@@ -367,15 +368,13 @@ export const authStatus = async (c: AppContext) => {
       headerToken = authHeader.substring(7); // Remove "Bearer " prefix
     }
 
-    const tokenToUse = headerToken; // ONLY use header token
-
     let isAuthenticated = false;
     let tokenData: AuthTokenData | null = null;
 
-    if (tokenToUse && tokenToUse.includes(".")) {
+    if (headerToken && headerToken.includes(".")) {
       // Check if it looks like a JWT
       try {
-        tokenData = await validateJwtToken(tokenToUse);
+        tokenData = await validateJwtToken(headerToken);
         isAuthenticated = !!tokenData;
       } catch (e) {
         console.error("Error validating JWT token:", e);
@@ -384,27 +383,51 @@ export const authStatus = async (c: AppContext) => {
 
     if (isAuthenticated && tokenData) {
       // Get the wallet address from validated token data
-      const walletToQuery = tokenData.publicKey;
+      const walletToQuery = tokenData?.publicKey;
 
       if (walletToQuery) {
-        const db = getDB();
-
         try {
+          // Try to get user data from Redis cache first
+          const redisCache = await getGlobalRedisCache();
+          const cacheKey = `user:${walletToQuery}`;
+          const cachedUser = await redisCache.get(cacheKey);
+
+          if (cachedUser) {
+            const userData = JSON.parse(cachedUser);
+            return c.json({
+              authenticated: true,
+              user: {
+                points: userData.points,
+                privileges: tokenData.privileges || [],
+              },
+            });
+          }
+
+          // If not in cache, query database
+          const db = getDB();
           const dbUser = await db
-            .select()
+            .select({
+              points: users.points,
+            })
             .from(users)
             .where(eq(users.address, walletToQuery))
             .limit(1);
 
-          if (dbUser.length > 0) {
-            // Include privileges from token if available
-            const privileges = tokenData.privileges || [];
+          if ((dbUser || [])?.length > 0) {
+            // Cache the user data for 1 minute
+
+            const points = dbUser?.[0]?.points || 0;
+            await redisCache.set(
+              cacheKey,
+              JSON.stringify({ points }),
+              60 // 1 minute TTL
+            );
 
             return c.json({
               authenticated: true,
               user: {
-                points: dbUser[0].points,
-                privileges,
+                points,
+                privileges: tokenData.privileges || [],
               },
             });
           }
@@ -438,7 +461,7 @@ export const authStatus = async (c: AppContext) => {
  */
 export const verifyAuth = async (
   c: Context<{ Bindings: Env }>,
-  next: Function,
+  next: Function
 ) => {
   if (c.req.path === "/api/webhook") {
     return next();
@@ -455,8 +478,6 @@ export const verifyAuth = async (
     }
 
     const tokenToUse = headerToken; // ONLY use header token
-
-    console.log("tokenToUse", tokenToUse);
 
     // Check for JWT token
     if (tokenToUse && tokenToUse.includes(".")) {
@@ -480,8 +501,6 @@ export const verifyAuth = async (
       }
     }
 
-    // No valid authentication
-    logger.log("No valid authentication found in verifyAuth");
     c.set("user", null);
     await next();
   } catch (error) {

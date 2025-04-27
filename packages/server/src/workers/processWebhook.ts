@@ -11,7 +11,7 @@ import { webSocketManager } from '../websocket-manager';
 import { Redis } from "ioredis";
 
 const JOB_QUEUE_KEY = "webhook:jobs";
-const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 2000;
+const JOB_DELAY_MS = Number(process.env.JOB_DELAY_MS) || 5000;
 const MAX_JOBS_PER_SECOND = Number(process.env.MAX_JOBS_PER_SECOND) || 5;
 // only do holders/swaps updates once per TOKEN_UPDATE_WINDOW seconds
 const TOKEN_UPDATE_WINDOW = Number(process.env.TOKEN_UPDATE_WINDOW) || 10;

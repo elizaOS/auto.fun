@@ -10,6 +10,7 @@ import {
 } from "../db";
 import { logger } from "../logger";
 import { getRpcUrl } from "../util";
+import { uploadWithS3 } from "../uploader";
 
 // ---=== Database Schema and Drizzle ===---
 import { Context } from "hono"; // Import Context type
@@ -203,20 +204,23 @@ chatRouter.get(
             eq(schema.messages.tier, tier),
           ),
         )
-        .orderBy(asc(schema.messages.timestamp)) // Order by timestamp ascending for chat
+        .orderBy(asc(schema.messages.timestamp))
         .limit(limit)
         .offset(offset);
 
-      // Ensure timestamp is ISO string (D1 might return numbers or strings)
-      const formattedMessages = messages.map((msg) => ({
-        ...msg,
-        timestamp:
-          typeof msg.timestamp === "string"
-            ? msg.timestamp
-            : typeof msg.timestamp === "number"
-              ? new Date(msg.timestamp).toISOString()
-              : new Date().toISOString(), // Fallback if type is unexpected
-      }));
+
+      // Ensure timestamp is properly formatted
+      const formattedMessages = messages.map((msg) => {
+        const formattedMsg = {
+          ...msg,
+          timestamp: msg.timestamp instanceof Date 
+            ? msg.timestamp.toISOString() 
+            : typeof msg.timestamp === 'string' 
+              ? msg.timestamp 
+              : new Date(msg.timestamp).toISOString(),
+        };
+        return formattedMsg;
+      });
 
       return c.json({ success: true, messages: formattedMessages });
     } catch (error) {
@@ -291,7 +295,10 @@ chatRouter.post(
         tier: tier,
         replyCount: 0,
         timestamp: new Date(),
+        media: null,
       };
+
+      console.log('Creating new message with timestamp:', newMessageData.timestamp);
 
       const currentDb = db(c);
       await currentDb
@@ -304,11 +311,15 @@ chatRouter.post(
         .where(eq(schema.messages.id, newMessageData.id))
         .limit(1);
 
+      console.log('Retrieved message from DB:', insertedMessage[0]);
+
       if (insertedMessage && insertedMessage.length > 0) {
         const finalMessage = {
           ...insertedMessage[0],
           timestamp: new Date(insertedMessage[0].timestamp).toISOString(),
         };
+
+        console.log('Sending final message with timestamp:', finalMessage.timestamp);
 
         const roomName = `chat:${tokenMint}:${tier}`;
         logger.info(`Broadcasting new message to room: ${roomName}`);
@@ -635,17 +646,19 @@ chatRouter.post("/chat/:mint", async (c) => {
     // Create the message
     const messageData = {
       id: crypto.randomUUID(),
+      author: user.publicKey,
+      tokenMint: mint,
       message: body.message,
       parentId: body.parentId || null,
-      tokenMint: mint,
-      author: user.publicKey,
       replyCount: 0,
       likes: 0,
       timestamp: new Date(),
+      tier: "1",
+      media: body.media || null,
     };
 
     // Insert the message
-    await db.insert(messages).values([messageData]).onConflictDoNothing();
+    await db.insert(messages).values(messageData).onConflictDoNothing();
 
     // If this is a reply, increment the parent's replyCount
     if (body.parentId) {
@@ -664,6 +677,113 @@ chatRouter.post("/chat/:mint", async (c) => {
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
     );
+  }
+});
+
+// Add new endpoint for uploading chat images
+chatRouter.post("/chat/:tokenMint/:tier/upload-image", async (c) => {
+  try {
+    const user = c.get("user");
+    const { tokenMint, tier } = c.req.param();
+    const { imageBase64, caption } = await c.req.json();
+
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    if (!imageBase64) {
+      return c.json({ error: "No image data provided" }, 400);
+    }
+
+    // Validate tier
+    if (!["1k", "100k", "1M"].includes(tier)) {
+      return c.json({ error: "Invalid tier" }, 400);
+    }
+
+    // Extract content type and base64 data
+    const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+    if (!imageMatch) {
+      return c.json({ error: "Invalid image data URI format" }, 400);
+    }
+
+    const contentType = imageMatch[1];
+    const base64Data = imageMatch[2];
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    // Determine file extension
+    let extension = ".jpg";
+    if (contentType.includes("png")) extension = ".png";
+    else if (contentType.includes("gif")) extension = ".gif";
+    else if (contentType.includes("svg")) extension = ".svg";
+    else if (contentType.includes("webp")) extension = ".webp";
+
+    // Generate filename with wallet ID and timestamp
+    const timestamp = Date.now();
+    const filename = `${user.publicKey}-${timestamp}${extension}`;
+    const imageKey = `chat-images/${tokenMint}/${tier}/${filename}`;
+
+    // Upload using the uploader function
+    const imageUrl = await uploadWithS3(
+      imageBuffer,
+      { 
+        filename,
+        contentType,
+        basePath: `chat-images/${tokenMint}/${tier}`
+      }
+    );
+
+    // Validate that the image URL is from auto.fun domain
+    if (!imageUrl.includes('.auto.fun')) {
+      logger.error(`Rejected non-auto.fun image URL: ${imageUrl}`);
+      return c.json({ error: "Invalid image URL domain" }, 400);
+    }
+
+    // Create a new message with the image URL
+    const messageData = {
+      id: crypto.randomUUID(),
+      author: user.publicKey,
+      tokenMint: tokenMint,
+      message: caption || "",
+      parentId: null,
+      replyCount: 0,
+      likes: 0,
+      timestamp: new Date(),
+      tier: tier,
+      media: imageUrl
+    };
+
+    const currentDb = db(c);
+    await currentDb.insert(schema.messages).values(messageData);
+
+    const insertedMessage = await currentDb
+      .select()
+      .from(schema.messages)
+      .where(eq(schema.messages.id, messageData.id))
+      .limit(1);
+
+    if (insertedMessage && insertedMessage.length > 0) {
+      const finalMessage = {
+        ...insertedMessage[0],
+        timestamp: new Date(insertedMessage[0].timestamp).toISOString(),
+      };
+
+      const roomName = `chat:${tokenMint}:${tier}`;
+      logger.info(`Broadcasting new message to room: ${roomName}`);
+      webSocketManager.broadcastToRoom(
+        roomName,
+        'newChatMessage',
+        finalMessage
+      ).catch((err: Error) => {
+        logger.error(`Error broadcasting message to room ${roomName}:`, err);
+      });
+
+      return c.json({ success: true, message: finalMessage }, 201);
+    }
+
+    return c.json({ success: true, imageUrl });
+  } catch (error) {
+    console.error("Error uploading chat image:", error);
+    return c.json({ error: "Failed to upload image" }, 500);
   }
 });
 
