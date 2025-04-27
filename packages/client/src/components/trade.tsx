@@ -243,7 +243,7 @@ export default function Trade({ token }: { token: IToken }) {
                 <input
                   className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
                   min={0}
-                  type="number"
+                  // type="number"
                   onKeyDown={(e) => {
                     if (
                       e.key === "-" ||
@@ -256,7 +256,9 @@ export default function Trade({ token }: { token: IToken }) {
                   }}
                   onChange={({ target }) => {
                     let value = target.value;
-
+                    if (!/^\d*\.?\d*$/.test(value)) {
+                      return; // invalid input, ignore
+                    }
                     // If value starts with multiple zeros, trim them
                     if (/^0[0-9]+/.test(value)) {
                       value = value.replace(/^0+/, '');
@@ -270,6 +272,14 @@ export default function Trade({ token }: { token: IToken }) {
                     setSellInputAmount(value);
                   }}
                   value={sellInputAmount}
+                  onBlur={({ target }) => {
+                    let value = target.value;
+
+                    const parsed = parseFloat(value);
+                    if (!value || isNaN(parsed) || parsed <= 0) {
+                      setSellInputAmount('');
+                    }
+                  }}
                   placeholder="0"
                 />
                 <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
