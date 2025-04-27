@@ -313,7 +313,7 @@ export default function Trade({ token }: { token: IToken }) {
                             setSellAmount(but);
                           }}
                           disabled={isButtonDisabled(but)}
-                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
                           {String(but)}
                         </button>
@@ -328,7 +328,7 @@ export default function Trade({ token }: { token: IToken }) {
                             setSellAmount(Number(balance) * percentage);
                           }}
                           disabled={isButtonDisabled("25")}
-                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
                           {perc}%
                         </button>
@@ -370,7 +370,6 @@ export default function Trade({ token }: { token: IToken }) {
             >
               {priceImpact} %
             </span>
-            <div></div>
           </div>
           <div
             className={twMerge([
