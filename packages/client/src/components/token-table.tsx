@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-table";
 import { ProfileToken } from "../types/profileTypes";
 import { Link } from "react-router-dom";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 
 const columnHelper = createColumnHelper<ProfileToken>();
 
@@ -40,6 +41,17 @@ const columns = [
     header: "SOL",
     cell: ({ cell }) => cell.getValue()?.toFixed(4),
   }),
+
+  columnHelper.accessor("dollarValue", {
+    header: "Value",
+    cell: ({ row }) => {
+      const { solPrice } = useSolPriceContext();
+      const solValue = Number(row.original.solValue ?? 0);
+      const dollarValue = solValue * (solPrice ?? 0); 
+      return (`$${dollarValue.toFixed(2)}`);
+    },
+  }),
+
   columnHelper.accessor("mint", {
     header: "View",
     cell: ({ cell }) => {

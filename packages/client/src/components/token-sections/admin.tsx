@@ -1,7 +1,7 @@
 import { FormInput } from "@/pages/create";
 import { isFromDomain } from "@/utils";
 import { env } from "@/utils/env";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useLocation, useParams, Link } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -10,6 +10,7 @@ import { Icons } from "../icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/utils/api";
 import { useWallet } from "@solana/wallet-adapter-react";
+import AudioPlayer from "../audio-player";
 
 type FormData = {
   links: {
@@ -64,11 +65,14 @@ export default function AdminTab() {
     discord: "",
     farcaster: "",
   });
+  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [existingAudioUrl, setExistingAudioUrl] = useState<string | null>(null);
+  const [audioTimestamp, setAudioTimestamp] = useState<number>(Date.now());
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Extract token mint from URL if not found in params
-  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
-  );
+  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(null);
 
   // Effect to detect token mint from various sources (similar to community tab)
   useEffect(() => {
@@ -87,6 +91,30 @@ export default function AdminTab() {
   }, [urlTokenMint, location.pathname]);
 
   const mint = detectedTokenMint;
+
+  // Fetch generation settings when mint changes
+  useEffect(() => {
+    if (!mint) return;
+
+    const fetchGenerationSettings = async () => {
+      if (!mint) return;
+
+      try {
+        const response = await fetch(`${env.apiUrl}/api/generation/${mint}/settings`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch generation settings");
+        }
+        const data = await response.json();
+        if (data.success && data.settings.audioContextUrl) {
+          setExistingAudioUrl(data.settings.audioContextUrl);
+        }
+      } catch (error) {
+        console.error("Error fetching generation settings:", error);
+      }
+    };
+
+    fetchGenerationSettings();
+  }, [mint]);
 
   const { control, handleSubmit, reset } = useForm<FormData>({
     defaultValues: {
@@ -438,6 +466,64 @@ export default function AdminTab() {
 
   const queryClient = useQueryClient();
 
+  // Add these new functions for audio handling
+  const handleAudioSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Please select an audio file");
+      return;
+    }
+
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File is too large. Please select an audio file less than 10MB.");
+      return;
+    }
+
+    setSelectedAudioFile(file);
+  };
+
+  const handleAudioUpload = async () => {
+    if (!mint || !selectedAudioFile) return;
+
+    setIsUploadingAudio(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", selectedAudioFile);
+
+      const authToken = localStorage.getItem("authToken");
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${JSON.parse(authToken || "{}")}`,
+      };
+
+      const response = await fetch(`${env.apiUrl}/api/token/${mint}/audio-context`, {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload audio context");
+      }
+
+      toast.success("Audio context uploaded successfully");
+      setSelectedAudioFile(null);
+      setAudioTimestamp(Date.now());
+      if (audioInputRef.current) {
+        audioInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Error uploading audio:", error);
+      toast.error("Failed to upload audio context");
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 flex items-center justify-center">
@@ -657,6 +743,70 @@ export default function AdminTab() {
                   ? "Unhide Token"
                   : "Hide Token"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Audio Context Section - Only show for token owner */}
+      {isTokenOwner && (
+        <div className="mt-6 pt-4 border-t border-autofun-border">
+          <h4 className="text-md font-semibold mb-3 text-autofun-text-secondary">
+            Audio Context
+          </h4>
+          <div className="flex flex-col gap-4 max-w-2xl">
+            <p className="text-sm text-autofun-text-secondary">
+              Upload an audio file to use as context for music generation. This will be used instead of the default audio context.
+            </p>
+            <div className="flex flex-col gap-2">
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioSelect}
+                ref={audioInputRef}
+                className="file:border file:border-[#03FF24] file:mr-4 file:py-2 file:px-4 file:border-solid file:text-sm file:bg-transparent file:text-[#03FF24] file:cursor-pointer file:hover:bg-[#03FF24]/10 text-[#03FF24]"
+              />
+              {selectedAudioFile && (
+                <span className="text-sm text-autofun-text-secondary">
+                  {selectedAudioFile.name}
+                </span>
+              )}
+              {existingAudioUrl && !selectedAudioFile && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 mb-4">
+                    <AudioPlayer src={`${existingAudioUrl}?t=${audioTimestamp}`} />
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                    <div className="flex relative w-full">
+                      <div className="bg-autofun-background-input flex justify-between py-2 pl-1 pr-3 min-w-0 w-full relative">
+                        <span className="mx-auto w-0 flex-1 min-w-0 block text-sm text-autofun-text-secondary truncate pr-6 pl-1">
+                          {existingAudioUrl.replace(/^https?:\/\//, '')}
+                        </span>
+                      </div>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-autofun-background-input">
+                        <CopyButton text={existingAudioUrl} />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => audioInputRef.current?.click()}
+                      className="text-sm text-[#03FF24] hover:text-[#03FF24]/80 transition-colors ml-2"
+                    >
+                      Replace
+                    </button>
+                  </div>
+                </div>
+              )}
+              {selectedAudioFile && (
+                <button
+                  type="button"
+                  onClick={handleAudioUpload}
+                  disabled={isUploadingAudio}
+                  className="px-4 py-2 text-sm bg-[#03FF24] text-black hover:bg-[#03FF24]/80 transition-colors disabled:opacity-50 w-fit"
+                >
+                  {isUploadingAudio ? "Uploading..." : "Upload"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

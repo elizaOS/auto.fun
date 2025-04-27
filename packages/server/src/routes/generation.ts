@@ -12,6 +12,8 @@ import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
 import { createTokenPrompt } from "../prompts/create-token";
 import { enhancePrompt } from "../prompts/enhance-prompt";
+import { getS3Client } from "../s3Client";
+import { GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 // Enum for media types
 export enum MediaType {
@@ -236,15 +238,15 @@ export async function checkTokenOwnership(
       // User is in token holders list, check if they have enough tokens
       // const holder = holderQuery[0];
       const decimals = 6; // Assume 6 decimals, or fetch from tokenInfo if needed
-      const holdingAmount = specificHolderData.amount; // Amount is already adjusted in updateHoldersCache?
-      // Assuming amount stored is the raw amount, needs division
-      const holdingUiAmount = holdingAmount / Math.pow(10, decimals);
+      const holdingAmount = specificHolderData.amount;
+      // Convert minimum required to raw amount for comparison
+      const minimumRequiredRaw = minimumRequired * Math.pow(10, decimals);
 
-      // if (holdingAmount >= minimumRequired) { // Compare raw amounts if minimum is raw
-      if (holdingUiAmount >= minimumRequired) {
-        // Compare UI amounts
+      if (holdingAmount >= minimumRequiredRaw) { // Compare raw amounts
         return { allowed: true };
       } else {
+        // Convert back to UI amount for the error message
+        const holdingUiAmount = holdingAmount / Math.pow(10, decimals);
         return {
           allowed: false,
           message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingUiAmount.toFixed(2)}.`,
@@ -354,7 +356,10 @@ async function generateLyrics(
     Format the lyrics with timestamps in the format [MM:SS.mm] at the start of each line.
     Include at least two sections: a verse and a chorus.
     Each section should be marked with [verse] or [chorus] at the start.
-    Make the lyrics creative and engaging.
+
+    The lyrics should be concise and focused on the content of the prompt
+
+
     Output ONLY the formatted lyrics.
 
     Example format:
@@ -369,18 +374,14 @@ async function generateLyrics(
     [00:12.50] Third line of chorus`;
 
     const falInput = {
-      model: "gemini-2.0-flash-001",
+      model: "anthropic/claude-3.5-sonnet" as const,
       system_prompt: systemPrompt,
       prompt: "Generate the lyrics based on the system prompt instructions.",
       // Temperature adjustment might need different handling with Fal
     };
 
     const response: any = await fal.subscribe("fal-ai/any-llm", {
-      input: {
-        prompt: falInput.prompt,
-        system_prompt: falInput.system_prompt,
-        model: "google/gemini-flash-1.5",
-      },
+      input: falInput,
       logs: true, // Optional: for debugging
     });
 
@@ -462,6 +463,50 @@ async function generateLyrics(
      return `[verse]\n[00:00.00] Error generating lyrics for ${tokenMetadata.name}.`;
     // OR re-throw if generateMedia should handle the error
     // throw error;
+  }
+}
+
+async function generateStylePrompt(
+  userPrompt: string
+): Promise<string> {
+  try {
+    if (!process.env.FAL_API_KEY) {
+      throw new Error(
+        "FAL_API_KEY environment variable not set for style generation."
+      );
+    }
+    fal.config({ credentials: process.env.FAL_API_KEY });
+
+    const prompt = `Prompt: ${userPrompt}
+  
+    Generate a style for this prompt. An example of a style is "pop", "rock", "EDM", etc. Return only the style, nothing else.`;
+
+    const falInput = {
+      model: "anthropic/claude-3.5-sonnet" as const,
+      prompt: prompt,
+    };
+
+    const response: any = await fal.subscribe("fal-ai/any-llm", {
+      input: falInput,
+      logs: true,
+    });
+
+    let style = response?.data?.output || response?.output || "";
+    style = style.trim();
+
+    if (!style || style.length < 10) {
+      logger.error(
+        "Failed to generate valid style from Fal AI. Response:",
+        style
+      );
+      return "An upbeat modern pop song"; // Default fallback style
+    }
+
+    return style;
+
+  } catch (error) {
+    logger.error("Error generating style:", error);
+    return "An upbeat modern pop song"; // Default fallback style on error
   }
 }
 
@@ -553,6 +598,7 @@ export async function generateMedia(data: {
   music_duration?: string;
   cfg_strength?: number;
   scheduler?: string;
+  mint?: string; // Add mint property
 }) {
   // Set default timeout - shorter for tests
   const timeout = 300000;
@@ -652,30 +698,63 @@ export async function generateMedia(data: {
   // --- Audio Generation --- (Existing Fal Logic)
   else if (data.type === MediaType.AUDIO) {
     logger.log("Using Fal AI for audio generation...");
-    let lyricsToUse: string | undefined = data.lyrics; // Explicitly allow undefined initially
+    let lyricsToUsePromise;
 
-    if (!lyricsToUse) {
+    const stylePrompt = await generateStylePrompt(data.prompt);
+
+    if (!data.lyrics) {
       logger.log("Generating lyrics for audio...");
       // generateLyrics now guarantees a string return
-      lyricsToUse = await generateLyrics(
+      lyricsToUsePromise = generateLyrics(
         {
           name: data.prompt.split(":")[0] || "",
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
         },
-        data.style_prompt
+        data.style_prompt || stylePrompt
       );
+    }
+
+    const lyricsToUse = await (lyricsToUsePromise || (async () => data.lyrics)());
+
+    if(!lyricsToUse) {
+      throw new Error("No lyrics found");
     }
 
     // lyricsToUse is now guaranteed to be a string here
     const formattedLyrics = formatLyricsForDiffrhythm(lyricsToUse); // Now safe to call
 
+    // Check for existing audio context file in S3
+    const { client: s3Client, bucketName } = await getS3Client();
+    const audioContextPrefix = `token-settings/${data.mint}/audio/context-${data.mint}`;
+    
+    let referenceAudioUrl = data.reference_audio_url;
+    
+    try {
+      const listCmd = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: audioContextPrefix,
+        MaxKeys: 1
+      });
+      
+      const listResponse = await s3Client.send(listCmd);
+      const audioContextKey = listResponse.Contents?.[0]?.Key;
+      if (audioContextKey) {
+        referenceAudioUrl = `${process.env.S3_PUBLIC_URL}/${audioContextKey}?t=${Date.now()}`;
+        logger.log("Using existing audio context file:", referenceAudioUrl);
+      } else {
+        logger.log("No existing audio context file found, using default");
+        referenceAudioUrl = referenceAudioUrl || "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav";
+      }
+    } catch (error) {
+      logger.error("Error checking for audio context file:", error);
+      referenceAudioUrl = referenceAudioUrl || "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav";
+    }
+
     const input = {
       lyrics: formattedLyrics,
-      reference_audio_url:
-        data.reference_audio_url ||
-        "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
-      style_prompt: data.style_prompt || "pop",
+      reference_audio_url: referenceAudioUrl,
+      style_prompt: data.style_prompt || stylePrompt,
       music_duration: data.music_duration || "95s",
       cfg_strength: data.cfg_strength || 4,
       scheduler: data.scheduler || "euler",
@@ -2416,6 +2495,7 @@ app.post("/enhance-and-generate", async (c) => {
       prompt: enhancedPrompt,
       type: mediaType,
       mode,
+      mint: tokenMint // Add mint parameter
     };
 
     // Add optional parameters based on media type
@@ -2537,7 +2617,7 @@ app.post("/enhance-and-generate", async (c) => {
         Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS
       ).toISOString(),
     };
-
+    
     // Add lyrics to response if available
     if (mediaType === MediaType.AUDIO) {
       if (result.data?.lyrics) {
@@ -2562,6 +2642,73 @@ app.post("/enhance-and-generate", async (c) => {
             ? error.message
             : "Unknown error generating media",
       },
+      500
+    );
+  }
+});
+
+// Get generation settings for a token
+app.get("/:mint/settings", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB();
+
+    // Get token metadata from database
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!token || token.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Check for audio context file in S3
+    const { client: s3Client, bucketName } = await getS3Client();
+    const audioContextPrefix = `token-settings/${mint}/audio/context-${mint}`;
+    
+    try {
+      const listCmd = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: audioContextPrefix,
+        MaxKeys: 1
+      });
+      
+      const listResponse = await s3Client.send(listCmd);
+      const audioContextKey = listResponse.Contents?.[0]?.Key;
+      const audioContextUrl = audioContextKey ? `${process.env.S3_PUBLIC_URL}/${audioContextKey}` : null;
+
+      return c.json({
+        success: true,
+        settings: {
+          audioContextUrl,
+          tokenName: token[0].name,
+          tokenSymbol: token[0].ticker,
+          tokenDescription: token[0].description,
+        },
+      });
+    } catch (error) {
+      logger.error("Error checking for audio context file:", error);
+      return c.json({
+        success: true,
+        settings: {
+          audioContextUrl: null,
+          tokenName: token[0].name,
+          tokenSymbol: token[0].ticker,
+          tokenDescription: token[0].description,
+        },
+      });
+    }
+  } catch (error) {
+    logger.error("Error fetching generation settings:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
       500
     );
   }
