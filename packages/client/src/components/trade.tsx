@@ -19,7 +19,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
-  const [sellInputAmount, setSellInputAmount] = useState<string>("");
+  const [inputAmount, setInputAmount] = useState<string>("");
   const [slippage, setSlippage] = useState<number>(2);
   const { isAuthenticated } = useAuthentication();
 
@@ -183,8 +183,8 @@ export default function Trade({ token }: { token: IToken }) {
   };
 
   useEffect(() => {
-    setSellAmount(Number(sellInputAmount));
-  }, [sellInputAmount])
+    setSellAmount(Number(inputAmount));
+  }, [inputAmount])
 
   return (
     <div className="relative">
@@ -269,18 +269,18 @@ export default function Trade({ token }: { token: IToken }) {
                     if (decimal !== undefined) {
                       value = `${whole}.${decimal.slice(0, 18)}`;
                     }
-                    setSellInputAmount(value);
+                    setInputAmount(value);
                   }}
-                  value={sellInputAmount}
+                  value={inputAmount}
                   onBlur={({ target }) => {
                     let value = target.value;
 
                     const parsed = parseFloat(value);
                     if (!value || isNaN(parsed) || parsed <= 0) {
-                      setSellInputAmount('');
+                      setInputAmount('');
                     } else {
                       // Remove unnecessary decimals like ".0"
-                      setSellInputAmount(parsed.toString());
+                      setInputAmount(parsed.toString());
                     }
                   }}
                   placeholder="0"
