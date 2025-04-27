@@ -14,6 +14,7 @@ import Testing from "./pages/testing";
 import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 import Admin from "./pages/admin";
+import ChatPage from "./pages/chat";
 import { HelmetProvider } from "react-helmet-async";
 
 createRoot(document.getElementById("root")!).render(
@@ -33,6 +34,8 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/testing" element={<Testing />} />
           <Route path="/callback" element={<CallbackPage />} />
           <Route path="/callback-oauth1" element={<CallbackPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:mint" element={<ChatPage />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<PageNotFound />} />
         </Route>

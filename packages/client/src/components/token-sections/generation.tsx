@@ -7,6 +7,7 @@ import Button from "../button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import Loader from "../loader";
 import CopyButton from "../copy-button";
+import AudioPlayer from "../audio-player";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -388,7 +389,7 @@ export default function CommunityTab() {
       }
 
       // Log API URL to help debug
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${env.apiUrl}/api/generation/enhance-and-generate?t=${Date.now()}`;
 
       // Create headers
       const headers: Record<string, string> = {
@@ -608,7 +609,7 @@ export default function CommunityTab() {
       }
 
       // API endpoint
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${env.apiUrl}/api/generation/enhance-and-generate?t=${Date.now()}`;
 
       // Create headers
       const headers: Record<string, string> = {
@@ -1340,7 +1341,7 @@ export default function CommunityTab() {
       }
 
       // API endpoint
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${env.apiUrl}/api/generation/enhance-and-generate?t=${Date.now()}`;
       // Create headers
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -1371,6 +1372,11 @@ export default function CommunityTab() {
       // Add lyrics if we're using existing ones
       if (useExistingLyrics && editableLyrics) {
         requestBody.lyrics = editableLyrics;
+      }
+
+      // Add cache buster to reference_audio_url if it exists
+      if (requestBody.reference_audio_url) {
+        requestBody.reference_audio_url = `${requestBody.reference_audio_url}?t=${Date.now()}`;
       }
 
       // Call the API endpoint
@@ -1838,7 +1844,7 @@ export default function CommunityTab() {
             {communityTab === "Video" && videoMode === "image" ? (
               <div className="px-4">
                 {/* Image upload area for image-to-video */}
-                <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
+                <div className="border-2 border-dashed border-gray-600 p-4 mb-4">
                   {selectedImageForVideo ? (
                     <div className="relative">
                       <img
@@ -1991,7 +1997,7 @@ export default function CommunityTab() {
                       <img
                         src={tokenInfo?.image || "/logo.png"}
                         alt="Album Art"
-                        className="w-full h-full object-cover rounded-lg"
+                        className="w-full h-full object-cover"
                       />
                     </div>
 
@@ -2037,14 +2043,7 @@ export default function CommunityTab() {
 
                   {/* Audio Player */}
                   <div className="w-full">
-                    <audio
-                      src={generatedImage}
-                      controls
-                      className="w-full"
-                      autoPlay
-                    >
-                      Your browser does not support the audio element.
-                    </audio>
+                    <AudioPlayer src={generatedImage} />
                   </div>
                 </div>
               ) : communityTab === "Video" &&

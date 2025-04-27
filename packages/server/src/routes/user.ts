@@ -1,13 +1,16 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { Buffer } from 'node:buffer'; // Ensure Buffer is imported
 import randomAnimalName from 'random-animal-name'; // Import the library
-import { getDB, tokens, User, users } from "../db";
+import { getDB, tokens as tokensTable, User, users as usersTable } from "../db";
 import { uploadWithS3 } from "../uploader"; // Import the S3 uploader utility
 import { logger } from "../util";
 import { generateMedia, MediaType } from "./generation"; // Import generation utilities
-// Assume an auth middleware exists and is imported, e.g.:
-// import { authMiddleware } from "../middleware/auth";
+import { uploadToStorage } from "./files";
+import { Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, AccountLayout } from '@solana/spl-token';
+import { HTTPException } from 'hono/http-exception';
+import { getRpcUrl } from "../util"; // Ensure logger is imported and correct path for getRpcUrl
 
 // --- Random Name Generation (Using Library) ---
 function generateRandomName(): string {
@@ -22,8 +25,8 @@ export async function ensureUserProfile(address: string): Promise<User> {
     logger.log(`[ensureUserProfile] Checking for user: ${address}`);
     let userResult = await db
         .select()
-        .from(users)
-        .where(eq(users.address, address))
+        .from(usersTable)
+        .where(eq(usersTable.address, address))
         .limit(1);
 
     let user = userResult[0];
@@ -38,9 +41,9 @@ export async function ensureUserProfile(address: string): Promise<User> {
         };
         try {
             logger.log(`[ensureUserProfile] Inserting new user for ${address} with name ${defaultDisplayName}`);
-            await db.insert(users).values(newUserInsertData).returning();
+            await db.insert(usersTable).values(newUserInsertData).returning();
             logger.log(`[ensureUserProfile] Insert successful for ${address}. Refetching...`);
-            userResult = await db.select().from(users).where(eq(users.address, address)).limit(1);
+            userResult = await db.select().from(usersTable).where(eq(usersTable.address, address)).limit(1);
             user = userResult[0];
             if (!user) { 
                  logger.error(`[ensureUserProfile] CRITICAL: Failed find user profile immediately after creation for ${address}`);
@@ -52,7 +55,7 @@ export async function ensureUserProfile(address: string): Promise<User> {
             logger.error(`[ensureUserProfile] Insert error code: ${insertError.code}, constraint: ${insertError.constraint}`); // Log specific DB error details
             // Attempt to fetch again in case of race condition
             logger.log(`[ensureUserProfile] Attempting to fetch again after insert error for ${address}`);
-            userResult = await db.select().from(users).where(eq(users.address, address)).limit(1);
+            userResult = await db.select().from(usersTable).where(eq(usersTable.address, address)).limit(1);
             user = userResult[0];
             if (!user) { 
                  logger.error(`[ensureUserProfile] Still failed to find user profile after insert error for ${address}`);
@@ -77,9 +80,9 @@ export async function ensureUserProfile(address: string): Promise<User> {
              try {
                   logger.log(`[ensureUserProfile] Updating user ${address} with defaults:`, updatePayload);
                   await db
-                     .update(users)
+                     .update(usersTable)
                      .set(updatePayload)
-                     .where(eq(users.address, address));
+                     .where(eq(usersTable.address, address));
                   // Update the local user object after successful DB update
                   if (updatePayload.display_name) user.display_name = updatePayload.display_name;
                   if (updatePayload.profile_picture_url) user.profile_picture_url = updatePayload.profile_picture_url;
@@ -106,6 +109,122 @@ const app = new Hono<{
   };
 }>();
 
+// --- Define Specific Routes BEFORE Parameterized Routes --- 
+
+// --- GET /api/user/platform-tokens --- 
+// Moved this route definition *before* /:address
+// Assuming auth middleware runs before this route
+app.get('/platform-tokens', async (c) => {
+    const user = c.get('user'); 
+    if (!user || !user.publicKey) {
+        throw new HTTPException(401, { message: 'Authentication required.' });
+    }
+
+    const currentDb = getDB();
+    const connection = new Connection(getRpcUrl(), 'confirmed');
+    const ownerPublicKey = new PublicKey(user.publicKey);
+
+    logger.info(`Fetching platform tokens for user: ${user.publicKey}`);
+
+    try {
+        // 1. Get all token accounts owned by the user
+        const userTokenAccountsResponse = await connection.getTokenAccountsByOwner(
+            ownerPublicKey,
+            { programId: TOKEN_PROGRAM_ID },
+            { commitment: 'confirmed' }
+        );
+
+        // 2. Filter for accounts with balance > 0 and decode
+        const userHeldTokens = userTokenAccountsResponse.value
+            .map(accountInfo => {
+                try {
+                    const decoded = AccountLayout.decode(accountInfo.account.data);
+                    if (decoded.amount > BigInt(0)) {
+                        return {
+                            mint: new PublicKey(decoded.mint).toBase58(),
+                            amount: decoded.amount
+                        };
+                    }
+                } catch (e) {
+                    logger.warn(`Failed to decode token account ${accountInfo.pubkey.toBase58()}: ${e}`);
+                }
+                return null;
+            })
+            .filter((token): token is { mint: string; amount: bigint } => token !== null);
+
+        const userHeldMints = userHeldTokens.map(t => t.mint);
+        logger.log(`User ${user.publicKey} holds ${userHeldMints.length} unique token mints (with balance > 0).`);
+
+        if (userHeldMints.length === 0) {
+            return c.json({ success: true, tokens: [] });
+        }
+
+        // 3. Query DB for platform tokens held by the user
+        const platformHeldTokensData = await currentDb
+            .select({
+                mint: tokensTable.mint,
+                name: tokensTable.name,
+                ticker: tokensTable.ticker,
+                image: tokensTable.image,
+                decimals: tokensTable.tokenDecimals,
+                // Attempt to select fields needed for value calculation
+                marketCapUSD: tokensTable.marketCapUSD, 
+                solPriceUSD: tokensTable.solPriceUSD,
+                tokenSupplyUiAmount: tokensTable.tokenSupplyUiAmount,
+                // status: tokensTable.status, // Could also be useful
+            })
+            .from(tokensTable)
+            .where(inArray(tokensTable.mint, userHeldMints));
+
+        logger.log(`Found ${platformHeldTokensData.length} matching platform tokens held by user ${user.publicKey}. Selected fields including marketCapUSD, solPriceUSD, tokenSupplyUiAmount.`);
+
+        // 4. Combine data and format response (Matches ProfileToken structure)
+        const combinedTokens = platformHeldTokensData.map(platformToken => {
+            const userTokenData = userHeldTokens.find(ut => ut.mint === platformToken.mint);
+            const userAmount = userTokenData?.amount || BigInt(0);
+            const decimals = platformToken.decimals ?? 6;
+            const tokensHeldUi = Number(userAmount) / Math.pow(10, decimals);
+
+            // Calculate solValue if possible using fetched data
+            let calculatedSolValue = 0;
+            if (
+                platformToken.marketCapUSD && 
+                platformToken.solPriceUSD && 
+                platformToken.tokenSupplyUiAmount && 
+                platformToken.solPriceUSD > 0 && // Avoid division by zero
+                platformToken.tokenSupplyUiAmount > 0 // Avoid division by zero
+            ) {
+                const tokenPriceUSD = platformToken.marketCapUSD / platformToken.tokenSupplyUiAmount;
+                const priceSOL = tokenPriceUSD / platformToken.solPriceUSD;
+                calculatedSolValue = tokensHeldUi * priceSOL;
+            }
+
+            // TODO: Add bonding curve value calculation if necessary and data is available
+            // For now, we use the market cap calculation if possible, otherwise 0.
+
+            return {
+                mint: platformToken.mint,
+                name: platformToken.name ?? 'Unknown',
+                ticker: platformToken.ticker ?? '???',
+                image: platformToken.image ?? null,
+                tokensHeld: tokensHeldUi, // Return UI amount for frontend use
+                solValue: calculatedSolValue, // Use calculated value
+            };
+        });
+
+        return c.json({ success: true, tokens: combinedTokens });
+
+    } catch (error: any) {
+        logger.error(`Error fetching platform tokens for ${user.publicKey}:`, error);
+        if (error instanceof HTTPException) {
+            return error.getResponse();
+        }
+        return c.json({ success: false, error: 'Failed to fetch platform tokens.' }, 500);
+    }
+});
+
+// --- Define Parameterized Route AFTER Specific Routes ---
+
 app.get("/:address", async (c) => {
   const address = c.req.param("address");
   logger.log(`Address parameter: ${address}`);
@@ -126,8 +245,8 @@ app.get("/:address", async (c) => {
     const db = getDB();
     const tokensCreated = await db
       .select()
-      .from(tokens)
-      .where(eq(tokens.creator, address));
+      .from(tokensTable)
+      .where(eq(tokensTable.creator, address));
 
     const responseData = {
        user: {
@@ -215,10 +334,10 @@ app.put('/profile', async (c) => {
         }
 
         const db = getDB();
-        const updateResult = await db.update(users)
+        const updateResult = await db.update(usersTable)
                 .set(updateData)
-                .where(eq(users.address, userPublicKey))
-                .returning({ updatedAddress: users.address });
+                .where(eq(usersTable.address, userPublicKey))
+                .returning({ updatedAddress: usersTable.address });
 
          if (!updateResult || updateResult.length === 0) {
                logger.warn(`Profile update failed for user: ${userPublicKey}`);
@@ -256,66 +375,52 @@ app.put('/profile', async (c) => {
 // --- End PUT /users/profile ---
 
 // --- POST /users/profile/picture - Upload Profile Picture ---
-// TODO: Add actual file handling middleware (e.g., hono/multer or custom)
-// For now, assume file buffer is available (this part needs real implementation)
 app.post('/profile/picture', async (c) => {
-     const currentUser = c.var.user;
+    const currentUser = c.var.user;
     if (!currentUser || !currentUser.publicKey) {
         return c.json({ error: "Unauthorized" }, 401);
     }
     const userPublicKey = currentUser.publicKey;
 
     try {
-        // --- !!! Placeholder for actual file reading !!! ---
-        // You'll need middleware to parse multipart/form-data
-        // Example structure assuming middleware adds file to context:
-        // const file = c.get('file'); // Hypothetical
-        // if (!file || !file.buffer || !file.mimetype) { // Hypothetical file structure
-        //     return c.json({ error: "No image file uploaded or invalid format." }, 400);
-        // }
-        // const imageBuffer = file.buffer;
-        // const contentType = file.mimetype;
-
-        // --- !!! TEMPORARY Hardcoded Placeholder !!! ---
-        console.warn("Profile picture upload endpoint hit, but file handling is NOT implemented.");
-        // Simulate reading a file for demonstration (replace with real logic)
-        const imageBuffer = Buffer.from("fake-image-data"); // Replace with actual file buffer
-        const contentType = "image/png"; // Replace with actual file content type
-        // --- !!! End Placeholder !!! ---
-
-        // Basic Validation (add more robust checks)
-        if (!contentType.startsWith("image/")) {
-             return c.json({ error: "Invalid file type. Please upload an image (JPEG, PNG, GIF, WebP)." }, 400);
-        }
-        if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB Limit
-             return c.json({ error: "Image file size exceeds 5MB limit." }, 400);
+        const formData = await c.req.formData();
+        const file = formData.get('profilePicture') as File;
+        
+        if (!file) {
+            return c.json({ error: "No file uploaded" }, 400);
         }
 
-        // Generate a unique filename for storage
-        const ext = contentType.split('/')[1] || 'png';
+        if (!file.type.startsWith('image/')) {
+            return c.json({ error: "Invalid file type. Please upload an image." }, 400);
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            return c.json({ error: "File size exceeds 5MB limit" }, 400);
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const imageBuffer = Buffer.from(arrayBuffer);
+
+        const ext = file.type.split('/')[1] || 'png';
         const filename = `profile_${userPublicKey}_${Date.now()}.${ext}`;
+        const key = `profile-pictures/${filename}`;
 
-        // Upload to S3 (or your chosen storage)
-        const imageUrl = await uploadWithS3(imageBuffer, {
-             filename,
-             contentType,
-             basePath: 'profile-pictures' // Example storage path
+        const imageUrl = await uploadToStorage(imageBuffer, {
+            contentType: file.type,
+            key: key
         });
 
         if (!imageUrl) {
-             throw new Error("Failed to upload image to storage.");
+            throw new Error("Failed to upload image to storage");
         }
 
-        // Ensure user profile exists
         await ensureUserProfile(userPublicKey);
 
-        // Update the user's profile picture URL in the database
         const db = getDB();
-        await db.update(users)
+        await db.update(usersTable)
              .set({ profile_picture_url: imageUrl })
-             .where(eq(users.address, userPublicKey));
+             .where(eq(usersTable.address, userPublicKey));
 
-        // Fetch the updated user profile to return
         const updatedUser = await ensureUserProfile(userPublicKey);
 
         return c.json({
@@ -426,9 +531,9 @@ app.post('/profile/picture/generate', async (c) => {
 
         // 7. Update user record in DB
         const db = getDB();
-        await db.update(users)
+        await db.update(usersTable)
             .set({ profile_picture_url: storageUrl })
-            .where(eq(users.address, userPublicKey));
+            .where(eq(usersTable.address, userPublicKey));
 
         // 8. Fetch the final updated user profile
         const updatedUser = await ensureUserProfile(userPublicKey);

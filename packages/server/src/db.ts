@@ -107,6 +107,7 @@ export const messages = pgTable("messages", {
   likes: integer("likes").notNull().default(0),
   timestamp: timestamp("timestamp").notNull(),
   tier: text("tier").notNull().default("1"),
+  media: text("media"),
 });
 
 // User schema

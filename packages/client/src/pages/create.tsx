@@ -1853,7 +1853,10 @@ export default function Create() {
 
     setIsGeneratingVanity(true);
 
-    const numWorkers = navigator.hardwareConcurrency || 4;
+    const numWorkers =
+      navigator.hardwareConcurrency > 12
+        ? 8
+        : navigator.hardwareConcurrency || 4;
     startTimeRef.current = Date.now();
     workersRef.current = [];
 
@@ -2800,12 +2803,12 @@ export default function Create() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      {showCoinDrop && (
+      {/* {showCoinDrop ? (
         <CoinDrop
           imageUrl={coinDropImageUrl || undefined}
           onCancel={handleCoinDropCancel}
         />
-      )}
+      ) : null} */}
 
       <form
         className="py-4 px-4 px-auto w-full max-w-5xl flex font-dm-mono flex-col m-auto gap-8 justify-center"

@@ -3,7 +3,6 @@ import { and, count, desc, eq, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Hono } from "hono";
 import { Buffer } from "node:buffer";
-import { verifyAuth } from "../auth";
 import { getDB, Token, tokens, users } from "../db";
 import { logger } from "../logger";
 import { getS3Client } from "../s3Client"; // Import shared S3 client
@@ -67,9 +66,6 @@ const requireAdminOrModerator = async (c: any, next: Function) => {
   c.set('isFullAdmin', false);
   await next();
 };
-
-// Apply authentication middleware to all routes
-adminRouter.use("*", verifyAuth);
 
 // Route to update a token's social links
 adminRouter.post("/tokens/:mint/social", requireAdminOrModerator, async (c) => {

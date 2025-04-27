@@ -213,7 +213,7 @@ const EditableProfileHeader = ({
         </div>
 
         {isCurrentUser && editError && (
-          <div className="mt-1 p-2 bg-red-900/30 border border-red-800 text-red-200 rounded-md text-sm">
+          <div className="mt-1 p-2 bg-red-900/30 border border-red-800 text-red-200 text-sm">
             {editError}
           </div>
         )}

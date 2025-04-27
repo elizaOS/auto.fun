@@ -6,74 +6,90 @@ import {
 } from "@tanstack/react-table";
 import { ProfileToken } from "../types/profileTypes";
 import { Link } from "react-router-dom";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 
 const columnHelper = createColumnHelper<ProfileToken>();
 
-const columns = [
-  columnHelper.display({
-    id: "token",
-    header: "Token",
-    cell: ({ row }) => {
-      const { image, name, ticker, mint } = row.original;
+const getColumns = (solPrice: number) => {
+  const columns = [
+    columnHelper.display({
+      id: "token",
+      header: "Token",
+      cell: ({ row }) => {
+        const { image, name, ticker, mint } = row.original;
 
-      return (
-        <div className="flex gap-2 items-center">
-          <img
-            src={image ?? ""}
-            alt="token image"
-            className="h-4 w-4 rounded-full"
-          />
+        return (
+          <div className="flex gap-2 items-center">
+            <img
+              src={image ?? ""}
+              alt="token image"
+              className="h-4 w-4 rounded-full"
+            />
 
-          <Link to={`/token/${mint}`} className="hover:text-blue-500">
-            <span>{name}</span>{" "}
-            <span className="text-[#8C8C8C]">${ticker}</span>
+            <Link to={`/token/${mint}`} className="hover:text-blue-500">
+              <span>{name}</span>{" "}
+              <span className="text-[#8C8C8C]">${ticker}</span>
+            </Link>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor("tokensHeld", {
+      header: "Amount",
+      cell: ({ cell }) => (cell.getValue() ?? 0).toLocaleString(),
+    }),
+    columnHelper.accessor("solValue", {
+      header: "SOL",
+      cell: ({ cell }) => cell.getValue()?.toFixed(4),
+    }),
+
+    columnHelper.accessor("dollarValue", {
+      header: "Value",
+      cell: ({ row }) => {
+        const solValue = Number(row.original.solValue ?? 0);
+        const dollarValue = solValue * (solPrice ?? 0);
+        return `$${dollarValue.toFixed(2)}`;
+      },
+    }),
+
+    columnHelper.accessor("mint", {
+      header: "View",
+      cell: ({ cell }) => {
+        const mint = cell.getValue();
+
+        return (
+          <Link to={`/token/${mint}`} className="flex justify-end">
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 17 17"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M0 8.5C0 3.8 3.8 0 8.5 0C13.2 0 17 3.8 17 8.5C17 13.2 13.2 17 8.5 17C3.8 17 0 13.2 0 8.5ZM16 8.5C16 4.35 12.65 1 8.5 1C4.35 1 1 4.35 1 8.5C1 12.65 4.35 16 8.5 16C12.65 16 16 12.65 16 8.5Z"
+                fill="white"
+              />
+              <path
+                d="M7.6502 12.6504L11.8002 8.50039L7.6502 4.35039L8.3502 3.65039L13.2002 8.50039L8.3502 13.3504L7.6502 12.6504Z"
+                fill="white"
+              />
+              <path d="M12.5 8V9H4V8L12.5 8Z" fill="white" />
+            </svg>
           </Link>
-        </div>
-      );
-    },
-  }),
-  columnHelper.accessor("tokensHeld", {
-    header: "Amount",
-    cell: ({ cell }) => (cell.getValue() ?? 0).toLocaleString(),
-  }),
-  columnHelper.accessor("solValue", {
-    header: "SOL",
-    cell: ({ cell }) => cell.getValue()?.toFixed(4),
-  }),
-  columnHelper.accessor("mint", {
-    header: "View",
-    cell: ({ cell }) => {
-      const mint = cell.getValue();
-
-      return (
-        <Link to={`/token/${mint}`} className="flex justify-end">
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 17 17"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 8.5C0 3.8 3.8 0 8.5 0C13.2 0 17 3.8 17 8.5C17 13.2 13.2 17 8.5 17C3.8 17 0 13.2 0 8.5ZM16 8.5C16 4.35 12.65 1 8.5 1C4.35 1 1 4.35 1 8.5C1 12.65 4.35 16 8.5 16C12.65 16 16 12.65 16 8.5Z"
-              fill="white"
-            />
-            <path
-              d="M7.6502 12.6504L11.8002 8.50039L7.6502 4.35039L8.3502 3.65039L13.2002 8.50039L8.3502 13.3504L7.6502 12.6504Z"
-              fill="white"
-            />
-            <path d="M12.5 8V9H4V8L12.5 8Z" fill="white" />
-          </svg>
-        </Link>
-      );
-    },
-  }),
-];
+        );
+      },
+    }),
+  ];
+  return columns;
+};
 
 export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
+  const { solPrice } = useSolPriceContext();
+
   const table = useReactTable({
     data: tokens,
-    columns,
+    columns: getColumns(solPrice ?? 145),
     getCoreRowModel: getCoreRowModel(),
   });
 

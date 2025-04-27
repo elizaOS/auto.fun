@@ -36,13 +36,8 @@ import {
 } from "../tokenSupplyHelpers";
 import { getS3Client } from "../s3Client"; // Import shared S3 client function
 import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relative to src
-
-// Basic logger implementation (Re-added)
-const logger = {
-  log: (...args: any[]) => console.log("[INFO]", ...args),
-  warn: (...args: any[]) => console.warn("[WARN]", ...args),
-  error: (...args: any[]) => console.error("[ERROR]", ...args),
-};
+import { logger } from "../util";
+import { uploadToStorage } from "./files";
 
 // --- Validation Function ---
 async function validateQueryResults(
@@ -2447,5 +2442,62 @@ async function uploadImportImage(c: Context) {
 
 // Add the upload-import-image route to the router
 tokenRouter.post("/upload-import-image", uploadImportImage);
+
+// Add this after other token routes
+tokenRouter.post("/token/:mint/audio-context", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    const user = c.get("user");
+    
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    // Get the form data
+    const formData = await c.req.formData();
+    const audioFile = formData.get("audio") as File;
+    
+    if (!audioFile) {
+      return c.json({ error: "No audio file provided" }, 400);
+    }
+
+    // Validate file type
+    if (!audioFile.type.startsWith("audio/")) {
+      return c.json({ error: "Invalid file type. Please upload an audio file." }, 400);
+    }
+
+    // Check file size (10MB limit)
+    if (audioFile.size > 10 * 1024 * 1024) {
+      return c.json({ error: "File size exceeds 10MB limit" }, 400);
+    }
+
+    // Read the file into a buffer
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Determine file extension from content type
+    let extension = ".wav"; // Default
+    if (audioFile.type.includes("mp3")) extension = ".mp3";
+    else if (audioFile.type.includes("ogg")) extension = ".ogg";
+    else if (audioFile.type.includes("m4a")) extension = ".m4a";
+
+    // Create the object key
+    const objectKey = `token-settings/${mint}/audio/context-${mint}${extension}`;
+
+    // Upload to storage using existing function
+    const publicUrl = await uploadToStorage(buffer, {
+      contentType: audioFile.type,
+      key: objectKey,
+    });
+
+    return c.json({
+      success: true,
+      url: publicUrl,
+    });
+  } catch (error) {
+    logger.error("Error uploading audio context:", error);
+    return c.json({ error: "Failed to upload audio context" }, 500);
+  }
+});
 
 export default tokenRouter;
