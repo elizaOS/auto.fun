@@ -2859,62 +2859,62 @@ export default function Create() {
             <div className="flex flex-col gap-4">
               <p className="text-white font-satoshi font-bold text-lg underline decoration-[#03FF24] underline-offset-4">COIN CREATION PROMPT</p>
               <div className="relative flex flex-col md:flex-row md:items-stretch w-full">
-  <textarea
-    value={userPrompt}
-    onChange={(e) => setUserPrompt(e.target.value)}
-    onKeyDown={(e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-      }
-    }}
-    placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-    rows={3}
-    className="flex-1 my-2 p-2.5 border-b-2 border-[#262626] bg-[#121212] text-white font-satoshi focus:border-b-[#03FF24] focus:ring-0 focus:outline-none resize-none md:my-0 md:pr-[11rem]"
-  />
-  <button
-    type="button"
-    onClick={generateFromPrompt}
-    disabled={isProcessingPrompt || !userPrompt.trim()}
-    className="p-0 transition-colors disabled:opacity-50 w-max h-20 md:h-full md:absolute md:right-0 md:top-0 md:bottom-0 md:my-0 md:rounded-none mr-2"
-    style={{ marginTop: "0.5rem" }}
-  >
-    <img
-      src={
-        isProcessingPrompt
-          ? "/create/generating.svg"
-          : "/create/generateup.svg"
-      }
-      alt="Generate"
-      className="w-32 ml-2 h-24"
-      onMouseDown={(e) => {
-        const img = e.target as HTMLImageElement;
-        if (!isProcessingPrompt) {
-          img.src = "/create/generatedown.svg";
-        }
-      }}
-      onMouseUp={(e) => {
-        const img = e.target as HTMLImageElement;
-        if (!isProcessingPrompt) {
-          img.src = "/create/generateup.svg";
-        }
-      }}
-      onDragStart={(e) => {
-        e.preventDefault();
-        const img = e.target as HTMLImageElement;
-        if (!isProcessingPrompt) {
-          img.src = "/create/generateup.svg";
-        }
-      }}
-      onMouseOut={(e) => {
-        e.preventDefault();
-        const img = e.target as HTMLImageElement;
-        if (!isProcessingPrompt) {
-          img.src = "/create/generateup.svg";
-        }
-      }}
-    />
-  </button>
-</div>
+                <textarea
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                    }
+                  }}
+                  placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
+                  rows={3}
+                  className="flex-1 my-2 p-2.5 border-b-2 border-[#262626] bg-[#121212] text-white font-satoshi focus:border-b-[#03FF24] focus:ring-0 focus:outline-none resize-none md:my-0 md:pr-[11rem]"
+                />
+                <button
+                  type="button"
+                  onClick={generateFromPrompt}
+                  disabled={isProcessingPrompt || !userPrompt.trim()}
+                  className="p-0 transition-colors disabled:opacity-50 w-max h-20 md:h-full md:absolute md:right-0 md:top-0 md:bottom-0 md:my-0 md:rounded-none mr-2"
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  <img
+                    src={
+                      isProcessingPrompt
+                        ? "/create/generating.svg"
+                        : "/create/generateup.svg"
+                    }
+                    alt="Generate"
+                    className="w-32 ml-2 h-24"
+                    onMouseDown={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generatedown.svg";
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                    onDragStart={(e) => {
+                      e.preventDefault();
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      e.preventDefault();
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                  />
+                </button>
+              </div>
             </div>
             {errors.userPrompt && (
               <div className="text-red-500 text-sm">{errors.userPrompt}</div>
@@ -3081,6 +3081,58 @@ export default function Create() {
                   tickerValue={form.symbol}
                   onTickerChange={(value) => handleChange("symbol", value)}
                   key={`image-input-${activeTab}`} // Force rerender on tab change
+                />
+
+                {/* Name Field */}
+                <FormInput
+                  value={form.name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("name", e.target.value)
+                  }
+                  label="Name"
+                  placeholder="Token Name"
+                  maxLength={32} // Assuming a max length
+                  error={errors.name}
+                  isLoading={isGenerating && generatingField === "name"}
+                />
+
+                {/* Symbol (Ticker) Field */}
+                <FormInput
+                  value={form.symbol}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("symbol", e.target.value.toUpperCase())
+                  }
+                  label="Ticker"
+                  placeholder="SYMBOL"
+                  maxLength={10} // Assuming a max length
+                  error={errors.symbol}
+                  isLoading={isGenerating && generatingField === "symbol"}
+                />
+
+                {/* Name Field */}
+                <FormInput
+                  value={form.name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("name", e.target.value)
+                  }
+                  label="Name"
+                  placeholder="Token Name"
+                  maxLength={32} // Assuming a max length
+                  error={errors.name}
+                  isLoading={isGenerating && generatingField === "name"}
+                />
+
+                {/* Symbol (Ticker) Field */}
+                <FormInput
+                  value={form.symbol}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("symbol", e.target.value.toUpperCase())
+                  }
+                  label="Ticker"
+                  placeholder="SYMBOL"
+                  maxLength={10} // Assuming a max length
+                  error={errors.symbol}
+                  isLoading={isGenerating && generatingField === "symbol"}
                 />
 
                 {/* Description Field */}
