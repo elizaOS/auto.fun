@@ -99,11 +99,12 @@ api.use("*", verifyAuth); // Ensure auth applies to all /api routes
 
 // --- Mount existing routers ---
 // Ensure these routers don't rely on Cloudflare `process.env` bindings without adaptation
-api.route("/", generationRouter);
+api.route("/generation", generationRouter);
 api.route("/", tokenRouter);
-api.route("/", agentRouter);
+
 api.route("/", fileRouter);
 api.route("/", authRouter);
+api.route("/", agentRouter);
 api.route("/", swapRouter);
 api.route("/", chatRouter);
 api.route("/share", shareRouter);

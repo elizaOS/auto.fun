@@ -7,7 +7,7 @@ import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
@@ -19,6 +19,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
+  const [inputAmount, setInputAmount] = useState<string>("");
   const [slippage, setSlippage] = useState<number>(2);
   const { isAuthenticated } = useAuthentication();
 
@@ -181,6 +182,10 @@ export default function Trade({ token }: { token: IToken }) {
     setSellAmount(0);
   };
 
+  useEffect(() => {
+    setSellAmount(Number(inputAmount));
+  }, [inputAmount]);
+
   return (
     <div className="relative">
       <div className="grid grid-cols-1 gap-4">
@@ -238,7 +243,7 @@ export default function Trade({ token }: { token: IToken }) {
                 <input
                   className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
                   min={0}
-                  type="number"
+                  type="text"
                   onKeyDown={(e) => {
                     if (
                       e.key === "-" ||
@@ -250,15 +255,34 @@ export default function Trade({ token }: { token: IToken }) {
                     }
                   }}
                   onChange={({ target }) => {
-                    const value = target.value;
-                    const [whole, decimal] = value.split(".");
-                    const formattedValue = decimal
-                      ? `${whole}.${decimal.slice(0, 18)}`
-                      : value;
+                    let value = target.value;
+                    if (!/^\d*\.?\d*$/.test(value)) {
+                      return; // invalid input, ignore
+                    }
+                    // If value starts with multiple zeros, trim them
+                    if (/^0[0-9]+/.test(value)) {
+                      value = value.replace(/^0+/, "");
+                      if (value === "") value = "0"; // If all removed, fallback to single '0'
+                    }
 
-                    setSellAmount(Number(formattedValue));
+                    const [whole, decimal] = value.split(".");
+                    if (decimal !== undefined) {
+                      value = `${whole}.${decimal.slice(0, 18)}`;
+                    }
+                    setInputAmount(value);
                   }}
-                  value={sellAmount === 0 ? "" : sellAmount}
+                  value={inputAmount}
+                  onBlur={({ target }) => {
+                    const value = target.value;
+
+                    const parsed = parseFloat(value);
+                    if (!value || isNaN(parsed) || parsed <= 0) {
+                      setInputAmount("");
+                    } else {
+                      // Remove unnecessary decimals like ".0"
+                      setInputAmount(parsed.toString());
+                    }
+                  }}
                   placeholder="0"
                 />
                 <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">

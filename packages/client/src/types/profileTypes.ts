@@ -4,5 +4,6 @@ export type ProfileToken = {
   ticker: string;
   tokensHeld: bigint;
   solValue: number;
+  dollarValue?: number;
   mint: string;
 };
