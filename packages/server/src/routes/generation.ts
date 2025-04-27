@@ -238,15 +238,15 @@ export async function checkTokenOwnership(
       // User is in token holders list, check if they have enough tokens
       // const holder = holderQuery[0];
       const decimals = 6; // Assume 6 decimals, or fetch from tokenInfo if needed
-      const holdingAmount = specificHolderData.amount; // Amount is already adjusted in updateHoldersCache?
-      // Assuming amount stored is the raw amount, needs division
-      const holdingUiAmount = holdingAmount / Math.pow(10, decimals);
+      const holdingAmount = specificHolderData.amount;
+      // Convert minimum required to raw amount for comparison
+      const minimumRequiredRaw = minimumRequired * Math.pow(10, decimals);
 
-      // if (holdingAmount >= minimumRequired) { // Compare raw amounts if minimum is raw
-      if (holdingUiAmount >= minimumRequired) {
-        // Compare UI amounts
+      if (holdingAmount >= minimumRequiredRaw) { // Compare raw amounts
         return { allowed: true };
       } else {
+        // Convert back to UI amount for the error message
+        const holdingUiAmount = holdingAmount / Math.pow(10, decimals);
         return {
           allowed: false,
           message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingUiAmount.toFixed(2)}.`,
