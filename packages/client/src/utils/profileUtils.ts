@@ -281,7 +281,8 @@ const useGetProfileTokens = () => {
   return getProfileTokens;
 };
 
-const useOwnedTokens = () => {
+// Make sure this hook is exported
+export const useOwnedTokens = () => {
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
   const getTokenMetadata = useTokenMetadata();

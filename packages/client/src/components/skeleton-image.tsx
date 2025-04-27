@@ -92,7 +92,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
     <div
       ref={ref}
       className={twMerge([
-        "size-full select-none",
+        "relative select-none",
         parentClassName ? parentClassName : "",
       ])}
     >

@@ -787,7 +787,7 @@ export default function Chat() {
         "relative flex flex-col bg-black/80 backdrop-blur-sm border border-gray-700/50 overflow-hidden shadow-xl",
         isChatFullscreen
           ? "fixed inset-0 z-50 rounded-none border-none"
-          : "h-[600px]",
+          : "h-full w-full",
       )}
     >
       <div className="flex-1 flex flex-col overflow-hidden">
