@@ -5,7 +5,7 @@ import randomAnimalName from 'random-animal-name'; // Import the library
 import { getDB, tokens as tokensTable, User, users as usersTable } from "../db";
 import { uploadWithS3 } from "../uploader"; // Import the S3 uploader utility
 import { logger } from "../util";
-import { generateMedia, MediaType } from "./generation"; // Import generation utilities
+import { generateMedia, MediaType } from "../generation"; // Import generation utilities
 import { uploadToStorage } from "./files";
 import { Connection, PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, AccountLayout } from '@solana/spl-token';
