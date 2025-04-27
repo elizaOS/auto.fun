@@ -243,7 +243,7 @@ export default function Trade({ token }: { token: IToken }) {
                 <input
                   className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
                   min={0}
-                  // type="number"
+                  type="text"
                   onKeyDown={(e) => {
                     if (
                       e.key === "-" ||
