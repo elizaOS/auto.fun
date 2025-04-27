@@ -181,7 +181,7 @@ export class ExternalToken {
       logger.log(`ExternalToken: Stored updated market/holder details in Redis for ${this.mint}`);
 
       // 4. Emit WebSocket updates (consider doing this outside if possible)
-      this.wsClient.to("global").emit("updateToken", combinedDetails.marketData);
+      this.wsClient.to(`token-${this.mint}`).emit("updateToken", combinedDetails.marketData);
       this.wsClient.to(`token-${this.mint}`).emit("newHolder", combinedDetails.holders);
 
       return combinedDetails;
