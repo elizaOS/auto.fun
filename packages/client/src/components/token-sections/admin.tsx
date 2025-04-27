@@ -763,7 +763,7 @@ export default function AdminTab() {
                 accept="audio/*"
                 onChange={handleAudioSelect}
                 ref={audioInputRef}
-                className="hidden"
+                className="file:border file:border-[#03FF24] file:mr-4 file:py-2 file:px-4 file:border-solid file:text-sm file:bg-transparent file:text-[#03FF24] file:cursor-pointer file:hover:bg-[#03FF24]/10 text-[#03FF24]"
               />
               {selectedAudioFile && (
                 <span className="text-sm text-autofun-text-secondary">

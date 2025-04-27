@@ -356,7 +356,10 @@ async function generateLyrics(
     Format the lyrics with timestamps in the format [MM:SS.mm] at the start of each line.
     Include at least two sections: a verse and a chorus.
     Each section should be marked with [verse] or [chorus] at the start.
-    Make the lyrics creative and engaging.
+
+    The lyrics should be concise and focused on the content of the prompt
+
+
     Output ONLY the formatted lyrics.
 
     Example format:
@@ -371,18 +374,14 @@ async function generateLyrics(
     [00:12.50] Third line of chorus`;
 
     const falInput = {
-      model: "gemini-2.0-flash-001",
+      model: "anthropic/claude-3.5-sonnet" as const,
       system_prompt: systemPrompt,
       prompt: "Generate the lyrics based on the system prompt instructions.",
       // Temperature adjustment might need different handling with Fal
     };
 
     const response: any = await fal.subscribe("fal-ai/any-llm", {
-      input: {
-        prompt: falInput.prompt,
-        system_prompt: falInput.system_prompt,
-        model: "google/gemini-flash-1.5",
-      },
+      input: falInput,
       logs: true, // Optional: for debugging
     });
 
@@ -464,6 +463,50 @@ async function generateLyrics(
      return `[verse]\n[00:00.00] Error generating lyrics for ${tokenMetadata.name}.`;
     // OR re-throw if generateMedia should handle the error
     // throw error;
+  }
+}
+
+async function generateStylePrompt(
+  userPrompt: string
+): Promise<string> {
+  try {
+    if (!process.env.FAL_API_KEY) {
+      throw new Error(
+        "FAL_API_KEY environment variable not set for style generation."
+      );
+    }
+    fal.config({ credentials: process.env.FAL_API_KEY });
+
+    const prompt = `Prompt: ${userPrompt}
+  
+    Generate a style for this prompt. An example of a style is "pop", "rock", "EDM", etc. Return only the style, nothing else.`;
+
+    const falInput = {
+      model: "anthropic/claude-3.5-sonnet" as const,
+      prompt: prompt,
+    };
+
+    const response: any = await fal.subscribe("fal-ai/any-llm", {
+      input: falInput,
+      logs: true,
+    });
+
+    let style = response?.data?.output || response?.output || "";
+    style = style.trim();
+
+    if (!style || style.length < 10) {
+      logger.error(
+        "Failed to generate valid style from Fal AI. Response:",
+        style
+      );
+      return "An upbeat modern pop song"; // Default fallback style
+    }
+
+    return style;
+
+  } catch (error) {
+    logger.error("Error generating style:", error);
+    return "An upbeat modern pop song"; // Default fallback style on error
   }
 }
 
@@ -655,19 +698,27 @@ export async function generateMedia(data: {
   // --- Audio Generation --- (Existing Fal Logic)
   else if (data.type === MediaType.AUDIO) {
     logger.log("Using Fal AI for audio generation...");
-    let lyricsToUse: string | undefined = data.lyrics; // Explicitly allow undefined initially
+    let lyricsToUsePromise;
 
-    if (!lyricsToUse) {
+    const stylePrompt = await generateStylePrompt(data.prompt);
+
+    if (!data.lyrics) {
       logger.log("Generating lyrics for audio...");
       // generateLyrics now guarantees a string return
-      lyricsToUse = await generateLyrics(
+      lyricsToUsePromise = generateLyrics(
         {
           name: data.prompt.split(":")[0] || "",
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
         },
-        data.style_prompt
+        data.style_prompt || stylePrompt
       );
+    }
+
+    const lyricsToUse = await (lyricsToUsePromise || (async () => data.lyrics)());
+
+    if(!lyricsToUse) {
+      throw new Error("No lyrics found");
     }
 
     // lyricsToUse is now guaranteed to be a string here
@@ -703,7 +754,7 @@ export async function generateMedia(data: {
     const input = {
       lyrics: formattedLyrics,
       reference_audio_url: referenceAudioUrl,
-      style_prompt: data.style_prompt || "pop",
+      style_prompt: data.style_prompt || stylePrompt,
       music_duration: data.music_duration || "95s",
       cfg_strength: data.cfg_strength || 4,
       scheduler: data.scheduler || "euler",
@@ -2596,112 +2647,6 @@ app.post("/enhance-and-generate", async (c) => {
   }
 });
 
-/**
- * Generate an audio using Fal.ai API
- */
-export async function generateAudio(
-  mint: string,
-  prompt: string,
-  mode: "fast" | "pro" = "fast",
-  creator?: string,
-  lyrics?: string
-): Promise<MediaGeneration> {
-  try {
-    // In test mode, return a test audio
-    if (process.env.NODE_ENV === "test") {
-      return {
-        id: crypto.randomUUID(),
-        mint,
-        type: "audio",
-        prompt,
-        mediaUrl: "https://example.com/test-audio.mp3",
-        negativePrompt: "",
-        seed: 12345,
-        numInferenceSteps: 30,
-        durationSeconds: 10,
-        bpm: 120,
-        creator: creator || "test-creator",
-        timestamp: new Date().toISOString(),
-        dailyGenerationCount: 1,
-        lastGenerationReset: new Date().toISOString(),
-      };
-    }
-
-    // For production, we would call the actual Fal.ai API
-    if (!process.env.FAL_API_KEY) {
-      throw new Error("FAL_API_KEY is not configured");
-    }
-
-    // Generate audio using Fal.ai
-    const audioResult = await generateMedia({
-      prompt,
-      type: MediaType.AUDIO,
-      mode,
-      lyrics,
-      duration_seconds: 10,
-      bpm: 120
-    }) as any;
-
-    if (!audioResult?.data?.audio?.url) {
-      throw new Error("Failed to generate audio");
-    }
-
-    // Download the generated audio
-    const audioResponse = await fetch(audioResult.data.audio.url);
-    if (!audioResponse.ok) {
-      throw new Error("Failed to download generated audio");
-    }
-
-    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
-    const timestamp = Date.now();
-
-    // Upload to S3 with new directory structure
-    const audioKey = `${mint}/${creator || "unknown"}-${timestamp}-generation.mp3`;
-    const audioUrl = await uploadToStorage(audioBuffer, {
-      contentType: "audio/mpeg",
-      key: audioKey
-    });
-
-    // Create media generation record
-    const generationId = crypto.randomUUID();
-    const now = new Date();
-    const db = getDB();
-    await db.insert(mediaGenerations).values({
-      id: generationId,
-      mint,
-      type: "audio",
-      prompt,
-      mediaUrl: audioUrl,
-      negativePrompt: "",
-      seed: Math.floor(Math.random() * 1000000),
-      numInferenceSteps: 30,
-      durationSeconds: 10,
-      bpm: 120,
-      creator: creator || "",
-      timestamp: now
-    });
-
-    return {
-      id: generationId,
-      mint,
-      type: "audio",
-      prompt,
-      mediaUrl: audioUrl,
-      negativePrompt: "",
-      seed: Math.floor(Math.random() * 1000000),
-      numInferenceSteps: 30,
-      durationSeconds: 10,
-      bpm: 120,
-      creator: creator || "",
-      timestamp: now.toISOString(),
-      dailyGenerationCount: 1,
-      lastGenerationReset: now.toISOString()
-    };
-  } catch (error) {
-    console.error("Error generating audio:", error);
-    throw error;
-  }
-}
 // Get generation settings for a token
 app.get("/:mint/settings", async (c) => {
   try {
