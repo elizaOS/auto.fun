@@ -4,7 +4,7 @@ import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
 import AdminSection from "@/components/token-sections/admin";
 import AgentsSection from "@/components/token-sections/agents";
-import ChatSection from "@/components/token-sections/chat";
+import Chat from "@/components/chat";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
@@ -362,10 +362,10 @@ export default function Page() {
                       {/* Display creator's name if available, otherwise the shortened address */}
                       <div className="text-autofun-text-secondary text-sm font-dm-mono truncate">
                         {token.creatorProfile.displayName ||
-                          shortenAddress(token.creator)}
+                          shortenAddress(token.creator || "")}
                       </div>
                       {/* Copy button still uses the raw creator address */}
-                      <CopyButton text={token.creator} />
+                      <CopyButton text={token.creator || ""} />
                     </div>
                     <Link
                       to={`/profiles/${token.creator}`}
@@ -555,8 +555,17 @@ export default function Page() {
                   </div>
                 )}
                 {activeTab === "chat" && (
-                  <div id="chat" className="mt-2">
-                    <ChatSection />
+                  <div id="chat" className="mt-2 flex flex-col gap-2">
+                    {/* Link to standalone chat page */}
+                    <div className="px-3 py-1 text-right">
+                      <Link
+                        to={`/chat/${token?.mint}`}
+                        className="text-xs text-autofun-text-secondary hover:text-autofun-text-highlight hover:underline"
+                      >
+                        Open Full Chat Page ↗
+                      </Link>
+                    </div>
+                    <Chat />
                   </div>
                 )}
               </div>

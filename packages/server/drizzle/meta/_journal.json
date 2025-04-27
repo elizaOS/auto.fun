@@ -36,6 +36,13 @@
       "when": 1745473446526,
       "tag": "0004_lonely_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1745741390325,
+      "tag": "0005_short_ogun",
+      "breakpoints": true
     }
   ]
 }

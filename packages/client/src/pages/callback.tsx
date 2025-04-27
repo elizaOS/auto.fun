@@ -216,7 +216,7 @@ export default function CallbackPage() {
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-autofun-background-primary text-white">
         <h1 className="text-2xl font-bold mb-4">Authentication Error</h1>
         <p className="text-red-500 mb-4">{error}</p>
-        <div className="bg-autofun-background-secondary p-4 rounded-lg my-4 max-w-lg w-full border border-gray-700">
+        <div className="bg-autofun-background-secondary p-4 my-4 max-w-lg w-full border border-gray-700">
           <h2 className="text-lg font-semibold mb-2">Debug Information</h2>
           <p className="text-sm text-gray-400 mb-2">Check the following:</p>
           <ul className="list-disc pl-5 text-sm text-gray-300">

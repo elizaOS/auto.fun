@@ -29,7 +29,7 @@ export default function AudioPlayer({
             <img
               src={albumArt}
               alt="Album Art"
-              className="w-full h-full object-cover rounded-lg"
+              className="w-full h-full object-cover"
             />
           </div>
 

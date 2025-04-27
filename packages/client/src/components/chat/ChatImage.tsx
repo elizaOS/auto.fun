@@ -7,25 +7,9 @@ interface ChatImageProps {
   timestamp: string;
 }
 
-export const ChatImage: React.FC<ChatImageProps> = ({
-  imageUrl,
-  caption,
-  author,
-  timestamp,
-}) => {
-  // Validate the image URL is from our domain
-  const isValidUrl = imageUrl.startsWith("https://storage.autofun.tech/");
-
-  if (!isValidUrl) {
-    return (
-      <div className="p-4 bg-red-100 text-red-700 rounded-lg">
-        Invalid image URL
-      </div>
-    );
-  }
-
+export const ChatImage: React.FC<ChatImageProps> = ({ imageUrl, caption }) => {
   return (
-    <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+    <div className="max-w-md mx-auto overflow-hidden">
       <div className="relative">
         <img
           src={imageUrl}
@@ -38,12 +22,6 @@ export const ChatImage: React.FC<ChatImageProps> = ({
             {caption}
           </div>
         )}
-      </div>
-      <div className="p-4">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>{author}</span>
-          <span>{new Date(timestamp).toLocaleString()}</span>
-        </div>
       </div>
     </div>
   );

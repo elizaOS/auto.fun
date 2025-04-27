@@ -1,10 +1,9 @@
+import { and, asc, count, desc, eq, ilike, or, SQL } from "drizzle-orm"; // Import SQL type
 import { Hono } from "hono";
 import { z } from "zod";
-import { getDB, preGeneratedTokens, Token } from "../../db"; // Assuming Token type exists or adjust as needed
-import { eq, desc, asc, sql, ilike, or, and, count, SQL } from "drizzle-orm"; // Import SQL type
+import { getDB, preGeneratedTokens } from "../../db"; // Assuming Token type exists or adjust as needed
 import { logger } from "../../util";
 import { checkAndReplenishTokens } from "../generation";
-import { verifyAuth } from "../../auth"; // Corrected import: verifyAuth (assuming it handles admin check)
 
 const PreGeneratedTokenUpdateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -15,9 +14,6 @@ const PreGeneratedTokenUpdateSchema = z.object({
 });
 
 const preGeneratedAdminRoutes = new Hono<{ Bindings: {}; Variables: { user?: { publicKey: string } | null } }>();
-
-// Apply admin auth middleware to all routes in this file
-preGeneratedAdminRoutes.use("*", verifyAuth);
 
 // --- GET /api/admin/pregenerated - List Pre-generated Tokens ---
 preGeneratedAdminRoutes.get("/", async (c) => {

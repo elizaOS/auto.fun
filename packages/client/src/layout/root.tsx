@@ -45,7 +45,7 @@ export default function Layout() {
       <Providers>
         <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased">
           {isTosAccepted ? <Header /> : null}
-          <main className="flex-grow px-2 md:px-4 pb-24">
+          <main className="flex-grow px-2 md:px-4">
             <Outlet />
             <BreakpointIndicator />
             <ToastContainer position="bottom-right" theme="dark" />
@@ -53,7 +53,7 @@ export default function Layout() {
           <div
             className={`${isHomepage ? "fixed" : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
           >
-            <Footer />
+            {!pathname.startsWith("/chat/") && <Footer />}
           </div>
           <WalletModal />
         </div>

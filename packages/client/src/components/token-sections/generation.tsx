@@ -1844,7 +1844,7 @@ export default function CommunityTab() {
             {communityTab === "Video" && videoMode === "image" ? (
               <div className="px-4">
                 {/* Image upload area for image-to-video */}
-                <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
+                <div className="border-2 border-dashed border-gray-600 p-4 mb-4">
                   {selectedImageForVideo ? (
                     <div className="relative">
                       <img
@@ -1997,7 +1997,7 @@ export default function CommunityTab() {
                       <img
                         src={tokenInfo?.image || "/logo.png"}
                         alt="Album Art"
-                        className="w-full h-full object-cover rounded-lg"
+                        className="w-full h-full object-cover"
                       />
                     </div>
 
