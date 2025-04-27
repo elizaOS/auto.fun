@@ -78,7 +78,6 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
     logger.log(`[OG Image Gen] Starting generation for mint: ${mint}`);
     const db = getDB();
 
-    try {
         // 1. Fetch Token Data (including ticker)
         const tokenDataResult = await db
             .select({
@@ -182,10 +181,13 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const cashtagText = `$${ticker.toUpperCase()}`;
 
         // --- Dynamic Text Styling & Positioning ---
-        const baseCashtagFontSize = 110;
-        const baseTitleFontSize = 54;
+        const baseCashtagFontSize = 90;
+        const baseTitleFontSize = 48;
         const dataFontSize = 76;
         const labelFontSize = 34;
+        const maxNameLengthSingleLine = 15;
+        const breakNameLength = 24;
+        const titleLineHeightFactor = 1.2;
         // CJK character detection (Unicode range for common CJK ideographs)
         const cjkRegex = /[\u4E00-\u9FFF]/;
         const hasCJK = cjkRegex.test(name) || cjkRegex.test(ticker);
@@ -198,20 +200,17 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         const maxTickerLength = 7;
         let dynamicCashtagFontSize = baseCashtagFontSize;
         if (ticker.length > maxTickerLength) {
-            dynamicCashtagFontSize = Math.max(30, Math.floor(baseCashtagFontSize * (maxTickerLength / ticker.length))); // Added min size
+            dynamicCashtagFontSize = Math.max(30, Math.floor(baseCashtagFontSize * Math.pow(maxTickerLength / ticker.length, 1.2))); // Added min size
             logger.log(`[OG Image Gen] Ticker "${ticker}" is long (${ticker.length}), reducing cashtag font size to ${dynamicCashtagFontSize}`);
         }
 
         // Calculate dynamic title font size and handle line breaking
-        const maxNameLengthSingleLine = 12;
-        const breakNameLength = 24;
         let dynamicTitleFontSize = baseTitleFontSize;
         let nameLine1 = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Escape HTML entities
         let nameLine2 = '';
-        const titleLineHeightFactor = 1.2; // Factor to control line spacing
 
         if (name.length >= breakNameLength) {
-            dynamicTitleFontSize = 40; // Fixed smaller size for two lines
+            dynamicTitleFontSize = 36;
             // Find a space near the middle to break the line
             const middle = Math.floor(name.length / 2);
             let breakPoint = name.lastIndexOf(' ', middle); // Look for space before middle
@@ -226,17 +225,18 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
                 nameLine1 = name.substring(0, middle).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 nameLine2 = name.substring(middle).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             }
+            
             logger.log(`[OG Image Gen] Name "${name}" is very long (${name.length}), breaking into two lines and reducing title font size to ${dynamicTitleFontSize}`);
         } else if (name.length > maxNameLengthSingleLine) {
             // Scale down more aggressively using a power function (exponent > 1)
-            const scaleFactor = Math.pow(maxNameLengthSingleLine / name.length, 1.5); // Exponent 1.5 for faster scaling
-            dynamicTitleFontSize = Math.max(30, Math.floor(baseTitleFontSize * scaleFactor)); // Ensure minimum size 30
+            const scaleFactor = Math.pow(maxNameLengthSingleLine / name.length, 1.6);
+            dynamicTitleFontSize = Math.max(28, Math.floor(baseTitleFontSize * scaleFactor));
             logger.log(`[OG Image Gen] Name "${name}" is long (${name.length}), reducing title font size to ${dynamicTitleFontSize} using aggressive scaling`);
         }
-
+ 
         // Define text styles using dynamic sizes
         const cashtagStyle = `fill: ${textColorTop}; font-size: ${dynamicCashtagFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor};`;
-        const titleStyle = `fill: ${textColorTop}; font-size: ${dynamicTitleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
+        const titleStyle = `fill: ${textColorTop}; font-size: ${dynamicTitleFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor};`;
         const labelBottomStyle = `fill: ${labelColorBottom}; font-size: ${labelFontSize}px; font-family: ${fontFamily}; text-anchor: ${textAnchor};`;
         const valueBottomStyle = `fill: ${valueColorBottom}; font-size: ${dataFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
 
@@ -249,9 +249,9 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         // Top section text (within top 40% green area)
         // Adjust vertical positioning for consistent top anchor and spacing
         const topSectionCenterY = rightTopHeight / 2;
-        const cashtagBaselineAdjust = dynamicCashtagFontSize * 0.75; // Approx baseline position
-        const titleBaselineAdjust = dynamicTitleFontSize * 0.75;    // Approx baseline position
-        const cashtagToTitleGap = 15; // Fixed gap between bottom of cashtag and top of title
+        const cashtagBaselineAdjust = dynamicCashtagFontSize * 0.7;
+        const titleBaselineAdjust = dynamicTitleFontSize * 0.7;
+        const cashtagToTitleGap = 20;
 
         // Calculate total approximate height for vertical centering adjustment
         let approxTitleHeight = dynamicTitleFontSize;
@@ -357,8 +357,4 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
         logger.log(`[OG Image Gen] Successfully generated image for ${mint}`);
         return finalImageBuffer;
 
-    } catch (error) {
-        logger.error(`[OG Image Gen] Failed to generate OG image for ${mint}:`, error);
-        throw error;
-    }
 } 

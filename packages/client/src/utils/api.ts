@@ -63,7 +63,9 @@ export const getToken = async ({
 };
 
 export const getSearchTokens = async ({ search }: { search: string }) => {
-  const data = await fetcher(`/api/tokens?search=${search}`, "GET");
+  // Normalize search term to ensure consistent caching
+  const normalizedSearch = search.trim().toLowerCase();
+  const data = await fetcher(`/api/tokens?search=${normalizedSearch}`, "GET");
   return data;
 };
 

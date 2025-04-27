@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import viteCompression from "vite-plugin-compression";
-import preact from "@preact/preset-vite";
+import react from "@vitejs/plugin-react";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { fileURLToPath, URL } from "url";
 import Sitemap from "vite-plugin-sitemap";
@@ -15,7 +15,7 @@ config({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    preact(),
+    react(),
     tailwindcss(),
     viteCompression({
       verbose: true,

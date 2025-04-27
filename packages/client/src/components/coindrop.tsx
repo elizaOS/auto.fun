@@ -266,6 +266,8 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
     // Restore walls and call onCancel after the animation is complete (2.5 seconds)
     setTimeout(() => {
+      if (!coinCountRef?.current) return;
+      if (!wallBodiesRef?.current) return;
       wallBodiesRef.current.forEach((wall) => {
         world.addBody(wall);
       });
