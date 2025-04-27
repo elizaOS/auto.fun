@@ -57,7 +57,7 @@ export default function useAuthentication() {
     const handleStorageChange = (e: StorageEvent) => {
       // Skip if this is our own change or if the event is not for authToken
       if (e.key !== "authToken") return;
-      
+
       // Skip if this is our own change
       if (isSettingToken.current) {
         return;
@@ -173,7 +173,7 @@ export default function useAuthentication() {
 
     // Set the flag before any state changes
     isSettingToken.current = true;
-    
+
     // Use a timeout to ensure the flag is cleared after the storage event
     setTimeout(() => {
       isSettingToken.current = false;
