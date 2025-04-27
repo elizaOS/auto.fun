@@ -558,7 +558,7 @@ export default function AdminTab() {
           <div className="flex justify-end mb-2">
             <Link
               to={`/admin/tokens/${mint}`}
-              className="text-sm px-3 py-1 rounded bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary transition-colors"
+              className="text-sm px-3 py-1 bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary transition-colors"
             >
               Go to Full Admin View
             </Link>
@@ -704,7 +704,7 @@ export default function AdminTab() {
           <div className="flex flex-wrap justify-start gap-2">
             <button
               type="button"
-              className={`px-4 py-2 text-sm rounded ${
+              className={`px-4 py-2 text-sm ${
                 tokenStatus.featured
                   ? "bg-red-700 text-red-100 hover:bg-red-600"
                   : "bg-blue-700 text-blue-100 hover:bg-blue-600"
@@ -721,7 +721,7 @@ export default function AdminTab() {
 
             <button
               type="button"
-              className={`px-4 py-2 text-sm rounded ${
+              className={`px-4 py-2 text-sm ${
                 tokenStatus.verified
                   ? "bg-red-700 text-red-100 hover:bg-red-600"
                   : "bg-green-700 text-green-100 hover:bg-green-600"
@@ -738,7 +738,7 @@ export default function AdminTab() {
 
             <button
               type="button"
-              className={`px-4 py-2 text-sm rounded ${
+              className={`px-4 py-2 text-sm ${
                 tokenStatus.hidden
                   ? "bg-yellow-700 text-yellow-100 hover:bg-yellow-600"
                   : "bg-gray-700 text-gray-100 hover:bg-gray-600"

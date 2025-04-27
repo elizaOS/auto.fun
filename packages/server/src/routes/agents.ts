@@ -136,13 +136,14 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
     let twitterUserId = userId;
     let twitterUserName = `user_${userId.substring(0, 5)}`;
     let twitterImageUrl = "/default-avatar.png";
+    let twitterDescription: string | null = null; // Initialize description
     let fetchedOriginalUrl = ""; // Store the original URL temporarily
 
     try {
-      // Try to fetch user profile
+      // Try to fetch user profile - ADD description to fields
       logger.log(`Fetching Twitter profile for user ID: ${userId}`);
       const profileResponse = await fetch(
-        "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
+        "https://api.twitter.com/2/users/me?user.fields=profile_image_url,description,username,name", // Added description
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -162,6 +163,10 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
           if (profileData.data.profile_image_url) {
             fetchedOriginalUrl = profileData.data.profile_image_url.replace("_normal", "_400x400");
             twitterImageUrl = fetchedOriginalUrl; // Use larger image URL by default
+          }
+          // Extract description
+          if (profileData.data.description) {
+            twitterDescription = profileData.data.description;
           }
         }
       } else {
@@ -248,16 +253,25 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
       twitterUserId: twitterUserId,
       twitterUserName: twitterUserName,
       twitterImageUrl: finalImageUrl, // Use the potentially uploaded S3 URL
+      twitterDescription: twitterDescription, // Add description to insert data
       official: isOfficial ? 1 : 0,
       createdAt: new Date(),
     };
+
+    // *** ADD LOG: Log data before insert ***
+    logger.log(`[Connect Agent] Preparing to insert agent data for token ${mint}:`, JSON.stringify(newAgentData));
 
     const result = await db
       .insert(tokenAgents)
       .values(newAgentData)
       .returning();
 
+    // *** ADD LOG: Log raw insert result ***
+    logger.log(`[Connect Agent] Raw insert result for token ${mint}:`, JSON.stringify(result));
+
     if (!result || result.length === 0) {
+      // *** ADD LOG: Log specific insert failure condition ***
+      logger.error(`[Connect Agent] Insert operation failed for token ${mint}. The result array was empty or null. Check DB constraints/returning() behavior.`);
       throw new Error("Failed to insert new agent into database.");
     }
 

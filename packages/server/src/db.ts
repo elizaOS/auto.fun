@@ -205,6 +205,7 @@ export const tokenAgents = pgTable("token_agents", {
   twitterUserId: text("twitter_user_id").notNull(),
   twitterUserName: text("twitter_user_name").notNull(),
   twitterImageUrl: text("twitter_image_url").notNull(),
+  twitterDescription: text("twitter_description"),
   official: integer("official").notNull().default(0),
   createdAt: timestamp("created_at")
     .notNull()
