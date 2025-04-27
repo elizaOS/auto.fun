@@ -1671,6 +1671,8 @@ export default function Create() {
         const data = (await response.json()) as PreGeneratedTokenResponse;
         const { token } = data;
 
+        console.log("token", token);
+
         // Store token ID for later use when creating
         if (token.id) {
           setCurrentPreGeneratedTokenId(token.id);
@@ -2806,12 +2808,12 @@ export default function Create() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      {/* {showCoinDrop ? (
+      {showCoinDrop ? (
         <CoinDrop
           imageUrl={coinDropImageUrl || undefined}
           onCancel={handleCoinDropCancel}
         />
-      ) : null} */}
+      ) : null}
 
       <form
         className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"

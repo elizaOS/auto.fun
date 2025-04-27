@@ -7,6 +7,9 @@ import { toast } from "react-toastify";
 import { env } from "@/utils/env";
 import Button from "../button";
 import { fetchWithAuth } from "@/hooks/use-authentication";
+import { IToken } from "@/types";
+import { useTokenBalance } from "@/hooks/use-token-balance";
+import { shortenAddress } from "@/utils";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -15,6 +18,7 @@ const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 const STORAGE_KEY = "twitter-oauth-token";
 const AGENT_INTENT_KEY = "connect_agent_intent";
 const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
+const MIN_BALANCE_TO_ADD_AGENT = 100000; // 100k tokens
 
 // Types for Twitter authentication
 type TwitterCredentials = {
@@ -33,17 +37,66 @@ interface TokenAgentsResponse {
 // --- End Expected API Response Types ---
 
 interface TokenAgent {
-  id?: string;
+  id: string;
   tokenMint: string;
   ownerAddress: string;
+  twitterUserId: string;
   twitterUserName: string;
   twitterImageUrl: string;
-  official: boolean;
+  official?: boolean;
   createdAt?: number;
 }
 
-export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
+interface CreatorProfile {
+  displayName?: string;
+  // Add other fields if needed later
+}
+
+interface AgentsSectionProps {
+  isCreator: boolean;
+  tokenData: IToken;
+}
+
+interface AgentsComponentContentProps {
+  tokenMint: string;
+  isCreator: boolean;
+  tokenData: IToken;
+}
+
+export default function AgentsSection({ isCreator, tokenData }: AgentsSectionProps) {
+  const { mint: urlTokenMint } = useParams<{ mint: string }>();
+  const location = useLocation();
+  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlTokenMint) {
+      setDetectedTokenMint(urlTokenMint);
+      return;
+    }
+    const pathMatch = location.pathname.match(/\/token\/([A-Za-z0-9]{32,44})/);
+    if (pathMatch && pathMatch[1]) {
+      setDetectedTokenMint(pathMatch[1]);
+      return;
+    }
+    // Optional: Handle error state if mint cannot be derived
+  }, [urlTokenMint, location.pathname]);
+
+  // Render null or a loading state if tokenMint is not yet available
+  if (!detectedTokenMint) {
+    return <div className="p-4 text-center text-neutral-400">Loading token address...</div>;
+  }
+
+  console.log("sending down tokenData", tokenData)
+
+  // Now that tokenMint is guaranteed to be a string, render the inner component
+  return <AgentsComponentContent tokenData={tokenData} tokenMint={detectedTokenMint} isCreator={isCreator} />;
+}
+
+function AgentsComponentContent({ tokenMint, isCreator, tokenData }: AgentsComponentContentProps) {
+  console.log("tokenData", tokenData)
+  
   const { publicKey } = useWallet();
+  const walletAddress = publicKey?.toString();
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
   const [isConnectingAgent, setIsConnectingAgent] = useState(false);
@@ -57,120 +110,84 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   const [agentsError, setAgentsError] = useState<string | null>(null);
   // --- End Token Agents State ---
 
+  // --- ADD THESE LINES ---
+  const [tokenDataError, setTokenDataError] = useState<string | null>(null);
+  // --- END ADD ---
+
+  // Creator profile cache
+  const [creatorProfiles, setCreatorProfiles] = useState<
+    Record<string, CreatorProfile>
+  >({});
+  const [isFetchingProfiles, setIsFetchingProfiles] = useState(false);
+
+  // --- Eligibility Check (Now safe to call hook) ---
+  const { tokenBalance } = useTokenBalance({ tokenId: tokenMint });
+  const userHasSufficientBalance = (tokenBalance || 0) >= MIN_BALANCE_TO_ADD_AGENT;
+  const isEligibleToAddAgent = userHasSufficientBalance || isCreator;
+  const tokenTicker = tokenData?.ticker || "tokens";
+  const tokenCreatorAddress = tokenData?.creator;
+  // ---
+
+  console.log("isEligibleToAddAgent", isEligibleToAddAgent)
+
   // Set component as mounted after initial render
   useEffect(() => {
     setComponentMounted(true);
     return () => setComponentMounted(false);
   }, []);
 
-  // Get token mint from URL params with better fallback logic
-  const { mint: urlTokenMint } = useParams<{ mint: string }>();
-  const location = useLocation();
-
-  // Extract token mint from URL if not found in params
-  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
-  );
-
-  // Effect to detect token mint from various sources
-  useEffect(() => {
-    // First try from URL params (most reliable)
-    if (urlTokenMint) {
-      setDetectedTokenMint(urlTokenMint);
-      return;
-    }
-
-    // If not in params, try to extract from pathname
-    const pathMatch = location.pathname.match(/\/token\/([A-Za-z0-9]{32,44})/);
-    if (pathMatch && pathMatch[1]) {
-      setDetectedTokenMint(pathMatch[1]);
-      return;
-    }
-  }, [urlTokenMint, location.pathname]);
-
-  // Use detected token mint instead of directly from params
-  const tokenMint = detectedTokenMint;
-
   // --- Fetch Real Token Info & Agents ---
-  useEffect(() => {
-    const fetchTokenData = async () => {
-      if (!tokenMint || !API_BASE_URL) {
-        console.warn("Skipping fetch: No tokenMint or API_BASE_URL");
-        setTokenAgents([]);
-        return; // Don't fetch if mint is not available
-      }
-
-      // Check for Twitter credentials on component mount
-      const storedCredentials = localStorage.getItem(STORAGE_KEY);
-      if (storedCredentials) {
-        try {
-          const parsedCredentials = JSON.parse(
-            storedCredentials,
-          ) as TwitterCredentials;
-          if (parsedCredentials.expiresAt > Date.now()) {
-            setTwitterCredentials(parsedCredentials);
-          }
-        } catch (e) {
-          console.error("Error parsing stored Twitter credentials:", e);
-        }
-      }
-
-      // Reset states
-      setIsAgentsLoading(true);
+  const fetchData = useCallback(async () => {
+    if (!tokenMint || !API_BASE_URL) {
+      console.warn("Skipping fetch: No tokenMint or API_BASE_URL");
+      setTokenAgents([]);
       setAgentsError(null);
+      return;
+    }
 
+    // Check for Twitter credentials on component mount
+    const storedCredentials = localStorage.getItem(STORAGE_KEY);
+    if (storedCredentials) {
       try {
-        // Fetch Token Agents using the new dedicated endpoint
-        const fetchUrl = `${API_BASE_URL}/api/token/${tokenMint}/agents`;
-        const agentsResponse = await fetch(fetchUrl);
-        const responseText = await agentsResponse.text();
-
-        if (!agentsResponse.ok) {
-          // Try to get error message from body (use responseText now)
-          let errorMsg = `Failed to fetch token agents: ${agentsResponse.statusText}`;
-          const errorBody = JSON.parse(responseText); // Parse the logged text
-
-          console.log("errorBody", errorBody);
-          if (
-            errorBody &&
-            typeof errorBody === "object" &&
-            "error" in errorBody &&
-            typeof (errorBody as any).error === "string"
-          ) {
-            errorMsg = (errorBody as any).error;
-          }
-          throw new Error(errorMsg);
+        const parsedCredentials = JSON.parse(
+          storedCredentials,
+        ) as TwitterCredentials;
+        if (parsedCredentials.expiresAt > Date.now()) {
+          setTwitterCredentials(parsedCredentials);
         }
-
-        // ** CHANGE: Parse the logged responseText **
-        const agentsData = JSON.parse(responseText) as TokenAgentsResponse;
-
-        // Check the parsed data structure
-        if (!agentsData || !Array.isArray(agentsData.agents)) {
-          console.error(
-            "Invalid agents data received after parsing:",
-            agentsData,
-          );
-          throw new Error("Invalid response format when fetching agents.");
-        }
-
-        setTokenAgents(agentsData.agents);
-      } catch (error) {
-        console.error("Error fetching token agents:", error);
-        setAgentsError(
-          error instanceof Error
-            ? error.message
-            : "Unknown error fetching agents",
-        );
-        setTokenAgents([]); // Clear agents on error
-      } finally {
-        setIsAgentsLoading(false);
+      } catch (e) {
+        console.error("Error parsing stored Twitter credentials:", e);
       }
-    };
+    }
 
-    fetchTokenData();
-  }, [tokenMint]); // Re-fetch when tokenMint changes
-  // --- End Fetch Real Token Info & Agents ---
+    // Reset states
+    setIsAgentsLoading(true);
+    setAgentsError(null);
+    setTokenAgents([]);
+
+      // Fetch both in parallel
+      const agentsResponse = await fetch(`${API_BASE_URL}/api/token/${tokenMint}/agents`);
+
+
+      // Process Agents Response
+      if (!agentsResponse.ok) {
+        let errorMsg = `Failed to fetch agents: ${agentsResponse.statusText}`;
+        try {
+          const errorBody = await agentsResponse.json();
+          if (errorBody?.error) errorMsg = errorBody.error;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
+      const agentsData = await agentsResponse.json() as TokenAgentsResponse;
+      if (!agentsData || !Array.isArray(agentsData.agents)) {
+        throw new Error("Invalid response format for agents.");
+      }
+      setTokenAgents(agentsData.agents);
+      // Fetch profiles after agents data is confirmed
+      await fetchCreatorProfiles(agentsData.agents);
+
+      setIsAgentsLoading(false);
+  }, [tokenMint]);
 
   const disconnectTwitter = async () => {
     try {
@@ -189,58 +206,34 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
     }
   };
 
-  const connectTwitter = async () => {
-    // Verify we have a token mint
-    if (!tokenMint) {
-      toast.error("No token mint found, cannot connect agent");
+  const connectTwitterFlow = async () => {
+    if (!tokenMint || !walletAddress) {
+      toast.error(!walletAddress ? "Please connect wallet." : "Token not loaded.");
       return;
     }
-
-    // Ensure wallet is connected
-    if (!publicKey) {
-      toast.error("Please connect your wallet before connecting to X");
+    if (!isEligibleToAddAgent) {
+      toast.error(`Hold at least ${MIN_BALANCE_TO_ADD_AGENT.toLocaleString()} ${tokenTicker} or be the creator to add an agent.`);
       return;
     }
-
+    if (!tokenData) {
+      toast.error("Token data loading...");
+      return;
+    }
+    setIsConnectingAgent(true);
+    if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
+      await connectTwitterAgent(twitterCredentials);
+      return;
+    }
     try {
-      setIsConnectingAgent(true);
-
-      // If we already have credentials, connect the agent
-      if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
-        await connectTwitterAgent(twitterCredentials);
-      } else {
-        console.log(
-          "Not authenticated, storing intent and redirecting for agent connection.",
-        );
-        // Store the intent to connect agent and the token mint
-        localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
-
-        // Store the current path before redirecting
-        const currentPath =
-          window.location.pathname +
-          window.location.search +
-          window.location.hash;
-
-        // Add agents anchor to the path
-        const pathWithAnchor =
-          currentPath + (currentPath.includes("#") ? "" : "#agents");
-        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
-        console.log("Stored origin path for redirect:", pathWithAnchor);
-
-        // Redirect to OAuth
-        const apiUrl = env.apiUrl;
-        if (!apiUrl) {
-          throw new Error("API URL is not configured");
-        }
-
-        window.location.href = `${apiUrl}/api/share/oauth/request_token`;
-      }
+      localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
+      const currentPath = window.location.pathname + window.location.hash;
+      localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, currentPath);
+      window.location.href = `${API_BASE_URL}/api/share/oauth/request_token`;
     } catch (error) {
-      console.error("Error connecting Twitter account:", error);
-      toast.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    } finally {
+      console.error("Error initiating Twitter connection:", error);
+      toast.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      localStorage.removeItem(AGENT_INTENT_KEY);
+      localStorage.removeItem(OAUTH_REDIRECT_ORIGIN_KEY);
       setIsConnectingAgent(false);
     }
   };
@@ -248,180 +241,109 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   // Connect Twitter agent with credentials
   const connectTwitterAgent = useCallback(
     async (creds: TwitterCredentials) => {
-      if (!tokenMint) {
-        toast.error("No token mint found, cannot connect agent");
+      if (!tokenMint || !walletAddress) {
+        toast.error(!walletAddress ? "Wallet not connected." : "Token missing.");
+        setIsConnectingAgent(false);
         return;
       }
-
-      // Ensure wallet is connected before proceeding
-      if (!publicKey) {
-        // Check if this is being called from callback - if so, we may need to wait for wallet connection
-        const isFromCallback =
-          localStorage.getItem(AGENT_INTENT_KEY) === tokenMint;
-
-        if (isFromCallback) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Check again after delay
-          if (!publicKey) {
-            console.error(
-              "Wallet still not connected after delay. publicKey state:",
-              publicKey,
-            );
-            toast.error(
-              "Wallet not connected. Cannot link agent. Please connect your wallet and try again.",
-            );
-            return;
-          }
-        } else {
-          toast.error("Wallet not connected. Cannot link agent.");
-          return;
-        }
+      if (!isEligibleToAddAgent) {
+        toast.error("Not eligible to add agent.");
+        setIsConnectingAgent(false);
+        return;
       }
-
-      // Get the auth token - this is the key issue
       const authToken = localStorage.getItem("authToken");
-
       if (!authToken) {
-        console.error("Auth token missing. Cookies may not be properly set.");
-        toast.error(
-          "Authentication token missing. Please reconnect your wallet.",
-        );
+        toast.error("Auth token missing. Reconnect wallet.");
+        setIsConnectingAgent(false);
         return;
       }
-
-      // Use the combined endpoint to connect the Twitter agent
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/token/${tokenMint}/connect-twitter-agent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
+      setIsConnectingAgent(true);
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/api/token/${tokenMint}/connect-twitter-agent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({
+              userId: creds.userId,
+              accessToken: creds.accessToken,
+              walletAddress: walletAddress,
+              username: creds.username,
+              profileImageUrl: creds.profileImageUrl,
+            }),
+            credentials: "include",
           },
-          body: JSON.stringify({
-            userId: creds.userId,
-            accessToken: creds.accessToken,
-            walletAddress: publicKey.toString(), // Explicitly include wallet address
-            username: creds.username, // Include username if available
-          }),
-          credentials: "include",
-        },
-      );
-
-      // Check response status
-      if (!response.ok) {
-        // Try to get detailed error information
-        const errorText = await response.text();
-        console.error("Twitter agent connection failed. Response:", errorText);
-
-        // Try to parse error as JSON
-        const errorData = JSON.parse(errorText);
-
-        // Handle conflict specifically (already connected)
-        if (response.status === 409 && errorData.agent) {
-          console.warn("Agent already exists:", errorData.agent);
-          // Add to local state if not already there
-          setTokenAgents((prev) =>
-            prev.find((a) => a.id === errorData.agent.id)
-              ? prev
-              : [...prev, errorData.agent as TokenAgent],
-          );
-
-          toast.info(
-            "This Twitter account is already connected to this token.",
-          );
-          return;
-        }
-
-        if (errorData.error) {
-          // If authentication error, give more specific guidance
-          if (response.status === 401) {
-            toast.error(
-              "Authentication error. Please reconnect your wallet and try again.",
-            );
+        );
+        const responseData = await response.json();
+        if (!response.ok) {
+          if (response.status === 409) {
+            toast.error(responseData.error || "This Twitter account may already be linked to a token.");
+          } else if (response.status === 403) {
+            toast.error(responseData.error || "Not eligible to add agent.");
           } else {
-            throw new Error(errorData.error);
+            throw new Error(responseData.error || `Failed to connect agent (${response.status})`);
           }
           return;
         }
-
-        throw new Error(errorText || "Failed to connect Twitter agent");
-      }
-
-      // Try to parse response as JSON
-      let responseData: any; // Use any type to handle various response formats
-      try {
-        responseData = await response.json();
-      } catch (parseError) {
-        console.error("Error parsing agent response:", parseError);
-        throw new Error("Error parsing server response");
-      }
-
-      let newAgent: TokenAgent;
-
-      // Handle different response formats
-      if (responseData && responseData.id) {
-        // Response is the agent directly
-        newAgent = responseData as TokenAgent;
-      } else if (responseData && responseData.agent && responseData.agent.id) {
-        // Response has an agent property
-        newAgent = responseData.agent as TokenAgent;
-      } else {
-        throw new Error("Invalid agent data in server response");
-      }
-      // Update local state with the agent
-      setTokenAgents((prev) => {
-        // Avoid adding duplicates
-        if (prev.find((a) => a.id === newAgent.id)) {
-          return prev;
+        toast.success("Twitter account successfully connected as an agent!");
+        await fetchData();
+      } catch (error) {
+        console.error("Error connecting Twitter agent:", error);
+        toast.error(`Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`);
+      } finally {
+        setIsConnectingAgent(false);
+        if (localStorage.getItem(AGENT_INTENT_KEY) === tokenMint) {
+          localStorage.removeItem(AGENT_INTENT_KEY);
+          const hash = window.location.hash;
+          window.history.replaceState({}, "", window.location.pathname + (hash || ""));
         }
-        return [...prev, newAgent];
-      });
-
-      toast.success("Twitter account successfully connected as an agent!");
-
-      // Refresh the agents list after connection
-      setTimeout(() => {
-        setIsAgentsLoading(true);
-
-        fetch(`${API_BASE_URL}/api/token/${tokenMint}/agents`)
-          .then((response) => response.json())
-          .then((data) => {
-            const responseData = data as TokenAgentsResponse;
-            if (responseData.agents && Array.isArray(responseData.agents)) {
-              setTokenAgents(responseData.agents);
-            }
-          })
-          .catch((error) => console.error("Error refreshing agents:", error))
-          .finally(() => setIsAgentsLoading(false));
-      }, 1000);
+      }
     },
-    [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading],
+    [tokenMint, walletAddress, isEligibleToAddAgent, tokenData, fetchData],
   );
 
+  // --- NEW: Handler for Switching Account ---
+  const handleSwitchAccount = async () => {
+    if (isDisconnecting) return; // Prevent double clicks
+
+    console.log("Switching account: Disconnecting local session and re-initiating OAuth.");
+    setIsDisconnecting(true); // Indicate activity
+
+    // Disconnect locally first (simplified - reuse disconnectTwitter logic without toast)
+    localStorage.removeItem(STORAGE_KEY);
+    setTwitterCredentials(null);
+
+    // Re-initiate the OAuth flow
+    try {
+      localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
+      const currentPath = window.location.pathname + window.location.hash;
+      localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, currentPath);
+      window.location.href = `${API_BASE_URL}/api/share/oauth/request_token`;
+      // Redirect will happen, no need to setIsDisconnecting(false) here
+    } catch (error) {
+      toast.error(`Error starting connection: ${error instanceof Error ? error.message : "Unknown"}`);
+      localStorage.removeItem(AGENT_INTENT_KEY);
+      localStorage.removeItem(OAUTH_REDIRECT_ORIGIN_KEY);
+      setIsDisconnecting(false); // Stop indicator on error before redirect
+    }
+  };
+  // ---
+
   // Remove agent function
-  // ** CHANGE: Needs agent ID and uses DELETE endpoint **
   const removeAgent = async (agentToRemove: TokenAgent) => {
-    if (!agentToRemove.id) {
-      toast.error("Cannot remove agent: Missing ID.");
+    if (!agentToRemove.id || !tokenMint) return;
+    if (walletAddress !== agentToRemove.ownerAddress && !isCreator) {
+      toast.error("You do not have permission to remove this agent.");
       return;
     }
-    if (!tokenMint) {
-      toast.error("Cannot remove agent: Missing token mint.");
-      return;
-    }
-
-    // Get the auth token - consistent with connect function
     const authToken = localStorage.getItem("authToken");
-
     if (!authToken) {
-      toast.error(
-        "Authentication token missing. Please reconnect your wallet.",
-      );
+      toast.error("Auth token missing. Reconnect wallet.");
       return;
     }
-
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/token/${tokenMint}/agents/${agentToRemove.id}`,
@@ -434,411 +356,304 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           credentials: "include",
         },
       );
-
       if (!response.ok) {
         let errorMsg = `Failed to remove agent: ${response.statusText}`;
         try {
           const errorBody = await response.json();
-          if (
-            errorBody &&
-            typeof errorBody === "object" &&
-            "error" in errorBody &&
-            typeof (errorBody as any).error === "string"
-          ) {
-            errorMsg = (errorBody as any).error;
-          }
-        } catch (e) {
-          throw new Error(errorMsg);
-        }
+          if (errorBody?.error) errorMsg = errorBody.error;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
-
-      // Update local state on success
-      setTokenAgents((prev) =>
-        prev.filter((agent) => agent.id !== agentToRemove.id),
-      );
-
-      toast.success("Agent removed successfully");
+      toast.success("Agent removed successfully.");
+      setTokenAgents((prev) => prev.filter((a) => a.id !== agentToRemove.id));
     } catch (error) {
       console.error("Error removing agent:", error);
-      toast.error(
-        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      toast.error(`Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
   // Sorted agents with officials at the top
-  const sortedAgents = [...tokenAgents].sort((a, b) =>
-    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0,
-  );
+  const sortedAgents = [...tokenAgents].sort((a, b) => {
+    const aIsOfficial = tokenData && a.ownerAddress === tokenCreatorAddress;
+    const bIsOfficial = tokenData && b.ownerAddress === tokenCreatorAddress;
+    if (aIsOfficial && !bIsOfficial) return -1;
+    if (!aIsOfficial && bIsOfficial) return 1;
+    return (a.twitterUserName || "").localeCompare(b.twitterUserName || "");
+  });
 
   // Check if the callback is from a connect agent intent
   useEffect(() => {
-    // Wait until component is mounted and we have tokenMint
     if (!componentMounted || !tokenMint) return;
-
-    const storedMint = localStorage.getItem(AGENT_INTENT_KEY);
-    if (!storedMint) return;
-
+    const storedIntentMint = localStorage.getItem(AGENT_INTENT_KEY);
     const urlParams = new URLSearchParams(window.location.search);
-    const freshAuth = urlParams.get("fresh_auth") === "true";
-
-    if (freshAuth && storedMint) {
-      // Make sure the stored mint matches the current page's token mint
-      if (storedMint === tokenMint) {
-        // Get the Twitter credentials
-        const storedCreds = localStorage.getItem(STORAGE_KEY);
-        if (storedCreds) {
-          try {
-            const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
-
-            // First, check if we need to fetch the correct Twitter username
-            const fetchTwitterUsername = async () => {
-              try {
-                const profileResponse = await fetch(
-                  `${API_BASE_URL}/api/share/twitter-user`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${parsedCreds.accessToken}`,
-                    },
-                  },
-                );
-
-                if (profileResponse.ok) {
-                  interface TwitterProfileResponse {
-                    data: {
-                      id: string;
-                      username: string;
-                      name?: string;
-                      profile_image_url?: string;
-                    };
-                  }
-
-                  const profileData =
-                    (await profileResponse.json()) as TwitterProfileResponse;
-
-                  // Update credentials with the username from profile data
-                  if (profileData.data && profileData.data.username) {
-                    const updatedCreds = {
-                      ...parsedCreds,
-                      username: profileData.data.username,
-                      profileImageUrl: profileData.data.profile_image_url,
-                    };
-
-                    // Update both state and localStorage
-                    localStorage.setItem(
-                      STORAGE_KEY,
-                      JSON.stringify(updatedCreds),
-                    );
-                    setTwitterCredentials(updatedCreds);
-
-                    // Proceed with the updated credentials
-                    handleTwitterConnection(updatedCreds);
-                  } else {
-                    // Fall back to original creds if username fetch fails
-                    setTwitterCredentials(parsedCreds);
-                    handleTwitterConnection(parsedCreds);
-                  }
-                } else {
-                  // Also fall back if API call fails
-                  setTwitterCredentials(parsedCreds);
-                  handleTwitterConnection(parsedCreds);
-                }
-              } catch (error) {
-                console.error("Error fetching Twitter profile:", error);
-                setTwitterCredentials(parsedCreds);
-                handleTwitterConnection(parsedCreds);
+    const hasAuthParams = urlParams.has("oauth_token") || urlParams.has("code");
+    if (storedIntentMint === tokenMint && hasAuthParams) {
+      console.log("Processing OAuth callback for agent connection...");
+      const storedCreds = localStorage.getItem(STORAGE_KEY);
+      if (storedCreds) {
+        try {
+          const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
+          if (parsedCreds.expiresAt > Date.now()) {
+            const tryConnect = (retries = 5) => {
+              if (walletAddress) {
+                connectTwitterAgent(parsedCreds);
+              } else if (retries > 0) {
+                setTimeout(() => tryConnect(retries - 1), 1000);
+              } else {
+                toast.warn("Wallet connection timed out. Please click 'Connect as agent' again.");
+                setIsConnectingAgent(false);
               }
             };
-
-            // Define the connection handler
-            const handleTwitterConnection = (creds: TwitterCredentials) => {
-              // IMPORTANT: Add a function to handle connection with delayed retries
-              const connectWithRetries = async (retriesLeft = 5) => {
-                // If wallet is connected, attempt connection
-                if (publicKey) {
-                  setIsConnectingAgent(true);
-
-                  try {
-                    await connectTwitterAgent(creds);
-                    // Clean up intent AFTER successful connection
-                    localStorage.removeItem(AGENT_INTENT_KEY);
-
-                    // Clean up URL but preserve hash
-                    window.history.replaceState(
-                      {},
-                      "",
-                      window.location.pathname + location.hash,
-                    );
-                  } catch (error) {
-                    console.error(
-                      "Error connecting agent from callback:",
-                      error,
-                    );
-                    toast.error(
-                      `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-                    );
-                    // Still clean up on error
-                    localStorage.removeItem(AGENT_INTENT_KEY);
-                  } finally {
-                    setIsConnectingAgent(false);
-                  }
-                  return; // Exit the retry function
-                }
-
-                // If still no wallet and we have retries left, try again after a delay
-                if (retriesLeft > 0) {
-                  setTimeout(() => connectWithRetries(retriesLeft - 1), 1000);
-                } else {
-                  toast.warn(
-                    "Your wallet connection wasn't ready. Please click 'Connect as agent' once your wallet is connected.",
-                  );
-                  // Don't clear the intent yet, so user can try again
-                }
-              };
-
-              // Start the connection retry process
-              connectWithRetries();
-            };
-
-            // Start by fetching Twitter profile
-            fetchTwitterUsername();
-          } catch (error) {
-            console.error("Failed to process agent connection", error);
-            toast.error(
-              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-            );
-            // Clean up on error
+            tryConnect();
+          } else {
+            toast.error("X credentials expired. Please try again.");
+            localStorage.removeItem(STORAGE_KEY);
             localStorage.removeItem(AGENT_INTENT_KEY);
           }
-        } else {
-          toast.error(
-            "Twitter credentials not found after authentication. Please try again.",
-          );
+        } catch (error) {
+          toast.error("Failed to process X credentials. Please try again.");
           localStorage.removeItem(AGENT_INTENT_KEY);
         }
       } else {
-        toast.warning(
-          `Attempted to connect agent to wrong token. Please try again.`,
-        );
-        localStorage.removeItem(AGENT_INTENT_KEY);
+        console.warn("OAuth callback detected, credentials not yet found locally.");
+        toast.info("Processing X authentication...");
       }
+    } else if (storedIntentMint && storedIntentMint !== tokenMint) {
+      toast.warning("Redirected from X auth for a different token.");
+      localStorage.removeItem(AGENT_INTENT_KEY);
     }
-  }, [tokenMint, componentMounted, publicKey]); // connectTwitterAgent is already memoized
+  }, [componentMounted, tokenMint, walletAddress, connectTwitterAgent]);
 
   // Check if user has a connected agent for this token
   const hasConnectedAgent = tokenAgents.some(
     (agent) => publicKey && agent.ownerAddress === publicKey.toBase58(),
   );
 
-  // Effect to process OAuth callback and update stored credentials with correct username
-  useEffect(() => {
-    // Check if we have credentials but missing username
-    if (
-      twitterCredentials &&
-      (!twitterCredentials.username ||
-        twitterCredentials.username === "default_user")
-    ) {
-      const fetchTwitterUsername = async () => {
-        try {
-          // Replace direct Twitter API call with our backend endpoint
-          const response = await fetch(
-            `${API_BASE_URL}/api/share/twitter-user`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${twitterCredentials.accessToken}`,
-              },
-            },
-          );
-
-          if (response.ok) {
-            interface TwitterUserResponse {
-              data: {
-                id: string;
-                name: string;
-                username: string;
-                profile_image_url?: string;
-              };
-            }
-
-            const userData = (await response.json()) as TwitterUserResponse;
-
-            if (userData && userData.data && userData.data.username) {
-              // Update the credentials with the correct username and profile image
-              const updatedCredentials = {
-                ...twitterCredentials,
-                username: userData.data.username,
-                profileImageUrl: userData.data.profile_image_url,
-              };
-
-              // Update state
-              setTwitterCredentials(updatedCredentials);
-
-              // Update localStorage
-              localStorage.setItem(
-                STORAGE_KEY,
-                JSON.stringify(updatedCredentials),
-              );
-            }
-          } else {
-            console.error(
-              "Failed to fetch Twitter user info:",
-              await response.text(),
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching Twitter username:", error);
-        }
-      };
-
-      fetchTwitterUsername();
+  // --- Fetch Creator Profiles ---
+  const fetchProfileData = async (
+    address: string,
+  ): Promise<CreatorProfile | null> => {
+    // Example: Replace with your actual fetch logic
+    try {
+      // Assume an endpoint /api/profiles/:address exists
+      const response = await fetch(`${API_BASE_URL}/api/profiles/${address}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.profile || { displayName: shortenAddress(address) }; // Return profile or fallback
+    } catch (error) {
+      console.error(`Failed to fetch profile for ${address}:`, error);
+      return null; // Return null on error
     }
-  }, [twitterCredentials, API_BASE_URL]);
+  };
 
+  const fetchCreatorProfiles = useCallback(
+    async (agents: TokenAgent[]) => {
+      if (!agents || agents.length === 0 || isFetchingProfiles) return;
+
+      const uniqueOwnerAddresses = [
+        ...new Set(agents.map((a) => a.ownerAddress)),
+      ];
+      const addressesToFetch = uniqueOwnerAddresses.filter(
+        (addr) => !creatorProfiles[addr], // Only fetch if not already cached
+      );
+
+      if (addressesToFetch.length === 0) return;
+
+      setIsFetchingProfiles(true);
+      console.log("Fetching profiles for:", addressesToFetch);
+      try {
+        const profilePromises = addressesToFetch.map(fetchProfileData);
+        const profiles = await Promise.all(profilePromises);
+
+        const newProfiles: Record<string, CreatorProfile> = {};
+        addressesToFetch.forEach((addr, index) => {
+          if (profiles[index]) {
+            newProfiles[addr] = profiles[index]!;
+          } else {
+            // Cache a fallback if fetch failed or returned null
+            newProfiles[addr] = { displayName: shortenAddress(addr) };
+          }
+        });
+
+        setCreatorProfiles((prev) => ({ ...prev, ...newProfiles }));
+      } catch (error) {
+        console.error("Error fetching creator profiles:", error);
+      } finally {
+        setIsFetchingProfiles(false);
+      }
+    },
+    [creatorProfiles, isFetchingProfiles], // Dependencies for useCallback
+  );
+  // --- End Fetch Creator Profiles ---
+
+  // Define isCurrentUserAgent here within the inner component's scope
+  const isCurrentUserAgent = tokenAgents.some(
+    (agent) => agent.twitterUserId === twitterCredentials?.userId
+  );
+
+  // --- Render ---
   return (
-    <div className="w-full flex-shrink-0 h-fit p-4">
-      {isAgentsLoading && (
-        <div className="text-center py-4 text-neutral-400">
-          Loading agents...
-        </div>
-      )}
-      {agentsError && (
-        <div className="text-center py-4 text-red-500">
-          Error: {agentsError}
-        </div>
-      )}
-
-      {!isAgentsLoading && !agentsError && (
-        <div className="overflow-y-auto max-h-96">
-          {sortedAgents.length > 0 &&
-            sortedAgents.map((agent, index) => (
-              <div
-                key={agent.id || index}
-                className="flex items-center gap-2 justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <img
-                    src={agent.twitterImageUrl || "/default-avatar.png"}
-                    alt={agent.twitterUserName}
-                    className="w-6 h-6 rounded-full"
-                  />
-                  <span className="truncate">{agent.twitterUserName}</span>
-                </div>
-                {publicKey && agent.ownerAddress === publicKey.toBase58() && (
-                  <button
-                    // ** CHANGE: Pass the whole agent object **
-                    onClick={() => removeAgent(agent)}
-                    title="Remove agent"
-                    className="cursor-pointer text-red-500 hover:text-red-400 p-1"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            ))}
-        </div>
-      )}
-
-      {/* Twitter Connection Status and Actions */}
-      {isCreator && (
-        <>
-          <div className="mt-4">
-            {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-neutral-200">
-                    <span className="border border-[#03FF24] rounded-full w-2 h-2"></span>
-                    <span>
-                      Connected to X as @
-                      {twitterCredentials.username || twitterCredentials.userId}
-                    </span>
+    <div className="w-full flex-shrink-0 h-fit p-4 flex flex-col gap-4">
+      {/* Agent List Display */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-lg font-semibold text-autofun-text-primary">
+          Registered Agents
+        </h3>
+        {/* Combined Loading State */}
+        {isAgentsLoading && (
+           <div className="text-center py-4 text-neutral-400">Loading data...</div>
+        )}
+        {/* Specific Error for Token Data */}
+        {tokenDataError && !isAgentsLoading && (
+             <div className="text-center py-4 text-red-500">Error loading token data: {tokenDataError}</div>
+        )}
+         {/* Specific Error for Agents */}
+        {agentsError && !tokenDataError && !isAgentsLoading &&( // Show only if token data didn't also fail
+             <div className="text-center py-4 text-red-500">Error loading agents: {agentsError}</div>
+        )}
+        {/* No Agents Message */}
+        {!isAgentsLoading && !agentsError && !tokenDataError && sortedAgents.length === 0 && ( <div className="text-center py-4 text-neutral-400">No agents registered yet.</div> )}
+        {/* Agent List Mapping */}
+        {!isAgentsLoading && !agentsError && !tokenDataError && sortedAgents.length > 0 && (
+          <div className="overflow-y-auto max-h-96 flex flex-col gap-4 pr-2">
+            {sortedAgents.map((agent) => {
+              const agentIsOfficial = tokenData && agent.ownerAddress === tokenCreatorAddress;
+              const canRemove = walletAddress === agent.ownerAddress || isCreator;
+              const creatorDisplayName = creatorProfiles[agent.ownerAddress]?.displayName || shortenAddress(agent.ownerAddress);
+              return (
+                  <div
+                  key={agent.id}
+                  className={`flex items-center justify-between p-3 rounded border ${
+                    agentIsOfficial
+                      ? "bg-autofun-accent/10 border-autofun-accent"
+                      : "bg-autofun-background-input border-autofun-stroke-primary"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <img
+                      src={agent.twitterImageUrl || "/default-avatar.png"}
+                      alt=""
+                      className="w-10 h-10 rounded-full flex-shrink-0"
+                    />
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="font-medium text-autofun-text-primary truncate">
+                        @{agent.twitterUserName}
+                        {agentIsOfficial && (
+                          <span className="ml-2 text-xs font-semibold text-autofun-accent border border-autofun-accent px-1.5 py-0.5 rounded">
+                            Official
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-autofun-text-secondary truncate">
+                        Added by{" "}
+                        <Link
+                          to={`/profiles/${agent.ownerAddress}`}
+                          className="hover:underline hover:text-autofun-accent"
+                          title={`View profile`}
+                        >
+                          {creatorDisplayName}
+                        </Link>
+                        {isFetchingProfiles && !creatorProfiles[agent.ownerAddress] && ' (Loading...)'}
+                      </span>
+                    </div>
                   </div>
-                  <Button
-                    onClick={disconnectTwitter}
-                    disabled={isDisconnecting}
-                    variant="outline"
-                    size="small"
-                    className="text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto w-full"
-                  >
-                    <LogOut size={16} className="mr-1" />
-                    Disconnect X Account
-                  </Button>
+                  {canRemove && (
+                    <button
+                      onClick={() => removeAgent(agent)}
+                      title="Remove agent"
+                      className="cursor-pointer text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-950/20 ml-2 flex-shrink-0"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
-
-                {!hasConnectedAgent && (
-                  <Button
-                    onClick={connectTwitter}
-                    disabled={
-                      isConnectingAgent ||
-                      !tokenMint ||
-                      isAgentsLoading ||
-                      !!agentsError
-                    }
-                    className="mx-auto mt-2 w-full"
-                    variant="tab"
-                  >
-                    {isConnectingAgent ? "Connecting..." : "Connect as agent"}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <Button
-                onClick={connectTwitter}
-                disabled={
-                  isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
-                }
-                className="mx-auto h-fit w-full"
-                variant="tab"
-              >
-                {isConnectingAgent ? "Connecting..." : "Connect X Account"}
-              </Button>
-            )}
+               );
+            })}
           </div>
-          <div className="mt-4">
+        )}
+      </div>
+
+      {/* Connection Management Section */}
+      <div className="mt-4 border-t border-autofun-stroke-primary pt-4 flex flex-col gap-3">
+        <h3 className="text-lg font-semibold text-autofun-text-primary">
+          Manage Connection
+        </h3>
+        {!walletAddress ? ( <p className="text-sm text-center text-neutral-400"> Connect your wallet to manage or add agents. </p> )
+         : twitterCredentials ? (
+             <div className="flex flex-col gap-3 p-3 bg-autofun-background-input rounded border border-autofun-stroke-primary">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-neutral-200 overflow-hidden">
+                          {twitterCredentials.profileImageUrl && ( <img src={twitterCredentials.profileImageUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />)}
+                          <span className="border border-[#03FF24] rounded-full w-2 h-2 flex-shrink-0"></span>
+                          <span className="truncate"> Connected as @{twitterCredentials.username || "Loading..."} </span>
+                      </div>
+                      <Button onClick={disconnectTwitter} disabled={isDisconnecting} variant="outline" size="small" className="text-red-500 hover:text-red-400 hover:bg-red-950/20 flex-shrink-0" >
+                          <LogOut size={16} className="mr-1" /> {isDisconnecting ? "Disconnecting..." : "Disconnect X"}
+                      </Button>
+                  </div>
+                  {isCurrentUserAgent ? (
+                       <Button onClick={handleSwitchAccount} disabled={isDisconnecting} className="mt-2 w-full" variant="secondary" >
+                           {isDisconnecting ? 'Preparing...' : 'Add / Switch X Account'}
+                       </Button>
+                   ) : !isEligibleToAddAgent ? (
+                       <p className="text-sm text-center text-yellow-500 mt-2"> Hold {MIN_BALANCE_TO_ADD_AGENT.toLocaleString()} {tokenTicker} or be creator to add agent. </p>
+                   ) : (
+                       <Button onClick={() => connectTwitterAgent(twitterCredentials)} disabled={isConnectingAgent} className="mt-2 w-full" variant="primary" >
+                           {isConnectingAgent ? "Connecting Agent..." : `Connect @${twitterCredentials.username} as Agent`}
+                       </Button>
+                   )
+                  }
+              </div>
+            )
+         : (
+               <div className="flex flex-col gap-2 items-center">
+                 {!isEligibleToAddAgent ? ( <p className="text-sm text-center text-yellow-500"> Hold {MIN_BALANCE_TO_ADD_AGENT.toLocaleString()} {tokenTicker} or be creator to add agent. </p> )
+                 : ( <Button onClick={connectTwitterFlow} disabled={isConnectingAgent} className="w-full" variant="primary" > {isConnectingAgent ? "Connecting..." : "Connect X Account to Add Agent"} </Button> )
+                 }
+               </div>
+            )
+        }
+      </div>
+
+      {/* Fleek Button (optional - kept from original) */}
+       <div className="mt-4">
             <Link
               to="https://fleek.xyz/?referral=autofun"
               aria-label="fleek url"
               target="_blank"
             >
               <Button
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                className={`flex flex-col items-center gap-2 w-full mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${
-                  isHovered ? "text-black" : ""
+                className={`flex flex-col items-center gap-2 w-full mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${ ''
                 }`}
                 style={{
                   transition: "color 0.3s ease", // Add transition for text color
                 }}
                 variant="outline"
               >
-                {isConnectingAgent
-                  ? "Connecting..."
-                  : "Create an Eliza agent on"}
-                <div className="relative">
+                Create an Eliza agent on
+                <div className="relative h-6">
                   <img
                     src="/fleek-logo.svg"
                     alt="Fleek"
-                    className="aspect-auto absolute"
+                    className="aspect-auto absolute h-full"
                     style={{
                       transition: "opacity 0.3s ease",
-                      opacity: isHovered ? 0 : 1, // Show white logo when not hovered
+                       opacity: 1
                     }}
                   />
                   <img
                     src="/fleek-dark-logo.svg"
                     alt="Fleek Dark"
-                    className="aspect-auto"
+                    className="aspect-auto h-full"
                     style={{
                       transition: "opacity 0.3s ease",
-                      opacity: isHovered ? 1 : 0, // Show dark logo on hover
+                      opacity: 0
                     }}
                   />
                 </div>
               </Button>
             </Link>
           </div>
-        </>
-      )}
     </div>
   );
 }

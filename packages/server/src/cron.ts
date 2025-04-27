@@ -4,24 +4,20 @@ import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.jso
 import { Autofun } from "@autodotfun/types/types/autofun";
 import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import { S3Client } from "@aws-sdk/client-s3"; // S3 Import
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { Buffer } from 'node:buffer'; // Buffer import
 import crypto from "node:crypto"; // Import crypto for lock value
 import { getLatestCandle } from "./chart";
 import { getDB, Token, tokens } from "./db";
 import { ExternalToken } from "./externalToken";
+import {
+  checkAndReplenishTokens
+} from "./generation";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
-import { TokenMigrator } from "./migration/migrateToken";
 import { getToken } from "./migration/migrations";
 import { awardGraduationPoints, awardUserPoints } from "./points";
 import { getGlobalRedisCache, RedisCacheService } from "./redis";
-import {
-  checkAndReplenishTokens
-} from "./routes/generation";
 import { updateHoldersCache } from "./tokenSupplyHelpers";
-import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
   calculateFeaturedScore,
   createNewTokenData,
@@ -29,7 +25,6 @@ import {
   logger
 } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
-import { PointEvent } from "./points";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
 const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
