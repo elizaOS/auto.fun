@@ -241,7 +241,7 @@ export async function generateOgImage(mint: string): Promise<Buffer> {
  
         // Define text styles using dynamic sizes
         const cashtagStyle = `fill: ${textColorTop}; font-size: ${dynamicCashtagFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor};`;
-        const titleStyle = `fill: ${textColorTop}; font-size: ${dynamicTitleFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
+        const titleStyle = `fill: ${textColorTop}; font-size: ${dynamicTitleFontSize}px; font-family: ${fontFamily}; font-weight: 900; text-anchor: ${textAnchor};`;
         const labelBottomStyle = `fill: ${labelColorBottom}; font-size: ${labelFontSize}px; font-family: ${fontFamily}; text-anchor: ${textAnchor};`;
         const valueBottomStyle = `fill: ${valueColorBottom}; font-size: ${dataFontSize}px; font-family: ${fontFamily}; font-weight: bold; text-anchor: ${textAnchor};`;
 
