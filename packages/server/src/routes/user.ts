@@ -7,8 +7,6 @@ import { uploadWithS3 } from "../uploader"; // Import the S3 uploader utility
 import { logger } from "../util";
 import { generateMedia, MediaType } from "./generation"; // Import generation utilities
 import { uploadToStorage } from "./files";
-// Assume an auth middleware exists and is imported, e.g.:
-// import { authMiddleware } from "../middleware/auth";
 
 // --- Random Name Generation (Using Library) ---
 function generateRandomName(): string {

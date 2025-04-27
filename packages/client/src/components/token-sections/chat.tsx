@@ -12,9 +12,10 @@ import {
   Image as ImageIcon,
   Maximize,
   Minimize,
+  User as UserIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, Link } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 import { getSocket } from "@/utils/socket"; // Import WebSocket utility
 import { ChatImage } from "../chat/ChatImage";
@@ -61,6 +62,8 @@ const formatTierLabel = (tier: ChatTier): string => {
 interface ChatMessage {
   id: string;
   author: string; // User's public key
+  displayName?: string | null; // Optional: Author's display name
+  profileImage?: string | null; // Optional: Author's profile picture URL
   tokenMint: string;
   message: string;
   parentId?: string | null;
@@ -68,7 +71,6 @@ interface ChatMessage {
   replyCount?: number;
   timestamp: string;
   isOptimistic?: boolean; // Flag for optimistically added messages
-  hasLiked?: boolean; // Add hasLiked field
   media?: string; // Added media field
 }
 
@@ -103,6 +105,9 @@ export default function ChatSection() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [selectedChatTier, setSelectedChatTier] = useState<ChatTier>("1k");
   const [eligibleChatTiers, setEligibleChatTiers] = useState<ChatTier[]>([]);
+  const [viewableChatTiers, setViewableChatTiers] = useState<ChatTier[]>([
+    "1k",
+  ]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
@@ -113,13 +118,17 @@ export default function ChatSection() {
   const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null);
   const [isChatFullscreen, setIsChatFullscreen] = useState(false);
 
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageCaption, setImageCaption] = useState("");
+
   // --- Pagination State ---
-  const [oldestTimestamp, setOldestTimestamp] = useState<string | null>(null);
+  const [currentOffset, setCurrentOffset] = useState(0);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const { ref: topSentinelRef, inView: isTopSentinelInView } = useInView({
-    threshold: 0, // Trigger as soon as it enters viewport
+    threshold: 0,
   });
 
   // Get token mint from URL params with better fallback logic
@@ -137,12 +146,18 @@ export default function ChatSection() {
   // Add token balance hook after tokenMint is set
   const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
 
+  // Determine if user can chat (POST) in the currently selected tier
+  const canChatInSelectedTier =
+    isAuthenticated &&
+    publicKey != null &&
+    eligibleChatTiers.includes(selectedChatTier);
+
   // Update balance loading state when token balance changes
   useEffect(() => {
-    if (tokenBalance !== undefined) {
+    if (tokenBalance !== undefined || !isAuthenticated) {
       setIsBalanceLoading(false);
     }
-  }, [tokenBalance]);
+  }, [tokenBalance, isAuthenticated]);
 
   // --- Scrolling Helper --- MOVED HERE - AFTER chatContainerRef declaration
   const scrollToBottom = useCallback((forceScroll = false) => {
@@ -167,19 +182,18 @@ export default function ChatSection() {
     }
   }, []);
 
+  const handleScroll = () => {
+    if (!chatContainerRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    const isNearBottom = scrollHeight - clientHeight <= scrollTop + 150; // 150px threshold
+
+    setShowScrollButton(!isNearBottom);
+  };
+
   // Handler to detect when user scrolls away from bottom
   useEffect(() => {
     if (!chatContainerRef.current) return;
-
-    const handleScroll = () => {
-      if (!chatContainerRef.current) return;
-
-      const { scrollTop, scrollHeight, clientHeight } =
-        chatContainerRef.current;
-      const isNearBottom = scrollHeight - clientHeight <= scrollTop + 150; // 150px threshold
-
-      setShowScrollButton(!isNearBottom);
-    };
 
     const chatContainer = chatContainerRef.current;
     chatContainer.addEventListener("scroll", handleScroll);
@@ -192,118 +206,177 @@ export default function ChatSection() {
   // --- WebSocket Instance --- (NEW)
   const socket = getSocket();
 
-  // --- Fetch Initial Chat Messages --- *REVISED*
+  // --- Constants ---
+  const MESSAGES_PER_PAGE = 50; // Define how many messages to fetch per page
+
+  // --- Fetch Initial Messages ---
   const fetchChatMessages = useCallback(
-    async (tier: ChatTier, showLoading = true) => {
-      if (
-        !tokenMint ||
-        !publicKey ||
-        !API_BASE_URL ||
-        !eligibleChatTiers.includes(tier) ||
-        !isAuthenticated ||
-        isBalanceLoading ||
-        isAuthenticating
-      ) {
-        setChatMessages([]);
-        setLatestTimestamp(null);
-        setOldestTimestamp(null);
-        setHasOlderMessages(true);
-        return;
-      }
-
-      if (showLoading) {
-        setIsChatLoading(true);
-      } else {
-        setIsRefreshingMessages(true);
-      }
-
+    async (tier: ChatTier, mint: string, isInitialLoad = false) => {
+      if (!mint) return;
+      setIsChatLoading(true);
       setChatError(null);
-      setHasOlderMessages(true);
+      if (isInitialLoad) {
+        setChatMessages([]); // Clear messages on initial load or tier change
+        setCurrentOffset(0); // Reset offset
+        setHasOlderMessages(true); // Reset pagination status
+      }
+
+      const fetchFn = tier === "1k" ? fetch : fetchWithAuth; // Use fetch for 1k, fetchWithAuth otherwise
+      const url = `${API_BASE_URL}/api/chat/${mint}/${tier}?limit=${MESSAGES_PER_PAGE}&offset=0`; // Initial fetch uses offset 0
+      let response: Response | undefined; // Initialize as potentially undefined
+      let data: GetMessagesResponse;
       try {
-        const response = await fetchWithAuth(
-          `${API_BASE_URL}/api/chat/${tokenMint}/${tier}?limit=${CHAT_MESSAGE_LIMIT}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
+        response = await fetchFn(url);
+        data = await response.json();
+
+        if (!response.ok || !data.success || !data.messages) {
+          // Throw an error object that includes the status if possible
+          const error: any = new Error(
+            data.error ||
+              `Failed to fetch messages (Status: ${response.status})`,
+          );
+          error.status = response.status; // Attach status to the error object
+          throw error;
+        }
+
+        // Sort messages by timestamp just in case (API should ideally return sorted)
+        const sortedMessages = data.messages.sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
 
-        if (response.status === 401 || response.status === 403) {
-          setChatError(
-            `You need ${getTierThreshold(tier).toLocaleString()} tokens to view this chat.`,
+        setChatMessages(sortedMessages);
+        setCurrentOffset(sortedMessages.length); // Set offset for the *next* fetch
+        setHasOlderMessages(sortedMessages.length === MESSAGES_PER_PAGE); // Assume more if we got a full page
+
+        // Update latest timestamp from the initial batch
+        if (sortedMessages.length > 0) {
+          setLatestTimestamp(
+            sortedMessages[sortedMessages.length - 1].timestamp,
           );
-          setChatMessages([]);
-          setLatestTimestamp(null);
-          setOldestTimestamp(null);
-          setHasOlderMessages(false);
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch messages: ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response format: Expected JSON");
-        }
-
-        const data: GetMessagesResponse = await response.json();
-
-        if (data.success && data.messages) {
-          const sortedMessages = data.messages.sort(
-            (a, b) =>
-              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-          );
-          setChatMessages(sortedMessages);
-
-          if (sortedMessages.length > 0) {
-            setLatestTimestamp(
-              sortedMessages[sortedMessages.length - 1].timestamp,
-            );
-            setOldestTimestamp(sortedMessages[0].timestamp);
-            setHasOlderMessages(sortedMessages.length === CHAT_MESSAGE_LIMIT);
-          } else {
-            const now = new Date().toISOString();
-            setLatestTimestamp(now);
-            setOldestTimestamp(now);
-            setHasOlderMessages(false);
-          }
-          setTimeout(() => scrollToBottom(true), 100);
         } else {
-          const now = new Date().toISOString();
-          setLatestTimestamp(now);
-          setOldestTimestamp(now);
-          setHasOlderMessages(false);
-          throw new Error(data.error || "Failed to fetch messages");
+          setLatestTimestamp(null);
         }
-      } catch (error) {
+
+        // Scroll to bottom only on initial load
+        if (isInitialLoad) {
+          scrollToBottom(true);
+        }
+
+        setChatError(null); // Clear error on success
+      } catch (error: any) {
         console.error("Error fetching chat messages:", error);
-        setChatError(
-          error instanceof Error ? error.message : "Could not load messages",
-        );
-        setChatMessages([]);
-        const now = new Date().toISOString();
-        setLatestTimestamp(now);
-        setOldestTimestamp(now);
-        setHasOlderMessages(false);
+
+        // Check if the error object has the status we attached, or check the response variable if it exists
+        const status = error?.status ?? response?.status; // Safely get status
+        const isPermissionError = status === 401 || status === 403;
+
+        if (isPermissionError) {
+          setChatError(
+            `You don't have permission to view the ${formatTierLabel(tier)} tier.`,
+          );
+        } else {
+          // Use error.message which might contain the status code now
+          setChatError(error?.message || "Could not load chat messages.");
+        }
+        setChatMessages([]); // Clear messages on error
       } finally {
         setIsChatLoading(false);
         setIsRefreshingMessages(false);
       }
     },
-    [
-      tokenMint,
-      publicKey,
-      eligibleChatTiers,
-      isAuthenticated,
-      isBalanceLoading,
-      isAuthenticating,
-      scrollToBottom,
-    ],
-  );
+    [API_BASE_URL, fetchWithAuth, scrollToBottom, formatTierLabel],
+  ); // Add dependencies
+
+  // --- Fetch Older Messages (Pagination) --- MODIFIED
+  const fetchOlderMessages = useCallback(async () => {
+    if (isLoadingOlderMessages || !hasOlderMessages || !tokenMint) return;
+
+    setIsLoadingOlderMessages(true);
+    setChatError(null);
+
+    const fetchFn = selectedChatTier === "1k" ? fetch : fetchWithAuth;
+    // Use currentOffset for pagination
+    const url = `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}?limit=${MESSAGES_PER_PAGE}&offset=${currentOffset}`;
+
+    try {
+      const response = await fetchFn(url);
+      const data: GetMessagesResponse = await response.json();
+
+      if (!response.ok || !data.success || !data.messages) {
+        throw new Error(data.error || "Failed to fetch older messages");
+      }
+
+      // Sort older messages (API should ideally return sorted)
+      const sortedOlderMessages = data.messages.sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
+
+      if (sortedOlderMessages.length > 0) {
+        // Prepend older messages
+        setChatMessages((prev) => [...sortedOlderMessages, ...prev]);
+        // Update offset for the next fetch
+        setCurrentOffset(
+          (prevOffset) => prevOffset + sortedOlderMessages.length,
+        );
+      }
+
+      // Check if there are likely more messages
+      setHasOlderMessages(sortedOlderMessages.length === MESSAGES_PER_PAGE);
+    } catch (error: any) {
+      console.error("Error fetching older messages:", error);
+      setChatError(error.message || "Could not load older messages.");
+      setHasOlderMessages(false); // Stop trying if there's an error
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  }, [
+    tokenMint,
+    selectedChatTier,
+    isLoadingOlderMessages,
+    hasOlderMessages,
+    currentOffset, // Add currentOffset dependency
+    fetchWithAuth,
+    API_BASE_URL,
+  ]);
+
+  // --- Effect to Load Older Messages on Scroll ---
+  useEffect(() => {
+    if (
+      isTopSentinelInView &&
+      !isChatLoading &&
+      !isLoadingOlderMessages &&
+      hasOlderMessages
+    ) {
+      fetchOlderMessages();
+    }
+  }, [
+    isTopSentinelInView,
+    isChatLoading,
+    isLoadingOlderMessages,
+    hasOlderMessages,
+    fetchOlderMessages,
+  ]);
+
+  // --- Effect for Initial Load and Tier Change ---
+  useEffect(() => {
+    if (tokenMint) {
+      fetchChatMessages(selectedChatTier, tokenMint, true); // Pass true for initial load
+    } else {
+      // Handle case where tokenMint is not yet available (e.g., clear messages)
+      setChatMessages([]);
+      setChatError(null);
+      setIsChatLoading(false);
+      setCurrentOffset(0);
+      setHasOlderMessages(true);
+    }
+    // Reset scroll position when tier changes
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [selectedChatTier, tokenMint, fetchChatMessages]); // fetchChatMessages is now stable
 
   // Effect to detect token mint from various sources
   useEffect(() => {
@@ -319,10 +392,27 @@ export default function ChatSection() {
     }
   }, [urlTokenMint, location.pathname]);
 
-  // --- Fetch Chat Eligibility --- *NEW*
+  // --- Fetch Chat Eligibility --- *REVISED*
   const fetchChatEligibility = useCallback(async () => {
-    if (!tokenMint || !publicKey || !API_BASE_URL || isBalanceLoading) {
-      setEligibleChatTiers([]);
+    setEligibleChatTiers([]);
+    setViewableChatTiers(["1k"]);
+
+    if (
+      !tokenMint ||
+      !API_BASE_URL ||
+      isBalanceLoading ||
+      !isAuthenticated ||
+      !publicKey
+    ) {
+      if (!isAuthenticated) {
+        setIsBalanceLoading(false);
+        if (
+          selectedChatTier !== "1k" &&
+          !["100k", "1M"].some((t) => viewableChatTiers.includes(t as ChatTier))
+        ) {
+          setSelectedChatTier("1k");
+        }
+      }
       return;
     }
 
@@ -332,16 +422,17 @@ export default function ChatSection() {
         `${API_BASE_URL}/api/chat/${tokenMint}/tiers`,
       );
 
-      if (response.status === 401 || response.status === 403) {
-        setChatError("Authentication required or insufficient permissions");
-        setEligibleChatTiers([]);
-        return;
-      }
-
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch tier eligibility: ${response.statusText}`,
-        );
+        if (response.status === 401 || response.status === 403) {
+          console.warn(
+            "Eligibility check failed: Authentication or permission issue.",
+          );
+        } else {
+          throw new Error(
+            `Failed to fetch tier eligibility: ${response.statusText}`,
+          );
+        }
+        return;
       }
 
       const contentType = response.headers.get("content-type");
@@ -351,39 +442,57 @@ export default function ChatSection() {
 
       const data: EligibleTiersResponse = await response.json();
 
-      if (data.success && data.tiers) {
-        const effectiveBalance = tokenBalance || 0;
+      if (data.success && typeof data.balance === "number") {
+        const effectiveBalance = data.balance;
 
-        const eligibleTiers = CHAT_TIERS.filter(
+        const calculatedEligibleTiers = CHAT_TIERS.filter(
           (tier) => effectiveBalance >= getTierThreshold(tier),
         );
+        setEligibleChatTiers(calculatedEligibleTiers);
 
-        setEligibleChatTiers(eligibleTiers);
+        const calculatedViewableTiers: ChatTier[] = ["1k"];
+        if (effectiveBalance >= getTierThreshold("1k")) {
+          calculatedViewableTiers.push("100k");
+        }
+        if (effectiveBalance >= getTierThreshold("100k")) {
+          calculatedViewableTiers.push("1M");
+        }
+        setViewableChatTiers(calculatedViewableTiers);
 
-        if (
-          !eligibleTiers.includes(selectedChatTier) &&
-          eligibleTiers.length > 0
-        ) {
-          setSelectedChatTier(eligibleTiers[eligibleTiers.length - 1]);
-        } else if (eligibleTiers.length === 0) {
-          // do nothing
+        if (!calculatedViewableTiers.includes(selectedChatTier)) {
+          setSelectedChatTier(
+            calculatedViewableTiers[calculatedViewableTiers.length - 1] || "1k",
+          );
         }
       } else {
-        throw new Error(data.error || "Failed to fetch eligible tiers");
+        console.warn(
+          "Eligibility check response missing success or balance data.",
+          data,
+        );
       }
     } catch (error) {
       console.error("Error fetching chat eligibility:", error);
-      setChatError(
-        error instanceof Error ? error.message : "Could not check eligibility",
-      );
-      setEligibleChatTiers([]);
     }
-  }, [tokenMint, publicKey, selectedChatTier, tokenBalance, isBalanceLoading]);
+  }, [
+    tokenMint,
+    publicKey,
+    API_BASE_URL,
+    isBalanceLoading,
+    isAuthenticated,
+    selectedChatTier,
+  ]);
 
   // Fetch eligibility when balance/auth/token changes
   useEffect(() => {
-    if (publicKey && tokenMint && !isBalanceLoading && isAuthenticated) {
+    if (tokenMint && (!isBalanceLoading || !isAuthenticated)) {
       fetchChatEligibility();
+    }
+    if (!isAuthenticated) {
+      setEligibleChatTiers([]);
+      setViewableChatTiers(["1k"]);
+      if (!["1k"].includes(selectedChatTier)) {
+        setSelectedChatTier("1k");
+      }
     }
   }, [
     fetchChatEligibility,
@@ -391,6 +500,7 @@ export default function ChatSection() {
     tokenMint,
     isBalanceLoading,
     isAuthenticated,
+    selectedChatTier,
   ]);
 
   // Effect to reset state and fetch initial messages when context changes
@@ -398,140 +508,40 @@ export default function ChatSection() {
     setLatestTimestamp(null);
     setChatMessages([]);
     setChatError(null);
-    setOldestTimestamp(null);
+    setCurrentOffset(0);
     setHasOlderMessages(true);
     setIsLoadingOlderMessages(false);
 
-    if (
-      tokenMint &&
-      eligibleChatTiers.includes(selectedChatTier) &&
-      !isBalanceLoading &&
-      isAuthenticated
-    ) {
-      setIsChatLoading(true);
-      fetchChatMessages(selectedChatTier);
+    if (tokenMint && viewableChatTiers.includes(selectedChatTier)) {
+      fetchChatMessages(selectedChatTier, tokenMint, true);
+    } else if (tokenMint && !viewableChatTiers.includes(selectedChatTier)) {
+      setIsChatLoading(false);
+      setChatError("You no longer have permission to view this tier.");
     }
-  }, [
-    tokenMint,
-    selectedChatTier,
-    isBalanceLoading,
-    isAuthenticated,
-    eligibleChatTiers,
-    fetchChatMessages,
-  ]);
+  }, [tokenMint, selectedChatTier, viewableChatTiers, fetchChatMessages]);
 
-  // --- Fetch Older Messages (Upwards Pagination) --- *NEW*
-  const fetchOlderMessages = useCallback(async () => {
-    if (
-      !tokenMint ||
-      !publicKey ||
-      !selectedChatTier ||
-      !oldestTimestamp ||
-      !hasOlderMessages ||
-      isLoadingOlderMessages ||
-      isChatLoading
-    ) {
-      return;
-    }
-
-    setIsLoadingOlderMessages(true);
-    setChatError(null);
-
-    try {
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}/history?before=${oldestTimestamp}&limit=${CHAT_MESSAGE_LIMIT}`,
-      );
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          setHasOlderMessages(false);
-        } else {
-          throw new Error(
-            `Failed to fetch older messages: ${response.statusText}`,
-          );
-        }
-        return;
-      }
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Invalid response format: Expected JSON");
-      }
-
-      const data: GetMessagesResponse = await response.json();
-
-      if (data.success && data.messages && data.messages.length > 0) {
-        const chatDiv = chatContainerRef.current;
-        const oldScrollHeight = chatDiv?.scrollHeight || 0;
-        const oldScrollTop = chatDiv?.scrollTop || 0;
-
-        const sortedOlderMessages = data.messages.sort(
-          (a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-        );
-
-        setChatMessages((prev) => [...prev, ...sortedOlderMessages]);
-        setOldestTimestamp(sortedOlderMessages[0].timestamp);
-        setHasOlderMessages(sortedOlderMessages.length === CHAT_MESSAGE_LIMIT);
-
-        if (chatDiv) {
-          requestAnimationFrame(() => {
-            const newScrollHeight = chatDiv.scrollHeight;
-            chatDiv.scrollTop =
-              newScrollHeight - oldScrollHeight + oldScrollTop;
-          });
-        }
-      } else {
-        setHasOlderMessages(false);
-        if (data.error) {
-          console.warn("Error fetching older messages (backend):", data.error);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching older messages:", error);
-    } finally {
-      setIsLoadingOlderMessages(false);
-    }
-  }, [
-    tokenMint,
-    publicKey,
-    selectedChatTier,
-    oldestTimestamp,
-    hasOlderMessages,
-    isLoadingOlderMessages,
-    isChatLoading,
-    isAuthenticated,
-  ]);
-
-  // Trigger fetchOlderMessages when top sentinel becomes visible
-  useEffect(() => {
-    if (isTopSentinelInView && hasOlderMessages && !isLoadingOlderMessages) {
-      fetchOlderMessages();
-    }
-  }, [
-    isTopSentinelInView,
-    hasOlderMessages,
-    isLoadingOlderMessages,
-    fetchOlderMessages,
-  ]);
-
-  // --- WebSocket Subscription --- (NEW)
+  // --- WebSocket Subscription --- *REVISED*
   useEffect(() => {
     if (
       !socket ||
       !tokenMint ||
       !selectedChatTier ||
-      !isAuthenticated ||
-      !eligibleChatTiers.includes(selectedChatTier)
+      !viewableChatTiers.includes(selectedChatTier)
     ) {
-      return; // Don't subscribe if conditions aren't met
+      return;
+    }
+
+    if (selectedChatTier !== "1k" && !isAuthenticated) {
+      console.log(
+        `WS: Authentication required to subscribe to ${selectedChatTier}, skipping.`,
+      );
+      return;
     }
 
     const subscriptionData = { tokenMint, tier: selectedChatTier };
-
+    console.log("WS: Attempting to subscribe to chat room:", subscriptionData);
     socket.emit("subscribeToChat", subscriptionData);
 
-    // Confirmation listener (optional but good for debugging)
     const handleSubscribed = (data: any) => {
       if (data?.room === `chat:${tokenMint}:${selectedChatTier}`) {
         console.log("WS: Successfully subscribed to", data.room);
@@ -539,227 +549,198 @@ export default function ChatSection() {
     };
     socket.on("subscribedToChat", handleSubscribed);
 
-    // Cleanup function
     return () => {
       console.log("WS: Unsubscribing from chat room:", subscriptionData);
       socket.emit("unsubscribeFromChat", subscriptionData);
-      socket.off("subscribedToChat", handleSubscribed); // Remove listener
+      socket.off("subscribedToChat", handleSubscribed);
     };
-  }, [socket, tokenMint, selectedChatTier, isAuthenticated, eligibleChatTiers]);
+  }, [socket, tokenMint, selectedChatTier, viewableChatTiers, isAuthenticated]);
 
   // --- WebSocket Message Listener --- (NEW)
   useEffect(() => {
     if (!socket) return;
 
-    // Define handler with type assertion
-    const handleNewChatMessage = (data: unknown) => {
-      const newMessage = data as ChatMessage;
-      // console.log("WS: Received new message:", newMessage);
-
-      // Basic validation
-      if (
-        !newMessage ||
-        !newMessage.id ||
-        !newMessage.tokenMint ||
-        !newMessage.tier
-      ) {
-        console.warn("WS: Received invalid message format.", newMessage);
-        return;
+    const handleNewMessage = (newMessage: ChatMessage) => {
+      // Check if message already exists (optimistic or previous WS message)
+      if (!chatMessages.some((msg) => msg.id === newMessage.id)) {
+        setChatMessages((prev) => [...prev, newMessage]);
+        // Update latest timestamp if needed
+        if (newMessage.timestamp > (latestTimestamp || "")) {
+          setLatestTimestamp(newMessage.timestamp);
+        }
+        scrollToBottom(); // Scroll only if user was near bottom
       }
-
-      // Check if the message belongs to the current context
-      if (
-        newMessage.tokenMint !== tokenMint ||
-        newMessage.tier !== selectedChatTier
-      ) {
-        console.log("WS: Ignoring message from different token/tier.");
-        return;
-      }
-
-      setChatMessages((prevMessages) => {
-        // Check if message already exists
-        if (prevMessages.some((msg) => msg.id === newMessage.id)) {
-          return prevMessages;
-        }
-        // Add new message and sort by timestamp
-        const newMessages = [...prevMessages, newMessage];
-        return newMessages.sort(
-          (a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-        );
-        const isOwnMessage = newMessage.author === publicKey?.toBase58();
-        const existingById = prevMessages.find(
-          (msg) => msg.id === newMessage.id,
-        );
-
-        // If message already exists by real ID, ignore to prevent duplicates.
-        if (existingById) {
-          console.log(
-            "WS: Message already exists by ID, ignoring:",
-            newMessage.id,
-          );
-          return prevMessages;
-        }
-
-        // If it's a message from the current user, try to replace the optimistic version
-        if (isOwnMessage) {
-          const optimisticIndex = prevMessages.findIndex(
-            (msg) => msg.isOptimistic && msg.author === newMessage.author,
-            // Consider adding content check for robustness if needed: && msg.message === newMessage.message
-          );
-
-          if (optimisticIndex !== -1) {
-            console.log(
-              "WS: Replacing optimistic message with confirmed:",
-              newMessage.id,
-            );
-            const updatedMessages = [...prevMessages];
-            // Replace the optimistic message with the confirmed one from WebSocket
-            updatedMessages[optimisticIndex] = {
-              ...newMessage,
-              isOptimistic: false,
-            };
-            return updatedMessages;
-          } else {
-            // Own message, but no matching optimistic message found. Add it.
-            console.log(
-              "WS: Own confirmed message received, but no matching optimistic message found. Adding:",
-              newMessage.id,
-            );
-            return [...prevMessages, { ...newMessage, isOptimistic: false }];
-          }
-        } else {
-          // Message from another user, and it doesn't exist by ID yet. Add it.
-          console.log("WS: Adding message from other user:", newMessage.id);
-          return [...prevMessages, { ...newMessage, isOptimistic: false }]; // Ensure isOptimistic is false for others
-        }
-      });
-
-      // Update latest timestamp if this message is newer
-      setLatestTimestamp((prevTimestamp) => {
-        if (
-          !prevTimestamp ||
-          new Date(newMessage.timestamp).getTime() >
-            new Date(prevTimestamp).getTime()
-        ) {
-          return newMessage.timestamp;
-        }
-        return prevTimestamp;
-      });
-
-      // Scroll down if near bottom
-      setTimeout(() => scrollToBottom(false), 50);
     };
 
-    // Register the handler
-    socket.on("newChatMessage", handleNewChatMessage);
+    socket.on("newChatMessage", handleNewMessage);
     console.log("WS: Registered newChatMessage listener.");
 
-    // Cleanup listener on unmount or socket change
     return () => {
-      socket.off("newChatMessage", handleNewChatMessage);
+      socket.off("newChatMessage", handleNewMessage);
       console.log("WS: Unregistered newChatMessage listener.");
     };
-  }, [socket, tokenMint, selectedChatTier, scrollToBottom]);
+  }, [
+    socket,
+    tokenMint,
+    selectedChatTier,
+    scrollToBottom,
+    latestTimestamp,
+    chatMessages,
+  ]); // Add chatMessages dependency
 
-  // --- Send Chat Message --- *REVISED* (Optimistic update remains, WS handles confirmation)
-  const handleSendMessage = async (imageUrl?: string) => {
-    if (
-      (!chatInput.trim() && !imageUrl) ||
-      !tokenMint ||
-      !publicKey ||
-      !eligibleChatTiers.includes(selectedChatTier)
-    ) {
+  // --- Send Chat Message --- *REVISED* (Check eligibleChatTiers for posting)
+  const handleSendMessage = useCallback(async () => {
+    if (!publicKey || !tokenMint || !canChatInSelectedTier) return;
+    if (isSendingMessage) return; // Prevent double sends
+
+    const messageText = selectedImage ? imageCaption.trim() : chatInput.trim();
+    let mediaBase64: string | null = null;
+
+    // Check if there's content to send (either text or an image)
+    if (!messageText && !selectedImage) {
+      toast.error("Please enter a message or select an image.");
       return;
     }
 
-    setIsSendingMessage(true);
-    setChatError(null);
+    setIsSendingMessage(true); // Start loading state
 
-    const tempId = `temp-${Date.now()}`;
+    // --- Handle Image Reading (if selected) ---
+    if (selectedImage) {
+      try {
+        mediaBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(selectedImage); // Read as base64 data URI
+        });
+      } catch (error) {
+        console.error("Error reading image file:", error);
+        toast.error("Failed to read image file.");
+        setIsSendingMessage(false); // Stop loading state
+        return;
+      }
+    }
+
+    // --- Prepare Payload ---
+    const payload: {
+      message: string;
+      media?: string | null;
+      parentId?: string | null;
+    } = {
+      message: messageText, // Send caption or text message
+      media: mediaBase64, // Send base64 string or null
+      // parentId: null, // Add parentId logic here if implementing replies
+    };
+
+    // --- Optimistic Update ---
+    const optimisticId = `optimistic-${Date.now()}`;
     const optimisticMessage: ChatMessage = {
-      id: tempId,
+      id: optimisticId,
       author: publicKey.toBase58(),
+      displayName: "You", // Placeholder
+      profileImage: null, // Placeholder
       tokenMint: tokenMint,
-      message: chatInput.trim(),
       tier: selectedChatTier,
+      message: messageText, // Caption or text
+      media: imagePreview || undefined, // Use local base64 preview
       timestamp: new Date().toISOString(),
       isOptimistic: true,
-      hasLiked: false, // Assuming default
     };
 
     setChatMessages((prev) => [...prev, optimisticMessage]);
-    const messageToSend = chatInput.trim(); // Store message before clearing input
+    scrollToBottom(true); // Scroll after adding optimistic message
+
+    // Clear inputs immediately after starting send
     setChatInput("");
+    setImageCaption("");
+    setSelectedImage(null);
+    setImagePreview(null);
 
-    setTimeout(() => scrollToBottom(true), 50);
-
+    // --- API Call ---
     try {
-      // Call the API to post the message
       const response = await fetchWithAuth(
         `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: imageUrl || chatInput.trim(),
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         },
       );
 
-      // Handle API response (primarily for errors or immediate feedback)
-      if (response.status === 401 || response.status === 403) {
-        setChatError(
-          `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`,
-        );
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to send message");
+      }
+
+      // --- Update UI with confirmed message ---
+      // Replace optimistic message with confirmed one from backend
+      setChatMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === optimisticId
+            ? { ...result.message, isOptimistic: false }
+            : msg,
+        ),
+      );
+      // Update timestamps if needed based on the new message
+      if (result.message.timestamp > (latestTimestamp || "")) {
+        setLatestTimestamp(result.message.timestamp);
+      }
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      toast.error(`Error: ${error.message || "Could not send message"}`);
+      // Remove optimistic message on failure
+      setChatMessages((prev) => prev.filter((msg) => msg.id !== optimisticId));
+    } finally {
+      setIsSendingMessage(false); // End loading state
+    }
+  }, [
+    publicKey,
+    tokenMint,
+    selectedChatTier,
+    chatInput,
+    selectedImage,
+    imageCaption,
+    imagePreview, // Include preview for optimistic update
+    fetchWithAuth,
+    setChatMessages,
+    scrollToBottom,
+    canChatInSelectedTier,
+    isSendingMessage,
+    latestTimestamp,
+    API_BASE_URL,
+  ]);
+
+  // --- Handle Image Selection ---
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Basic validation (optional: add size/type checks)
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select a valid image file.");
         return;
       }
-
-      if (!response.ok) {
-        // Attempt to parse error from backend
-        let errorMsg = `Failed to send message: ${response.statusText}`;
-        try {
-          const errorData = await response.json();
-          if (errorData.error) errorMsg = errorData.error;
-        } catch (_) {
-          // do nothing
-        }
-        throw new Error(errorMsg);
-      }
-
-      // Clear input after successful send
-      if (!imageUrl) {
-        setChatInput("");
-      }
-
-      // Immediately refresh messages after successful post
-      await fetchChatMessages(selectedChatTier, false);
-      setTimeout(() => scrollToBottom(true), 100);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setChatError(
-        error instanceof Error ? error.message : "Could not send message",
-      );
-    } finally {
-      setIsSendingMessage(false);
+      setSelectedImage(file);
+      setImageCaption(""); // Reset caption when new image is selected
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      // Clear text input if user selects an image
+      setChatInput("");
+      // Reset file input value to allow selecting the same file again
+      event.target.value = "";
     }
   };
 
   // Scroll to bottom on first render and when messages change
   useEffect(() => {
     if (!isChatLoading && chatMessages.length > 0) {
-      // Short delay to ensure DOM updates
       setTimeout(() => scrollToBottom(true), 100);
     }
   }, [chatMessages, isChatLoading, scrollToBottom]);
-
-  // Determine if user can chat in the currently selected tier
-  const canChatInSelectedTier =
-    publicKey &&
-    eligibleChatTiers.includes(selectedChatTier) &&
-    isAuthenticated;
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -790,85 +771,6 @@ export default function ChatSection() {
     });
   };
 
-  // Function to render the avatar/identity for each message
-  const renderMessageAvatar = (authorKey: string) => {
-    const shortKey = `${authorKey.substring(0, 4)}...${authorKey.substring(authorKey.length - 4)}`;
-
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-400">{shortKey}</span>
-      </div>
-    );
-  };
-
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageCaption, setImageCaption] = useState("");
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      console.log("Please select an image file");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      console.log("Image size should be less than 5MB");
-      return;
-    }
-
-    setSelectedImage(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const uploadImage = async () => {
-    if (!selectedImage) return;
-
-    try {
-      const response = await fetchWithAuth(
-        `${env.apiUrl}/api/chat/${tokenMint}/${selectedChatTier}/upload-image`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            imageBase64: imagePreview,
-            caption: imageCaption,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to upload image");
-      }
-
-      const data = await response.json();
-      if (data.success && data.message) {
-        setChatMessages((prev) => {
-          const newMessages = [data.message, ...prev];
-          return newMessages.sort(
-            (a, b) =>
-              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-          );
-        });
-        setImageCaption("");
-        setSelectedImage(null);
-        setImagePreview(null);
-      }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error("Failed to upload image");
-    }
-  };
-
   // Effect to manage body scroll based on fullscreen state
   useEffect(() => {
     if (isChatFullscreen) {
@@ -883,355 +785,355 @@ export default function ChatSection() {
   }, [isChatFullscreen]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex flex-col my-2">
-        <div
-          className={clsx(
-            "flex flex-col md:flex-row gap-4",
-            isChatFullscreen &&
-              "fixed inset-0 z-50 bg-black p-2 flex flex-col z-10000", // Use flex-col for fullscreen container
-          )}
-        >
-          {/* Content Area */}
-          <div
-            className={clsx(
-              "flex flex-col grow w-full",
-              isChatFullscreen && "overflow-hidden", // Contain children within fullscreen
-            )}
-          >
-            <div
-              className={clsx(
-                "flex flex-col border-t-1 border-gray-700",
-                isChatFullscreen
-                  ? "grow" // Let this inner container grow to fill Content Area
-                  : "h-[70vh]", // Original height
-              )}
-            >
-              {/* Tier Selection Header */}
-              <div className="flex justify-between items-center p-2 flex-shrink-0">
-                {" "}
-                {/* Ensure header doesn't grow */}
-                <div className="flex gap-2">
-                  {CHAT_TIERS.map((tier) => {
-                    const isEligible = eligibleChatTiers.includes(tier);
-                    const isSelected = selectedChatTier === tier;
-                    return (
-                      <button
-                        key={tier}
-                        onClick={() => setSelectedChatTier(tier)}
-                        disabled={
-                          !isEligible || isChatLoading || isLoadingOlderMessages
-                        }
-                        className={`px-3 py-1 text-sm font-medium transition-colors
-                            ${isSelected ? "bg-[#03FF24] text-black" : "text-gray-300"}
-                            ${!isEligible ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700"}
-                            ${isChatLoading && isSelected ? "animate-pulse" : ""}
-                          `}
-                      >
-                        {formatTierLabel(tier)}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Fullscreen Button - Mobile Only */}
-                <button
-                  onClick={() => setIsChatFullscreen(!isChatFullscreen)}
-                  className="md:hidden p-1 text-gray-400 hover:text-white"
-                >
-                  {isChatFullscreen ? (
-                    <Minimize size={20} />
-                  ) : (
-                    <Maximize size={20} />
-                  )}
-                </button>
-              </div>
-
-              {/* Message Display Area */}
-              <div
-                ref={chatContainerRef}
-                className="chat-scroll-container flex-grow overflow-y-auto p-2 space-y-3"
+    <div
+      className={clsx(
+        "relative flex flex-col bg-black/80 backdrop-blur-sm border border-gray-700/50 overflow-hidden shadow-xl",
+        isChatFullscreen
+          ? "fixed inset-0 z-50 rounded-none border-none"
+          : "h-[600px]",
+      )}
+    >
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex justify-center items-center space-x-1 p-2 border-b border-gray-700 flex-shrink-0 bg-black/20">
+          {CHAT_TIERS.map((tier) => {
+            const isViewable = viewableChatTiers.includes(tier);
+            const isSelected = selectedChatTier === tier;
+            return (
+              <button
+                key={tier}
+                onClick={() => setSelectedChatTier(tier)}
+                disabled={
+                  !isViewable || isChatLoading || isLoadingOlderMessages
+                }
+                className={`px-3 py-1 text-sm font-medium transition-colors 
+                    ${isSelected ? "bg-[#03FF24] text-black" : isViewable ? "text-gray-300 hover:bg-gray-700" : "text-gray-600"}
+                    ${!isViewable ? "opacity-50 cursor-not-allowed" : ""}
+                    ${isChatLoading && isSelected ? "animate-pulse" : ""}
+                  `}
               >
-                {/* --- Top Sentinel for Upward Pagination --- */}
-                <div ref={topSentinelRef} style={{ height: "1px" }} />
+                {formatTierLabel(tier)}
+              </button>
+            );
+          })}
+        </div>
 
-                {/* Loading indicator for older messages */}
-                {isLoadingOlderMessages && (
-                  <div className="flex items-center justify-center py-2">
-                    <Loader />
-                  </div>
-                )}
+        <div className="overflow-hidden relative flex flex-col flex-1">
+          <div
+            ref={chatContainerRef}
+            className="flex-1 h-full overflow-y-auto scroll-smooth px-3 pb-2 flex flex-col"
+            onScroll={handleScroll}
+          >
+            <div ref={topSentinelRef} style={{ height: "1px" }} />
 
-                {/* No More Older Messages Indicator */}
-                {!hasOlderMessages &&
-                  chatMessages.length > 0 &&
-                  !isLoadingOlderMessages && (
-                    <div className="text-center text-gray-500 text-xs py-2">
-                      Beginning of chat history
-                    </div>
-                  )}
+            {isLoadingOlderMessages && (
+              <div className="flex items-center justify-center py-2">
+                <Loader />
+              </div>
+            )}
 
-                {(isBalanceLoading ||
-                  (isChatLoading && chatMessages.length === 0)) &&
-                  !isLoadingOlderMessages && (
-                    <div className="flex items-center justify-center w-full h-full">
-                      <Loader />
-                    </div>
-                  )}
+            {!hasOlderMessages &&
+              chatMessages.length > 0 &&
+              !isLoadingOlderMessages && (
+                <div className="text-center text-gray-500 text-xs py-2">
+                  Beginning of chat history
+                </div>
+              )}
 
-                {!isBalanceLoading &&
-                  chatError &&
-                  !isChatLoading &&
-                  !isLoadingOlderMessages && (
-                    <div className="text-center py-8">
-                      <p className="text-red-500 mb-2">{chatError}</p>
+            {(isBalanceLoading ||
+              (isChatLoading && chatMessages.length === 0)) &&
+              !isLoadingOlderMessages && (
+                <div className="flex items-center justify-center w-full h-full">
+                  <Loader />
+                </div>
+              )}
+
+            {!isBalanceLoading &&
+              chatError &&
+              !isChatLoading &&
+              !isLoadingOlderMessages && (
+                <div className="text-center py-8">
+                  <p className="text-red-500 mb-2">{chatError}</p>
+                  {(isAuthenticated || selectedChatTier === "1k") &&
+                    viewableChatTiers.includes(selectedChatTier) && (
                       <Button
                         size="small"
                         variant="outline"
-                        onClick={() => fetchChatMessages(selectedChatTier)}
-                        disabled={isChatLoading}
+                        onClick={() =>
+                          fetchChatMessages(
+                            selectedChatTier,
+                            tokenMint || "",
+                            true,
+                          )
+                        }
+                        disabled={isChatLoading || isRefreshingMessages}
                       >
-                        Try Again
-                      </Button>
-                    </div>
-                  )}
-
-                {!isBalanceLoading &&
-                  !isChatLoading &&
-                  chatMessages.length === 0 &&
-                  !chatError &&
-                  !isLoadingOlderMessages && (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                      <p className="text-gray-500 mb-2">
-                        No messages yet in the{" "}
-                        {formatTierLabel(selectedChatTier)} chat.
-                      </p>
-                      {!canChatInSelectedTier && publicKey && (
-                        <p className="text-yellow-500 text-sm">
-                          You need{" "}
-                          {getTierThreshold(selectedChatTier).toLocaleString()}+
-                          tokens to chat here.
-                        </p>
-                      )}
-                      {!publicKey && (
-                        <p className="text-yellow-500 text-sm">
-                          Connect your wallet to chat.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                {!isBalanceLoading &&
-                  chatMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`p-3 max-w-[95%] ${
-                          msg.isOptimistic
-                            ? "bg-gray-700/50 animate-pulse"
-                            : msg.author === publicKey?.toBase58()
-                              ? "bg-[#03FF24]/10 border-2 border-[#03FF24]"
-                              : "bg-gray-700"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          {renderMessageAvatar(msg.author)}{" "}
-                          <span className="ml-2 text-xs text-gray-500">
-                            {formatTimestamp(msg.timestamp)}
-                          </span>
-                        </div>
-
-                        {msg.media ? (
-                          <div className="flex flex-col gap-2">
-                            <div className="relative w-full max-w-[500px] aspect-square border-2 border-[#03FF24] my-2 flex items-center justify-center bg-black">
-                              <img
-                                src={msg.media}
-                                alt="Chat image"
-                                className="w-full h-full object-contain"
-                              />
-                            </div>
-                            {msg.message && (
-                              <p className="text-sm break-words whitespace-pre-wrap my-1">
-                                {msg.message}
-                              </p>
-                            )}
-                          </div>
+                        {isRefreshingMessages ? (
+                          <Loader className="w-32 h-32" />
                         ) : (
-                          <p className="text-sm break-words whitespace-pre-wrap my-1">
-                            {msg.message}
-                          </p>
+                          "Try Again"
                         )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
+                      </Button>
+                    )}
+                </div>
+              )}
 
-              {/* Chat input */}
-              <div className="p-2 flex-shrink-0">
-                {showScrollButton && (
+            {!isBalanceLoading &&
+              !isChatLoading &&
+              chatMessages.length === 0 &&
+              !chatError &&
+              !isLoadingOlderMessages && (
+                <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                  <p className="text-gray-500 mb-2">
+                    No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
+                    chat.
+                  </p>
+                  {isAuthenticated &&
+                    !canChatInSelectedTier &&
+                    viewableChatTiers.includes(selectedChatTier) && (
+                      <p className="text-yellow-500 text-sm">
+                        You need{" "}
+                        {getTierThreshold(selectedChatTier).toLocaleString()}+
+                        tokens to post here.
+                      </p>
+                    )}
+                  {!isAuthenticated && (
+                    <p className="text-yellow-500 text-sm">
+                      Connect your wallet to chat.
+                    </p>
+                  )}
+                </div>
+              )}
+
+            {!isBalanceLoading &&
+              chatMessages.map((msg) => {
+                // Determine display name: Use provided name or fallback to truncated public key
+                const displayName =
+                  msg.displayName ||
+                  `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
+                // Profile picture URL or null
+                const profilePicUrl = msg.profileImage;
+
+                return (
+                  <div key={msg.id} className={`flex gap-2 py-2`}>
+                    {/* Avatar (only for messages from others) */}
+                    <Link
+                      to={`/profiles/${msg.author}`}
+                      className="flex-shrink-0 mt-1"
+                    >
+                      {profilePicUrl ? (
+                        <img
+                          src={profilePicUrl}
+                          alt={`${displayName}'s avatar`}
+                          className="w-8 h-8 rounded-full object-cover border border-neutral-600"
+                          onError={(e) => {
+                            e.currentTarget.src = "/default-avatar.png";
+                            e.currentTarget.onerror = null;
+                          }} // Fallback image
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center border border-neutral-600">
+                          <UserIcon className="w-4 h-4 text-neutral-400" />
+                        </div>
+                      )}
+                    </Link>
+
+                    {/* Message Bubble */}
+                    <div className={`ml-1 max-w-[100%]`}>
+                      {/* Author Name and Timestamp */}
+                      <div className="flex justify-start items-center mb-1 gap-3">
+                        {/* Link author name only if it's not the current user's message */}
+                        <Link
+                          to={`/profiles/${msg.author}`}
+                          className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate"
+                        >
+                          {displayName}
+                        </Link>
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {formatTimestamp(msg.timestamp)}
+                        </span>
+                      </div>
+
+                      {/* Media rendering */}
+                      {msg.media ? (
+                        <div className="flex flex-col gap-1 mt-1">
+                          {/* Simplify ChatImage props */}
+                          <ChatImage
+                            imageUrl={msg.media}
+                            caption={msg.message || undefined}
+                          />
+                        </div>
+                      ) : (
+                        // Text message rendering
+                        <p className="text-sm break-words whitespace-pre-wrap my-1">
+                          {msg.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {showScrollButton && (
+              <button
+                onClick={() => scrollToBottom(true)}
+                className="absolute bottom-20 right-4 z-10 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <div className="p-2 flex-shrink-0 border-t border-gray-700 bg-black/50">
+            {isAuthenticated &&
+              !canChatInSelectedTier &&
+              viewableChatTiers.includes(selectedChatTier) && (
+                <p className="text-center text-yellow-500 text-xs mb-2 px-2">
+                  You need {getTierThreshold(selectedChatTier).toLocaleString()}
+                  + tokens to post in the {formatTierLabel(selectedChatTier)}{" "}
+                  chat.
+                </p>
+              )}
+            {!isAuthenticated && (
+              <p className="text-center text-yellow-500 text-xs mb-2 px-2">
+                Connect your wallet to post messages.
+              </p>
+            )}
+            {imagePreview && selectedImage && (
+              <div className="mb-2 relative max-w-[200px]">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-auto object-contain border border-gray-500"
+                />
+                <div className="absolute top-1 right-1 flex gap-1">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={isSendingMessage}
+                    />
+                    <button
+                      className="w-6 h-6 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all text-xs"
+                      title="Replace image"
+                      disabled={isSendingMessage}
+                      onClick={(e) => {
+                        if (!selectedImage)
+                          (e.target as HTMLInputElement).click();
+                      }}
+                      tabIndex={-1}
+                    >
+                      <RefreshCw size={12} />
+                    </button>
+                  </label>
                   <button
-                    onClick={() => scrollToBottom(true)}
-                    className="fixed bottom-24 right-4 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setImagePreview(null);
+                      setImageCaption("");
+                    }}
+                    className="w-6 h-6 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all text-xs"
+                    title="Remove image"
+                    disabled={isSendingMessage}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
+                      width="12"
+                      height="12"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
-                      <polyline points="6 9 12 15 18 9"></polyline>
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                   </button>
-                )}
-                {!canChatInSelectedTier && publicKey && (
-                  <p className="text-center text-yellow-500 text-sm mb-2">
-                    You need{" "}
-                    {getTierThreshold(selectedChatTier).toLocaleString()}+
-                    tokens to chat here.
-                  </p>
-                )}
-                {!publicKey && (
-                  <p className="text-center text-yellow-500 text-sm mb-2">
-                    Connect your wallet to chat.
-                  </p>
-                )}
-                {selectedImage && (
-                  <div className="absolute bottom-[80px] left-4 w-full z-10">
-                    <div className="relative w-full aspect-square max-w-[400px] border-4 border-[#03FF24] flex items-center justify-center bg-black">
-                      <img
-                        src={imagePreview || ""}
-                        alt="Preview"
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute top-2 right-2 flex gap-2">
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                          <button
-                            className="w-8 h-8 bg-black/80 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all"
-                            title="Replace image"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                              <polyline points="17 8 12 3 7 8"></polyline>
-                              <line x1="12" y1="3" x2="12" y2="15"></line>
-                            </svg>
-                          </button>
-                        </label>
-                        <button
-                          onClick={() => {
-                            setSelectedImage(null);
-                            setImagePreview(null);
-                            setImageCaption("");
-                          }}
-                          className="w-8 h-8 bg-black/80 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all"
-                          title="Remove image"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={selectedImage ? imageCaption : chatInput}
-                    onChange={(e) =>
-                      selectedImage
-                        ? setImageCaption(e.target.value)
-                        : setChatInput(e.target.value)
-                    }
-                    onKeyDown={(e) => {
-                      if (
-                        e.key === "Enter" &&
-                        !e.shiftKey &&
-                        !isSendingMessage &&
-                        canChatInSelectedTier
-                      ) {
-                        e.preventDefault();
-                        if (selectedImage) {
-                          uploadImage();
-                        } else {
-                          handleSendMessage();
-                        }
-                      }
-                    }}
-                    placeholder={
-                      !isAuthenticated
-                        ? "Connect wallet to chat"
-                        : !eligibleChatTiers.includes(selectedChatTier)
-                          ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens`
-                          : selectedImage
-                            ? `Add a message with your image to ${formatTierLabel(selectedChatTier)} chat`
-                            : `Message in ${formatTierLabel(selectedChatTier)} chat...`
-                    }
-                    disabled={!canChatInSelectedTier || isSendingMessage}
-                    className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm rounded-md disabled:opacity-60 disabled:cursor-not-allowed"
-                  />
-                  <div className="flex items-center space-x-2">
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                      <div className="w-10 h-10 border-2 border-[#03FF24]/30 hover:border-[#03FF24] flex items-center justify-center transition-all">
-                        <ImageIcon className="w-5 h-5 text-[#03FF24]" />
-                      </div>
-                    </label>
-                    <button
-                      onClick={() =>
-                        selectedImage ? uploadImage() : handleSendMessage()
-                      }
-                      disabled={
-                        selectedImage ? isUploadingImage : !chatInput.trim()
-                      }
-                      className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 transition-all flex items-center justify-center rounded-md"
-                    >
-                      {isUploadingImage ? (
-                        <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin"></div>
-                      ) : (
-                        "Post"
-                      )}
-                    </button>
-                  </div>
                 </div>
               </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <label
+                className={`cursor-pointer flex-shrink-0 ${!canChatInSelectedTier ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={!canChatInSelectedTier || isSendingMessage}
+                />
+                <div
+                  className={`w-10 h-10 border-2 ${canChatInSelectedTier ? "border-[#03FF24]/30 hover:border-[#03FF24]" : "border-gray-600"} flex items-center justify-center transition-all`}
+                >
+                  <ImageIcon
+                    className={`w-5 h-5 ${canChatInSelectedTier ? "text-[#03FF24]" : "text-gray-500"}`}
+                  />
+                </div>
+              </label>
+              <input
+                type="text"
+                value={selectedImage ? imageCaption : chatInput}
+                onChange={(e) =>
+                  selectedImage
+                    ? setImageCaption(e.target.value)
+                    : setChatInput(e.target.value)
+                }
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    canChatInSelectedTier &&
+                    !isSendingMessage
+                  ) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={
+                  !isAuthenticated
+                    ? "Connect wallet to chat"
+                    : !viewableChatTiers.includes(selectedChatTier)
+                      ? "Cannot view this tier"
+                      : !canChatInSelectedTier
+                        ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens to post`
+                        : selectedImage
+                          ? `Add a caption (optional)`
+                          : `Message in ${formatTierLabel(selectedChatTier)} chat...`
+                }
+                disabled={!canChatInSelectedTier || isSendingMessage}
+                className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={
+                  !canChatInSelectedTier ||
+                  isSendingMessage ||
+                  (!selectedImage && !chatInput.trim())
+                }
+                className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
+              >
+                {isSendingMessage ? (
+                  <Loader size={20} className="text-black border-black" />
+                ) : (
+                  <Send size={18} />
+                )}
+              </button>
             </div>
           </div>
         </div>

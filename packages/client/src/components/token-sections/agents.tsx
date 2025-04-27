@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 // import { Badge } from "../ui/badge";
 import { env } from "@/utils/env";
 import Button from "../button";
+import { fetchWithAuth } from "@/hooks/use-authentication";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -290,7 +291,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
       }
 
       // Use the combined endpoint to connect the Twitter agent
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/api/token/${tokenMint}/connect-twitter-agent`,
         {
           method: "POST",

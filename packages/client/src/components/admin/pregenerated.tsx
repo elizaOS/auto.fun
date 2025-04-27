@@ -436,7 +436,7 @@ export default function AdminPregenerated() {
       {/* Edit Modal */}
       {editModalOpen && editingToken && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-autofun-background-primary p-6 max-w-md w-full rounded-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-autofun-background-primary p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-4">Edit Token</h3>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
@@ -514,7 +514,7 @@ export default function AdminPregenerated() {
                     <img
                       src={editFormState.image}
                       alt="Preview"
-                      className="h-16 w-16 object-cover rounded-md border border-neutral-600"
+                      className="h-16 w-16 object-cover border border-neutral-600"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "/placeholder.png";
                       }}
