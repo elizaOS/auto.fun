@@ -243,14 +243,12 @@ const useGetProfileTokens = () => {
               const priceSOL = tokenPriceUSD / tokenData.solPriceUSD;
               solValue = Number(tokensHeld.toString()) * priceSOL;
             } else {
-              console.log("bondingCurveAccount", bondingCurveAccount)
-
-              let bn = 0
+              let bn = 0;
 
               try {
-                bn = bondingCurveAccount.reserveToken.toNumber() ?? 0
+                bn = bondingCurveAccount.reserveToken.toNumber() ?? 0;
               } catch (e) {
-                console.log("error", e)
+                console.log("error", e);
               }
 
               solValue =
@@ -294,22 +292,26 @@ const useOwnedTokens = () => {
     const ownedTokenAccounts = tokenAccounts.filter(
       (account) => account.amount > 0,
     );
-    
+
     // Get all tokens with bonding curve info
-    const autofunTokenAccounts = await removeNonAutofunTokens(ownedTokenAccounts);
-    
+    const autofunTokenAccounts =
+      await removeNonAutofunTokens(ownedTokenAccounts);
+
     // Get metadata for all owned tokens
-    const metadataAccounts = await getTokenMetadata(ownedTokenAccounts.map(account => ({
-      tokenAccount: account,
-      bondingCurveAccount: null
-    })));
+    const metadataAccounts = await getTokenMetadata(
+      ownedTokenAccounts.map((account) => ({
+        tokenAccount: account,
+        bondingCurveAccount: null,
+      })),
+    );
 
     const profileTokens = await getProfileTokens(
-      ownedTokenAccounts.map(account => ({
+      ownedTokenAccounts.map((account) => ({
         tokenAccount: account,
-        bondingCurveAccount: autofunTokenAccounts.find(acct => 
-          acct.tokenAccount.mint.equals(account.mint)
-        )?.bondingCurveAccount || null
+        bondingCurveAccount:
+          autofunTokenAccounts.find((acct) =>
+            acct.tokenAccount.mint.equals(account.mint),
+          )?.bondingCurveAccount || null,
       })),
       metadataAccounts,
     );

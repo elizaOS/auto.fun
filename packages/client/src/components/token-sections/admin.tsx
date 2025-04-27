@@ -72,7 +72,9 @@ export default function AdminTab() {
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Extract token mint from URL if not found in params
-  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(null);
+  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
+    null,
+  );
 
   // Effect to detect token mint from various sources (similar to community tab)
   useEffect(() => {
@@ -100,7 +102,9 @@ export default function AdminTab() {
       if (!mint) return;
 
       try {
-        const response = await fetch(`${env.apiUrl}/api/generation/${mint}/settings`);
+        const response = await fetch(
+          `${env.apiUrl}/api/generation/${mint}/settings`,
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch generation settings");
         }
@@ -479,7 +483,9 @@ export default function AdminTab() {
 
     // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("File is too large. Please select an audio file less than 10MB.");
+      toast.error(
+        "File is too large. Please select an audio file less than 10MB.",
+      );
       return;
     }
 
@@ -499,12 +505,15 @@ export default function AdminTab() {
         Authorization: `Bearer ${JSON.parse(authToken || "{}")}`,
       };
 
-      const response = await fetch(`${env.apiUrl}/api/token/${mint}/audio-context`, {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: formData,
-      });
+      const response = await fetch(
+        `${env.apiUrl}/api/token/${mint}/audio-context`,
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: formData,
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to upload audio context");
@@ -755,7 +764,8 @@ export default function AdminTab() {
           </h4>
           <div className="flex flex-col gap-4 max-w-2xl">
             <p className="text-sm text-autofun-text-secondary">
-              Upload an audio file to use as context for music generation. This will be used instead of the default audio context.
+              Upload an audio file to use as context for music generation. This
+              will be used instead of the default audio context.
             </p>
             <div className="flex flex-col gap-2">
               <input
@@ -773,13 +783,15 @@ export default function AdminTab() {
               {existingAudioUrl && !selectedAudioFile && (
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col gap-2 mb-4">
-                    <AudioPlayer src={`${existingAudioUrl}?t=${audioTimestamp}`} />
+                    <AudioPlayer
+                      src={`${existingAudioUrl}?t=${audioTimestamp}`}
+                    />
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     <div className="flex relative w-full">
                       <div className="bg-autofun-background-input flex justify-between py-2 pl-1 pr-3 min-w-0 w-full relative">
                         <span className="mx-auto w-0 flex-1 min-w-0 block text-sm text-autofun-text-secondary truncate pr-6 pl-1">
-                          {existingAudioUrl.replace(/^https?:\/\//, '')}
+                          {existingAudioUrl.replace(/^https?:\/\//, "")}
                         </span>
                       </div>
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-autofun-background-input">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ChatImageProps {
   imageUrl: string;
@@ -14,8 +14,8 @@ export const ChatImage: React.FC<ChatImageProps> = ({
   timestamp,
 }) => {
   // Validate the image URL is from our domain
-  const isValidUrl = imageUrl.startsWith('https://storage.autofun.tech/');
-  
+  const isValidUrl = imageUrl.startsWith("https://storage.autofun.tech/");
+
   if (!isValidUrl) {
     return (
       <div className="p-4 bg-red-100 text-red-700 rounded-lg">
@@ -29,7 +29,7 @@ export const ChatImage: React.FC<ChatImageProps> = ({
       <div className="relative">
         <img
           src={imageUrl}
-          alt={caption || 'Chat image'}
+          alt={caption || "Chat image"}
           className="w-full h-auto object-cover"
           loading="lazy"
         />
@@ -47,4 +47,4 @@ export const ChatImage: React.FC<ChatImageProps> = ({
       </div>
     </div>
   );
-}; 
+};

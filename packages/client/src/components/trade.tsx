@@ -184,7 +184,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   useEffect(() => {
     setSellAmount(Number(inputAmount));
-  }, [inputAmount])
+  }, [inputAmount]);
 
   return (
     <div className="relative">
@@ -261,8 +261,8 @@ export default function Trade({ token }: { token: IToken }) {
                     }
                     // If value starts with multiple zeros, trim them
                     if (/^0[0-9]+/.test(value)) {
-                      value = value.replace(/^0+/, '');
-                      if (value === '') value = '0'; // If all removed, fallback to single '0'
+                      value = value.replace(/^0+/, "");
+                      if (value === "") value = "0"; // If all removed, fallback to single '0'
                     }
 
                     const [whole, decimal] = value.split(".");
@@ -273,11 +273,11 @@ export default function Trade({ token }: { token: IToken }) {
                   }}
                   value={inputAmount}
                   onBlur={({ target }) => {
-                    let value = target.value;
+                    const value = target.value;
 
                     const parsed = parseFloat(value);
                     if (!value || isNaN(parsed) || parsed <= 0) {
-                      setInputAmount('');
+                      setInputAmount("");
                     } else {
                       // Remove unnecessary decimals like ".0"
                       setInputAmount(parsed.toString());

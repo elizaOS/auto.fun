@@ -6,12 +6,18 @@ import useAuthentication, { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { RefreshCw, Send, Image as ImageIcon, Maximize, Minimize } from "lucide-react";
+import {
+  RefreshCw,
+  Send,
+  Image as ImageIcon,
+  Maximize,
+  Minimize,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 import { getSocket } from "@/utils/socket"; // Import WebSocket utility
-import { ChatImage } from '../chat/ChatImage';
+import { ChatImage } from "../chat/ChatImage";
 import { getAuthToken } from "@/utils/auth";
 import { toast } from "react-toastify";
 import { clsx } from "clsx"; // Import clsx for conditional classes
@@ -577,8 +583,9 @@ export default function ChatSection() {
         }
         // Add new message and sort by timestamp
         const newMessages = [...prevMessages, newMessage];
-        return newMessages.sort((a, b) => 
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        return newMessages.sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
         const isOwnMessage = newMessage.author === publicKey?.toBase58();
         const existingById = prevMessages.find(
@@ -730,7 +737,6 @@ export default function ChatSection() {
       // Immediately refresh messages after successful post
       await fetchChatMessages(selectedChatTier, false);
       setTimeout(() => scrollToBottom(true), 100);
-
     } catch (error) {
       console.error("Error sending message:", error);
       setChatError(
@@ -767,11 +773,11 @@ export default function ChatSection() {
     }
 
     if (date.getFullYear() === now.getFullYear()) {
-      return date.toLocaleDateString([], { 
-        month: "short", 
+      return date.toLocaleDateString([], {
+        month: "short",
         day: "numeric",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
       });
     }
 
@@ -780,7 +786,7 @@ export default function ChatSection() {
       month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   };
 
@@ -797,20 +803,20 @@ export default function ChatSection() {
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageCaption, setImageCaption] = useState('');
+  const [imageCaption, setImageCaption] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      console.log('Please select an image file');
+    if (!file.type.startsWith("image/")) {
+      console.log("Please select an image file");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      console.log('Image size should be less than 5MB');
+      console.log("Image size should be less than 5MB");
       return;
     }
 
@@ -826,36 +832,40 @@ export default function ChatSection() {
     if (!selectedImage) return;
 
     try {
-      const response = await fetchWithAuth(`${env.apiUrl}/api/chat/${tokenMint}/${selectedChatTier}/upload-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithAuth(
+        `${env.apiUrl}/api/chat/${tokenMint}/${selectedChatTier}/upload-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imageBase64: imagePreview,
+            caption: imageCaption,
+          }),
         },
-        body: JSON.stringify({
-          imageBase64: imagePreview,
-          caption: imageCaption
-        })
-      });
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to upload image');
+        throw new Error("Failed to upload image");
       }
 
       const data = await response.json();
       if (data.success && data.message) {
         setChatMessages((prev) => {
           const newMessages = [data.message, ...prev];
-          return newMessages.sort((a, b) => 
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          return newMessages.sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
           );
         });
-        setImageCaption('');
+        setImageCaption("");
         setSelectedImage(null);
         setImagePreview(null);
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
     }
   };
 
@@ -992,8 +1002,8 @@ export default function ChatSection() {
                   !isLoadingOlderMessages && (
                     <div className="flex flex-col items-center justify-center h-full text-center py-16">
                       <p className="text-gray-500 mb-2">
-                        No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
-                        chat.
+                        No messages yet in the{" "}
+                        {formatTierLabel(selectedChatTier)} chat.
                       </p>
                       {!canChatInSelectedTier && publicKey && (
                         <p className="text-yellow-500 text-sm">
@@ -1035,9 +1045,9 @@ export default function ChatSection() {
                         {msg.media ? (
                           <div className="flex flex-col gap-2">
                             <div className="relative w-full max-w-[500px] aspect-square border-2 border-[#03FF24] my-2 flex items-center justify-center bg-black">
-                              <img 
-                                src={msg.media} 
-                                alt="Chat image" 
+                              <img
+                                src={msg.media}
+                                alt="Chat image"
                                 className="w-full h-full object-contain"
                               />
                             </div>
@@ -1081,7 +1091,9 @@ export default function ChatSection() {
                 )}
                 {!canChatInSelectedTier && publicKey && (
                   <p className="text-center text-yellow-500 text-sm mb-2">
-                    You need {getTierThreshold(selectedChatTier).toLocaleString()}+ tokens to chat here.
+                    You need{" "}
+                    {getTierThreshold(selectedChatTier).toLocaleString()}+
+                    tokens to chat here.
                   </p>
                 )}
                 {!publicKey && (
@@ -1092,9 +1104,9 @@ export default function ChatSection() {
                 {selectedImage && (
                   <div className="absolute bottom-[80px] left-4 w-full z-10">
                     <div className="relative w-full aspect-square max-w-[400px] border-4 border-[#03FF24] flex items-center justify-center bg-black">
-                      <img 
-                        src={imagePreview || ''} 
-                        alt="Preview" 
+                      <img
+                        src={imagePreview || ""}
+                        alt="Preview"
                         className="w-full h-full object-contain"
                       />
                       <div className="absolute top-2 right-2 flex gap-2">
@@ -1130,7 +1142,7 @@ export default function ChatSection() {
                           onClick={() => {
                             setSelectedImage(null);
                             setImagePreview(null);
-                            setImageCaption('');
+                            setImageCaption("");
                           }}
                           className="w-8 h-8 bg-black/80 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all"
                           title="Remove image"
@@ -1158,9 +1170,18 @@ export default function ChatSection() {
                   <input
                     type="text"
                     value={selectedImage ? imageCaption : chatInput}
-                    onChange={(e) => selectedImage ? setImageCaption(e.target.value) : setChatInput(e.target.value)}
+                    onChange={(e) =>
+                      selectedImage
+                        ? setImageCaption(e.target.value)
+                        : setChatInput(e.target.value)
+                    }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !isSendingMessage && canChatInSelectedTier) {
+                      if (
+                        e.key === "Enter" &&
+                        !e.shiftKey &&
+                        !isSendingMessage &&
+                        canChatInSelectedTier
+                      ) {
                         e.preventDefault();
                         if (selectedImage) {
                           uploadImage();
@@ -1194,14 +1215,18 @@ export default function ChatSection() {
                       </div>
                     </label>
                     <button
-                      onClick={() => selectedImage ? uploadImage() : handleSendMessage()}
-                      disabled={selectedImage ? isUploadingImage : !chatInput.trim()}
+                      onClick={() =>
+                        selectedImage ? uploadImage() : handleSendMessage()
+                      }
+                      disabled={
+                        selectedImage ? isUploadingImage : !chatInput.trim()
+                      }
                       className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 transition-all flex items-center justify-center rounded-md"
                     >
                       {isUploadingImage ? (
                         <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin"></div>
                       ) : (
-                        'Post'
+                        "Post"
                       )}
                     </button>
                   </div>
