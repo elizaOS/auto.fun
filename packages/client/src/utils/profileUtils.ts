@@ -68,7 +68,7 @@ type Account = {
     reserveToken: BN;
     curveLimit: BN;
     isCompleted: boolean;
-  };
+  } | null;
 };
 
 const useRemoveNonAutofunTokens = () => {
@@ -191,9 +191,8 @@ const useGetProfileTokens = () => {
 
           let image: string | null = null;
           try {
-            // Add timeout to fetch request
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
 
             const response = await fetch(uri, {
               signal: controller.signal,
@@ -233,24 +232,26 @@ const useGetProfileTokens = () => {
           const tokensHeld =
             tokenAccount.amount / BigInt(10) ** BigInt(env.decimals);
 
-          let solValue: number;
+          let solValue: number = 0;
 
-          if (bondingCurveAccount.isCompleted) {
-            const mint = bondingCurveAccount.tokenMint.toString();
-            const tokenData = (await getToken({ address: mint })) as IToken;
-            const tokenPriceUSD =
-              tokenData.marketCapUSD / tokenData.tokenSupplyUiAmount;
-            const priceSOL = tokenPriceUSD / tokenData.solPriceUSD;
-            solValue = Number(tokensHeld.toString()) * priceSOL;
-          } else {
-            solValue =
-              calculateAmountOutSell(
-                bondingCurveAccount.reserveLamport.toNumber(),
-                Number(tokenAccount.amount),
-                6,
-                1,
-                bondingCurveAccount.reserveToken.toNumber(),
-              ) / LAMPORTS_PER_SOL;
+          if (bondingCurveAccount) {
+            if (bondingCurveAccount.isCompleted) {
+              const mint = bondingCurveAccount.tokenMint.toString();
+              const tokenData = (await getToken({ address: mint })) as IToken;
+              const tokenPriceUSD =
+                tokenData.marketCapUSD / tokenData.tokenSupplyUiAmount;
+              const priceSOL = tokenPriceUSD / tokenData.solPriceUSD;
+              solValue = Number(tokensHeld.toString()) * priceSOL;
+            } else {
+              solValue =
+                calculateAmountOutSell(
+                  bondingCurveAccount.reserveLamport.toNumber(),
+                  Number(tokenAccount.amount),
+                  6,
+                  1,
+                  bondingCurveAccount.reserveToken.toNumber(),
+                ) / LAMPORTS_PER_SOL;
+            }
           }
 
           return {
@@ -283,13 +284,23 @@ const useOwnedTokens = () => {
     const ownedTokenAccounts = tokenAccounts.filter(
       (account) => account.amount > 0,
     );
-    const autofunTokenAccounts =
-      await removeNonAutofunTokens(ownedTokenAccounts);
-
-    const metadataAccounts = await getTokenMetadata(autofunTokenAccounts);
+    
+    // Get all tokens with bonding curve info
+    const autofunTokenAccounts = await removeNonAutofunTokens(ownedTokenAccounts);
+    
+    // Get metadata for all owned tokens
+    const metadataAccounts = await getTokenMetadata(ownedTokenAccounts.map(account => ({
+      tokenAccount: account,
+      bondingCurveAccount: null
+    })));
 
     const profileTokens = await getProfileTokens(
-      autofunTokenAccounts,
+      ownedTokenAccounts.map(account => ({
+        tokenAccount: account,
+        bondingCurveAccount: autofunTokenAccounts.find(acct => 
+          acct.tokenAccount.mint.equals(account.mint)
+        )?.bondingCurveAccount || null
+      })),
       metadataAccounts,
     );
 
@@ -362,7 +373,7 @@ const useCreatedTokens = () => {
       const reserveLamport =
         autofunTokenAccounts
           .find((acct) => acct.tokenAccount.mint.equals(mintPubkey))
-          ?.bondingCurveAccount.reserveLamport.toNumber() ?? 0;
+          ?.bondingCurveAccount?.reserveLamport.toNumber() ?? 0;
       const solValue = account?.amount
         ? calculateAmountOutSell(
             reserveLamport,
@@ -371,7 +382,7 @@ const useCreatedTokens = () => {
             1,
             autofunTokenAccounts
               .find((acct) => acct.tokenAccount.mint.equals(mintPubkey))
-              ?.bondingCurveAccount.reserveToken.toNumber() ?? 0,
+              ?.bondingCurveAccount?.reserveToken.toNumber() ?? 0,
           ) / LAMPORTS_PER_SOL
         : 0;
 
