@@ -2233,6 +2233,7 @@ export async function generateAdditionalTokenImages(
 
 // Get a random pre-generated token endpoint
 app.get("/pre-generated-token", async (c) => {
+  console.log('Received request for /pre-generated-token'); // <--- Add this log
   try {
     const db = getDB();
 

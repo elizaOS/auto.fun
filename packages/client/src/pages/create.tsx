@@ -1257,7 +1257,7 @@ export default function Create() {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const response = await fetch(env.apiUrl + "/api/generate-metadata", {
+      const response = await fetch(env.apiUrl + "/api/generation/generate-metadata", {
         method: "POST",
         headers,
         credentials: "include",
@@ -1312,7 +1312,7 @@ export default function Create() {
       setIsGenerating(true);
       setGeneratingField("prompt");
 
-      const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+      const imageResponse = await fetch(env.apiUrl + "/api/generation/generate", {
         method: "POST",
         headers,
         credentials: "include",
@@ -1658,7 +1658,7 @@ export default function Create() {
         }
 
         // Get a pre-generated token
-        const response = await fetch(env.apiUrl + "/api/pre-generated-token", {
+        const response = await fetch(env.apiUrl + "/api/generation/pre-generated-token", {
           method: "GET",
           headers,
           credentials: "include",
@@ -1732,7 +1732,7 @@ export default function Create() {
           }
         } else {
           // If no image, generate one using the prompt
-          const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+          const imageResponse = await fetch(env.apiUrl + "/api/generation/generate", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2365,7 +2365,7 @@ export default function Create() {
           }
 
           // Mark the token as used and delete any other tokens with the same name or ticker
-          await fetch(env.apiUrl + "/api/mark-token-used", {
+          await fetch(env.apiUrl + "/api/generation/mark-token-used", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2495,7 +2495,7 @@ export default function Create() {
 
           // Get a pre-generated token
           const response = await fetch(
-            env.apiUrl + "/api/pre-generated-token",
+            env.apiUrl + "/api/generation/pre-generated-token",
             {
               method: "GET",
               headers,
