@@ -2,12 +2,13 @@ import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import {
-   pgTable,
-   text,
-   integer,
-   real,
-   timestamp,
-   unique
+  pgTable,
+  text,
+  integer,
+  real,
+  timestamp,
+  unique,
+  index
 } from "drizzle-orm/pg-core";
 
 export const tokens = pgTable("tokens", {
@@ -79,7 +80,20 @@ export const tokens = pgTable("tokens", {
   tokenSupplyUiAmount: real("token_supply_ui_amount").default(1000000000),
   tokenDecimals: integer("token_decimals").default(6),
   lastSupplyUpdate: timestamp("last_supply_update"),
-});
+},
+  (table) => ({
+    tickerIndex: index("tokens_ticker_idx").on(table.ticker),
+    creatorIndex: index("tokens_creator_idx").on(table.creator),
+    statusIndex: index("tokens_status_idx").on(table.status),
+    marketIndex: index("tokens_market_idx").on(table.marketId),
+    mintIndex: index("tokens_mint_idx").on(table.mint),
+    lockIdIndex: index("tokens_lock_id_idx").on(table.lockId),
+    hiddenIndex: index("tokens_hidden_idx").on(table.hidden),
+    importedIndex: index("tokens_imported_idx").on(table.imported),
+    featuredIndex: index("tokens_featured_idx").on(table.featured),
+    verifiedIndex: index("tokens_verified_idx").on(table.verified),
+    hiddenFromFeaturedIndex: index("tokens_hide_from_featured_idx").on(table.hide_from_featured),
+  }));
 
 // Fees schema
 export const fees = pgTable("fees", {
@@ -223,11 +237,11 @@ const DEFAULT_DATABASE_URL = "postgresql://autofun_owner:npg_2PDZgJfEtrh6@localh
 
 export function getDB() {
   if (!dbInstance) {
-     // Use DATABASE_URL from environment or the default local URL
-     const connectionString = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
-     console.log(`[DB] Connecting to database: ${connectionString === DEFAULT_DATABASE_URL ? 'DEFAULT LOCAL DB' : 'ENV VAR DB'}`);
-     const poolInstance = new Pool({ connectionString });
-     dbInstance = drizzle(poolInstance, { schema });
+    // Use DATABASE_URL from environment or the default local URL
+    const connectionString = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
+    console.log(`[DB] Connecting to database: ${connectionString === DEFAULT_DATABASE_URL ? 'DEFAULT LOCAL DB' : 'ENV VAR DB'}`);
+    const poolInstance = new Pool({ connectionString });
+    dbInstance = drizzle(poolInstance, { schema });
   }
   return dbInstance;
 }
@@ -247,7 +261,7 @@ export type UserInsert = typeof schema.users.$inferInsert;
 
 export type PreGeneratedToken = typeof schema.preGeneratedTokens.$inferSelect;
 export type PreGeneratedTokenInsert =
-   typeof schema.preGeneratedTokens.$inferInsert;
+  typeof schema.preGeneratedTokens.$inferInsert;
 
 export type TokenAgent = typeof tokenAgents.$inferSelect;
 export type TokenAgentInsert = typeof tokenAgents.$inferInsert;
@@ -257,17 +271,17 @@ export type MetadataInsert = typeof metadata.$inferInsert;
 
 // Schema for all tables
 const schema = {
-   tokens,
-   fees,
-   messages,
-   users,
-   metadata,
-   mediaGenerations,
-   cachePrices,
-   preGeneratedTokens,
-   oauthVerifiers,
-   accessTokens,
-   tokenAgents,
+  tokens,
+  fees,
+  messages,
+  users,
+  metadata,
+  mediaGenerations,
+  cachePrices,
+  preGeneratedTokens,
+  oauthVerifiers,
+  accessTokens,
+  tokenAgents,
 };
 
 // Export schema for type inference
