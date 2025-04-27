@@ -346,7 +346,7 @@ export async function checkMigratingTokens(limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(token.mint);
-      await tokenMigrator.migrateToken(tokenM!);
+      // await tokenMigrator.migrateToken(tokenM!);
     }
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);

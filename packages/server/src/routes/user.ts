@@ -106,10 +106,7 @@ const app = new Hono<{
   };
 }>();
 
-// GET /users/:address - Get user information, latest transactions, and created tokens
 app.get("/:address", async (c) => {
-  // <<< LOGGING POINT 1 >>>
-  logger.log(`>>> HIT /api/users/:address route handler`);
   const address = c.req.param("address");
   logger.log(`Address parameter: ${address}`);
 
@@ -119,9 +116,7 @@ app.get("/:address", async (c) => {
   }
 
   try {
-    logger.log(`Calling ensureUserProfile for: ${address}`);
     const user = await ensureUserProfile(address);
-    logger.log(`ensureUserProfile returned user: Address=${user?.address}, Name=${user?.display_name}`);
 
     if (!user) {
          logger.error(`ensureUserProfile returned null/undefined unexpectedly for ${address}`);
@@ -133,7 +128,6 @@ app.get("/:address", async (c) => {
       .select()
       .from(tokens)
       .where(eq(tokens.creator, address));
-    logger.log(`Found ${tokensCreated.length} created tokens for ${address}`);
 
     const responseData = {
        user: {
@@ -149,9 +143,7 @@ app.get("/:address", async (c) => {
        tokensCreated,
        transactions: [],
     };
-    logger.log(`<<< SUCCESS - Returning user profile data for ${address}`);
     return c.json(responseData);
-
   } catch (error) {
     // <<< LOGGING POINT 2 >>>
     logger.error(`!!! ERROR in GET /users/${address} handler:`, error);

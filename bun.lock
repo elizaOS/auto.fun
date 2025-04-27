@@ -200,7 +200,6 @@
         "lodash": "^4.17.21",
         "lucide-react": "^0.483.0",
         "numeral": "^2.0.6",
-        "preact": "^10.26.4",
         "prettier": "^3.5.3",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
@@ -221,7 +220,6 @@
       },
       "devDependencies": {
         "@eslint/js": "^9.23.0",
-        "@preact/preset-vite": "^2.10.1",
         "@types/bn.js": "^5.1.6",
         "@types/bs58": "^4.0.4",
         "@types/lodash": "^4.17.16",
@@ -231,6 +229,7 @@
         "@types/react-dom": "^19.0.4",
         "@types/react-helmet": "^6.1.11",
         "@types/three": "^0.174.0",
+        "@vitejs/plugin-react": "^4.4.1",
         "autoprefixer": "^10.4.21",
         "eslint": "^9.23.0",
         "eslint-plugin-react-hooks": "^5.2.0",

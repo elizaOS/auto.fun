@@ -2,6 +2,20 @@ import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } fr
 import { Hono } from "hono";
 import { Buffer } from 'node:buffer'; // Ensure Buffer is available
 import { getS3Client } from "../s3Client"; // Import shared S3 client function
+import { User } from "../db";
+import { Socket } from "socket.io";
+import { Context } from "hono";
+
+// Define the fixed public base URL for R2
+const PUBLIC_S3_STORAGE_BASE_URL_FILES = "https://storage.autofun.tech";
+// Define the default local MinIO base URL
+const DEFAULT_MINIO_BASE_URL_FILES = "http://localhost:9000";
+// Define the default local MinIO bucket
+const DEFAULT_MINIO_BUCKET_FILES = "autofun";
+
+// Singleton S3 Client instance
+const s3ClientInstance: S3Client | null = null;
+const isUsingMinioFiles = false; // Flag for files S3 client
 import { logger } from "../util";
 
 // Helper function to upload to R2/MinIO
@@ -30,6 +44,20 @@ export async function uploadToStorage(buffer: Buffer, options: { contentType: st
 
 // Define the router (Env removed from Bindings as we use process.env)
 const fileRouter = new Hono<{ Bindings: {} }>();
+
+// Define context variables for Hono
+type Variables = {
+  user?: { publicKey: string } | null;
+  socket: Socket;
+};
+
+// Extend Context type for variables
+declare module "hono" {
+  interface ContextVariableMap {
+    user?: { publicKey: string } | null;
+    socket: Socket;
+  }
+}
 
 fileRouter.get("/metadata/:filename", async (c) => {
   const filename = c.req.param("filename");
@@ -436,7 +464,7 @@ fileRouter.post("/upload", async (c) => {
       return c.json({ error: "Metadata (name, symbol) is required" }, 400);
     }
 
-    const matches = body.image.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/); // More specific regex for image content type
+    const matches = body.image.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) {
       logger.warn("[/upload] Invalid image data format (expected data:image/...;base64,...).");
       return c.json({ error: "Invalid image format" }, 400);
@@ -552,5 +580,63 @@ fileRouter.post("/upload-import-image", async (c) => {
   }
 });
 
+// Add new route for chat image uploads
+fileRouter.post("/uploadImage", async (c) => {
+  try {
+    const body = await c.req.json();
+    if (!body.image) {
+      logger.warn("[/uploadImage] Request missing image data.");
+      return c.json({ error: "Image data (base64) is required" }, 400);
+    }
+    if (!body.tokenMint || !body.tier) {
+      logger.warn("[/uploadImage] Request missing required fields (tokenMint, tier).");
+      return c.json({ error: "Token mint and tier are required" }, 400);
+    }
+
+    const matches = body.image.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      logger.warn("[/uploadImage] Invalid image data format.");
+      return c.json({ error: "Invalid image format" }, 400);
+    }
+
+    const contentType = matches[1];
+    const imageData = matches[2];
+    const imageBuffer = Buffer.from(imageData, "base64");
+
+    const user = c.get("user");
+    const walletId = user?.publicKey || "unknown";
+    const timestamp = Date.now();
+    const extension = contentType.split('/')[1] || 'jpg';
+    const imageFilename = `${walletId}-${timestamp}.${extension}`;
+    const imageKey = `chat-images/${body.tokenMint}/${body.tier}/${imageFilename}`;
+
+    logger.log(`[/uploadImage] Uploading image to Storage key: ${imageKey}`);
+    const imageUrl = await uploadToStorage(imageBuffer, { contentType, key: imageKey });
+    logger.log(`[/uploadImage] Image uploaded successfully: ${imageUrl}`);
+
+    const message = {
+      id: crypto.randomUUID(),
+      author: user?.publicKey,
+      tokenMint: body.tokenMint,
+      message: body.caption || "", // Store caption in message field
+      media: imageUrl, // Store image URL in media field
+      parentId: null,
+      tier: body.tier,
+      timestamp: new Date().toISOString(),
+      isOptimistic: false,
+      hasLiked: false
+    };
+
+    const socket = c.get("socket");
+    if (socket && typeof socket.emit === 'function') {
+      socket.emit("newChatMessage", message);
+    }
+
+    return c.json({ success: true, message });
+  } catch (error) {
+    logger.error("[/uploadImage] Error processing upload request:", error);
+    return c.json({ error: "Upload failed due to server error" }, 500);
+  }
+});
 
 export default fileRouter;

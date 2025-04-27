@@ -16,9 +16,11 @@ import SkeletonImage from "./skeleton-image";
 const WalletButton = () => {
   const navigate = useNavigate();
   const { publicKey, connecting, wallet, connected } = useWallet();
-  const solBalance = useSolBalance();
-
   const { setVisible } = useWalletModal();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const solBalance = useSolBalance({ enabled: menuOpen });
+
   const {
     isAuthenticated,
     signOut,
@@ -28,7 +30,6 @@ const WalletButton = () => {
   } = useAuthentication();
   const { user } = useUser();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [walletIcon, setWalletIcon] = useState<string | null>(null);

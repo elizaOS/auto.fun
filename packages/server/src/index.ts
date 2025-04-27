@@ -32,8 +32,9 @@ import { fork } from "node:child_process";
 import path from "node:path";
 import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
-import { resumeMigrationsOnStart } from "./migration/resumeMigrationsOnStart";
-let migrationWorkerChild: ReturnType<typeof fork> | null = null;
+// import { resumeMigrationsOnStart } from "./migration/resumeMigrationsOnStart";
+// import "./workers/scheduler";
+const migrationWorkerChild: ReturnType<typeof fork> | null = null;
 
 // Define Variables type matching the original Hono app
 interface AppVariables {
@@ -100,9 +101,10 @@ api.use("*", verifyAuth); // Ensure auth applies to all /api routes
 // Ensure these routers don't rely on Cloudflare `process.env` bindings without adaptation
 api.route("/", generationRouter);
 api.route("/", tokenRouter);
-api.route("/", agentRouter);
+
 api.route("/", fileRouter);
 api.route("/", authRouter);
+api.route("/", agentRouter);
 api.route("/", swapRouter);
 api.route("/", chatRouter);
 api.route("/share", shareRouter);
@@ -263,35 +265,18 @@ export default {
 // startLogWorker();
 
 
-function startMigrationWorker(network?: string) {
-  const workerEnv = {
-    ...process.env,
-    ...(network ? { NETWORK: network } : {}),
-  };
-  if (migrationWorkerChild) {
-    logger.info("Migration worker already running, skipping spawn");
-    return;
-  }
-  const script = path.join(__dirname, "workers/migrationWorker.ts");
-  const child = fork(script, [], { env: workerEnv });
 
-  migrationWorkerChild = child;
-  logger.info(
-    `🚀 Started migration worker${network ? ` (${network})` : ""} with PID`,
-    child.pid
-  );
-  child.on("error", (err) => {
-    logger.error(`❌ Migration worker${network ? ` (${network})` : ""} failed:`, err);
-  });
+// const sched = fork(
+//   path.join(__dirname, "workers", "scheduler.ts"),
+//   { env: process.env, stdio: "inherit" }
+// );
 
-  child.on("exit", (code, signal) => {
-    logger.info(
-      `Migration worker${network ? ` (${network})` : ""} exited with ${signal ? `signal ${signal}` : `code ${code}`
-      }`
-    );
-    // we do NOT restart it
-    migrationWorkerChild = null;
-  });
-}
-
-startMigrationWorker();
+// sched.on("exit", (code, signal) => {
+//   console.error(`Scheduler exited (${signal || code}), restarting…`);
+//   setTimeout(() => {
+//     fork(path.join(__dirname, "workers", "scheduler.ts"), {
+//       env: process.env,
+//       stdio: "inherit",
+//     });
+//   }, 1000);
+// });
