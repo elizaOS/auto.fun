@@ -12,6 +12,8 @@ import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl, logger } from "../util";
 import { createTokenPrompt } from "../prompts/create-token";
 import { enhancePrompt } from "../prompts/enhance-prompt";
+import { getS3Client } from "../s3Client";
+import { GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 // Enum for media types
 export enum MediaType {
@@ -553,6 +555,7 @@ export async function generateMedia(data: {
   music_duration?: string;
   cfg_strength?: number;
   scheduler?: string;
+  mint?: string; // Add mint property
 }) {
   // Set default timeout - shorter for tests
   const timeout = 300000;
@@ -670,11 +673,36 @@ export async function generateMedia(data: {
     // lyricsToUse is now guaranteed to be a string here
     const formattedLyrics = formatLyricsForDiffrhythm(lyricsToUse); // Now safe to call
 
+    // Check for existing audio context file in S3
+    const { client: s3Client, bucketName } = await getS3Client();
+    const audioContextPrefix = `token-settings/${data.mint}/audio/context-${data.mint}`;
+    
+    let referenceAudioUrl = data.reference_audio_url;
+    
+    try {
+      const listCmd = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: audioContextPrefix,
+        MaxKeys: 1
+      });
+      
+      const listResponse = await s3Client.send(listCmd);
+      const audioContextKey = listResponse.Contents?.[0]?.Key;
+      if (audioContextKey) {
+        referenceAudioUrl = `${process.env.S3_PUBLIC_URL}/${audioContextKey}?t=${Date.now()}`;
+        logger.log("Using existing audio context file:", referenceAudioUrl);
+      } else {
+        logger.log("No existing audio context file found, using default");
+        referenceAudioUrl = referenceAudioUrl || "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav";
+      }
+    } catch (error) {
+      logger.error("Error checking for audio context file:", error);
+      referenceAudioUrl = referenceAudioUrl || "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav";
+    }
+
     const input = {
       lyrics: formattedLyrics,
-      reference_audio_url:
-        data.reference_audio_url ||
-        "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
+      reference_audio_url: referenceAudioUrl,
       style_prompt: data.style_prompt || "pop",
       music_duration: data.music_duration || "95s",
       cfg_strength: data.cfg_strength || 4,
@@ -2416,6 +2444,7 @@ app.post("/enhance-and-generate", async (c) => {
       prompt: enhancedPrompt,
       type: mediaType,
       mode,
+      mint: tokenMint // Add mint parameter
     };
 
     // Add optional parameters based on media type
@@ -2673,5 +2702,71 @@ export async function generateAudio(
     throw error;
   }
 }
+// Get generation settings for a token
+app.get("/:mint/settings", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB();
+
+    // Get token metadata from database
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!token || token.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Check for audio context file in S3
+    const { client: s3Client, bucketName } = await getS3Client();
+    const audioContextPrefix = `token-settings/${mint}/audio/context-${mint}`;
+    
+    try {
+      const listCmd = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: audioContextPrefix,
+        MaxKeys: 1
+      });
+      
+      const listResponse = await s3Client.send(listCmd);
+      const audioContextKey = listResponse.Contents?.[0]?.Key;
+      const audioContextUrl = audioContextKey ? `${process.env.S3_PUBLIC_URL}/${audioContextKey}` : null;
+
+      return c.json({
+        success: true,
+        settings: {
+          audioContextUrl,
+          tokenName: token[0].name,
+          tokenSymbol: token[0].ticker,
+          tokenDescription: token[0].description,
+        },
+      });
+    } catch (error) {
+      logger.error("Error checking for audio context file:", error);
+      return c.json({
+        success: true,
+        settings: {
+          audioContextUrl: null,
+          tokenName: token[0].name,
+          tokenSymbol: token[0].ticker,
+          tokenDescription: token[0].description,
+        },
+      });
+    }
+  } catch (error) {
+    logger.error("Error fetching generation settings:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
 
 export default app;
