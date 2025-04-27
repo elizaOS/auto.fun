@@ -278,6 +278,9 @@ export default function Trade({ token }: { token: IToken }) {
                     const parsed = parseFloat(value);
                     if (!value || isNaN(parsed) || parsed <= 0) {
                       setSellInputAmount('');
+                    } else {
+                      // Remove unnecessary decimals like ".0"
+                      setSellInputAmount(parsed.toString());
                     }
                   }}
                   placeholder="0"
