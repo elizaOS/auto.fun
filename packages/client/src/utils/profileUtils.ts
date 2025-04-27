@@ -243,13 +243,23 @@ const useGetProfileTokens = () => {
               const priceSOL = tokenPriceUSD / tokenData.solPriceUSD;
               solValue = Number(tokensHeld.toString()) * priceSOL;
             } else {
+              console.log("bondingCurveAccount", bondingCurveAccount)
+
+              let bn = 0
+
+              try {
+                bn = bondingCurveAccount.reserveToken.toNumber() ?? 0
+              } catch (e) {
+                console.log("error", e)
+              }
+
               solValue =
                 calculateAmountOutSell(
                   bondingCurveAccount.reserveLamport.toNumber(),
                   Number(tokenAccount.amount),
                   6,
                   1,
-                  bondingCurveAccount.reserveToken.toNumber(),
+                  bn,
                 ) / LAMPORTS_PER_SOL;
             }
           }
