@@ -3,16 +3,30 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  getSortedRowModel,
+  SortingState,
 } from "@tanstack/react-table";
 import { ProfileToken } from "../types/profileTypes";
 import { Link } from "react-router-dom";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
+import { useState, useMemo } from "react";
+import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 
 const columnHelper = createColumnHelper<ProfileToken>();
 
+const SortIndicator = ({ isSorted }: { isSorted: false | "asc" | "desc" }) => {
+  if (isSorted === "asc") {
+    return <ChevronUp className="inline-block ml-1 h-4 w-4" />;
+  }
+  if (isSorted === "desc") {
+    return <ChevronDown className="inline-block ml-1 h-4 w-4" />;
+  }
+  return <ChevronsUpDown className="inline-block ml-1 h-4 w-4 opacity-30" />;
+};
+
 const getColumns = (solPrice: number) => {
   const columns = [
-    columnHelper.display({
+    columnHelper.accessor("name", {
       id: "token",
       header: "Token",
       cell: ({ row }) => {
@@ -24,57 +38,60 @@ const getColumns = (solPrice: number) => {
               src={image ?? ""}
               alt="token image"
               className="h-4 w-4 rounded-full"
+              onError={(e) => {
+                e.currentTarget.src = "/default-avatar.png";
+                e.currentTarget.onerror = null;
+              }}
             />
 
-            <Link to={`/token/${mint}`} className="hover:text-blue-500">
-              <span>{name}</span>{" "}
-              <span className="text-[#8C8C8C]">${ticker}</span>
+            <Link
+              to={`/token/${mint}`}
+              className="hover:text-blue-500 flex items-center gap-1"
+            >
+              <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                {name}
+              </span>
+              <span className="text-[#8C8C8C] flex-shrink-0">${ticker}</span>
             </Link>
           </div>
         );
       },
+      enableSorting: true,
     }),
-    columnHelper.accessor("tokensHeld", {
+    columnHelper.accessor((row) => row.tokensHeld ?? 0, {
+      id: "tokensHeld",
       header: "Amount",
-      cell: ({ cell }) => (cell.getValue() ?? 0).toLocaleString(),
+      cell: ({ row }) => (row.original.tokensHeld ?? 0).toLocaleString(),
+      enableSorting: true,
     }),
-    columnHelper.accessor("solValue", {
+    columnHelper.accessor((row) => row.solValue ?? 0, {
+      id: "solValue",
       header: "SOL",
-      cell: ({ cell }) => cell.getValue()?.toFixed(4),
-    }),
-
-    columnHelper.accessor("dollarValue", {
-      header: "Value",
       cell: ({ row }) => {
         const solValue = Number(row.original.solValue ?? 0);
         const dollarValue = solValue * (solPrice ?? 0);
-        return `$${dollarValue.toFixed(2)}`;
+        return `${(row.original.solValue ?? 0).toFixed(4)} SOL`;
       },
+      enableSorting: true,
     }),
-
     columnHelper.accessor("mint", {
       header: "View",
+      enableSorting: false,
       cell: ({ cell }) => {
         const mint = cell.getValue();
-
         return (
-          <Link to={`/token/${mint}`} className="flex justify-end">
+          <Link to={`/token/${mint}`} className="flex justify-end items-center">
             <svg
               width="17"
               height="17"
               viewBox="0 0 17 17"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              className="fill-current text-white hover:text-blue-400 transition-colors"
             >
-              <path
-                d="M0 8.5C0 3.8 3.8 0 8.5 0C13.2 0 17 3.8 17 8.5C17 13.2 13.2 17 8.5 17C3.8 17 0 13.2 0 8.5ZM16 8.5C16 4.35 12.65 1 8.5 1C4.35 1 1 4.35 1 8.5C1 12.65 4.35 16 8.5 16C12.65 16 16 12.65 16 8.5Z"
-                fill="white"
-              />
-              <path
-                d="M7.6502 12.6504L11.8002 8.50039L7.6502 4.35039L8.3502 3.65039L13.2002 8.50039L8.3502 13.3504L7.6502 12.6504Z"
-                fill="white"
-              />
-              <path d="M12.5 8V9H4V8L12.5 8Z" fill="white" />
+              <path d="M8.5,17 C3.80557963,17 0,13.1944204 0,8.5 C0,3.80557963 3.80557963,0 8.5,0 C13.1944204,0 17,3.80557963 17,8.5 C17,13.1944204 13.1944204,17 8.5,17 Z M8.5,1 C4.35786438,1 1,4.35786438 1,8.5 C1,12.6421356 4.35786438,16 8.5,16 C12.6421356,16 16,12.6421356 16,8.5 C16,4.35786438 12.6421356,1 8.5,1 Z" />
+              <path d="M7.6502,12.6504 L11.8002,8.50039 L7.6502,4.35039 L8.3502,3.65039 L13.2002,8.50039 L8.3502,13.3504 L7.6502,12.6504 Z" />
+              <path d="M4,8 L4,9 L12.5,9 L12.5,8 L4,8 Z" />
             </svg>
           </Link>
         );
@@ -86,11 +103,19 @@ const getColumns = (solPrice: number) => {
 
 export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
   const { solPrice } = useSolPriceContext();
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo(() => getColumns(solPrice ?? 0), [solPrice]);
 
   const table = useReactTable({
-    data: tokens,
-    columns: getColumns(solPrice ?? 145),
+    data: tokens ?? [],
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   if (!tokens || tokens?.length === 0) {
@@ -102,20 +127,32 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
   }
 
   return (
-    <div className="border border-[#262626] w-full">
+    <div className="border border-[#262626] w-full overflow-hidden">
       <table className="w-full">
-        <thead>
+        <thead className="bg-neutral-800">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="text-left last:text-right px-6 py-3 text-[#8c8c8c] uppercase text-[14px] tracking-widest text-sm"
+                  colSpan={header.colSpan}
+                  className="text-left last:text-right px-6 py-3 text-[#8c8c8c] uppercase text-[13px] tracking-wider font-medium select-none"
+                  style={{
+                    cursor: header.column.getCanSort() ? "pointer" : "default",
+                  }}
+                  onClick={header.column.getToggleSortingHandler()}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )}
+                  <div className="flex items-center gap-1 justify-start">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                    {header.column.getCanSort() && (
+                      <SortIndicator isSorted={header.column.getIsSorted()} />
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>
@@ -123,9 +160,12 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-t border-[#262626]">
+            <tr
+              key={row.id}
+              className="border-t border-[#262626] hover:bg-neutral-800/50 transition-colors"
+            >
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-6 py-3">
+                <td key={cell.id} className="px-6 py-3 whitespace-nowrap">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
