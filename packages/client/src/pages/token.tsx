@@ -643,9 +643,7 @@ export default function Page() {
                         Open Full Chat Page ↗
                       </Link>
                     </div>
-                    <div className="max-h-[60vh]">
-                      <Chat />
-                    </div>
+                    <Chat />
                   </div>
                 )}
               </div>
