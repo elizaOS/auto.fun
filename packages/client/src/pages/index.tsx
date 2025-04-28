@@ -205,6 +205,24 @@ export default function Page() {
               </Button>
             </div>
           )}
+           {activeTab != "grid" && (
+            <div className="flex items-center gap-1">
+              {/* TODO: change to toggle button for newest/oldest */}
+              <Button
+                variant={tableSortBy === "newest" ? "primary" : "outline"}
+                onClick={() => setTableSortBy("newest")}
+              >
+                New
+              </Button>
+              <Button
+                variant={tableSortBy === "featured" ? "primary" : "outline"}
+                onClick={() => setTableSortBy("featured")}
+              >
+                {/* featured represents all */}
+                Featured
+              </Button>
+            </div>
+          )}
           <div className="relative flex" ref={filterRef}>
             <Button
               variant="outline"
