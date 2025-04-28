@@ -70,7 +70,8 @@ const EditableProfileHeader = ({
         <div className="relative w-48 h-48">
           {isUploading || isGenerating ? (
             <div className="w-full h-full flex items-center justify-center">
-              <Loader className="w-8 h-8" />
+              {isUploading && "Uploading..."}
+              {isGenerating && "Generating..."}
             </div>
           ) : displayImageUrl ? (
             <img
@@ -103,11 +104,7 @@ const EditableProfileHeader = ({
               disabled={isUploading || isGenerating || isSaving}
               className="w-full flex items-center justify-center gap-1 text-xs px-2 py-1"
             >
-              {isUploading ? (
-                <Loader className="w-3 h-3" />
-              ) : (
-                <Upload className="w-3 h-3" />
-              )}
+              {isUploading ? "Uploading..." : <Upload className="w-3 h-3" />}
               Upload
             </Button>
             <Button
@@ -118,12 +115,8 @@ const EditableProfileHeader = ({
               disabled={isUploading || isGenerating || isSaving}
               className="w-full flex items-center justify-center gap-1 text-xs px-2 py-1"
             >
-              {isGenerating ? (
-                <Loader className="w-3 h-3" />
-              ) : (
-                <Zap className="w-3 h-3" />
-              )}
-              Generate
+              {isGenerating ? "Generating..." : <Zap className="w-3 h-3" />}
+              {!isGenerating && "Generate"}
             </Button>
           </div>
         )}
@@ -139,7 +132,7 @@ const EditableProfileHeader = ({
                 value={editingDisplayName}
                 onChange={(e) => setEditingDisplayName(e.target.value)}
                 placeholder="Enter Display Name"
-                className="flex-grow text-white text-2xl font-medium bg-neutral-800 border border-neutral-700 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-autofun-background-action-highlight"
+                className="flex-grow text-white text-2xl font-medium bg-neutral-800 border border-neutral-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-autofun-background-action-highlight"
                 required
                 maxLength={50}
                 disabled={isSaving}
@@ -213,7 +206,7 @@ const EditableProfileHeader = ({
         </div>
 
         {isCurrentUser && editError && (
-          <div className="mt-1 p-2 bg-red-900/30 border border-red-800 text-red-200 rounded-md text-sm">
+          <div className="mt-1 p-2 bg-red-900/30 border border-red-800 text-red-200 text-sm">
             {editError}
           </div>
         )}
@@ -401,7 +394,7 @@ export default function Profile() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto items-center">
+      <div className="flex flex-col flex-1 mt-32 m-auto items-center">
         <Loader />
       </div>
     );
@@ -409,14 +402,14 @@ export default function Profile() {
 
   if (!profileData.user) {
     return (
-      <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto items-center">
+      <div className="flex flex-col flex-1 mt-32 m-auto items-center">
         <Loader />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
+    <div className="flex flex-col flex-1 mt-32 m-auto">
       <input
         type="file"
         ref={fileInputRef}

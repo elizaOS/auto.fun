@@ -8,7 +8,13 @@ import {
 } from "@/components/ui/table-raw";
 import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
-import { fromNow, shortenAddress, useCodex } from "@/utils";
+import {
+  formatNumber,
+  fromNow,
+  resizeImage,
+  shortenAddress,
+  useCodex,
+} from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { twMerge } from "tailwind-merge";
@@ -133,27 +139,38 @@ export default function SwapsTable({ token }: { token: IToken }) {
     let account;
     let swapType;
     let solana;
-    let token;
+    let tokenAmount;
     let transactionHash;
     let timestamp;
+    let usdValue;
 
     if (isCodex) {
+      console.log(swap);
       account = swap?.maker || "NA";
       swapType = swap?.eventDisplayType || "Buy";
       solana = swap?.data?.priceBaseTokenTotal || "0";
-      token = swap?.data?.amountNonLiquidityToken || "0";
+      tokenAmount = swap?.data?.amountNonLiquidityToken || "0";
       transactionHash = swap?.transactionHash || "";
       timestamp = swap?.timestamp * 1000 || 0;
+      usdValue = swap?.data?.priceUsdTotal || null;
     } else {
       account = swap?.user || "NA";
       swapType = swap?.type || "Buy";
       solana = swap?.solAmount || "0";
-      token = swap?.tokenAmount || "0";
+      tokenAmount = swap?.tokenAmount || "0";
       transactionHash = swap?.txId || "";
       timestamp = swap?.timestamp || 0;
     }
 
-    return { account, swapType, solana, token, transactionHash, timestamp };
+    return {
+      account,
+      swapType,
+      solana,
+      tokenAmount,
+      transactionHash,
+      timestamp,
+      usdValue,
+    };
   };
 
   if (!isCodex ? isLoading : query?.isPending) {
@@ -204,7 +221,8 @@ export default function SwapsTable({ token }: { token: IToken }) {
                   account,
                   swapType,
                   solana,
-                  token,
+                  usdValue,
+                  tokenAmount,
                   transactionHash,
                   timestamp,
                 } = dataExtractor(swap);
@@ -231,11 +249,40 @@ export default function SwapsTable({ token }: { token: IToken }) {
                         }
                       />
                     </TableCell>
-                    <TableCell className="text-left text-sm">
-                      {formatSwapAmount(solana, true)}
+                    <TableCell className="text-left">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src="/solana.svg"
+                          width={32}
+                          height={32}
+                          className="size-2.5 rounded-full"
+                        />
+                        <span className="text-sm">
+                          {formatSwapAmount(solana, true)}
+                        </span>
+                        {usdValue ? (
+                          <span className="text-autofun-text-secondary text-xs">
+                            {formatNumber(usdValue, true)}
+                          </span>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="text-left text-sm">
-                      {formatSwapAmount(token, true)}
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={
+                            token?.image
+                              ? resizeImage(token.image, 50, 50)
+                              : "/placeholder.png"
+                          }
+                          width={32}
+                          height={32}
+                          className="size-2.5 rounded-full"
+                        />
+                        <span className="text-sm">
+                          {formatSwapAmount(tokenAmount, true)}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right text-sm text-autofun-text-secondary">
                       <Interval

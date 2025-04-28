@@ -545,7 +545,7 @@ export default function TwitterSharePage() {
         </h1>
 
         {/* Display image to share */}
-        <div className="mb-8 border border-gray-700 rounded-lg overflow-hidden w-full">
+        <div className="mb-8 border border-gray-700 overflow-hidden w-full">
           <img
             src={env.exampleImageUrl}
             alt="Share Preview"
@@ -555,7 +555,7 @@ export default function TwitterSharePage() {
 
         {/* Auth status */}
         {credentials && (
-          <div className="mb-4 p-3 bg-gray-800 rounded-lg w-full">
+          <div className="mb-4 p-3 bg-gray-800 w-full">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-gray-400 text-sm">Logged in:</span>
@@ -582,7 +582,7 @@ export default function TwitterSharePage() {
 
         {/* API configuration status */}
         {apiUrlStatus === "error" && (
-          <div className="mb-4 p-3 bg-red-800/30 border border-red-600 rounded-lg w-full text-red-300 text-sm">
+          <div className="mb-4 p-3 bg-red-800/30 border border-red-600 w-full text-red-300 text-sm">
             <p>Twitter API configuration error</p>
             <p className="text-xs mt-1">
               Check VITE_API_URL environment variable
@@ -609,20 +609,20 @@ export default function TwitterSharePage() {
 
         {/* Success message */}
         {shareSuccess && (
-          <div className="mt-6 p-4 bg-green-800/20 border border-green-600 rounded-lg text-green-400 w-full text-sm">
+          <div className="mt-6 p-4 bg-green-800/20 border border-green-600 text-green-400 w-full text-sm">
             Successfully shared to Twitter!
           </div>
         )}
 
         {/* Error message */}
         {shareError && (
-          <div className="mt-6 p-4 bg-red-800/20 border border-red-600 rounded-lg text-red-400 w-full text-sm">
+          <div className="mt-6 p-4 bg-red-800/20 border border-red-600 text-red-400 w-full text-sm">
             {shareError}
           </div>
         )}
 
         {/* Debug section */}
-        <div className="mt-8 p-4 bg-gray-800 rounded-lg w-full text-xs text-gray-400">
+        <div className="mt-8 p-4 bg-gray-800 w-full text-xs text-gray-400">
           <h3 className="font-bold mb-2">Debug Information</h3>
           <div>API URL: {env.apiUrl || "Not set"}</div>
           <div>
@@ -647,7 +647,7 @@ export default function TwitterSharePage() {
           in your browser using Web Workers.
         </p>
 
-        <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4 rounded-lg">
+        <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4">
           <label htmlFor="suffix" className="text-gray-300 font-medium">
             Suffix:
           </label>
@@ -676,7 +676,7 @@ export default function TwitterSharePage() {
         </div>
 
         {/* Status/Logs Display */}
-        <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 h-64 overflow-y-auto text-sm font-mono">
+        <div className="mb-4 p-4 bg-gray-800 border border-gray-700 h-64 overflow-y-auto text-sm font-mono">
           <p className="text-gray-400 mb-2">
             Status:{" "}
             {isGenerating
@@ -700,7 +700,7 @@ export default function TwitterSharePage() {
 
         {/* Result Display */}
         {vanityResult && (
-          <div className="p-4 bg-green-800/20 border border-green-600 rounded-lg text-green-300">
+          <div className="p-4 bg-green-800/20 border border-green-600 text-green-300">
             <h3 className="font-bold mb-2">🎉 Success! Keypair Found:</h3>
             <p className="font-mono break-all mb-1">
               <strong className="text-green-200">Address:</strong>{" "}
@@ -717,7 +717,7 @@ export default function TwitterSharePage() {
           </div>
         )}
 
-        <div className="mt-6 text-xs text-gray-500 text-center p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+        <div className="mt-6 text-xs text-gray-500 text-center p-3 bg-yellow-900/20 border border-yellow-700">
           <strong>Disclaimer:</strong> This tool generates keys locally in your
           browser. No data is sent externally. However, for managing significant
           assets, always prefer official, well-audited Solana software and
@@ -734,7 +734,7 @@ export default function TwitterSharePage() {
           Enter a token mint address to preview its generated Open Graph image.
         </p>
 
-        <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4 rounded-lg">
+        <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4">
           <label
             htmlFor="ogMint"
             className="text-gray-300 font-medium shrink-0"
@@ -769,7 +769,7 @@ export default function TwitterSharePage() {
         </div>
 
         {/* Preview Area */}
-        <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700 min-h-[315px] flex items-center justify-center">
+        <div className="mt-6 p-4 bg-gray-800 border border-gray-700 min-h-[315px] flex items-center justify-center">
           {ogPreviewUrl && (
             <img
               ref={imageRef}

@@ -20,14 +20,16 @@ export default function AudioPlayer({
   const [editableLyrics, setEditableLyrics] = useState(lyrics);
 
   return (
-    <div className={`flex flex-col gap-4 border border-gray-700 p-0 bg-black ${className}`}>
+    <div
+      className={`flex flex-col gap-4 border border-gray-700 p-0 bg-black ${className}`}
+    >
       {albumArt && (
         <div className="flex flex-col md:flex-row gap-4">
           <div className="w-full md:w-1/2 aspect-square">
             <img
               src={albumArt}
               alt="Album Art"
-              className="w-full h-full object-cover rounded-lg"
+              className="w-full h-full object-cover"
             />
           </div>
 
@@ -71,4 +73,4 @@ export default function AudioPlayer({
       </div>
     </div>
   );
-} 
+}

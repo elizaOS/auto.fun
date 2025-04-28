@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import PQueue from "p-queue";
 import { getDB, metadata } from "./db";
 import { logger } from "./logger";
-import { processTransactionLogs } from "./processTransactionLogs";
+import { processTransactionLogs } from "./cron";
 
 export async function getLastProcessedSlot(): Promise<number | null> {
    const db = getDB();
@@ -72,7 +72,7 @@ async function processSlot(slot: number, connection: Connection) {
 }
 
 // Scan blocks from the last processed slot up to the current slot
-export async function processMissedEvents(connection: Connection, ): Promise<void> {
+export async function processMissedEvents(connection: Connection,): Promise<void> {
    try {
       const currentSlot = await connection.getSlot("confirmed");
       const currentTime = await connection.getBlockTime(currentSlot);

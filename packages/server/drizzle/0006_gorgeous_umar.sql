@@ -1,0 +1,1 @@
+ALTER TABLE "token_agents" ADD COLUMN "twitter_description" text;

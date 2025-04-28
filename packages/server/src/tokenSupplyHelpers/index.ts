@@ -576,7 +576,7 @@ export async function processTokenUpdateEvent(
       }
     } else if (shouldEmitGlobal) {
       // Otherwise, if shouldEmitGlobal is true (and it's not a new token), emit "updateToken" globally
-      await wsClient.emit("global", "updateToken", {
+      await wsClient.emit(`token-${tokenData.mint}`, "updateToken", {
         ...enrichedTokenData,
         timestamp: new Date(),
       });

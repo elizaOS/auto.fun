@@ -18,6 +18,7 @@ const WalletButton = () => {
   const { publicKey, connecting, wallet, connected } = useWallet();
   const { setVisible } = useWalletModal();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   const solBalance = useSolBalance({ enabled: menuOpen });
 
@@ -34,13 +35,26 @@ const WalletButton = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [walletIcon, setWalletIcon] = useState<string | null>(null);
 
+  // Handle visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   // Create a wallet adapter instance directly in the component to access its icon
   useEffect(() => {
     if (
       (connected || isAuthenticated) &&
       !walletIcon &&
       typeof window !== "undefined" &&
-      window.solana?.isPhantom
+      window.solana?.isPhantom &&
+      isVisible
     ) {
       // Create a fresh adapter to get the icon
       const adapter = new PhantomWalletAdapter();
@@ -49,14 +63,14 @@ const WalletButton = () => {
         setWalletIcon(adapter.icon);
       }
     }
-  }, [connected, isAuthenticated, walletIcon]);
+  }, [connected, isAuthenticated, walletIcon, isVisible]);
 
   // Also set icon from wallet when it becomes available
   useEffect(() => {
-    if (wallet?.adapter.icon && !walletIcon) {
+    if (wallet?.adapter.icon && !walletIcon && isVisible) {
       setWalletIcon(wallet.adapter.icon);
     }
-  }, [wallet, walletIcon]);
+  }, [wallet, walletIcon, isVisible]);
 
   // Check for direct Phantom connection
   const hasDirectPhantomConnection =
@@ -95,7 +109,8 @@ const WalletButton = () => {
       walletAddress &&
       !publicKey &&
       !hasDirectPhantomConnection &&
-      !isAuthenticating
+      !isAuthenticating &&
+      isVisible
     ) {
       // Try to connect directly to Phantom if available
       if (
@@ -123,11 +138,12 @@ const WalletButton = () => {
     hasDirectPhantomConnection,
     isAuthenticating,
     walletIcon,
+    isVisible,
   ]);
 
   // Try to connect wallet on load if we have a token but no connection
   useEffect(() => {
-    if (!isAuthenticated && !isAuthenticating && authToken) {
+    if (!isAuthenticated && !isAuthenticating && authToken && isVisible) {
       // Try to connect directly to Phantom if available
       if (
         typeof window !== "undefined" &&
@@ -149,7 +165,7 @@ const WalletButton = () => {
           .catch((err: any) => console.error("Error auto-connecting:", err));
       }
     }
-  }, [isAuthenticated, isAuthenticating, authToken, walletIcon]);
+  }, [isAuthenticated, isAuthenticating, authToken, walletIcon, isVisible]);
 
   // Handle copy wallet address
   const handleCopyAddress = async () => {

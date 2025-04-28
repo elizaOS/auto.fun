@@ -86,7 +86,7 @@ export default function AdminModerators() {
 
         {/* Show error if query failed */}
         {moderatorsQuery.isError && (
-          <div className="bg-autofun-error/10 border border-autofun-error text-autofun-error p-4 rounded-md">
+          <div className="bg-autofun-error/10 border border-autofun-error text-autofun-error p-4">
             <p className="font-semibold">Error:</p>
             <p>
               {moderatorsQuery.error instanceof Error
@@ -104,12 +104,12 @@ export default function AdminModerators() {
               <input
                 type="text"
                 placeholder="Enter wallet address"
-                className="flex-1 rounded-md bg-autofun-background-primary border border-autofun-border p-2 h-10"
+                className="flex-1 bg-autofun-background-primary border border-autofun-border p-2 h-10"
                 value={newModeratorAddress}
                 onChange={(e) => setNewModeratorAddress(e.target.value)}
               />
               <button
-                className="bg-autofun-background-primary hover:bg-autofun-background-secondary text-white px-4 py-2 rounded-md disabled:opacity-50 h-10"
+                className="bg-autofun-background-primary hover:bg-autofun-background-secondary text-white px-4 py-2 disabled:opacity-50 h-10"
                 onClick={addModerator}
                 disabled={
                   addModeratorMutation.isPending || !newModeratorAddress
@@ -124,7 +124,7 @@ export default function AdminModerators() {
         )}
 
         {!isAdmin && (
-          <div className="bg-autofun-background-secondary/50 border border-autofun-border rounded-lg p-4 mb-6">
+          <div className="bg-autofun-background-secondary/50 border border-autofun-border p-4 mb-6">
             <p className="text-autofun-text-secondary italic">
               Only administrators can add or remove moderators. Moderators can
               view this list but cannot modify it.
