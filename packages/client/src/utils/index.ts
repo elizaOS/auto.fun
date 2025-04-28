@@ -18,7 +18,7 @@ export const shortenAddress = (address: string) => {
 
 export const abbreviateNumber = (
   num: number,
-  withoutCurrency: boolean = false
+  withoutCurrency: boolean = false,
 ): string => {
   const absNum = Math.abs(Number(num));
   if (absNum < 1000) return formatNumber(num, false, withoutCurrency);
@@ -36,7 +36,7 @@ export const abbreviateNumber = (
 export const formatNumber = (
   num: number,
   showDecimals?: boolean,
-  hideDollarSign?: boolean
+  hideDollarSign?: boolean,
 ) => {
   const formatted = Intl.NumberFormat("en-US", {
     style: "currency",
@@ -53,7 +53,7 @@ export const formatNumber = (
 
 export const fromNow = (
   date: string | Date | number,
-  hideAgo?: boolean
+  hideAgo?: boolean,
 ): string => {
   const timeString = String(moment(date).fromNow());
 
@@ -163,7 +163,11 @@ export const resizeImage = (url: string, width: number, height: number) => {
 export const networkId = 1399811149;
 
 export const useCodex = (token: IToken) => {
-  if (token?.imported === 1 || token?.status === "locked") {
+  if (
+    token?.imported === 1 ||
+    token?.status === "locked" ||
+    token?.status === "migrated"
+  ) {
     return true;
   }
 

@@ -42,13 +42,14 @@ const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
   const isCodex = useCodex(token);
+
   const queryClient = useQueryClient();
   const { items: data, isLoading } = useTransactions({
     tokenId: token.mint,
     isPaused: paused || isCodex,
   });
 
-  const queryKey = ["token", token.mint, "swaps"];
+  const queryKey = ["token", token.mint, "swaps", isCodex];
   const query = useQuery({
     queryKey,
     queryFn: async () => {
