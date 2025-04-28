@@ -1254,15 +1254,18 @@ export default function Create() {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const response = await fetch(env.apiUrl + "/api/generate-metadata", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({
-          prompt: userPrompt,
-          fields: ["name", "symbol", "description", "prompt"],
-        }),
-      });
+      const response = await fetch(
+        env.apiUrl + "/api/generation/generate-metadata",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            prompt: userPrompt,
+            fields: ["name", "symbol", "description", "prompt"],
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to generate metadata from prompt");
@@ -1309,15 +1312,18 @@ export default function Create() {
       setIsGenerating(true);
       setGeneratingField("prompt");
 
-      const imageResponse = await fetch(env.apiUrl + "/api/generate", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({
-          prompt: data.metadata.prompt,
-          type: "image",
-        }),
-      });
+      const imageResponse = await fetch(
+        env.apiUrl + "/api/generation/generate",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            prompt: data.metadata.prompt,
+            type: "image",
+          }),
+        },
+      );
 
       if (!imageResponse.ok) {
         const errorText = await imageResponse.text();
@@ -1655,11 +1661,14 @@ export default function Create() {
         }
 
         // Get a pre-generated token
-        const response = await fetch(env.apiUrl + "/api/pre-generated-token", {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
+        const response = await fetch(
+          env.apiUrl + "/api/generation/pre-generated-token",
+          {
+            method: "GET",
+            headers,
+            credentials: "include",
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Failed to get pre-generated token");
@@ -1667,6 +1676,8 @@ export default function Create() {
 
         const data = (await response.json()) as PreGeneratedTokenResponse;
         const { token } = data;
+
+        console.log("token", token);
 
         // Store token ID for later use when creating
         if (token.id) {
@@ -1729,15 +1740,18 @@ export default function Create() {
           }
         } else {
           // If no image, generate one using the prompt
-          const imageResponse = await fetch(env.apiUrl + "/api/generate", {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              prompt: token.prompt,
-              type: "image",
-            }),
-          });
+          const imageResponse = await fetch(
+            env.apiUrl + "/api/generation/generate",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                prompt: token.prompt,
+                type: "image",
+              }),
+            },
+          );
 
           if (!imageResponse.ok) {
             throw new Error("Failed to generate image");
@@ -2362,7 +2376,7 @@ export default function Create() {
           }
 
           // Mark the token as used and delete any other tokens with the same name or ticker
-          await fetch(env.apiUrl + "/api/mark-token-used", {
+          await fetch(env.apiUrl + "/api/generation/mark-token-used", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2492,7 +2506,7 @@ export default function Create() {
 
           // Get a pre-generated token
           const response = await fetch(
-            env.apiUrl + "/api/pre-generated-token",
+            env.apiUrl + "/api/generation/pre-generated-token",
             {
               method: "GET",
               headers,
@@ -2803,12 +2817,12 @@ export default function Create() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      {/* {showCoinDrop ? (
+      {showCoinDrop ? (
         <CoinDrop
           imageUrl={coinDropImageUrl || undefined}
           onCancel={handleCoinDropCancel}
         />
-      ) : null} */}
+      ) : null}
 
       <form
         className="py-4 px-4 px-auto w-full max-w-5xl flex font-dm-mono flex-col m-auto gap-8 justify-center"

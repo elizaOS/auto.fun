@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ChatImage } from "./chat/ChatImage";
+import { ChatImage } from "./ChatImage";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -93,10 +93,7 @@ interface PostMessageResponse {
 
 const CHAT_MESSAGE_LIMIT = 50; // Define limit constant
 
-// --- Chat Types ---
-// ... existing code ...
-
-export default function Chat() {
+export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
   const { publicKey } = useWallet();
   const { isAuthenticated, isAuthenticating } = useAuthentication();
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -553,37 +550,61 @@ export default function Chat() {
     };
   }, [socket, tokenMint, selectedChatTier, viewableChatTiers, isAuthenticated]);
 
-  // --- WebSocket Message Listener --- (NEW)
+  // --- WebSocket Message Listener --- (Fix type assertion slightly)
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (newMessage: ChatMessage) => {
+    // Define handler with type assertion for the listener
+    const handleNewMessage = (data: unknown) => {
+      // Perform validation and type assertion INSIDE the handler
+      const newMessage = data as ChatMessage; // Assert type after receiving
+      if (
+        !newMessage || !newMessage.id || !newMessage.tokenMint || !newMessage.tier
+        // Add more checks as needed
+      ) {
+        console.warn("WS: Received invalid message format.", data);
+        return;
+      }
+
+      // Check if message belongs to the current context
+      if (
+        newMessage.tokenMint !== tokenMint ||
+        newMessage.tier !== selectedChatTier
+      ) {
+        // console.log("WS: Ignoring message from different token/tier.");
+        return;
+      }
+
       // Check if message already exists (optimistic or previous WS message)
       if (!chatMessages.some((msg) => msg.id === newMessage.id)) {
-        setChatMessages((prev) => [...prev, newMessage]);
-        // Update latest timestamp if needed
-        if (newMessage.timestamp > (latestTimestamp || "")) {
-          setLatestTimestamp(newMessage.timestamp);
-        }
-        scrollToBottom(); // Scroll only if user was near bottom
+         setChatMessages((prev) => {
+           // Ensure no duplicates are added if race condition occurs
+           if (prev.some(msg => msg.id === newMessage.id)) return prev;
+           // Add new message and sort by timestamp
+           const newMessages = [...prev, newMessage];
+           return newMessages.sort(
+             (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+           );
+         });
+         // Update latest timestamp if needed
+         if (newMessage.timestamp > (latestTimestamp || "")) {
+           setLatestTimestamp(newMessage.timestamp);
+         }
+         scrollToBottom(); // Scroll only if user was near bottom
       }
     };
 
-    socket.on("newChatMessage", handleNewMessage as (data: unknown) => void);
+    // Register listener
+    socket.on("newChatMessage", handleNewMessage);
     console.log("WS: Registered newChatMessage listener.");
 
+    // Cleanup listener
     return () => {
-      socket.off("newChatMessage", handleNewMessage as (data: unknown) => void);
+      socket.off("newChatMessage", handleNewMessage);
       console.log("WS: Unregistered newChatMessage listener.");
     };
-  }, [
-    socket,
-    tokenMint,
-    selectedChatTier,
-    scrollToBottom,
-    latestTimestamp,
-    chatMessages,
-  ]); // Add chatMessages dependency
+    // Add chatMessages and latestTimestamp as dependencies because they are used in the check
+  }, [socket, tokenMint, selectedChatTier, scrollToBottom, chatMessages, latestTimestamp]);
 
   // --- Send Chat Message --- *REVISED* (Check eligibleChatTiers for posting)
   const handleSendMessage = useCallback(async () => {
@@ -782,360 +803,327 @@ export default function Chat() {
   }, [isChatFullscreen]);
 
   return (
+    // Main container (flex col)
     <div
       className={clsx(
-        "relative flex flex-col bg-black/80 backdrop-blur-sm border border-gray-700/50 overflow-hidden shadow-xl",
-        isChatFullscreen
-          ? "fixed inset-0 z-50 rounded-none border-none"
-          : "h-full w-full",
+        "relative flex flex-col bg-black/80 backdrop-blur-sm border border-gray-700/50 rounded-lg overflow-hidden shadow-xl",
+        isChatFullscreen ? "fixed inset-0 z-50 rounded-none border-none" : "", // Use props/state for height
       )}
+      style={!isChatFullscreen ? { height: maxHeight } : {}} // Apply maxHeight prop only when not fullscreen
     >
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex justify-center items-center space-x-1 p-2 border-b border-gray-700 flex-shrink-0 bg-black/20">
-          {CHAT_TIERS.map((tier) => {
-            const isViewable = viewableChatTiers.includes(tier);
-            const isSelected = selectedChatTier === tier;
-            return (
-              <button
-                key={tier}
-                onClick={() => setSelectedChatTier(tier)}
-                disabled={
-                  !isViewable || isChatLoading || isLoadingOlderMessages
-                }
-                className={`px-3 py-1 text-sm font-medium transition-colors 
+      {/* Tier Selection (shrinks) */}
+      <div className="flex justify-center items-center space-x-1 p-2 border-b border-gray-700 flex-shrink-0 bg-black/20">
+        {CHAT_TIERS.map((tier) => {
+          const isViewable = viewableChatTiers.includes(tier);
+          const isSelected = selectedChatTier === tier;
+          return (
+            <button
+              key={tier}
+              onClick={() => setSelectedChatTier(tier)}
+              disabled={!isViewable || isChatLoading || isLoadingOlderMessages}
+              className={`px-3 py-1 text-sm font-medium transition-colors 
                     ${isSelected ? "bg-[#03FF24] text-black" : isViewable ? "text-gray-300 hover:bg-gray-700" : "text-gray-600"}
                     ${!isViewable ? "opacity-50 cursor-not-allowed" : ""}
                     ${isChatLoading && isSelected ? "animate-pulse" : ""}
                   `}
-              >
-                {formatTierLabel(tier)}
-              </button>
-            );
-          })}
-        </div>
+            >
+              {formatTierLabel(tier)}
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="overflow-hidden relative flex flex-col flex-1">
-          <div
-            ref={chatContainerRef}
-            className="flex-1 h-full overflow-y-auto scroll-smooth px-3 pb-2 flex flex-col"
-            onScroll={handleScroll}
-          >
-            <div ref={topSentinelRef} style={{ height: "1px" }} />
+      {/* Message List Container (scrollable, takes remaining space) */}
+      <div
+        ref={chatContainerRef}
+        className="flex-1 h-full overflow-y-auto scroll-smooth px-3 pb-2 flex flex-col relative" // Add relative positioning for the scroll button
+        onScroll={handleScroll}
+      >
+        {/* Top Sentinel */}
+        <div ref={topSentinelRef} style={{ height: "1px" }} />
 
-            {isLoadingOlderMessages && (
-              <div className="flex items-center justify-center py-2">
-                <Loader />
-              </div>
-            )}
+        {/* Loading Older Indicator */}
+        {isLoadingOlderMessages && (
+          <div className="flex items-center justify-center py-2">
+            <Loader className="w-5 h-5" /> {/* Remove size prop, use className */}
+          </div>
+        )}
 
-            {!hasOlderMessages &&
-              chatMessages.length > 0 &&
-              !isLoadingOlderMessages && (
-                <div className="text-center text-gray-500 text-xs py-2">
-                  Beginning of chat history
-                </div>
-              )}
+        {/* Beginning of History Indicator */}
+        {!hasOlderMessages &&
+          chatMessages.length > 0 &&
+          !isLoadingOlderMessages && (
+            <div className="text-center text-gray-500 text-xs py-2">
+              Beginning of chat history
+            </div>
+          )}
 
-            {(isBalanceLoading ||
-              (isChatLoading && chatMessages.length === 0)) &&
-              !isLoadingOlderMessages && (
-                <div className="flex items-center justify-center w-full h-full">
-                  <Loader />
-                </div>
-              )}
+        {/* Initial Loading Indicator */}
+        {(isBalanceLoading || (isChatLoading && chatMessages.length === 0)) &&
+          !isLoadingOlderMessages && (
+            <div className="flex-1 flex items-center justify-center w-full h-full"> {/* Use flex-1 here */}
+              <Loader /> {/* Default Loader */}
+            </div>
+          )}
 
-            {!isBalanceLoading &&
-              chatError &&
-              !isChatLoading &&
-              !isLoadingOlderMessages && (
-                <div className="text-center py-8">
-                  <p className="text-red-500 mb-2">{chatError}</p>
-                  {(isAuthenticated || selectedChatTier === "1k") &&
-                    viewableChatTiers.includes(selectedChatTier) && (
-                      <Button
-                        size="small"
-                        variant="outline"
-                        onClick={() =>
-                          fetchChatMessages(
-                            selectedChatTier,
-                            tokenMint || "",
-                            true,
-                          )
-                        }
-                        disabled={isChatLoading || isRefreshingMessages}
-                      >
-                        {isRefreshingMessages ? (
-                          <Loader className="w-32 h-32" />
-                        ) : (
-                          "Try Again"
-                        )}
-                      </Button>
+        {/* Error Display */}
+        {!isBalanceLoading &&
+          chatError &&
+          !isChatLoading &&
+          !isLoadingOlderMessages && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-8"> {/* Use flex-1 here */}
+              <p className="text-red-500 mb-2">{chatError}</p>
+              {(isAuthenticated || selectedChatTier === "1k") &&
+                viewableChatTiers.includes(selectedChatTier) && (
+                  <Button
+                    size="small"
+                    variant="outline"
+                    onClick={() =>
+                      fetchChatMessages(selectedChatTier, tokenMint || "", true)
+                    }
+                    disabled={isChatLoading || isRefreshingMessages}
+                  >
+                    {isRefreshingMessages ? (
+                      <Loader className="w-4 h-4"/> /* Adjust size with className */
+                    ) : (
+                      "Try Again"
                     )}
-                </div>
-              )}
+                  </Button>
+                )}
+            </div>
+          )}
 
-            {!isBalanceLoading &&
-              !isChatLoading &&
-              chatMessages.length === 0 &&
-              !chatError &&
-              !isLoadingOlderMessages && (
-                <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                  <p className="text-gray-500 mb-2">
-                    No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
-                    chat.
-                  </p>
-                  {isAuthenticated &&
-                    !canChatInSelectedTier &&
-                    viewableChatTiers.includes(selectedChatTier) && (
-                      <p className="text-yellow-500 text-sm">
-                        You need{" "}
-                        {getTierThreshold(selectedChatTier).toLocaleString()}+
-                        tokens to post here.
-                      </p>
-                    )}
-                  {!isAuthenticated && (
-                    <p className="text-yellow-500 text-sm">
-                      Connect your wallet to chat.
+        {/* No Messages Yet */}
+        {!isBalanceLoading &&
+          !isChatLoading &&
+          chatMessages.length === 0 &&
+          !chatError &&
+          !isLoadingOlderMessages && (
+             <div className="flex-1 flex flex-col items-center justify-center h-full text-center py-16"> {/* Use flex-1 here */}
+              <p className="text-gray-500 mb-2">
+                No messages yet in the {formatTierLabel(selectedChatTier)} chat.
+              </p>
+              {!isAuthenticated && (
+                <p className="text-yellow-500 text-sm">
+                  Connect your wallet to chat.
+                </p>
+              )}
+            </div>
+          )}
+
+        {/* Message Rendering Loop - directly inside scrollable container */}
+        {!isBalanceLoading && !isChatLoading &&
+          chatMessages.map((msg) => {
+            const displayName = msg.displayName || `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
+            const profilePicUrl = msg.profileImage;
+
+            return (
+              <div key={msg.id} className={`flex gap-2 py-2 ${msg.isOptimistic ? 'opacity-70' : ''}`}>
+                {/* Avatar Link */}
+                <Link to={`/profiles/${msg.author}`} className="flex-shrink-0 mt-1 self-start">
+                  {profilePicUrl ? (
+                    <img
+                      src={profilePicUrl}
+                      alt={`${displayName}'s avatar`}
+                      className="w-8 h-8 rounded-full object-cover border border-neutral-600"
+                      onError={(e) => {
+                        e.currentTarget.src = "/default-avatar.png";
+                        e.currentTarget.onerror = null;
+                      }} // Fallback image
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center border border-neutral-600">
+                      <UserIcon className="w-4 h-4 text-neutral-400" />
+                    </div>
+                  )}
+                </Link>
+
+                {/* Message Bubble */}
+                <div className={`ml-1 max-w-[85%]`}> {/* Adjusted max-width */}
+                  {/* Author Name & Timestamp */}
+                  <div className="flex justify-start items-center mb-1 gap-3">
+                    <Link to={`/profiles/${msg.author}`} className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate">
+                      {displayName}
+                    </Link>
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {formatTimestamp(msg.timestamp)}
+                    </span>
+                  </div>
+
+                  {/* Media / Text rendering */}
+                  {msg.media ? (
+                    <div className="flex flex-col gap-1 mt-1">
+                      <ChatImage
+                        author={msg.author} // Pass required props
+                        timestamp={msg.timestamp} // Pass required props
+                        imageUrl={msg.media}
+                        caption={msg.message || undefined}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm break-words whitespace-pre-wrap my-1">
+                      {msg.message}
                     </p>
                   )}
                 </div>
-              )}
-
-            {!isBalanceLoading &&
-              chatMessages.map((msg) => {
-                // Determine display name: Use provided name or fallback to truncated public key
-                const displayName =
-                  msg.displayName ||
-                  `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
-                // Profile picture URL or null
-                const profilePicUrl = msg.profileImage;
-
-                return (
-                  <div key={msg.id} className={`flex gap-2 py-2`}>
-                    {/* Avatar (only for messages from others) */}
-                    <Link
-                      to={`/profiles/${msg.author}`}
-                      className="flex-shrink-0 mt-1"
-                    >
-                      {profilePicUrl ? (
-                        <img
-                          src={profilePicUrl}
-                          alt={`${displayName}'s avatar`}
-                          className="w-8 h-8 rounded-full object-cover border border-neutral-600"
-                          onError={(e) => {
-                            e.currentTarget.src = "/default-avatar.png";
-                            e.currentTarget.onerror = null;
-                          }} // Fallback image
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center border border-neutral-600">
-                          <UserIcon className="w-4 h-4 text-neutral-400" />
-                        </div>
-                      )}
-                    </Link>
-
-                    {/* Message Bubble */}
-                    <div className={`ml-1 max-w-[100%]`}>
-                      {/* Author Name and Timestamp */}
-                      <div className="flex justify-start items-center mb-1 gap-3">
-                        {/* Link author name only if it's not the current user's message */}
-                        <Link
-                          to={`/profiles/${msg.author}`}
-                          className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate"
-                        >
-                          {displayName}
-                        </Link>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {formatTimestamp(msg.timestamp)}
-                        </span>
-                      </div>
-
-                      {/* Media rendering */}
-                      {msg.media ? (
-                        <div className="flex flex-col gap-1 mt-1">
-                          <ChatImage
-                            author={msg.author}
-                            imageUrl={msg.media}
-                            caption={msg.message || undefined}
-                            timestamp={msg.timestamp}
-                          />
-                        </div>
-                      ) : (
-                        // Text message rendering
-                        <p className="text-sm break-words whitespace-pre-wrap my-1">
-                          {msg.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-            {showScrollButton && (
-              <button
-                onClick={() => scrollToBottom(true)}
-                className="absolute bottom-20 right-4 z-10 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-            )}
-          </div>
-
-          <div className="p-2 flex-shrink-0 border-t border-gray-700 bg-black/50">
-            {isAuthenticated &&
-              !canChatInSelectedTier &&
-              viewableChatTiers.includes(selectedChatTier) && (
-                <p className="text-center text-yellow-500 text-xs mb-2 px-2">
-                  You need {getTierThreshold(selectedChatTier).toLocaleString()}
-                  + tokens to post in the {formatTierLabel(selectedChatTier)}{" "}
-                  chat.
-                </p>
-              )}
-            {!isAuthenticated && (
-              <p className="text-center text-yellow-500 text-xs mb-2 px-2">
-                Connect your wallet to post messages.
-              </p>
-            )}
-            {imagePreview && selectedImage && (
-              <div className="mb-2 relative max-w-[200px]">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="w-full h-auto object-contain border border-gray-500"
-                />
-                <div className="absolute top-1 right-1 flex gap-1">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      disabled={isSendingMessage}
-                    />
-                    <button
-                      className="w-6 h-6 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all text-xs"
-                      title="Replace image"
-                      disabled={isSendingMessage}
-                      onClick={(e) => {
-                        if (!selectedImage)
-                          (e.target as HTMLInputElement).click();
-                      }}
-                      tabIndex={-1}
-                    >
-                      <RefreshCw size={12} />
-                    </button>
-                  </label>
-                  <button
-                    onClick={() => {
-                      setSelectedImage(null);
-                      setImagePreview(null);
-                      setImageCaption("");
-                    }}
-                    className="w-6 h-6 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all text-xs"
-                    title="Remove image"
-                    disabled={isSendingMessage}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                </div>
               </div>
-            )}
-            <div className="flex items-center space-x-2">
-              <label
-                className={`cursor-pointer flex-shrink-0 ${!canChatInSelectedTier ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
+            );
+          })}
+
+      </div> {/* End Message List Container */}
+
+
+      {/* Input Area Container (shrinks) */}
+      <div className="p-2 flex-shrink-0 border-t border-gray-700 bg-black/50">
+        {/* Permission Messages */}
+        {isAuthenticated &&
+          !canChatInSelectedTier &&
+          viewableChatTiers.includes(selectedChatTier) && (
+           <p className="text-center text-yellow-500 text-xs mb-2 px-2">
+             You need {getTierThreshold(selectedChatTier).toLocaleString()}+
+             tokens to post in the {formatTierLabel(selectedChatTier)} chat.
+           </p>
+          )}
+        {!isAuthenticated && (
+          <p className="text-center text-yellow-500 text-xs mb-2 px-2">
+            Connect your wallet to post messages.
+          </p>
+        )}
+
+        {/* Image Preview */}
+        {imagePreview && selectedImage && (
+          <div className="mb-2 relative max-w-[200px]">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-full h-auto object-contain border border-gray-500"
+            />
+            <div className="absolute top-1 right-1 flex gap-1">
+              <label className="cursor-pointer">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
                   className="hidden"
-                  disabled={!canChatInSelectedTier || isSendingMessage}
+                  disabled={isSendingMessage}
                 />
-                <div
-                  className={`w-10 h-10 border-2 ${canChatInSelectedTier ? "border-[#03FF24]/30 hover:border-[#03FF24]" : "border-gray-600"} flex items-center justify-center transition-all`}
+                <button
+                  className="w-6 h-6 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all text-xs"
+                  title="Replace image"
+                  disabled={isSendingMessage}
+                  onClick={(e) => {
+                    if (!selectedImage) (e.target as HTMLInputElement).click();
+                  }}
+                  tabIndex={-1}
                 >
-                  <ImageIcon
-                    className={`w-5 h-5 ${canChatInSelectedTier ? "text-[#03FF24]" : "text-gray-500"}`}
-                  />
-                </div>
+                  <RefreshCw size={12} />
+                </button>
               </label>
-              <input
-                type="text"
-                value={selectedImage ? imageCaption : chatInput}
-                onChange={(e) =>
-                  selectedImage
-                    ? setImageCaption(e.target.value)
-                    : setChatInput(e.target.value)
-                }
-                onKeyDown={(e) => {
-                  if (
-                    e.key === "Enter" &&
-                    !e.shiftKey &&
-                    canChatInSelectedTier &&
-                    !isSendingMessage
-                  ) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                placeholder={
-                  !isAuthenticated
-                    ? "Connect wallet to chat"
-                    : !viewableChatTiers.includes(selectedChatTier)
-                      ? "Cannot view this tier"
-                      : !canChatInSelectedTier
-                        ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens to post`
-                        : selectedImage
-                          ? `Add a caption (optional)`
-                          : `Message in ${formatTierLabel(selectedChatTier)} chat...`
-                }
-                disabled={!canChatInSelectedTier || isSendingMessage}
-                className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-              />
               <button
-                onClick={handleSendMessage}
-                disabled={
-                  !canChatInSelectedTier ||
-                  isSendingMessage ||
-                  (!selectedImage && !chatInput.trim())
-                }
-                className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
+                onClick={() => {
+                  setSelectedImage(null);
+                  setImagePreview(null);
+                  setImageCaption("");
+                }}
+                className="w-6 h-6 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-white/20 hover:border-white/40 transition-all text-xs"
+                title="Remove image"
+                disabled={isSendingMessage}
               >
-                {isSendingMessage ? (
-                  <Loader className="text-black border-black" />
-                ) : (
-                  <Send size={18} />
-                )}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             </div>
           </div>
+        )}
+
+        {/* Input Row */}
+        <div className="flex items-center space-x-2">
+          {/* Image Upload Button */}
+          <label
+            className={`cursor-pointer flex-shrink-0 ${!canChatInSelectedTier ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={!canChatInSelectedTier || isSendingMessage}
+            />
+            <div
+              className={`w-10 h-10 border-2 ${canChatInSelectedTier ? "border-[#03FF24]/30 hover:border-[#03FF24]" : "border-gray-600"} flex items-center justify-center transition-all`}
+            >
+              <ImageIcon
+                className={`w-5 h-5 ${canChatInSelectedTier ? "text-[#03FF24]" : "text-gray-500"}`}
+              />
+            </div>
+          </label>
+
+          {/* Text/Caption Input */}
+          <input
+            type="text"
+            value={selectedImage ? imageCaption : chatInput}
+            onChange={(e) =>
+              selectedImage
+                ? setImageCaption(e.target.value)
+                : setChatInput(e.target.value)
+            }
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                canChatInSelectedTier &&
+                !isSendingMessage
+              ) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder={
+              !isAuthenticated
+                ? "Connect wallet to chat"
+                : !viewableChatTiers.includes(selectedChatTier)
+                  ? "Cannot view this tier"
+                  : !canChatInSelectedTier
+                    ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens to post`
+                    : selectedImage
+                      ? `Add a caption (optional)`
+                      : `Message in ${formatTierLabel(selectedChatTier)} chat...`
+            }
+            disabled={!canChatInSelectedTier || isSendingMessage}
+            className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          />
+
+          {/* Send Button */}
+          <button
+            onClick={handleSendMessage}
+            disabled={
+              !canChatInSelectedTier ||
+              isSendingMessage ||
+              (!selectedImage && !chatInput.trim())
+            }
+            className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
+          >
+            {isSendingMessage ? (
+              "Sending..."
+            ) : (
+              <Send size={18} />
+            )}
+          </button>
         </div>
-      </div>
-    </div>
+      </div> {/* End Input Area Container */}
+
+    </div> // End Main container
   );
 }

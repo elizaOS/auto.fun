@@ -12,6 +12,19 @@ export const Wallet = ({ children }: PropsWithChildren) => {
   // Always use the latest endpoint from environment
   const endpoint = env.rpcUrl || "https://api.devnet.solana.com";
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+
+  // Handle visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   // Initialize wallet adapters
   const wallets = useMemo(() => {
@@ -20,7 +33,7 @@ export const Wallet = ({ children }: PropsWithChildren) => {
 
   // Check for stored wallet name and attempt direct connection if needed
   useEffect(() => {
-    if (typeof window !== "undefined" && !autoConnectAttempted) {
+    if (typeof window !== "undefined" && !autoConnectAttempted && isVisible) {
       setAutoConnectAttempted(true);
       const tryDirectConnection = async () => {
         try {
@@ -79,7 +92,7 @@ export const Wallet = ({ children }: PropsWithChildren) => {
       // Try direct connection first
       tryDirectConnection();
     }
-  }, [autoConnectAttempted]);
+  }, [autoConnectAttempted, isVisible]);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

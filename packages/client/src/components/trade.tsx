@@ -307,13 +307,13 @@ export default function Trade({ token }: { token: IToken }) {
                   </button>
                   {!isTokenSelling ? (
                     <>
-                      {[0.1, 0.5, 1.0].map((but, _) => (
+                      {["0.1", "0.5", "1.0"].map((but, _) => (
                         <button
                           onClick={() => {
-                            setSellAmount(but);
+                            setInputAmount(but);
                           }}
                           disabled={isButtonDisabled(but)}
-                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
                           {String(but)}
                         </button>
@@ -325,10 +325,12 @@ export default function Trade({ token }: { token: IToken }) {
                         <button
                           onClick={() => {
                             const percentage = parseFloat(perc) / 100;
-                            setSellAmount(Number(balance) * percentage);
+                            setInputAmount(
+                              String(Number(balance) * percentage),
+                            );
                           }}
                           disabled={isButtonDisabled("25")}
-                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
                           {perc}%
                         </button>
@@ -370,7 +372,6 @@ export default function Trade({ token }: { token: IToken }) {
             >
               {priceImpact} %
             </span>
-            <div></div>
           </div>
           <div
             className={twMerge([
@@ -488,7 +489,7 @@ const TokenDisplay = ({
       <SkeletonImage
         src={isSolana ? "/solana.svg" : token?.image || "/placeholder.png"}
         alt={token?.name || "token"}
-        className="size-4"
+        className="size-4 mr-2"
       />
       <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
         {isSolana ? "SOL" : token?.ticker}

@@ -1,24 +1,28 @@
 import {
   GetObjectCommand,
   ListObjectsV2Command,
-  PutObjectCommand,
-  S3Client,
+  PutObjectCommand
 } from "@aws-sdk/client-s3"; // S3 Import
 import {
   AccountInfo,
   Connection,
-  ParsedAccountData,
-  PublicKey,
+  PublicKey
 } from "@solana/web3.js";
-import { and, count, eq, or, sql, SQL } from "drizzle-orm";
-import { getTableColumns } from "drizzle-orm";
+import { and, count, eq, getTableColumns, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
 import { Buffer } from "node:buffer"; // Buffer import
 import { getDB, Token, tokens, users } from "../db";
 import { ExternalToken } from "../externalToken";
+import { generateAdditionalTokenImages } from "../generation";
 import { getSOLPrice } from "../mcap";
+import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relative to src
 import { getGlobalRedisCache } from "../redis";
+import { getS3Client } from "../s3Client"; // Import shared S3 client function
+import {
+  processTokenUpdateEvent,
+  updateHoldersCache,
+} from "../tokenSupplyHelpers";
 import { uploadWithS3 } from "../uploader"; // Import the S3 uploader
 import {
   applyFeaturedSort,
@@ -26,17 +30,9 @@ import {
   getDevnetRpcUrl,
   getFeaturedMaxValues,
   getMainnetRpcUrl,
-  getRpcUrl,
+  logger
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-import { generateAdditionalTokenImages } from "./generation";
-import {
-  updateHoldersCache,
-  processTokenUpdateEvent,
-} from "../tokenSupplyHelpers";
-import { getS3Client } from "../s3Client"; // Import shared S3 client function
-import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relative to src
-import { logger } from "../util";
 import { uploadToStorage } from "./files";
 
 // --- Validation Function ---

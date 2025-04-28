@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
-import Chat from "@/components/chat";
+import Chat from "@/components/chat/index";
 import Loader from "@/components/loader";
 import { fetchWithAuth } from "@/hooks/use-authentication";
 import { IToken } from "@/types"; // Assuming you have this type
@@ -241,7 +241,7 @@ export default function ChatPage() {
             {/* Chat Component Takes Remaining Space */}
             <div className="flex-1 overflow-hidden">
               {/* The Chat component uses useParams internally, so it should work */}
-              <Chat />
+              <Chat maxHeight="100%" />
             </div>
           </>
         ) : (
