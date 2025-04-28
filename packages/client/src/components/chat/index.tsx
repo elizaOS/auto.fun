@@ -1116,7 +1116,7 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
           >
             {isSendingMessage ? (
-              <Loader className="w-5 h-5 text-black border-black" /> /* Use className for size */
+              "Sending..."
             ) : (
               <Send size={18} />
             )}
