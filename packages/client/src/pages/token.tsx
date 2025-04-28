@@ -671,8 +671,7 @@ export default function Page() {
                     Value:
                   </span>
                   <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                    {formatNumber(tokenBalance * priceSOL, false, true)} SOL
-                    /{" "}
+                    {formatNumber(tokenBalance * priceSOL, false, true)} SOL /{" "}
                     {formatNumber(
                       tokenBalance * priceSOL * solanaPrice,
                       true,
