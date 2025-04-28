@@ -177,7 +177,7 @@ export default function Page() {
         )}
         {/* Top Navigation */}
         <div
-          className={`flex gap-1 w-full md:flex-wrap ${activeTab === "grid" ? "justify-between" : "justify-end"}`}
+          className={"flex gap-1 w-full md:flex-wrap justify-between"}
         >
           {/* Grid Sort Buttons - Hide on Table View */}
           {activeTab === "grid" && (
@@ -207,7 +207,6 @@ export default function Page() {
           )}
            {activeTab != "grid" && (
             <div className="flex items-center gap-1">
-              {/* TODO: change to toggle button for newest/oldest */}
               <Button
                 variant={tableSortBy === "newest" ? "primary" : "outline"}
                 onClick={() => setTableSortBy("newest")}
