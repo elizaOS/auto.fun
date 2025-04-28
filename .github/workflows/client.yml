@@ -4,9 +4,6 @@ on:
   push:
     paths:
       - "packages/client/**"
-  pull_request:
-    paths:
-      - "packages/client/**"
 
 jobs:
   build-client:
