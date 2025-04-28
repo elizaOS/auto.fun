@@ -194,7 +194,7 @@ export default function Chart({ token }: ChartProps) {
           className="min-h-[500px] mt-2"
           id="geckoterminal-embed"
           title="GeckoTerminal Embed"
-          src={`https://www.geckoterminal.com/solana/pools/${token.mint}?embed=1&info=0&swaps=0&grayscale=1&light_chart=0&chart_type=price_usd&resolution=1m`}
+          src={`https://www.geckoterminal.com/solana/pools/${token.mint}?embed=1&info=0&swaps=0&grayscale=1&light_chart=0&chart_type=price&resolution=1m`}
           allow="clipboard-write"
           allowFullScreen
         />
