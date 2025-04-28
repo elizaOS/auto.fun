@@ -332,6 +332,7 @@ export default function Page() {
                   <SkeletonImage
                     src={resizeImage(token?.image, 475, 475)}
                     alt="image"
+                    className="aspect-square"
                   />
                 </div>
 
