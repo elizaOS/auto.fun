@@ -1,0 +1,30 @@
+name: Build API
+
+on:
+  push:
+    paths:
+      - 'packages/server/**'
+  pull_request:
+    paths:
+      - 'packages/server/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    - name: Install dependencies
+      run: npm install
+      working-directory: packages/server
+
+    - name: Build server
+      run: npm run build
+      working-directory: packages/server
