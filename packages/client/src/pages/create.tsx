@@ -3089,7 +3089,7 @@ export default function Create() {
                  {/* Description Field */}
                  {activeTab === FormTab.IMPORT ? (
                   <div className="flex flex-col gap-1 w-full">
-                   <div className="text-whitem py-1.5 text-md font-black tracking-wider">Description</div>
+                   <div className="text-white py-1.5 text-md font-black tracking-wider">Description</div>
                    <span
                      className={`bg-[#0F0F0F] p-3 border border-neutral-800 text-white min-h-[100px] block`}
                    >
@@ -3121,7 +3121,7 @@ export default function Create() {
                 {activeTab !== FormTab.IMPORT && (
                   <div className="flex flex-col gap-2"> {/* Parent container for the section */}
                     <h2 className="text-white font-satoshi font-bold text-lg underline decoration-[#03FF24] underline-offset-4 uppercase">Generate Custom Coin Address</h2>
-                    <p className="text-xs text-neutral-500 -mt-1 text-left">Choose a custom suffixn longer suffixes are slower to generate</p> {/* Ensured text-left */}
+                    <p className="text-xs text-neutral-500 -mt-1 text-left">Choose a custom suffix; longer suffixes are slower to generate</p> {/* Ensured text-left */}
                     {/* Display Area */}
                     <div className="font-satoshi text-xs md:text-lg lg:text-xl break-all min-h-[2.5em] flex items-center justify-start text-left py-2"> {/* Ensure justify-start and text-left */}
                       <span className="mr-2">
