@@ -28,11 +28,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
+          
           if [[ -n "$(git status --porcelain)" ]]; then
             git add .
             git commit -m "chore(lint): auto-fix lint issues"
-            git push
+            git push origin HEAD:${{ github.head_ref }}
           else
             echo "No changes to commit."
           fi
