@@ -11,6 +11,7 @@ raydium_vault = "autoFENwXX1Y3V4pkUdJw7WzhF1ZT6xQsyJWkLqBcta"
 
 [programs.mainnet]
 autofun = "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
+meteora_vault = "26XF6JHoDEAW1TBXhRrmP5pwwyxjem2jBpjvZoxJEhx1"
 raydium_vault = "autoFENwXX1Y3V4pkUdJw7WzhF1ZT6xQsyJWkLqBcta"
 
 [registry]

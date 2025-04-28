@@ -1,0 +1,106 @@
+{
+    "address": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+    "metadata": {
+        "name": "cp_amm",
+        "version": "0.1.0",
+        "spec": "0.1.0",
+        "description": "Created with Anchor"
+    },
+    "instructions": [
+        {
+            "name": "claim_position_fee",
+            "discriminator": [180, 38, 154, 17, 133, 33, 162, 211],
+            "accounts": [
+                {
+                    "name": "pool_authority",
+                    "pda": {
+                        "seeds": [
+                            {
+                                "kind": "const",
+                                "value": [
+                                    112, 111, 111, 108, 95, 97, 117, 116, 104,
+                                    111, 114, 105, 116, 121
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "pool",
+                    "relations": ["position"]
+                },
+                {
+                    "name": "position",
+                    "writable": true
+                },
+                {
+                    "name": "token_a_account",
+                    "docs": ["The user token a account"],
+                    "writable": true
+                },
+                {
+                    "name": "token_b_account",
+                    "docs": ["The user token b account"],
+                    "writable": true
+                },
+                {
+                    "name": "token_a_vault",
+                    "docs": ["The vault token account for input token"],
+                    "writable": true,
+                    "relations": ["pool"]
+                },
+                {
+                    "name": "token_b_vault",
+                    "docs": ["The vault token account for output token"],
+                    "writable": true,
+                    "relations": ["pool"]
+                },
+                {
+                    "name": "token_a_mint",
+                    "docs": ["The mint of token a"],
+                    "relations": ["pool"]
+                },
+                {
+                    "name": "token_b_mint",
+                    "docs": ["The mint of token b"],
+                    "relations": ["pool"]
+                },
+                {
+                    "name": "position_nft_account",
+                    "docs": ["The token account for nft"]
+                },
+                {
+                    "name": "owner",
+                    "docs": ["owner of position"],
+                    "signer": true
+                },
+                {
+                    "name": "token_a_program",
+                    "docs": ["Token a program"]
+                },
+                {
+                    "name": "token_b_program",
+                    "docs": ["Token b program"]
+                },
+                {
+                    "name": "event_authority",
+                    "pda": {
+                        "seeds": [
+                            {
+                                "kind": "const",
+                                "value": [
+                                    95, 95, 101, 118, 101, 110, 116, 95, 97,
+                                    117, 116, 104, 111, 114, 105, 116, 121
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "program"
+                }
+            ],
+            "args": []
+        }
+    ]
+}
