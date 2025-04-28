@@ -550,37 +550,61 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
     };
   }, [socket, tokenMint, selectedChatTier, viewableChatTiers, isAuthenticated]);
 
-  // --- WebSocket Message Listener --- (NEW)
+  // --- WebSocket Message Listener --- (Fix type assertion slightly)
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (newMessage: ChatMessage) => {
+    // Define handler with type assertion for the listener
+    const handleNewMessage = (data: unknown) => {
+      // Perform validation and type assertion INSIDE the handler
+      const newMessage = data as ChatMessage; // Assert type after receiving
+      if (
+        !newMessage || !newMessage.id || !newMessage.tokenMint || !newMessage.tier
+        // Add more checks as needed
+      ) {
+        console.warn("WS: Received invalid message format.", data);
+        return;
+      }
+
+      // Check if message belongs to the current context
+      if (
+        newMessage.tokenMint !== tokenMint ||
+        newMessage.tier !== selectedChatTier
+      ) {
+        // console.log("WS: Ignoring message from different token/tier.");
+        return;
+      }
+
       // Check if message already exists (optimistic or previous WS message)
       if (!chatMessages.some((msg) => msg.id === newMessage.id)) {
-        setChatMessages((prev) => [...prev, newMessage]);
-        // Update latest timestamp if needed
-        if (newMessage.timestamp > (latestTimestamp || "")) {
-          setLatestTimestamp(newMessage.timestamp);
-        }
-        scrollToBottom(); // Scroll only if user was near bottom
+         setChatMessages((prev) => {
+           // Ensure no duplicates are added if race condition occurs
+           if (prev.some(msg => msg.id === newMessage.id)) return prev;
+           // Add new message and sort by timestamp
+           const newMessages = [...prev, newMessage];
+           return newMessages.sort(
+             (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+           );
+         });
+         // Update latest timestamp if needed
+         if (newMessage.timestamp > (latestTimestamp || "")) {
+           setLatestTimestamp(newMessage.timestamp);
+         }
+         scrollToBottom(); // Scroll only if user was near bottom
       }
     };
 
-    socket.on("newChatMessage", handleNewMessage as (data: unknown) => void);
+    // Register listener
+    socket.on("newChatMessage", handleNewMessage);
     console.log("WS: Registered newChatMessage listener.");
 
+    // Cleanup listener
     return () => {
-      socket.off("newChatMessage", handleNewMessage as (data: unknown) => void);
+      socket.off("newChatMessage", handleNewMessage);
       console.log("WS: Unregistered newChatMessage listener.");
     };
-  }, [
-    socket,
-    tokenMint,
-    selectedChatTier,
-    scrollToBottom,
-    latestTimestamp,
-    chatMessages,
-  ]); // Add chatMessages dependency
+    // Add chatMessages and latestTimestamp as dependencies because they are used in the check
+  }, [socket, tokenMint, selectedChatTier, scrollToBottom, chatMessages, latestTimestamp]);
 
   // --- Send Chat Message --- *REVISED* (Check eligibleChatTiers for posting)
   const handleSendMessage = useCallback(async () => {
@@ -779,12 +803,15 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
   }, [isChatFullscreen]);
 
   return (
+    // Main container (flex col)
     <div
       className={clsx(
-        "relative flex flex-col bg-black/80 backdrop-blur-sm border border-gray-700/50 shadow-xl",
-        isChatFullscreen ? "fixed inset-0 z-50" : "h-full w-full",
+        "relative flex flex-col bg-black/80 backdrop-blur-sm border border-gray-700/50 rounded-lg overflow-hidden shadow-xl",
+        isChatFullscreen ? "fixed inset-0 z-50 rounded-none border-none" : "", // Use props/state for height
       )}
+      style={!isChatFullscreen ? { height: maxHeight } : {}} // Apply maxHeight prop only when not fullscreen
     >
+      {/* Tier Selection (shrinks) */}
       <div className="flex justify-center items-center space-x-1 p-2 border-b border-gray-700 flex-shrink-0 bg-black/20">
         {CHAT_TIERS.map((tier) => {
           const isViewable = viewableChatTiers.includes(tier);
@@ -806,19 +833,23 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
         })}
       </div>
 
+      {/* Message List Container (scrollable, takes remaining space) */}
       <div
         ref={chatContainerRef}
-        className="flex-1 h-full overflow-y-auto scroll-smooth px-3 pb-2 flex flex-col"
+        className="flex-1 h-full overflow-y-auto scroll-smooth px-3 pb-2 flex flex-col relative" // Add relative positioning for the scroll button
         onScroll={handleScroll}
       >
+        {/* Top Sentinel */}
         <div ref={topSentinelRef} style={{ height: "1px" }} />
 
+        {/* Loading Older Indicator */}
         {isLoadingOlderMessages && (
           <div className="flex items-center justify-center py-2">
-            <Loader />
+            <Loader className="w-5 h-5" /> {/* Remove size prop, use className */}
           </div>
         )}
 
+        {/* Beginning of History Indicator */}
         {!hasOlderMessages &&
           chatMessages.length > 0 &&
           !isLoadingOlderMessages && (
@@ -827,18 +858,20 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             </div>
           )}
 
+        {/* Initial Loading Indicator */}
         {(isBalanceLoading || (isChatLoading && chatMessages.length === 0)) &&
           !isLoadingOlderMessages && (
-            <div className="flex items-center justify-center w-full h-full">
-              <Loader />
+            <div className="flex-1 flex items-center justify-center w-full h-full"> {/* Use flex-1 here */}
+              <Loader /> {/* Default Loader */}
             </div>
           )}
 
+        {/* Error Display */}
         {!isBalanceLoading &&
           chatError &&
           !isChatLoading &&
           !isLoadingOlderMessages && (
-            <div className="text-center py-8">
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-8"> {/* Use flex-1 here */}
               <p className="text-red-500 mb-2">{chatError}</p>
               {(isAuthenticated || selectedChatTier === "1k") &&
                 viewableChatTiers.includes(selectedChatTier) && (
@@ -851,7 +884,7 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
                     disabled={isChatLoading || isRefreshingMessages}
                   >
                     {isRefreshingMessages ? (
-                      <Loader className="w-32 h-32" />
+                      <Loader className="w-4 h-4"/> /* Adjust size with className */
                     ) : (
                       "Try Again"
                     )}
@@ -860,12 +893,13 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             </div>
           )}
 
+        {/* No Messages Yet */}
         {!isBalanceLoading &&
           !isChatLoading &&
           chatMessages.length === 0 &&
           !chatError &&
           !isLoadingOlderMessages && (
-            <div className="flex flex-col items-center justify-center h-full text-center py-16">
+             <div className="flex-1 flex flex-col items-center justify-center h-full text-center py-16"> {/* Use flex-1 here */}
               <p className="text-gray-500 mb-2">
                 No messages yet in the {formatTierLabel(selectedChatTier)} chat.
               </p>
@@ -877,116 +911,86 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             </div>
           )}
 
-        <div
-          className="flex-1 flex flex-col overflow-hidden"
-          style={{ maxHeight: maxHeight }}
-        >
-          {!isBalanceLoading &&
-            chatMessages.map((msg) => {
-              // Determine display name: Use provided name or fallback to truncated public key
-              const displayName =
-                msg.displayName ||
-                `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
-              // Profile picture URL or null
-              const profilePicUrl = msg.profileImage;
+        {/* Message Rendering Loop - directly inside scrollable container */}
+        {!isBalanceLoading && !isChatLoading &&
+          chatMessages.map((msg) => {
+            const displayName = msg.displayName || `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
+            const profilePicUrl = msg.profileImage;
 
-              return (
-                <div key={msg.id} className={`flex gap-2 py-2`}>
-                  {/* Avatar (only for messages from others) */}
-                  <Link
-                    to={`/profiles/${msg.author}`}
-                    className="flex-shrink-0 mt-1"
-                  >
-                    {profilePicUrl ? (
-                      <img
-                        src={profilePicUrl}
-                        alt={`${displayName}'s avatar`}
-                        className="w-8 h-8 rounded-full object-cover border border-neutral-600"
-                        onError={(e) => {
-                          e.currentTarget.src = "/default-avatar.png";
-                          e.currentTarget.onerror = null;
-                        }} // Fallback image
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center border border-neutral-600">
-                        <UserIcon className="w-4 h-4 text-neutral-400" />
-                      </div>
-                    )}
-                  </Link>
-
-                  {/* Message Bubble */}
-                  <div className={`ml-1 max-w-[100%]`}>
-                    {/* Author Name and Timestamp */}
-                    <div className="flex justify-start items-center mb-1 gap-3">
-                      {/* Link author name only if it's not the current user's message */}
-                      <Link
-                        to={`/profiles/${msg.author}`}
-                        className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate"
-                      >
-                        {displayName}
-                      </Link>
-                      <span className="text-xs text-gray-400 flex-shrink-0">
-                        {formatTimestamp(msg.timestamp)}
-                      </span>
+            return (
+              <div key={msg.id} className={`flex gap-2 py-2 ${msg.isOptimistic ? 'opacity-70' : ''}`}>
+                {/* Avatar Link */}
+                <Link to={`/profiles/${msg.author}`} className="flex-shrink-0 mt-1 self-start">
+                  {profilePicUrl ? (
+                    <img
+                      src={profilePicUrl}
+                      alt={`${displayName}'s avatar`}
+                      className="w-8 h-8 rounded-full object-cover border border-neutral-600"
+                      onError={(e) => {
+                        e.currentTarget.src = "/default-avatar.png";
+                        e.currentTarget.onerror = null;
+                      }} // Fallback image
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center border border-neutral-600">
+                      <UserIcon className="w-4 h-4 text-neutral-400" />
                     </div>
+                  )}
+                </Link>
 
-                    {/* Media rendering */}
-                    {msg.media ? (
-                      <div className="flex flex-col gap-1 mt-1">
-                        <ChatImage
-                          author={msg.author}
-                          imageUrl={msg.media}
-                          caption={msg.message || undefined}
-                          timestamp={msg.timestamp}
-                        />
-                      </div>
-                    ) : (
-                      // Text message rendering
-                      <p className="text-sm break-words whitespace-pre-wrap my-1">
-                        {msg.message}
-                      </p>
-                    )}
+                {/* Message Bubble */}
+                <div className={`ml-1 max-w-[85%]`}> {/* Adjusted max-width */}
+                  {/* Author Name & Timestamp */}
+                  <div className="flex justify-start items-center mb-1 gap-3">
+                    <Link to={`/profiles/${msg.author}`} className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate">
+                      {displayName}
+                    </Link>
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {formatTimestamp(msg.timestamp)}
+                    </span>
                   </div>
-                </div>
-              );
-            })}
-        </div>
 
-        {showScrollButton && (
-          <button
-            onClick={() => scrollToBottom(true)}
-            className="absolute bottom-20 right-4 z-10 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
-        )}
-      </div>
+                  {/* Media / Text rendering */}
+                  {msg.media ? (
+                    <div className="flex flex-col gap-1 mt-1">
+                      <ChatImage
+                        author={msg.author} // Pass required props
+                        timestamp={msg.timestamp} // Pass required props
+                        imageUrl={msg.media}
+                        caption={msg.message || undefined}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm break-words whitespace-pre-wrap my-1">
+                      {msg.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+      </div> {/* End Message List Container */}
+
+
+      {/* Input Area Container (shrinks) */}
       <div className="p-2 flex-shrink-0 border-t border-gray-700 bg-black/50">
+        {/* Permission Messages */}
         {isAuthenticated &&
           !canChatInSelectedTier &&
           viewableChatTiers.includes(selectedChatTier) && (
-            <p className="text-center text-yellow-500 text-xs mb-2 px-2">
-              You need {getTierThreshold(selectedChatTier).toLocaleString()}+
-              tokens to post in the {formatTierLabel(selectedChatTier)} chat.
-            </p>
+           <p className="text-center text-yellow-500 text-xs mb-2 px-2">
+             You need {getTierThreshold(selectedChatTier).toLocaleString()}+
+             tokens to post in the {formatTierLabel(selectedChatTier)} chat.
+           </p>
           )}
         {!isAuthenticated && (
           <p className="text-center text-yellow-500 text-xs mb-2 px-2">
             Connect your wallet to post messages.
           </p>
         )}
+
+        {/* Image Preview */}
         {imagePreview && selectedImage && (
           <div className="mb-2 relative max-w-[200px]">
             <img
@@ -1043,7 +1047,10 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             </div>
           </div>
         )}
+
+        {/* Input Row */}
         <div className="flex items-center space-x-2">
+          {/* Image Upload Button */}
           <label
             className={`cursor-pointer flex-shrink-0 ${!canChatInSelectedTier ? "opacity-50 cursor-not-allowed" : ""}`}
           >
@@ -1062,6 +1069,8 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
               />
             </div>
           </label>
+
+          {/* Text/Caption Input */}
           <input
             type="text"
             value={selectedImage ? imageCaption : chatInput}
@@ -1095,6 +1104,8 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             disabled={!canChatInSelectedTier || isSendingMessage}
             className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           />
+
+          {/* Send Button */}
           <button
             onClick={handleSendMessage}
             disabled={
@@ -1105,13 +1116,14 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
           >
             {isSendingMessage ? (
-              <Loader className="text-black border-black" />
+              <Loader className="w-5 h-5 text-black border-black" /> /* Use className for size */
             ) : (
               <Send size={18} />
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </div> {/* End Input Area Container */}
+
+    </div> // End Main container
   );
 }
