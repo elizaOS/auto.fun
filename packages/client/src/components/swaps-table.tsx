@@ -145,7 +145,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
     let usdValue;
 
     if (isCodex) {
-      console.log(swap);
       account = swap?.maker || "NA";
       swapType = swap?.eventDisplayType || "Buy";
       solana = swap?.data?.priceBaseTokenTotal || "0";
