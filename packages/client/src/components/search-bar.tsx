@@ -1,6 +1,6 @@
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
 import { IToken } from "@/types";
-import { abbreviateNumber } from "@/utils";
+import { abbreviateNumber, shortenAddress } from "@/utils";
 import { getSearchTokens } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
@@ -8,6 +8,7 @@ import { Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import CopyButton from "./copy-button";
+import Verified from "./verified";
 
 export default function SearchBar() {
   const [searchInput, setSearchInput] = useState("");
@@ -83,11 +84,7 @@ export default function SearchBar() {
             query.data?.tokens.map((token: IToken) => (
               <AgentSearchResult
                 key={token.mint}
-                id={token.mint}
-                marketCap={token.marketCapUSD}
-                name={token.name}
-                symbol={token.ticker}
-                imageUrl={token.image}
+                token={token}
                 onNavigate={() => setShowSearchResults(false)}
               />
             ))
@@ -99,18 +96,10 @@ export default function SearchBar() {
 }
 
 const AgentSearchResult = ({
-  name,
-  symbol,
-  id,
-  marketCap,
-  imageUrl,
+  token,
   onNavigate,
 }: {
-  name: string;
-  symbol: string;
-  id: string;
-  marketCap: number;
-  imageUrl: string;
+  token: IToken;
   onNavigate: () => void;
 }) => {
   const handleCopyClick = (e: React.MouseEvent) => {
@@ -119,26 +108,27 @@ const AgentSearchResult = ({
   };
 
   return (
-    <Link to={`/token/${id}`} onClick={onNavigate}>
+    <Link to={`/token/${token?.mint}`} onClick={onNavigate}>
       <div className="flex items-center gap-2 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
         <img
           className="w-10 h-10 shrink-0 object-cover"
-          src={imageUrl}
-          alt={name}
+          src={token?.image || "/placeholder.png"}
+          alt={token?.name || "search_result"}
         />
         <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="text-white text-[16px] font-medium group-hover:text-[#03FF24] transition-colors flex items-center">
-            <span className="truncate">{name}</span>
-            <span className="pl-2 text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors flex-shrink-0">
-              ${symbol}
+          <div className="text-white text-[16px] font-medium group-hover:text-[#03FF24] transition-colors flex items-center gap-1">
+            <span className="truncate">{token?.name}</span>
+            <span className="text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors flex-shrink-0">
+              ${token?.ticker}
             </span>
+            <Verified isVerified={token?.verified ? true : false} />
           </div>
           <div className="flex items-center gap-2">
             <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
-              {id.slice(0, 3)}...{id.slice(-3)}
+              {shortenAddress(token?.mint)}
             </div>
             <div onClick={handleCopyClick}>
-              <CopyButton text={id} />
+              <CopyButton text={token?.mint} />
             </div>
           </div>
         </div>
@@ -147,7 +137,7 @@ const AgentSearchResult = ({
             MC
           </span>
           <span className="text-[#03FF24] text-sm font-medium whitespace-nowrap">
-            {abbreviateNumber(marketCap)}
+            {abbreviateNumber(token?.marketCapUSD)}
           </span>
         </div>
       </div>

@@ -559,7 +559,10 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
       // Perform validation and type assertion INSIDE the handler
       const newMessage = data as ChatMessage; // Assert type after receiving
       if (
-        !newMessage || !newMessage.id || !newMessage.tokenMint || !newMessage.tier
+        !newMessage ||
+        !newMessage.id ||
+        !newMessage.tokenMint ||
+        !newMessage.tier
         // Add more checks as needed
       ) {
         console.warn("WS: Received invalid message format.", data);
@@ -577,20 +580,21 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
 
       // Check if message already exists (optimistic or previous WS message)
       if (!chatMessages.some((msg) => msg.id === newMessage.id)) {
-         setChatMessages((prev) => {
-           // Ensure no duplicates are added if race condition occurs
-           if (prev.some(msg => msg.id === newMessage.id)) return prev;
-           // Add new message and sort by timestamp
-           const newMessages = [...prev, newMessage];
-           return newMessages.sort(
-             (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-           );
-         });
-         // Update latest timestamp if needed
-         if (newMessage.timestamp > (latestTimestamp || "")) {
-           setLatestTimestamp(newMessage.timestamp);
-         }
-         scrollToBottom(); // Scroll only if user was near bottom
+        setChatMessages((prev) => {
+          // Ensure no duplicates are added if race condition occurs
+          if (prev.some((msg) => msg.id === newMessage.id)) return prev;
+          // Add new message and sort by timestamp
+          const newMessages = [...prev, newMessage];
+          return newMessages.sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+          );
+        });
+        // Update latest timestamp if needed
+        if (newMessage.timestamp > (latestTimestamp || "")) {
+          setLatestTimestamp(newMessage.timestamp);
+        }
+        scrollToBottom(); // Scroll only if user was near bottom
       }
     };
 
@@ -604,7 +608,14 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
       console.log("WS: Unregistered newChatMessage listener.");
     };
     // Add chatMessages and latestTimestamp as dependencies because they are used in the check
-  }, [socket, tokenMint, selectedChatTier, scrollToBottom, chatMessages, latestTimestamp]);
+  }, [
+    socket,
+    tokenMint,
+    selectedChatTier,
+    scrollToBottom,
+    chatMessages,
+    latestTimestamp,
+  ]);
 
   // --- Send Chat Message --- *REVISED* (Check eligibleChatTiers for posting)
   const handleSendMessage = useCallback(async () => {
@@ -832,7 +843,6 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
           );
         })}
       </div>
-
       {/* Message List Container (scrollable, takes remaining space) */}
       <div
         ref={chatContainerRef}
@@ -845,7 +855,8 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
         {/* Loading Older Indicator */}
         {isLoadingOlderMessages && (
           <div className="flex items-center justify-center py-2">
-            <Loader className="w-5 h-5" /> {/* Remove size prop, use className */}
+            <Loader className="w-5 h-5" />{" "}
+            {/* Remove size prop, use className */}
           </div>
         )}
 
@@ -861,7 +872,9 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
         {/* Initial Loading Indicator */}
         {(isBalanceLoading || (isChatLoading && chatMessages.length === 0)) &&
           !isLoadingOlderMessages && (
-            <div className="flex-1 flex items-center justify-center w-full h-full"> {/* Use flex-1 here */}
+            <div className="flex-1 flex items-center justify-center w-full h-full">
+              {" "}
+              {/* Use flex-1 here */}
               <Loader /> {/* Default Loader */}
             </div>
           )}
@@ -871,7 +884,9 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
           chatError &&
           !isChatLoading &&
           !isLoadingOlderMessages && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-8"> {/* Use flex-1 here */}
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+              {" "}
+              {/* Use flex-1 here */}
               <p className="text-red-500 mb-2">{chatError}</p>
               {(isAuthenticated || selectedChatTier === "1k") &&
                 viewableChatTiers.includes(selectedChatTier) && (
@@ -884,7 +899,7 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
                     disabled={isChatLoading || isRefreshingMessages}
                   >
                     {isRefreshingMessages ? (
-                      <Loader className="w-4 h-4"/> /* Adjust size with className */
+                      <Loader className="w-4 h-4" /> /* Adjust size with className */
                     ) : (
                       "Try Again"
                     )}
@@ -899,7 +914,9 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
           chatMessages.length === 0 &&
           !chatError &&
           !isLoadingOlderMessages && (
-             <div className="flex-1 flex flex-col items-center justify-center h-full text-center py-16"> {/* Use flex-1 here */}
+            <div className="flex-1 flex flex-col items-center justify-center h-full text-center py-16">
+              {" "}
+              {/* Use flex-1 here */}
               <p className="text-gray-500 mb-2">
                 No messages yet in the {formatTierLabel(selectedChatTier)} chat.
               </p>
@@ -912,15 +929,24 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
           )}
 
         {/* Message Rendering Loop - directly inside scrollable container */}
-        {!isBalanceLoading && !isChatLoading &&
+        {!isBalanceLoading &&
+          !isChatLoading &&
           chatMessages.map((msg) => {
-            const displayName = msg.displayName || `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
+            const displayName =
+              msg.displayName ||
+              `${msg.author.substring(0, 4)}...${msg.author.substring(msg.author.length - 4)}`;
             const profilePicUrl = msg.profileImage;
 
             return (
-              <div key={msg.id} className={`flex gap-2 py-2 ${msg.isOptimistic ? 'opacity-70' : ''}`}>
+              <div
+                key={msg.id}
+                className={`flex gap-2 py-2 ${msg.isOptimistic ? "opacity-70" : ""}`}
+              >
                 {/* Avatar Link */}
-                <Link to={`/profiles/${msg.author}`} className="flex-shrink-0 mt-1 self-start">
+                <Link
+                  to={`/profiles/${msg.author}`}
+                  className="flex-shrink-0 mt-1 self-start"
+                >
                   {profilePicUrl ? (
                     <img
                       src={profilePicUrl}
@@ -939,17 +965,21 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
                 </Link>
 
                 {/* Message Bubble */}
-                <div className={`ml-1 max-w-[85%]`}> {/* Adjusted max-width */}
+                <div className={`ml-1 max-w-[85%]`}>
+                  {" "}
+                  {/* Adjusted max-width */}
                   {/* Author Name & Timestamp */}
                   <div className="flex justify-start items-center mb-1 gap-3">
-                    <Link to={`/profiles/${msg.author}`} className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate">
+                    <Link
+                      to={`/profiles/${msg.author}`}
+                      className="text-xs font-medium text-neutral-300 hover:text-white hover:underline truncate"
+                    >
                       {displayName}
                     </Link>
                     <span className="text-xs text-gray-400 flex-shrink-0">
                       {formatTimestamp(msg.timestamp)}
                     </span>
                   </div>
-
                   {/* Media / Text rendering */}
                   {msg.media ? (
                     <div className="flex flex-col gap-1 mt-1">
@@ -969,20 +999,18 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
               </div>
             );
           })}
-
-      </div> {/* End Message List Container */}
-
-
+      </div>{" "}
+      {/* End Message List Container */}
       {/* Input Area Container (shrinks) */}
       <div className="p-2 flex-shrink-0 border-t border-gray-700 bg-black/50">
         {/* Permission Messages */}
         {isAuthenticated &&
           !canChatInSelectedTier &&
           viewableChatTiers.includes(selectedChatTier) && (
-           <p className="text-center text-yellow-500 text-xs mb-2 px-2">
-             You need {getTierThreshold(selectedChatTier).toLocaleString()}+
-             tokens to post in the {formatTierLabel(selectedChatTier)} chat.
-           </p>
+            <p className="text-center text-yellow-500 text-xs mb-2 px-2">
+              You need {getTierThreshold(selectedChatTier).toLocaleString()}+
+              tokens to post in the {formatTierLabel(selectedChatTier)} chat.
+            </p>
           )}
         {!isAuthenticated && (
           <p className="text-center text-yellow-500 text-xs mb-2 px-2">
@@ -1115,15 +1143,11 @@ export default function Chat({ maxHeight = "600px" }: { maxHeight?: string }) {
             }
             className="h-10 px-4 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center flex-shrink-0"
           >
-            {isSendingMessage ? (
-              "Sending..."
-            ) : (
-              <Send size={18} />
-            )}
+            {isSendingMessage ? "Sending..." : <Send size={18} />}
           </button>
         </div>
-      </div> {/* End Input Area Container */}
-
+      </div>{" "}
+      {/* End Input Area Container */}
     </div> // End Main container
   );
 }

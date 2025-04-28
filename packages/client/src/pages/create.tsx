@@ -2820,12 +2820,12 @@ export default function Create() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      {showCoinDrop ? (
+      {/* {showCoinDrop ? (
         <CoinDrop
           imageUrl={coinDropImageUrl || undefined}
           onCancel={handleCoinDropCancel}
         />
-      ) : null}
+      ) : null} */}
 
       <form
         className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"

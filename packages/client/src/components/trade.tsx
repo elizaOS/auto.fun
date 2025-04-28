@@ -342,85 +342,85 @@ export default function Trade({ token }: { token: IToken }) {
             </div>
 
             {/* Buying */}
-            <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
-              <span>Min Received:</span>
-
-              <div className="relative flex uppercase items-center gap-2">
-                {displayhMinReceivedQuery?.isError
-                  ? "Error"
-                  : displayMinReceived}
-                <img
-                  src={
-                    isTokenSelling
-                      ? "/solana.svg"
-                      : token?.image || "/placeholder.png"
-                  }
-                  alt={isTokenSelling ? "SOL" : token?.name || "token"}
-                  className="size-6 m-2"
-                />
-                {isTokenSelling ? "SOL" : token?.ticker}
+            <div className="flex flex-col gap-4 px-2">
+              <div className="flex items-center gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
+                <span>Min Received:</span>
+                <div className="relative flex uppercase items-center gap-2">
+                  {displayhMinReceivedQuery?.isError
+                    ? "Error"
+                    : displayMinReceived}
+                  <img
+                    src={
+                      isTokenSelling
+                        ? "/solana.svg"
+                        : token?.image || "/placeholder.png"
+                    }
+                    alt={isTokenSelling ? "SOL" : token?.name || "token"}
+                    className="size-6 m-2"
+                  />
+                  {isTokenSelling ? "SOL" : token?.ticker}
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-sm font-dm-mono text-autofun-text-secondary w-full px-4 mb-2">
-            <span>Price Impact:</span>
-            <span
-              className={twMerge([
-                "text-sm font-dm-mono",
-                Number(priceImpact) > 5 ? "text-red-500" : "",
-              ])}
-            >
-              {priceImpact} %
-            </span>
-          </div>
-          <div
-            className={twMerge([
-              "flex items-center gap-2 h-4 m-2 select-none",
-              insufficientBalance ? "block" : "hidden",
-            ])}
-          >
-            <div className="flex items-center gap-2">
-              <Info className="text-red-600 size-4" />
-              <p className="text-red-600 text-xs font-dm-mono">
-                Insufficient Funds: You have {Number(balance).toFixed(4) || "0"}{" "}
-                {isTokenSelling ? token?.ticker : "SOL"}
+
+              <div className="flex items-center justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
+                <span>Price Impact:</span>
+                <span
+                  className={twMerge([
+                    "text-sm font-dm-mono",
+                    Number(priceImpact) > 5 ? "text-red-500" : "",
+                  ])}
+                >
+                  {priceImpact} %
+                </span>
+              </div>
+              <div
+                className={twMerge([
+                  "flex items-center gap-2 select-none",
+                  insufficientBalance ? "block" : "hidden",
+                ])}
+              >
+                <div className="flex items-center gap-2">
+                  <Info className="text-red-600 size-4" />
+                  <p className="text-red-600 text-xs font-dm-mono">
+                    Insufficient Funds: You have{" "}
+                    {Number(balance).toFixed(4) || "0"}{" "}
+                    {isTokenSelling ? token?.ticker : "SOL"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Slippage Input */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  Slippage:
+                </span>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="100"
+                    step="0.1"
+                    value={slippage}
+                    onChange={(e) => setSlippage(Number(e.target.value))}
+                    className="w-16 py-1 pl-2 pr-6 bg-[#1a1a1a] border-b border-white/50 hover:border-white focus:border-white font-dm-mono text-autofun-text-secondary text-right"
+                  />
+                  <span className="absolute right-2 text-sm font-dm-mono text-autofun-text-secondary">
+                    %
+                  </span>
+                </div>
+              </div>
+
+              <p
+                className={twMerge([
+                  "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
+                  slippage > 3 ? "opacity-100" : "h-0 opacity-0",
+                ])}
+              >
+                Your transaction may be frontrun and result in an unfavorable
+                trade
               </p>
             </div>
           </div>
-
-          {/* Slippage Input */}
-          <div className="mx-4 mb-2 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Slippage:
-              </span>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  min="0.1"
-                  max="100"
-                  step="0.1"
-                  value={slippage}
-                  onChange={(e) => setSlippage(Number(e.target.value))}
-                  className="w-16 py-1 pl-2 pr-6 bg-[#1a1a1a] border-b border-white/50 hover:border-white focus:border-white font-dm-mono text-autofun-text-secondary text-right"
-                />
-                <span className="absolute right-2 text-sm font-dm-mono text-autofun-text-secondary">
-                  %
-                </span>
-              </div>
-            </div>
-
-            <p
-              className={twMerge([
-                "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
-                slippage > 3 ? "opacity-100" : "h-0 opacity-0",
-              ])}
-            >
-              Your transaction may be frontrun and result in an unfavorable
-              trade
-            </p>
-          </div>
-
           {/* Swap Button - Now in the left column below Min Received */}
           <div className="flex justify-center items-center">
             <button

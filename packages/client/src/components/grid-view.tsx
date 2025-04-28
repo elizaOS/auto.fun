@@ -44,11 +44,11 @@ export default function GridView({ data }: { data: IToken[] }) {
               </div>
 
               <div className="w-full h-full aspect-square relative">
-                <div className="absolute top-0 rotate-180 size-full bg-[linear-gradient(to_bottom,rgba(0,0,0,0.8)_0%,transparent_20%,transparent_80%,rgba(0,0,0,0.5)_100%)] z-1" />
+                <div className="absolute top-0 rotate-180 aspect-square size-full bg-[linear-gradient(to_bottom,rgba(0,0,0,0.8)_0%,transparent_20%,transparent_80%,rgba(0,0,0,0.5)_100%)] z-1" />
                 <SkeletonImage
                   src={resizeImage(token.image, 300, 300)}
                   alt="image"
-                  className="w-full h-full object-cover z-[-1]"
+                  className="w-full h-full object-cover aspect-square z-[-1]"
                 />
               </div>
             </div>
