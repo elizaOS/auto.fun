@@ -884,15 +884,6 @@ export default function Chat() {
                     No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
                     chat.
                   </p>
-                  {isAuthenticated &&
-                    !canChatInSelectedTier &&
-                    viewableChatTiers.includes(selectedChatTier) && (
-                      <p className="text-yellow-500 text-sm">
-                        You need{" "}
-                        {getTierThreshold(selectedChatTier).toLocaleString()}+
-                        tokens to post here.
-                      </p>
-                    )}
                   {!isAuthenticated && (
                     <p className="text-yellow-500 text-sm">
                       Connect your wallet to chat.

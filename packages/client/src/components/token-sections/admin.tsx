@@ -552,20 +552,6 @@ export default function AdminTab() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col p-4 gap-4">
-      {/* --- ADD ADMIN VIEW LINK HERE --- */}
-      {isModerator &&
-        mint && ( // Only show for moderators, owner check is implicit by rendering this tab
-          <div className="flex justify-end mb-2">
-            <Link
-              to={`/admin/tokens/${mint}`}
-              className="text-sm px-3 py-1 bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary transition-colors"
-            >
-              Go to Full Admin View
-            </Link>
-          </div>
-        )}
-      {/* --- END LINK --- */}
-
       <div className="grid grid-cols-1">
         {/* Website Field */}
         <Controller
@@ -752,6 +738,14 @@ export default function AdminTab() {
                   ? "Unhide Token"
                   : "Hide Token"}
             </button>
+          </div>
+          <div className="flex justify-start mt-4">
+            <Link
+              to={`/admin/tokens/${mint}`}
+              className="text-sm px-3 py-1 bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary"
+            >
+              Go to Full Admin View
+            </Link>
           </div>
         </div>
       )}

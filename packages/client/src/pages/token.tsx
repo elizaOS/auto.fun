@@ -139,18 +139,17 @@ export default function Page() {
       const savedTab = lastTabs[address];
       if (savedTab && ["chart", "ai", "agents", "chat"].includes(savedTab)) {
         setActiveTab(savedTab as typeof activeTab);
-      }
-      else {
+      } else {
         setActiveTab("chart"); // Default if no valid saved tab
       }
-       // Ensure initial mount flag is handled correctly after first render potential
-       requestAnimationFrame(() => {
-         isInitialMount.current = false;
-       });
+      // Ensure initial mount flag is handled correctly after first render potential
+      requestAnimationFrame(() => {
+        isInitialMount.current = false;
+      });
     }
     // Reset initial mount flag when address changes
     return () => {
-        isInitialMount.current = true;
+      isInitialMount.current = true;
     };
   }, [address]);
 
@@ -411,28 +410,23 @@ export default function Page() {
               {/* Creator Profile Section - at the bottom of the left column */}
               {/* Only show if NOT imported AND creator profile exists */}
               {token?.imported === 0 && token.creatorProfile && (
-                <div className="mt-3 overflow-hidden border border-autofun-stroke-primary">
-                  <div className="px-3 py-2 bg-autofun-background-input border-b border-autofun-stroke-primary">
-                    <h3 className="text-autofun-text-primary text-sm font-bold font-dm-mono uppercase tracking-widest">
-                      Creator
-                    </h3>
-                  </div>
-                  <div className="p-4 flex flex-col gap-3">
+                <div className="mt-3 overflow-hidden">
+                  <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       {/* Display creator's name if available, otherwise the shortened address */}
                       <div className="text-autofun-text-secondary text-sm font-dm-mono truncate">
-                        {token.creatorProfile.displayName ||
-                          shortenAddress(token.creator || "")}
+                        Created by{" "}
+                        <Link
+                          to={`/profiles/${token.creator}`}
+                          className="text-center py-2 font-medium"
+                        >
+                          <span className="text-bold text-white hover:text-[#03FF24]">
+                            {token.creatorProfile.displayName ||
+                              shortenAddress(token.creator || "")}
+                          </span>
+                        </Link>
                       </div>
-                      {/* Copy button still uses the raw creator address */}
-                      <CopyButton text={token.creator || ""} />
                     </div>
-                    <Link
-                      to={`/profiles/${token.creator}`}
-                      className="text-center text-autofun-text-highlight hover:bg-autofun-background-action-highlight hover:text-black border-2 border-autofun-background-action-highlight py-2 font-medium transition-colors duration-200"
-                    >
-                      View Profile
-                    </Link>
                   </div>
                 </div>
               )}
@@ -567,17 +561,6 @@ export default function Page() {
                     </button>
                     <button
                       className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
-                        activeTab === "agents"
-                          ? "bg-autofun-background-highlight text-black"
-                          : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                      }`}
-                      onClick={() => setActiveTab("agents")}
-                      style={{ marginTop: "-2px", paddingTop: "14px" }}
-                    >
-                      Agents
-                    </button>
-                    <button
-                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
                         activeTab === "chat"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -596,6 +579,28 @@ export default function Page() {
                           activeTab === "chat" ? "text-black" : ""
                         }`}
                         alt="chat icon"
+                      />
+                    </button>
+                    <button
+                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                        activeTab === "agents"
+                          ? "bg-autofun-background-highlight text-black"
+                          : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
+                      }`}
+                      onClick={() => setActiveTab("agents")}
+                      style={{ marginTop: "-2px", paddingTop: "14px" }}
+                    >
+                      Agents
+                      <img
+                        src={
+                          activeTab === "agents"
+                            ? "/token/agentson.svg"
+                            : "/token/agentsoff.svg"
+                        }
+                        className={`size-4 inline-block ml-1.5 ${
+                          activeTab === "agents" ? "text-black" : "text-white"
+                        }`}
+                        alt="agents icon"
                       />
                     </button>
                   </div>
@@ -624,7 +629,7 @@ export default function Page() {
                 )}
                 {activeTab === "agents" && (
                   <div id="agents" className="scroll-mt-16">
-                    <AgentsSection tokenData={token} isCreator={isTokenOwner} />
+                    <AgentsSection isCreator={isTokenOwner} />
                   </div>
                 )}
                 {activeTab === "chat" && (

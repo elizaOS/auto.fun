@@ -70,7 +70,8 @@ const EditableProfileHeader = ({
         <div className="relative w-48 h-48">
           {isUploading || isGenerating ? (
             <div className="w-full h-full flex items-center justify-center">
-              <Loader className="w-8 h-8" />
+              {isUploading && "Uploading..."}
+              {isGenerating && "Generating..."}
             </div>
           ) : displayImageUrl ? (
             <img
@@ -103,11 +104,7 @@ const EditableProfileHeader = ({
               disabled={isUploading || isGenerating || isSaving}
               className="w-full flex items-center justify-center gap-1 text-xs px-2 py-1"
             >
-              {isUploading ? (
-                <Loader className="w-3 h-3" />
-              ) : (
-                <Upload className="w-3 h-3" />
-              )}
+              {isUploading ? "Uploading..." : <Upload className="w-3 h-3" />}
               Upload
             </Button>
             <Button
@@ -118,12 +115,8 @@ const EditableProfileHeader = ({
               disabled={isUploading || isGenerating || isSaving}
               className="w-full flex items-center justify-center gap-1 text-xs px-2 py-1"
             >
-              {isGenerating ? (
-                <Loader className="w-3 h-3" />
-              ) : (
-                <Zap className="w-3 h-3" />
-              )}
-              Generate
+              {isGenerating ? "Generating..." : <Zap className="w-3 h-3" />}
+              {!isGenerating && "Generate"}
             </Button>
           </div>
         )}

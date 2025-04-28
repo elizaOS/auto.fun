@@ -146,51 +146,71 @@ export default function CallbackPage() {
 
           if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            console.error("Auth callback token exchange error:", errorText, "Status:", tokenResponse.status);
+            console.error(
+              "Auth callback token exchange error:",
+              errorText,
+              "Status:",
+              tokenResponse.status,
+            );
             setDebugInfo((prev) => ({
               ...prev,
               responseStatus: tokenResponse.status.toString(),
               responseError: errorText,
             }));
-            throw new Error(`Authentication token exchange failed: ${tokenResponse.statusText} - ${errorText}`);
+            throw new Error(
+              `Authentication token exchange failed: ${tokenResponse.statusText} - ${errorText}`,
+            );
           }
 
           const tokenData = (await tokenResponse.json()) as OAuthResponse;
 
           // Check if token exchange was successful before proceeding
-          if (tokenData.access_token && tokenData.refresh_token && tokenData.user_id) {
+          if (
+            tokenData.access_token &&
+            tokenData.refresh_token &&
+            tokenData.user_id
+          ) {
             console.log("OAuth 2.0 tokens received, fetching profile...");
 
-            // --- Fetch Profile Details --- 
+            // --- Fetch Profile Details ---
             let username: string | undefined;
             let profileImageUrl: string | undefined;
             try {
               const profileApiResponse = await fetch(
-                `${env.apiUrl}/api/share/twitter-user`, 
+                `${env.apiUrl}/api/share/twitter-user`,
                 {
                   headers: {
                     Authorization: `Bearer ${tokenData.access_token}`,
                   },
-                }
+                },
               );
 
               if (profileApiResponse.ok) {
                 const profileData = await profileApiResponse.json();
                 // Extract username and image URL based on expected structure from /api/share/twitter-user
                 if (profileData.data) {
-                    username = profileData.data.username;
-                    profileImageUrl = profileData.data.profile_image_url;
-                    console.log("Profile fetched successfully:", { username, profileImageUrl });
+                  username = profileData.data.username;
+                  profileImageUrl = profileData.data.profile_image_url;
+                  console.log("Profile fetched successfully:", {
+                    username,
+                    profileImageUrl,
+                  });
                 } else {
-                    console.warn("Profile data received but 'data' field missing or empty.", profileData);
+                  console.warn(
+                    "Profile data received but 'data' field missing or empty.",
+                    profileData,
+                  );
                 }
               } else {
-                console.error("Failed to fetch Twitter profile:", await profileApiResponse.text());
+                console.error(
+                  "Failed to fetch Twitter profile:",
+                  await profileApiResponse.text(),
+                );
                 // Continue without profile details, agent component might fetch later
               }
             } catch (profileError) {
               console.error("Error fetching Twitter profile:", profileError);
-               // Continue without profile details
+              // Continue without profile details
             }
             // --- End Fetch Profile Details ---
 
@@ -204,14 +224,25 @@ export default function CallbackPage() {
               profileImageUrl: profileImageUrl, // Use fetched image URL (or undefined)
             };
 
-            console.log("Saving complete credentials to localStorage:", JSON.stringify(credentials, null, 2));
+            console.log(
+              "Saving complete credentials to localStorage:",
+              JSON.stringify(credentials, null, 2),
+            );
             localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
             redirectToOrigin(); // Redirect after saving complete data
-
           } else {
-            console.error("Incomplete token data received from OAuth callback. Checked for access_token, refresh_token, user_id. Received:", tokenData);
-            setDebugInfo((prev) => ({ ...prev, tokenMissing: "true", receivedTokenData: JSON.stringify(tokenData) })); // Add received data to debug
-            throw new Error("Incomplete token data received (missing access_token, refresh_token, or user_id)");
+            console.error(
+              "Incomplete token data received from OAuth callback. Checked for access_token, refresh_token, user_id. Received:",
+              tokenData,
+            );
+            setDebugInfo((prev) => ({
+              ...prev,
+              tokenMissing: "true",
+              receivedTokenData: JSON.stringify(tokenData),
+            })); // Add received data to debug
+            throw new Error(
+              "Incomplete token data received (missing access_token, refresh_token, or user_id)",
+            );
           }
         } catch (error) {
           console.error("Authentication error during OAuth 2.0 flow:", error);

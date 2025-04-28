@@ -209,7 +209,7 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
 
     // Step 3: Check if this Twitter user is already connected to this token
     const db = getDB();
-    const existingAgent = await db
+    const existingAgentSameToken = await db
       .select()
       .from(tokenAgents)
       .where(
@@ -220,30 +220,62 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
       )
       .limit(1);
 
-    if (existingAgent && existingAgent.length > 0) {
+    if (existingAgentSameToken && existingAgentSameToken.length > 0) {
       logger.warn(
-        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
+        `Agent connection attempt failed: Twitter user ${twitterUserId} already linked to THIS token ${mint}`,
       );
       return c.json(
         {
           error: "This Twitter account is already connected to this token.",
-          agent: existingAgent[0],
+          agent: existingAgentSameToken[0], // Return existing agent info
         },
         409, // Conflict
       );
     }
 
+    // *** NEW: Check if Twitter user is connected to ANY OTHER token ***
+    const existingAgentOtherToken = await db
+        .select({ 
+            tokenMint: tokenAgents.tokenMint, 
+            // Optionally select ticker from joined tokens table for the error message
+            tokenTicker: tokens.ticker 
+        })
+        .from(tokenAgents)
+        .leftJoin(tokens, eq(tokenAgents.tokenMint, tokens.mint)) // Join to get ticker
+        .where(eq(tokenAgents.twitterUserId, twitterUserId))
+        .limit(1);
+
+    if (existingAgentOtherToken && existingAgentOtherToken.length > 0) {
+        const otherToken = existingAgentOtherToken[0];
+        logger.warn(
+            `Agent connection attempt failed: Twitter user ${twitterUserId} already linked to OTHER token ${otherToken.tokenMint}`,
+        );
+        return c.json(
+            {
+                error: `This Twitter account is already connected to another token (${otherToken.tokenTicker || otherToken.tokenMint}). An account can only be linked to one token at a time.`,
+                linkedTokenMint: otherToken.tokenMint, // Send mint for linking
+                linkedTokenTicker: otherToken.tokenTicker // Send ticker for display
+            },
+            409, // Conflict
+        );
+    }
+    // *** END NEW CHECK ***
+
     // Step 4: Check if the owner is the token creator to mark as official
-    const tokenData = await db
+    const tokenDataResult = await db
       .select({ creator: tokens.creator })
       .from(tokens)
       .where(eq(tokens.mint, mint))
       .limit(1);
 
+    // Process Token Data Response - Check the result structure now
+    const tokenData = tokenDataResult[0]; // Drizzle returns an array, get the first element
+
+    // *** Logs removed for brevity, check based on tokenData ***
+
     const isOfficial =
-      tokenData &&
-      tokenData.length > 0 &&
-      tokenData[0].creator === user.publicKey;
+      tokenData && // Check if tokenData exists
+      tokenData.creator === user.publicKey;
 
     // Step 5: Create new agent
     const newAgentData: any = {

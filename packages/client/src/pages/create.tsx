@@ -1257,15 +1257,18 @@ export default function Create() {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const response = await fetch(env.apiUrl + "/api/generation/generate-metadata", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({
-          prompt: userPrompt,
-          fields: ["name", "symbol", "description", "prompt"],
-        }),
-      });
+      const response = await fetch(
+        env.apiUrl + "/api/generation/generate-metadata",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            prompt: userPrompt,
+            fields: ["name", "symbol", "description", "prompt"],
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to generate metadata from prompt");
@@ -1312,15 +1315,18 @@ export default function Create() {
       setIsGenerating(true);
       setGeneratingField("prompt");
 
-      const imageResponse = await fetch(env.apiUrl + "/api/generation/generate", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({
-          prompt: data.metadata.prompt,
-          type: "image",
-        }),
-      });
+      const imageResponse = await fetch(
+        env.apiUrl + "/api/generation/generate",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            prompt: data.metadata.prompt,
+            type: "image",
+          }),
+        },
+      );
 
       if (!imageResponse.ok) {
         const errorText = await imageResponse.text();
@@ -1658,11 +1664,14 @@ export default function Create() {
         }
 
         // Get a pre-generated token
-        const response = await fetch(env.apiUrl + "/api/generation/pre-generated-token", {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
+        const response = await fetch(
+          env.apiUrl + "/api/generation/pre-generated-token",
+          {
+            method: "GET",
+            headers,
+            credentials: "include",
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Failed to get pre-generated token");
@@ -1734,15 +1743,18 @@ export default function Create() {
           }
         } else {
           // If no image, generate one using the prompt
-          const imageResponse = await fetch(env.apiUrl + "/api/generation/generate", {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              prompt: token.prompt,
-              type: "image",
-            }),
-          });
+          const imageResponse = await fetch(
+            env.apiUrl + "/api/generation/generate",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                prompt: token.prompt,
+                type: "image",
+              }),
+            },
+          );
 
           if (!imageResponse.ok) {
             throw new Error("Failed to generate image");
