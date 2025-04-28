@@ -7,7 +7,7 @@ import {
     position_nft,
     positionSeed,
 } from "./utils";
-import { MeteoraVault } from "../target/types/meteora_vault";
+import { MeteoraVault } from "../../target/types/meteora_vault";
 import { assert } from "chai";
 
 describe("check NFT balance", () => {

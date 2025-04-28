@@ -13,7 +13,7 @@ import {
     solTokenAddress,
     vaultConfigSeed,
 } from "./utils";
-import { MeteoraVault } from "../target/types/meteora_vault";
+import { MeteoraVault } from "../../target/types/meteora_vault";
 
 describe("Claim position fee", function () {
     // Configure the client to use the local cluster.

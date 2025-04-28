@@ -36,6 +36,11 @@ test_init = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initRayVault.
 test_nft_balance = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/checkBalance.ts"
 test_withdraw = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/withdraw.ts"
 update_state = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/updateState.ts"
+meteora_init = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/meteora/initMeteora.ts"
+meteora_checkPosition = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/meteora/checkPosition.ts"
+meteora_deposit = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/meteora/deposit.ts"
+meteora_withdraw = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/meteora/emergencyWithdraw.ts"
+meteora_claim = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/meteora/claimPositionFee.ts"
 
 [test]
 startup_wait = 10000

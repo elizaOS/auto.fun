@@ -9,7 +9,7 @@ import {
     positionSeed,
     vaultConfigSeed,
 } from "./utils";
-import { MeteoraVault } from "../target/types/meteora_vault";
+import { MeteoraVault } from "../../target/types/meteora_vault";
 
 describe("Deposit NFT to Meteora Vault", () => {
     // Configure the client to use the local cluster.

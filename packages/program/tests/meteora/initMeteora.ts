@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import { vaultConfigSeed } from "./utils";
-import { MeteoraVault } from "../target/types/meteora_vault";
+import { MeteoraVault } from "../../target/types/meteora_vault";
 
 describe("Initialize Meteora Vault", function () {
     // Configure the client to use the local cluster.
