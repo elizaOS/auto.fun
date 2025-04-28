@@ -703,7 +703,7 @@ export default function AgentsSection({
       </div>
 
       {/* --- Right Column: Connection Management --- */}
-      <div className="md:w-1/4 flex flex-col gap-3 min-w-[200px]">
+      <div className="md:w-1/4 flex flex-col gap-3 min-w-[200px] mr-2">
         <h3 className="text-lg font-semibold text-autofun-text-primary mb-2">
           {" "}
           Connect An Agent{" "}
