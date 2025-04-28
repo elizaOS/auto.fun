@@ -552,20 +552,6 @@ export default function AdminTab() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col p-4 gap-4">
-      {/* --- ADD ADMIN VIEW LINK HERE --- */}
-      {isModerator &&
-        mint && ( // Only show for moderators, owner check is implicit by rendering this tab
-          <div className="flex justify-end mb-2">
-            <Link
-              to={`/admin/tokens/${mint}`}
-              className="text-sm px-3 py-1 rounded bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary transition-colors"
-            >
-              Go to Full Admin View
-            </Link>
-          </div>
-        )}
-      {/* --- END LINK --- */}
-
       <div className="grid grid-cols-1">
         {/* Website Field */}
         <Controller
@@ -704,7 +690,7 @@ export default function AdminTab() {
           <div className="flex flex-wrap justify-start gap-2">
             <button
               type="button"
-              className={`px-4 py-2 text-sm rounded ${
+              className={`px-4 py-2 text-sm ${
                 tokenStatus.featured
                   ? "bg-red-700 text-red-100 hover:bg-red-600"
                   : "bg-blue-700 text-blue-100 hover:bg-blue-600"
@@ -721,7 +707,7 @@ export default function AdminTab() {
 
             <button
               type="button"
-              className={`px-4 py-2 text-sm rounded ${
+              className={`px-4 py-2 text-sm ${
                 tokenStatus.verified
                   ? "bg-red-700 text-red-100 hover:bg-red-600"
                   : "bg-green-700 text-green-100 hover:bg-green-600"
@@ -738,7 +724,7 @@ export default function AdminTab() {
 
             <button
               type="button"
-              className={`px-4 py-2 text-sm rounded ${
+              className={`px-4 py-2 text-sm ${
                 tokenStatus.hidden
                   ? "bg-yellow-700 text-yellow-100 hover:bg-yellow-600"
                   : "bg-gray-700 text-gray-100 hover:bg-gray-600"
@@ -752,6 +738,14 @@ export default function AdminTab() {
                   ? "Unhide Token"
                   : "Hide Token"}
             </button>
+          </div>
+          <div className="flex justify-start mt-4">
+            <Link
+              to={`/admin/tokens/${mint}`}
+              className="text-sm px-3 py-1 bg-autofun-background-action-primary hover:bg-autofun-background-action-highlight text-autofun-text-primary"
+            >
+              Go to Full Admin View
+            </Link>
           </div>
         </div>
       )}

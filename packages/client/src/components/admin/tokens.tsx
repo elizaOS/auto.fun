@@ -297,7 +297,7 @@ function AdminTokensList() {
                     View
                   </Link>
                   <button
-                    className={`px-2 py-1 text-xs rounded ${
+                    className={`px-2 py-1 text-xs ${
                       (token as any).hidden // Ensure boolean check
                         ? "bg-purple-900 text-purple-300 hover:bg-purple-800"
                         : "bg-gray-900 text-gray-300 hover:bg-gray-800"
@@ -1249,7 +1249,7 @@ function AdminTokenDetails({ address }: { address: string }) {
               </p>
               {isLoadingMetadata && <Loader />}
               {metadataError && (
-                <div className="p-3 bg-red-900/20 text-red-300 rounded mb-2">
+                <div className="p-3 bg-red-900/20 text-red-300 mb-2">
                   Error loading metadata: {metadataError}
                 </div>
               )}
