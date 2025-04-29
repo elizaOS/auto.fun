@@ -37,6 +37,7 @@ import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import Chart from "@/components/chart";
 import { Codex } from "@codex-data/sdk";
+import ClaimFees from "@/components/token-sections/claimFees";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;
@@ -258,41 +259,6 @@ export default function Page() {
   });
   const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
 
-  const handleClaimFees = async () => {
-    if (!token?.mint || token?.creator !== normalizedWallet) {
-      toast.error("No token found");
-      return;
-    }
-
-    try {
-      const authToken = getAuthToken();
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
-
-      const response = await fetch(`${env.apiUrl}/api/claimFees`, {
-        method: "POST",
-        credentials: "include",
-        body: JSON.stringify({ tokenMint: token?.mint }),
-        headers,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to claim fees");
-      }
-
-      toast.success("Fees claimed successfully");
-    } catch (error) {
-      console.error("Error claiming fees:", error);
-      toast.error("Failed to claim fees");
-    }
-  };
-
   if (tokenQuery?.isLoading) {
     return <Loader isFullscreen />;
   }
@@ -422,14 +388,7 @@ export default function Page() {
                   </div>
                 </div>
                 {token?.creator === normalizedWallet && !token?.imported && (
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={handleClaimFees}
-                      className="cursor-pointer text-white text-center bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight hover:text-black border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-full items-center justify-center"
-                    >
-                      <span className="w-full text-center">Claim Fees</span>
-                    </button>
-                  </div>
+                  <ClaimFees tokenMint={token?.mint} />
                 )}
               </div>
 
