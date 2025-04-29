@@ -3,6 +3,7 @@ import { useInfinitePagination } from "./use-pagination";
 import { getSocket } from "@/utils/socket";
 import { IToken, TokenSchema } from "@/types";
 import { z } from "zod";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Token = z.infer<typeof TokenSchema>;
 export const HomepageTokenSchema = TokenSchema.and(
@@ -29,6 +30,7 @@ export interface UseTokensParams {
 }
 
 export const useTokens = (params: UseTokensParams) => {
+  const queryClient = useQueryClient();
   const {
     sortBy,
     sortOrder,
@@ -53,6 +55,17 @@ export const useTokens = (params: UseTokensParams) => {
     enabled,
     refetchInterval: 15000,
   });
+
+  /** Prepopulate token cache, that we otherwise need to fetch first on the /token page */
+  useEffect(() => {
+    if ((infiniteQuery?.items || [])?.length > 0) {
+      for (const item of infiniteQuery.items) {
+        if (item?.mint) {
+          queryClient.setQueryData(["token", item.mint], item);
+        }
+      }
+    }
+  }, [infiniteQuery?.items]);
 
   useEffect(() => {
     if (!enabled) return;

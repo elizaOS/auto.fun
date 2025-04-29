@@ -376,7 +376,7 @@ shareRouter.get("/oauth/request_token", async (c) => {
         .replace(/[^a-zA-Z0-9]/g, "");
 
       const requestTokenParams = {
-        oauth_callback: `${process.env.NETWORK === "devnet" ? process.env.DEVNET_FRONTEND_URL : process.env.MAINNET_FRONTEND_URL}/callback-oauth1`,
+        oauth_callback: `${process.env.NETWORK === "devnet" ? process.env.DEVNET_FRONTEND_URL : process.env.MAINNET_FRONTEND_URL}/callback`,
         oauth_consumer_key: process.env.TWITTER_API_KEY || "",
         oauth_nonce: nonce,
         oauth_signature_method: "HMAC-SHA1",

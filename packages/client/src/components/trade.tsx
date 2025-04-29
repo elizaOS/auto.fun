@@ -307,8 +307,9 @@ export default function Trade({ token }: { token: IToken }) {
                   </button>
                   {!isTokenSelling ? (
                     <>
-                      {["0.1", "0.5", "1.0"].map((but, _) => (
+                      {["0.1", "0.5", "1.0"].map((but: string) => (
                         <button
+                          key={but}
                           onClick={() => {
                             setInputAmount(but);
                           }}
@@ -321,8 +322,9 @@ export default function Trade({ token }: { token: IToken }) {
                     </>
                   ) : (
                     <>
-                      {["25", "50", "75", "100"].map((perc, _) => (
+                      {["25", "50", "75", "100"].map((perc: string) => (
                         <button
+                          key={perc}
                           onClick={() => {
                             const percentage = parseFloat(perc) / 100;
                             setInputAmount(
@@ -422,7 +424,7 @@ export default function Trade({ token }: { token: IToken }) {
             </div>
           </div>
           {/* Swap Button - Now in the left column below Min Received */}
-          <div className="flex justify-center items-center">
+          <div className="flex flex-col gap-4 justify-center items-center">
             <button
               onClick={onSwap}
               className={twMerge([
@@ -465,6 +467,18 @@ export default function Trade({ token }: { token: IToken }) {
                 }}
               />
             </button>
+            <p
+              className={twMerge([
+                "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
+                (token?.status === "active"
+                  ? token?.curveProgress > 95
+                  : false) || token?.status === "migrating"
+                  ? "opacity-100"
+                  : "h-0 opacity-0",
+              ])}
+            >
+              During migrations, tokens are not tradeable on this platform.
+            </p>
           </div>
         </div>
         {!isAuthenticated ? (
