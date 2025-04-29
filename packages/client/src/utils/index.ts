@@ -112,7 +112,6 @@ export const formatNumberSubscript = (num: number): string => {
     num = Math.abs(num);
   }
 
-  // Round to 11 decimal places #mainnet tests
   num = Number(num.toFixed(11));
 
   if (num >= 1) {
@@ -122,8 +121,12 @@ export const formatNumberSubscript = (num: number): string => {
   const expStr = num.toExponential();
   const [mantissa, exponentStr] = expStr.split("e");
   const exponent = parseInt(exponentStr, 10);
-  const totalZeros = -exponent - 1;
-  const mantissaDigits = mantissa.replace(".", "").slice(0, 9); // Limit mantissa digits
+  let totalZeros = -exponent - 1;
+  const mantissaDigits = mantissa.replace(".", "").slice(0, 9);
+
+  if (totalZeros < 0) {
+    totalZeros = 0;
+  }
 
   if (totalZeros > 1) {
     return sign + "0.0" + toSubscript(totalZeros) + mantissaDigits;
@@ -160,7 +163,11 @@ export const resizeImage = (url: string, width: number, height: number) => {
 export const networkId = 1399811149;
 
 export const useCodex = (token: IToken) => {
-  if (token?.imported === 1 || token?.status === "locked") {
+  if (
+    token?.imported === 1 ||
+    token?.status === "locked" ||
+    token?.status === "migrated"
+  ) {
     return true;
   }
 

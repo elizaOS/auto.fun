@@ -144,7 +144,7 @@ migrationRouter.post("/claimFees", async (c) => {
     );
     const websocket = getWebSocketClient();
     // async () => {
-    await claimFees(
+    const signature = await claimFees(
       nftMint,
       poolId,
       connection,
@@ -158,6 +158,7 @@ migrationRouter.post("/claimFees", async (c) => {
     return c.json({
       status: "Claim invocation processing started",
       tokenMint: token.mint,
+      signature,
     });
   } catch (error: any) {
     logger.error("Error in claim fees endpoint:", error);
