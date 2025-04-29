@@ -1,5 +1,5 @@
 import * as CANNON from "cannon-es";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
 // import { getToken } from "@/utils/api";
@@ -32,12 +32,20 @@ declare module "cannon-es" {
   }
 }
 
+// Add global texture cache type
+declare global {
+  interface Window {
+    __TEXTURE_CACHE__?: Map<string, THREE.Texture>;
+  }
+}
+
 // Constants for physics
 const DICE_BODY_MATERIAL = "dice";
 const FLOOR_MATERIAL = "floor";
 const WALL_MATERIAL = "wall";
 
-const EyeFollower = () => {
+// Memoize the EyeFollower component to prevent unnecessary re-renders
+const EyeFollower = React.memo(function EyeFollower() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -92,7 +100,7 @@ const EyeFollower = () => {
   }, []);
 
   // Calculate pupil positions based on mouse position
-  const calculatePupilPosition = (anchorX: number, anchorY: number) => {
+  const calculatePupilPosition = useCallback((anchorX: number, anchorY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
 
     // Calculate eye center in pixels
@@ -116,14 +124,14 @@ const EyeFollower = () => {
       x: eyeCenterX + offsetX,
       y: eyeCenterY + offsetY,
     };
-  };
+  }, [containerSize, mousePos, maxPupilOffset]);
 
   // Calculate scale factor based on container width
-  const getScaledPupilRadius = () => {
+  const getScaledPupilRadius = useCallback(() => {
     if (containerSize.width === 0) return pupilRadius;
     const scaleFactor = containerSize.width / 300; // Base size is 300
     return Math.max(3, pupilRadius * scaleFactor); // Minimum size of 3
-  };
+  }, [containerSize, pupilRadius]);
 
   return (
     <div
@@ -153,7 +161,7 @@ const EyeFollower = () => {
       </svg>
     </div>
   );
-};
+});
 
 interface DiceRollerProps {
   tokens?: IToken[];
@@ -194,6 +202,64 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const sceneInitializedRef = useRef(false);
   // Add a ref to track if tokens have been processed initially
   const tokensProcessedRef = useRef(false);
+  // Create a ref to store the animation frame ID
+  const animationFrameIdRef = useRef<number | undefined>();
+  // Track if all dice are sleeping to reduce unnecessary updates
+  const allDiceSleepingRef = useRef(false);
+  // Store last animation time
+  const lastTimeRef = useRef(0);
+
+  // Animation function with performance optimizations
+  const animate = useCallback((time = 0) => {
+    if (!worldRef.current || !sceneRef.current || !cameraRef.current) return;
+
+    const world = worldRef.current;
+    const scene = sceneRef.current;
+    const camera = cameraRef.current;
+    const dice = diceRef.current;
+    const diceBodies = diceBodiesRef.current;
+
+    animationFrameIdRef.current = requestAnimationFrame(animate);
+
+    // Calculate delta time in seconds
+    const deltaTime = Math.min((time - lastTimeRef.current) / 1000, 0.1); // Cap at 100ms to avoid large jumps
+    lastTimeRef.current = time;
+
+    // Step the physics world with proper time step
+    const fixedTimeStep = 1 / 60; // 60 fps
+    const maxSubSteps = 2; // Reduced maximum physics substeps for better performance
+    world.step(fixedTimeStep, deltaTime, maxSubSteps);
+
+    // Check if all dice are sleeping to reduce physics calculations
+    let allSleeping = diceBodies.length > 0;
+    
+    // Update dice positions and rotations - only for dice that are moving
+    for (let i = 0; i < diceBodies.length; i++) {
+      const dieBody = diceBodies[i];
+      const die = dice[i];
+
+      // Track if any dice are still moving
+      if (dieBody.sleepState !== CANNON.Body.SLEEPING) {
+        allSleeping = false;
+        die.position.copy(dieBody.position as any);
+        die.quaternion.copy(dieBody.quaternion as any);
+      }
+    }
+    
+    // If all dice were previously moving but are now sleeping, mark them as sleeping
+    if (!allDiceSleepingRef.current && allSleeping) {
+      allDiceSleepingRef.current = true;
+    } else if (allDiceSleepingRef.current && !allSleeping) {
+      // If dice were sleeping but now moving, mark them as not sleeping
+      allDiceSleepingRef.current = false;
+    }
+
+    // Get the renderer from the scene
+    const renderer = scene.userData.renderer as THREE.WebGLRenderer;
+    if (renderer) {
+      renderer.render(scene, camera);
+    }
+  }, []);
 
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
@@ -233,7 +299,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   }, [tokens]);
 
   // Function to throw dice with physics - optimized for smoother initial movement
-  const throwDice = () => {
+  const throwDice = useCallback(() => {
     if (!diceBodiesRef.current.length) return;
 
     // Stagger the dice throws to prevent all dice from moving at once
@@ -295,10 +361,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         }, 1000);
       }, i * staggerDelay);
     });
-  };
+  }, []);
 
   // Handle clicking anywhere on the container
-  const handleContainerClick = (event: React.MouseEvent) => {
+  const handleContainerClick = useCallback((event: React.MouseEvent) => {
     // Only allow interaction if at least one die is loaded
     if (loadedDice.size === 0) return;
 
@@ -324,45 +390,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, cameraRef.current);
 
-    // Check for intersections with dice
-    // const intersects = raycaster.intersectObjects(diceRef.current);
-
-    // if (intersects.length > 0) {
-    //   // Get the clicked die
-    //   const clickedDie = intersects[0].object as THREE.Mesh;
-
-    //   // Get the token address from the die's userData
-    //   const tokenAddress = clickedDie.userData?.tokenAddress;
-
-    //   if (tokenAddress) {
-    //     // If we already have a selected cube, deselect it
-    //     if (selectedCube) {
-    //       // Remove glow effect
-    //       if (Array.isArray(selectedCube.material)) {
-    //         selectedCube.material.forEach((mat) => {
-    //           if (mat instanceof THREE.MeshStandardMaterial) {
-    //             mat.emissiveIntensity = 0.3;
-    //           }
-    //         });
-    //       }
-    //       setSelectedCube(null);
-    //       setSelectedTokenData(null);
-    //     } else {
-    //       // Select the new cube
-    //       setSelectedCube(clickedDie);
-    //       // Add glow effect
-    //       if (Array.isArray(clickedDie.material)) {
-    //         clickedDie.material.forEach((mat) => {
-    //           if (mat instanceof THREE.MeshStandardMaterial) {
-    //             mat.emissiveIntensity = 1.0;
-    //           }
-    //         });
-    //       }
-    //       // Fetch token data
-    //       fetchTokenData(tokenAddress);
-    //     }
-    //   }
-    // } else {
     // If clicking background and we have a selected cube, deselect it
     if (selectedCube) {
       // Remove glow effect
@@ -379,22 +406,11 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Only apply force if no cube is selected
       applyForceToAllDice(event.nativeEvent);
     }
-    // }
-  };
-
-  // Function to fetch token data
-  // const fetchTokenData = async (tokenAddress: string) => {
-  //   try {
-  //     const data = await getToken({ address: tokenAddress });
-  //     setSelectedTokenData(data as IToken);
-  //   } catch (error) {
-  //     console.error("Error fetching token data:", error);
-  //   }
-  // };
+  }, [loadedDice, selectedCube]);
 
   // Apply force to all dice when clicking background - optimized for smoother movement
   // @ts-ignore
-  const applyForceToAllDice = (event: MouseEvent) => {
+  const applyForceToAllDice = useCallback((event: MouseEvent) => {
     if (!diceBodiesRef.current.length) {
       return;
     }
@@ -429,7 +445,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.angularVelocity.y = dieBody.angularVelocity.y * 0.3 + angularVelocity.y * 0.7;
       dieBody.angularVelocity.z = dieBody.angularVelocity.z * 0.3 + angularVelocity.z * 0.7;
     }
-  };
+  }, []);
 
   // Update popup position when mounted or click position changes
   useEffect(() => {
@@ -439,10 +455,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         setPopupPosition(position);
       }
     }
-  }, [selectedTokenData, clickPosition, popupRef.current]);
+  }, [selectedTokenData, clickPosition]);
 
   // Function to calculate display position
-  const getDisplayPosition = () => {
+  const getDisplayPosition = useCallback(() => {
     if (!clickPosition || !containerRef.current || !popupRef.current) {
       return null;
     }
@@ -474,7 +490,39 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       left: `${left}px`,
       top: `${top}px`,
     };
-  };
+  }, [clickPosition]);
+
+  // Add visibility detection to pause animation when not in viewport
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    // Create intersection observer to detect when component is in viewport
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        // Store visibility state in a ref to avoid re-renders
+        const isVisible = entry.isIntersecting;
+        
+        // If we have an animation frame ID and the component is hidden, cancel the animation
+        if (!isVisible && animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+          animationFrameIdRef.current = undefined;
+        } else if (isVisible && !animationFrameIdRef.current && sceneInitializedRef.current) {
+          // Restart animation if component becomes visible again and was previously initialized
+          animationFrameIdRef.current = requestAnimationFrame(animate);
+        }
+      },
+      { threshold: 0.1 } // Trigger when at least 10% of the component is visible
+    );
+    
+    observer.observe(containerRef.current);
+    
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, [animate]);
 
   useEffect(() => {
     // Skip if already initialized or if we don't have the required elements
@@ -503,7 +551,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     worldRef.current = world;
     world.gravity.set(0, -9.8 * 10, 0); // Reduced gravity for smoother movement
     world.broadphase = new CANNON.NaiveBroadphase();
-    world.solver.iterations = 4; // Reduced iterations for better performance
+    world.solver.iterations = 3; // Further reduced iterations for better performance
     world.allowSleep = true;
     world.defaultContactMaterial.contactEquationStiffness = 1e6; // Increased stiffness for more stable contacts
     world.defaultContactMaterial.contactEquationRelaxation = 3; // Relaxation for smoother contacts
@@ -560,15 +608,20 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     camera.position.set(0, 50, 0);
     camera.lookAt(0, 0, 0);
 
-    // Renderer setup
+    // Renderer setup with performance optimizations
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true, // Enable transparency
+      powerPreference: "high-performance", // Request high-performance GPU
     });
     renderer.setSize(containerWidth, containerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for better performance
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Better quality shadows with acceptable performance
     renderer.setClearColor(0x000000, 0); // Make background transparent
+
+    // Store renderer in scene userData for access in animation loop
+    scene.userData.renderer = renderer;
 
     // Add renderer to DOM
     containerRef.current.innerHTML = "";
@@ -700,63 +753,56 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     const fallbackTexture = "header/placeholder/logo.jpg";
 
-    // Create a texture cache to avoid reloading the same textures
-    const textureCache = new Map<string, THREE.Texture>();
+    // Create a texture cache to avoid reloading
+    const textureCache = window.__TEXTURE_CACHE__ || new Map<string, THREE.Texture>();
+    
+    // Store the cache in the window object for reuse
+    if (!window.__TEXTURE_CACHE__) {
+      window.__TEXTURE_CACHE__ = textureCache;
+    }
 
-    // Helper function to create materials for a die with the same texture on all sides
-    const createDieMaterialsWithSameTexture = (tokenImage: string) => {
-      return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
+    // Function to create materials for a die with the same texture on all sides
+    const createDieMaterialsWithSameTexture = (imageUrl: string): Promise<THREE.Material[]> => {
+      return new Promise((resolve) => {
         // Check if texture is already in cache
-        if (textureCache.has(tokenImage)) {
-          const cachedTexture = textureCache.get(tokenImage)!;
-
-          // Create materials with the cached texture
-          const materials = Array(6)
-            .fill(null)
-            .map(
-              () =>
-                new THREE.MeshStandardMaterial({
-                  map: cachedTexture,
-                  roughness: 0.75,
-                  metalness: 0.2,
-                  emissiveMap: cachedTexture,
-                  emissiveIntensity: 0.3,
-                })
-            );
-
-          // No need to set loading state here anymore
+        if (textureCache.has(imageUrl)) {
+          const cachedTexture = textureCache.get(imageUrl)!;
+          
+          // Create materials with cached texture
+          const materials = Array(6).fill(
+            new THREE.MeshStandardMaterial({
+              map: cachedTexture,
+              roughness: 1.0,
+              metalness: 0.3,
+              emissiveMap: cachedTexture,
+              emissiveIntensity: 0.3,
+            })
+          );
+          
           resolve(materials);
           return;
         }
-
-        // Make sure textureLoader has crossOrigin set
-        if (!textureLoader.crossOrigin) {
-          textureLoader.crossOrigin = "anonymous";
-        }
-
+        
+        // Load new texture if not in cache
         textureLoader.load(
-          tokenImage,
+          imageUrl,
           (texture) => {
-            // Success callback - only resolve here
             texture.colorSpace = THREE.SRGBColorSpace;
-
-            // Cache the texture for future use
-            textureCache.set(tokenImage, texture);
-
-            // Create materials with the successfully loaded texture
-            const materials = Array(6)
-              .fill(null)
-              .map(
-                () =>
-                  new THREE.MeshStandardMaterial({
-                    map: texture,
-                    roughness: 0.75,
-                    metalness: 0.2,
-                    emissiveMap: texture,
-                    emissiveIntensity: 0.3,
-                  })
-              );
-
+            
+            // Cache the texture
+            textureCache.set(imageUrl, texture);
+            
+            // Create materials with the loaded texture
+            const materials = Array(6).fill(
+              new THREE.MeshStandardMaterial({
+                map: texture,
+                roughness: 1.0,
+                metalness: 0.3,
+                emissiveMap: texture,
+                emissiveIntensity: 0.3,
+              })
+            );
+            
             resolve(materials);
           },
           undefined,
@@ -783,7 +829,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
             // Load fallback texture if the token image fails
             textureLoader.load(
-              fallbackTexture, // Make sure this variable is defined
+              fallbackTexture,
               (fallbackTex) => {
                 fallbackTex.colorSpace = THREE.SRGBColorSpace;
 
