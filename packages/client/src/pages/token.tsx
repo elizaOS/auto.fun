@@ -22,6 +22,7 @@ import {
   LAMPORTS_PER_SOL,
   resizeImage,
   shortenAddress,
+  useCodex,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { getAuthToken } from "@/utils/auth";
@@ -35,6 +36,7 @@ import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import Chart from "@/components/chart";
+import { Codex } from "@codex-data/sdk";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;
@@ -111,6 +113,8 @@ const setLastTab = (address: string, tab: string) => {
     console.error("Error writing last tab to localStorage:", e);
   }
 };
+
+const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 export default function Page() {
   const params = useParams<{ address: string }>();
@@ -214,16 +218,40 @@ export default function Page() {
   }, [address]);
 
   const token = tokenQuery?.data as IToken;
+  const isCodex = useCodex(token);
 
-  // Check if user is the token owner
+  const codexQuery = useQuery({
+    queryKey: ["token", address, "codex", isCodex],
+    queryFn: async () => {
+      if (!address) return;
+      const data = await codex.queries.filterTokens({
+        tokens: [address],
+      });
+
+      return data?.filterTokens?.results?.[0];
+    },
+    enabled: isCodex,
+    refetchInterval: 20000,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
+  });
+
   const isTokenOwner = publicKey?.toString() === token?.creator;
 
-  const currentPrice = token?.currentPrice || 0;
-  const marketCapUSD = token?.marketCapUSD || 0;
-  const volume24h = token?.volume24h || 0;
-
-  const tokenPriceUSD = token?.marketCapUSD / token?.tokenSupplyUiAmount;
-  const priceSOL = tokenPriceUSD / token?.solPriceUSD;
+  const codexData = codexQuery?.data;
+  const tokenPriceUSD = isCodex
+    ? Number(codexData?.priceUSD || 0)
+    : token?.marketCapUSD / token?.tokenSupplyUiAmount;
+  const marketCapUSD = isCodex
+    ? Number(codexData?.marketCap || 0)
+    : token?.marketCapUSD || 0;
+  const volume24h = isCodex
+    ? Number(codexData?.volume24 || 0)
+    : token?.volume24h || 0;
+  const priceSOL = isCodex
+    ? Number(tokenPriceUSD || 0) / Number(contextSolPrice || 0)
+    : Number(tokenPriceUSD) / token?.solPriceUSD;
 
   const { tokenBalance } = useTokenBalance({
     tokenId: token?.mint || (params?.address as string),
@@ -290,15 +318,9 @@ export default function Page() {
     );
   }
 
-  // --- Helmet Setup --- Add this block
-  const apiBaseUrl = env.apiUrl || ""; // Use env helper
-  const ogImageUrl = address
-    ? `${apiBaseUrl}/api/og-image/${address}.png`
-    : `${apiBaseUrl}/default-og-image.png`; // Use API base URL and default
-  const pageUrl = window.location.href; // Or construct canonical URL
-  const defaultDescription = `View ${token?.name || "token"} details, price, and market cap on auto.fun.`;
-  const title = `${token?.name || "Token"} (${token?.ticker || "--"}) - auto.fun`;
-  // --- End Helmet Setup ---
+  const queryLoading = isCodex
+    ? tokenQuery?.isPending && codexQuery?.isPending
+    : tokenQuery?.isPending;
 
   return (
     <Fragment>
@@ -309,14 +331,17 @@ export default function Page() {
         {/* Top Stats Section - Full Width */}
         <div className="w-full py-10 flex flex-wrap justify-between">
           <TopPageItem
+            isLoading={queryLoading}
             title="Market Cap"
             value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
           />
           <TopPageItem
+            isLoading={queryLoading}
             title="24hr Volume"
             value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
           />
           <TopPageItem
+            isLoading={queryLoading}
             title="Age"
             value={token?.createdAt ? fromNow(token?.createdAt, true) : "-"}
           />
@@ -797,12 +822,29 @@ export default function Page() {
   );
 }
 
-const TopPageItem = ({ title, value }: { title: any; value: any }) => {
+const TopPageItem = ({
+  title,
+  value,
+  isLoading,
+}: {
+  title: any;
+  value: any;
+  isLoading?: boolean;
+}) => {
   return (
     <div className="flex-1 flex flex-col items-center">
-      <span className="text-2xl md:text-4xl xl:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-        {value}
-      </span>
+      {isLoading ? (
+        <img
+          className="h-[60px] w-auto select-none animate-wiggle animate-infinite animate-duration-[400ms] animate-ease-linear"
+          alt="logo"
+          src="/dice.svg"
+        />
+      ) : (
+        <span className="text-2xl md:text-4xl xl:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
+          {value}
+        </span>
+      )}
+
       <span className="text-base md:text-lg font-dm-mono text-autofun-text-secondary mt-3">
         {title}
       </span>
