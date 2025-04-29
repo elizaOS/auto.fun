@@ -50,10 +50,6 @@ export default function Trade({ token }: { token: IToken }) {
     token?.status
   );
 
-  const bondingCurveCompleted = token?.status === "active" ? true : false;
-
-  console.log({ status: token?.status });
-
   const isButtonDisabled = (amount: number | string) => {
     if (typeof amount === "string") {
       // For percentage buttons, check if balance is 0
@@ -474,7 +470,9 @@ export default function Trade({ token }: { token: IToken }) {
             <p
               className={twMerge([
                 "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
-                token?.curveProgress > 95 || token?.status === "migrating"
+                (token?.status === "active"
+                  ? token?.curveProgress > 95
+                  : false) || token?.status === "migrating"
                   ? "opacity-100"
                   : "h-0 opacity-0",
               ])}
