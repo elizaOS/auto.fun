@@ -18,6 +18,7 @@ import { FilterIcon, X } from "lucide-react"; // Example icons
 import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
 import { Helmet } from "react-helmet";
 import { useWindowSize } from "@uidotdev/usehooks";
+import FeaturedSection from "@/components/featured-section";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
@@ -44,17 +45,17 @@ export default function Page() {
   // Manage sort/filter state locally, initializing from localStorage using the hook
   const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
     "category",
-    "newest",
+    "newest"
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
-    "autofun",
+    "autofun"
   );
   const [bondingStatus, setBondingStatus] =
     useUrlSearchParams<BondingStatusType>("status", "all");
   const [tableSortBy, setTableSortBy] = useUrlSearchParams<TableSortByType>(
     "sort",
-    "marketCapUSD",
+    "marketCapUSD"
   );
   const [tableSortOrder, setTableSortOrder] = useState<SortOrderType>("desc");
 
@@ -143,7 +144,7 @@ export default function Page() {
       query.isFetchingNextPage,
       query.hasNextPage,
       query.fetchNextPage,
-    ],
+    ]
   );
 
   useEffect(() => {
@@ -163,22 +164,13 @@ export default function Page() {
       </Helmet>
       <div className="w-full min-h-[50vh] pb-24">
         {/* Header Section */}
-        {/* Show FrontpageHeader on desktop, logo on mobile */}
-        {!isMobile ? (
-          <FrontpageHeader tokens={headerTokens} />
-        ) : (
-          <div className="flex justify-center items-center py-8">
-            <img
-              src="/logo_wide.svg"
-              alt="Logo"
-              className="w-4/5 max-w-[400px]"
-            />
-          </div>
-        )}
+
         {/* Top Navigation */}
         <div
           className={`flex gap-1 w-full md:flex-wrap ${activeTab === "grid" ? "justify-between" : "justify-end"}`}
         >
+          {/* Featured section */}
+          <FeaturedSection />
           {/* Grid Sort Buttons - Hide on Table View */}
           {activeTab === "grid" && (
             <div className="flex items-center gap-1">
