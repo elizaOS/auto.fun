@@ -1,16 +1,9 @@
-import { getMaintenanceMode } from "@/utils/api";
-import { useQuery } from "@tanstack/react-query";
 import { PropsWithChildren } from "react";
 
-export default function MainentenaceProvider({ children }: PropsWithChildren) {
-  const query = useQuery({
-    queryKey: ["maintenance-mode"],
-    queryFn: getMaintenanceMode,
-  });
-
-  const data: { enabled: boolean } = query?.data as unknown as any;
-
-  const isEnabled = data?.enabled === true || false;
+export default function MainentenaceProvider() {
+  const isEnabled = import.meta.env.VITE_MAINTENANCE_MODE
+    ? Boolean(import.meta.env.VITE_MAINTENANCE_MODE)
+    : false;
 
   if (isEnabled)
     return (

@@ -163,11 +163,6 @@ app.post("/trigger-cron", async (c) => {
 // --- Root and Maintenance Routes ---
 app.get("/", (c) => c.json({ status: "ok", message: "Hono server running!" }));
 
-const MAINTENANCE_MODE_ENABLED = process.env.MAINTENANCE_MODE === "true";
-app.get("/maintenance-mode", (c) => {
-  return c.json({ enabled: MAINTENANCE_MODE_ENABLED });
-});
-
 // --- Not Found Handler ---
 app.notFound((c) => {
   logger.warn(`Not Found: ${c.req.method} ${c.req.url}`);
