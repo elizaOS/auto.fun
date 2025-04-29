@@ -319,7 +319,7 @@ export default function Page() {
   }
 
   const queryLoading = isCodex
-    ? tokenQuery?.isPending && codexQuery?.isPending
+    ? tokenQuery?.isPending || codexQuery?.isPending
     : tokenQuery?.isPending;
 
   return (
