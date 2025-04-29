@@ -100,31 +100,38 @@ const EyeFollower = React.memo(function EyeFollower() {
   }, []);
 
   // Calculate pupil positions based on mouse position
-  const calculatePupilPosition = useCallback((anchorX: number, anchorY: number) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
+  const calculatePupilPosition = useCallback(
+    (anchorX: number, anchorY: number) => {
+      if (!containerRef.current) return { x: 0, y: 0 };
 
-    // Calculate eye center in pixels
-    const eyeCenterX = containerSize.width * anchorX;
-    const eyeCenterY = containerSize.height * anchorY;
+      // Calculate eye center in pixels
+      const eyeCenterX = containerSize.width * anchorX;
+      const eyeCenterY = containerSize.height * anchorY;
 
-    // Calculate direction vector from eye to mouse
-    const dirX = mousePos.x - eyeCenterX;
-    const dirY = mousePos.y - eyeCenterY;
+      // Calculate direction vector from eye to mouse
+      const dirX = mousePos.x - eyeCenterX;
+      const dirY = mousePos.y - eyeCenterY;
 
-    // Calculate distance
-    const distance = Math.sqrt(dirX * dirX + dirY * dirY);
+      // Calculate distance
+      const distance = Math.sqrt(dirX * dirX + dirY * dirY);
 
-    // Normalize and apply max offset
-    const offsetX =
-      distance > 0 ? (dirX / distance) * Math.min(distance, maxPupilOffset) : 0;
-    const offsetY =
-      distance > 0 ? (dirY / distance) * Math.min(distance, maxPupilOffset) : 0;
+      // Normalize and apply max offset
+      const offsetX =
+        distance > 0
+          ? (dirX / distance) * Math.min(distance, maxPupilOffset)
+          : 0;
+      const offsetY =
+        distance > 0
+          ? (dirY / distance) * Math.min(distance, maxPupilOffset)
+          : 0;
 
-    return {
-      x: eyeCenterX + offsetX,
-      y: eyeCenterY + offsetY,
-    };
-  }, [containerSize, mousePos, maxPupilOffset]);
+      return {
+        x: eyeCenterX + offsetX,
+        y: eyeCenterY + offsetY,
+      };
+    },
+    [containerSize, mousePos, maxPupilOffset],
+  );
 
   // Calculate scale factor based on container width
   const getScaledPupilRadius = useCallback(() => {
@@ -175,7 +182,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const dicePositionsRef = useRef<THREE.Vector3[]>([]);
   const [selectedCube, setSelectedCube] = useState<THREE.Mesh | null>(null);
   const [selectedTokenData, setSelectedTokenData] = useState<IToken | null>(
-    null
+    null,
   );
   const [clickPosition, setClickPosition] = useState<{
     x: number;
@@ -232,7 +239,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Check if all dice are sleeping to reduce physics calculations
     let allSleeping = diceBodies.length > 0;
-    
+
     // Update dice positions and rotations - only for dice that are moving
     for (let i = 0; i < diceBodies.length; i++) {
       const dieBody = diceBodies[i];
@@ -245,7 +252,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         die.quaternion.copy(dieBody.quaternion as any);
       }
     }
-    
+
     // If all dice were previously moving but are now sleeping, mark them as sleeping
     if (!allDiceSleepingRef.current && allSleeping) {
       allDiceSleepingRef.current = true;
@@ -287,8 +294,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           new THREE.Vector3(
             Math.random() * 50 - 25,
             20 + i * 2,
-            Math.random() * 16 - 8
-          )
+            Math.random() * 16 - 8,
+          ),
         );
       }
       dicePositionsRef.current = positions;
@@ -305,24 +312,24 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Stagger the dice throws to prevent all dice from moving at once
     // This helps reduce initial lag by spreading out the physics calculations
     const staggerDelay = 50; // milliseconds between each die throw
-    
+
     diceBodiesRef.current.forEach((dieBody, i) => {
       // Use setTimeout to stagger the throws
       setTimeout(() => {
         if (!dieBody) return;
-        
+
         // Reset position with less extreme values
         dieBody.position.set(
           (Math.random() - 0.5) * 30, // Less extreme horizontal spread
           15 + i * 1.5, // Lower height with less spacing
-          (Math.random() - 0.5) * 12 // Less extreme depth
+          (Math.random() - 0.5) * 12, // Less extreme depth
         );
 
         // Reset rotation with less extreme angles
         dieBody.quaternion.setFromEuler(
           Math.random() * Math.PI * 0.5,
           Math.random() * Math.PI * 0.5,
-          Math.random() * Math.PI * 0.5
+          Math.random() * Math.PI * 0.5,
         );
 
         // Clear any existing motion
@@ -335,23 +342,23 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         // Apply gentler velocity
         const velocity = new CANNON.Vec3(
           (Math.random() - 0.5) * 8, // Reduced horizontal velocity
-          -5 - Math.random() * 8,    // Reduced downward velocity
-          (Math.random() - 0.5) * 8  // Reduced depth velocity
+          -5 - Math.random() * 8, // Reduced downward velocity
+          (Math.random() - 0.5) * 8, // Reduced depth velocity
         );
         dieBody.velocity.copy(velocity);
 
         // Apply gentler spin
         const angularVelocity = new CANNON.Vec3(
-          (Math.random() - 0.5) * 8,  // Reduced spin
-          (Math.random() - 0.5) * 8,  // Reduced spin
-          (Math.random() - 0.5) * 8   // Reduced spin
+          (Math.random() - 0.5) * 8, // Reduced spin
+          (Math.random() - 0.5) * 8, // Reduced spin
+          (Math.random() - 0.5) * 8, // Reduced spin
         );
         dieBody.angularVelocity.copy(angularVelocity);
-        
+
         // Apply higher damping initially to reduce jitter
         dieBody.linearDamping = 0.4;
         dieBody.angularDamping = 0.4;
-        
+
         // Return to normal damping after settling
         setTimeout(() => {
           if (dieBody) {
@@ -364,49 +371,52 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   }, []);
 
   // Handle clicking anywhere on the container
-  const handleContainerClick = useCallback((event: React.MouseEvent) => {
-    // Only allow interaction if at least one die is loaded
-    if (loadedDice.size === 0) return;
+  const handleContainerClick = useCallback(
+    (event: React.MouseEvent) => {
+      // Only allow interaction if at least one die is loaded
+      if (loadedDice.size === 0) return;
 
-    // Store click position relative to the container
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) {
-      setClickPosition({
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      });
-    }
-
-    // Get container bounds for raycaster
-    if (!rect || !cameraRef.current || !sceneRef.current) return;
-
-    // Calculate normalized mouse position
-    const mouse = new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
-    );
-
-    // Setup raycaster
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, cameraRef.current);
-
-    // If clicking background and we have a selected cube, deselect it
-    if (selectedCube) {
-      // Remove glow effect
-      if (Array.isArray(selectedCube.material)) {
-        selectedCube.material.forEach((mat) => {
-          if (mat instanceof THREE.MeshStandardMaterial) {
-            mat.emissiveIntensity = 0.3;
-          }
+      // Store click position relative to the container
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        setClickPosition({
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
         });
       }
-      setSelectedCube(null);
-      setSelectedTokenData(null);
-    } else {
-      // Only apply force if no cube is selected
-      applyForceToAllDice(event.nativeEvent);
-    }
-  }, [loadedDice, selectedCube]);
+
+      // Get container bounds for raycaster
+      if (!rect || !cameraRef.current || !sceneRef.current) return;
+
+      // Calculate normalized mouse position
+      const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+
+      // Setup raycaster
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, cameraRef.current);
+
+      // If clicking background and we have a selected cube, deselect it
+      if (selectedCube) {
+        // Remove glow effect
+        if (Array.isArray(selectedCube.material)) {
+          selectedCube.material.forEach((mat) => {
+            if (mat instanceof THREE.MeshStandardMaterial) {
+              mat.emissiveIntensity = 0.3;
+            }
+          });
+        }
+        setSelectedCube(null);
+        setSelectedTokenData(null);
+      } else {
+        // Only apply force if no cube is selected
+        applyForceToAllDice(event.nativeEvent);
+      }
+    },
+    [loadedDice, selectedCube],
+  );
 
   // Apply force to all dice when clicking background - optimized for smoother movement
   // @ts-ignore
@@ -424,26 +434,30 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const forceVector = new CANNON.Vec3(
         (Math.random() - 0.5) * 100, // Reduced horizontal force
         Math.random() * 30, // Reduced upward force
-        (Math.random() - 0.5) * 100 // Reduced horizontal force
+        (Math.random() - 0.5) * 100, // Reduced horizontal force
       );
 
       // Apply gentler velocity changes
       // Blend current velocity with new velocity for smoother transitions
       dieBody.velocity.x = dieBody.velocity.x * 0.2 + forceVector.x * 0.8;
-      dieBody.velocity.y = Math.max(dieBody.velocity.y, 0) * 0.2 + forceVector.y * 0.8;
+      dieBody.velocity.y =
+        Math.max(dieBody.velocity.y, 0) * 0.2 + forceVector.y * 0.8;
       dieBody.velocity.z = dieBody.velocity.z * 0.2 + forceVector.z * 0.8;
 
       // Add more controlled spin with less randomness
       const angularVelocity = new CANNON.Vec3(
         (Math.random() - 0.5) * 5, // Reduced spin
         (Math.random() - 0.5) * 5, // Reduced spin
-        (Math.random() - 0.5) * 5  // Reduced spin
+        (Math.random() - 0.5) * 5, // Reduced spin
       );
-      
+
       // Blend current angular velocity with new angular velocity
-      dieBody.angularVelocity.x = dieBody.angularVelocity.x * 0.3 + angularVelocity.x * 0.7;
-      dieBody.angularVelocity.y = dieBody.angularVelocity.y * 0.3 + angularVelocity.y * 0.7;
-      dieBody.angularVelocity.z = dieBody.angularVelocity.z * 0.3 + angularVelocity.z * 0.7;
+      dieBody.angularVelocity.x =
+        dieBody.angularVelocity.x * 0.3 + angularVelocity.x * 0.7;
+      dieBody.angularVelocity.y =
+        dieBody.angularVelocity.y * 0.3 + angularVelocity.y * 0.7;
+      dieBody.angularVelocity.z =
+        dieBody.angularVelocity.z * 0.3 + angularVelocity.z * 0.7;
     }
   }, []);
 
@@ -495,28 +509,32 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Add visibility detection to pause animation when not in viewport
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     // Create intersection observer to detect when component is in viewport
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         // Store visibility state in a ref to avoid re-renders
         const isVisible = entry.isIntersecting;
-        
+
         // If we have an animation frame ID and the component is hidden, cancel the animation
         if (!isVisible && animationFrameIdRef.current) {
           cancelAnimationFrame(animationFrameIdRef.current);
           animationFrameIdRef.current = undefined;
-        } else if (isVisible && !animationFrameIdRef.current && sceneInitializedRef.current) {
+        } else if (
+          isVisible &&
+          !animationFrameIdRef.current &&
+          sceneInitializedRef.current
+        ) {
           // Restart animation if component becomes visible again and was previously initialized
           animationFrameIdRef.current = requestAnimationFrame(animate);
         }
       },
-      { threshold: 0.1 } // Trigger when at least 10% of the component is visible
+      { threshold: 0.1 }, // Trigger when at least 10% of the component is visible
     );
-    
+
     observer.observe(containerRef.current);
-    
+
     return () => {
       if (containerRef.current) {
         observer.unobserve(containerRef.current);
@@ -568,7 +586,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         restitution: 0.3, // Lower restitution for less bouncing
         contactEquationStiffness: 1e7, // Stiffer contacts for stability
         contactEquationRelaxation: 3, // Relaxation for smoother contacts
-      })
+      }),
     );
 
     world.addContactMaterial(
@@ -577,7 +595,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         restitution: 0.5, // Moderate restitution for walls
         contactEquationStiffness: 1e7, // Stiffer contacts for stability
         contactEquationRelaxation: 3, // Relaxation for smoother contacts
-      })
+      }),
     );
 
     world.addContactMaterial(
@@ -586,7 +604,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         restitution: 0.3, // Lower restitution for less bouncing
         contactEquationStiffness: 1e7, // Stiffer contacts for stability
         contactEquationRelaxation: 3, // Relaxation for smoother contacts
-      })
+      }),
     );
 
     // Calculate dimensions based on aspect ratio
@@ -602,7 +620,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       frustumHeight / 2,
       frustumHeight / -2,
       0.001,
-      1000
+      1000,
     );
     cameraRef.current = camera;
     camera.position.set(0, 50, 0);
@@ -663,7 +681,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const floorBody = new CANNON.Body({
       mass: 0, // static body
       shape: new CANNON.Box(
-        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2)
+        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2),
       ),
       material: floorMaterial,
     });
@@ -754,20 +772,23 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const fallbackTexture = "header/placeholder/logo.jpg";
 
     // Create a texture cache to avoid reloading
-    const textureCache = window.__TEXTURE_CACHE__ || new Map<string, THREE.Texture>();
-    
+    const textureCache =
+      window.__TEXTURE_CACHE__ || new Map<string, THREE.Texture>();
+
     // Store the cache in the window object for reuse
     if (!window.__TEXTURE_CACHE__) {
       window.__TEXTURE_CACHE__ = textureCache;
     }
 
     // Function to create materials for a die with the same texture on all sides
-    const createDieMaterialsWithSameTexture = (imageUrl: string): Promise<THREE.Material[]> => {
+    const createDieMaterialsWithSameTexture = (
+      imageUrl: string,
+    ): Promise<THREE.Material[]> => {
       return new Promise((resolve) => {
         // Check if texture is already in cache
         if (textureCache.has(imageUrl)) {
           const cachedTexture = textureCache.get(imageUrl)!;
-          
+
           // Create materials with cached texture
           const materials = Array(6).fill(
             new THREE.MeshStandardMaterial({
@@ -776,22 +797,22 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
               metalness: 0.3,
               emissiveMap: cachedTexture,
               emissiveIntensity: 0.3,
-            })
+            }),
           );
-          
+
           resolve(materials);
           return;
         }
-        
+
         // Load new texture if not in cache
         textureLoader.load(
           imageUrl,
           (texture) => {
             texture.colorSpace = THREE.SRGBColorSpace;
-            
+
             // Cache the texture
             textureCache.set(imageUrl, texture);
-            
+
             // Create materials with the loaded texture
             const materials = Array(6).fill(
               new THREE.MeshStandardMaterial({
@@ -800,9 +821,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                 metalness: 0.3,
                 emissiveMap: texture,
                 emissiveIntensity: 0.3,
-              })
+              }),
             );
-            
+
             resolve(materials);
           },
           undefined,
@@ -821,8 +842,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                     metalness: 0.3,
                     emissiveMap: cachedFallback,
                     emissiveIntensity: 0.3,
-                  })
-                )
+                  }),
+                ),
               );
               return;
             }
@@ -845,8 +866,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                       metalness: 0.3,
                       emissiveMap: fallbackTex,
                       emissiveIntensity: 0.3,
-                    })
-                  )
+                    }),
+                  ),
                 );
               },
               undefined,
@@ -862,9 +883,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                 });
 
                 resolve(Array(6).fill(solidMaterial));
-              }
+              },
             );
-          }
+          },
         );
       });
     };
@@ -880,14 +901,14 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     async function createDie(
       position: THREE.Vector3,
       scale: number = 1,
-      tokenIndex: number
+      tokenIndex: number,
     ) {
       const tokenData = selectedTokens[tokenIndex] || {
         address: "",
         image: fallbackTexture,
       };
       const dieMaterials = await createDieMaterialsWithSameTexture(
-        resizeImage(tokenData.image, 100, 100)
+        resizeImage(tokenData.image, 100, 100),
       );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 
@@ -903,7 +924,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const halfExtents = new CANNON.Vec3(
         scale + 0.5,
         scale + 0.25,
-        scale + 0.25
+        scale + 0.25,
       );
       const dieBody = new CANNON.Body({
         mass: 100, // Reduced mass for smoother physics
@@ -919,7 +940,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
 
       // Store the mesh and token data with the body for updates
@@ -955,7 +976,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             new THREE.Vector3(
               Math.random() * 50 - 25,
               20 + i * 2,
-              Math.random() * 16 - 8
+              Math.random() * 16 - 8,
             );
 
           // Create die and add to scene
@@ -973,14 +994,14 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             const position = new THREE.Vector3(
               Math.random() * 50 - 25,
               20 + i * 2,
-              Math.random() * 16 - 8
+              Math.random() * 16 - 8,
             );
 
             // Create die and add to scene
             const { die, dieBody } = await createDie(
               position,
               scale,
-              i % numDice
+              i % numDice,
             );
             diceRef.current.push(die);
             diceBodiesRef.current.push(dieBody);
@@ -1003,29 +1024,32 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       try {
         // In this event, event.body is the body that has a collision
         const impactedBody = event.body;
-        
+
         if (!impactedBody || impactedBody.mass <= 0) return;
-        
+
         // Only add a small amount of randomness to prevent jitter
         // Use much smaller values and apply them more gently
         const randomX = (Math.random() - 0.5) * 2; // Reduced randomness
         const randomY = (Math.random() - 0.5) * 2; // Reduced randomness
         const randomZ = (Math.random() - 0.5) * 2; // Reduced randomness
-        
+
         // Apply gentler changes to angular velocity
-        impactedBody.angularVelocity.x = impactedBody.angularVelocity.x * 0.8 + randomX * 0.2;
-        impactedBody.angularVelocity.y = impactedBody.angularVelocity.y * 0.8 + randomY * 0.2;
-        impactedBody.angularVelocity.z = impactedBody.angularVelocity.z * 0.8 + randomZ * 0.2;
-        
+        impactedBody.angularVelocity.x =
+          impactedBody.angularVelocity.x * 0.8 + randomX * 0.2;
+        impactedBody.angularVelocity.y =
+          impactedBody.angularVelocity.y * 0.8 + randomY * 0.2;
+        impactedBody.angularVelocity.z =
+          impactedBody.angularVelocity.z * 0.8 + randomZ * 0.2;
+
         // Add a very small upward bounce only if needed
         if (impactedBody.velocity.y < 0.2) {
           impactedBody.velocity.y += Math.random() * 0.5; // Much smaller bounce
         }
-        
+
         // Apply damping to reduce jitter after collisions
         impactedBody.linearDamping = 0.5; // Increase damping after collision
         impactedBody.angularDamping = 0.5; // Increase damping after collision
-        
+
         // Schedule damping to return to normal after a short delay
         setTimeout(() => {
           if (impactedBody) {
@@ -1114,7 +1138,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         floor.scale.set(
           newFrustumWidth / frustumWidth,
           1,
-          newFrustumHeight / frustumHeight
+          newFrustumHeight / frustumHeight,
         );
 
         backWall.position.set(0, 2, -newFrustumHeight / 2);
@@ -1140,35 +1164,35 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         // Floor physics body
         floorBody.position.set(0, -0.5, 0);
         floorBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2)
+          new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
         );
         world.addBody(floorBody);
 
         // Back wall physics body
         backWallBody.position.set(0, 2, -newFrustumHeight / 2);
         backWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5)
+          new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5),
         );
         world.addBody(backWallBody);
 
         // Front wall physics body
         frontWallBody.position.set(0, 2, newFrustumHeight / 2);
         frontWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5)
+          new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5),
         );
         world.addBody(frontWallBody);
 
         // Left wall physics body
         leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
         leftWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(0.5, 20, newFrustumHeight / 2)
+          new CANNON.Vec3(0.5, 20, newFrustumHeight / 2),
         );
         world.addBody(leftWallBody);
 
         // Right wall physics body
         rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
         rightWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(0.5, 50, newFrustumHeight / 2)
+          new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
         );
         world.addBody(rightWallBody);
         // Do NOT reposition and reroll dice when resizing
