@@ -18,6 +18,7 @@ import { FilterIcon, X } from "lucide-react"; // Example icons
 import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
 import { Helmet } from "react-helmet";
 import { useWindowSize } from "@uidotdev/usehooks";
+import FeaturedSection from "@/components/featured-section";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
@@ -26,22 +27,9 @@ type BondingStatusType = "all" | "active" | "locked";
 type TableSortByType = keyof IToken | null;
 type SortOrderType = "asc" | "desc";
 
-// Define the type for params passed to useTokens hook locally
-// We use the actual interface from the hook now
-/*
-interface UseTokensParams {
-  sortBy: string;
-  sortOrder: SortOrderType;
-  hideImported?: number; // 0 or 1
-  bondingStatus?: BondingStatusType;
-  // Add other potential params if needed (e.g., search, page, limit)
-}
-*/
-
 export default function Page() {
   const [activeTab] = useViewMode();
-  const { width } = useWindowSize();
-  // Manage sort/filter state locally, initializing from localStorage using the hook
+
   const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
     "category",
     "newest",
@@ -58,11 +46,9 @@ export default function Page() {
   );
   const [tableSortOrder, setTableSortOrder] = useState<SortOrderType>("desc");
 
-  // State for filter popover visibility (no need to persist this)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null); // Ref for the filter popover
+  const filterRef = useRef<HTMLDivElement>(null);
 
-  // Click outside handler for filter popover
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -150,31 +136,19 @@ export default function Page() {
     getSocket().emit("subscribeGlobal");
   }, []);
 
-  const headerTokens = useMemo(() => {
-    return query?.items || [];
-  }, [query?.items]);
-
-  const isMobile = width ? width <= 640 : false;
-
   return (
     <Fragment>
       <Helmet>
         <title>auto.fun</title>
       </Helmet>
-      <div className="w-full min-h-[50vh] pb-24">
-        {/* Header Section */}
-        {/* Show FrontpageHeader on desktop, logo on mobile */}
-        {!isMobile ? (
-          <FrontpageHeader tokens={headerTokens} />
-        ) : (
-          <div className="flex justify-center items-center py-8">
-            <img
-              src="/logo_wide.svg"
-              alt="Logo"
-              className="w-4/5 max-w-[400px]"
-            />
-          </div>
-        )}
+      <div className="w-full min-h-[50vh] pb-24 flex flex-col gap-6">
+        {/* Featured section */}
+
+        <div className="w-full hidden md:block">
+          <img src="hero.svg" className="w-full my-auto" alt="hero-svg" />
+        </div>
+
+        <FeaturedSection />
         {/* Top Navigation */}
         <div
           className={`flex gap-1 w-full md:flex-wrap ${activeTab === "grid" ? "justify-between" : "justify-end"}`}
@@ -236,7 +210,6 @@ export default function Page() {
                 </div>
                 <div className="flex flex-col gap-2">
                   {/* Token Source Filter */}
-
                   <label className="text-sm font-dm-mono font-medium text-muted-foreground">
                     Token Source
                   </label>
@@ -308,7 +281,7 @@ export default function Page() {
           ) : (
             <Fragment>
               {activeTab === "grid" ? (
-                <div className="my-6 relative">
+                <div className="relative">
                   <GridView data={query.items} />
                   <div ref={lastElementRef} style={{ height: "10px" }} />
                 </div>
