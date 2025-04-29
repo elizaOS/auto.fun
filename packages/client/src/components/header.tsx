@@ -56,7 +56,6 @@ export default function Header() {
             {pathname !== "/create" && (
               <>
                 <SearchBar />
-
                 <Link to="/create">
                   <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#03FF24] min-w-34">
                     New Coin{" "}

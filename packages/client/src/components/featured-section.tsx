@@ -8,13 +8,13 @@ export default function FeaturedSection() {
     sortBy: "featured",
     sortOrder: "desc",
     enabled: true,
-    hideImported: 1
+    hideImported: 1,
   });
 
   const items = (query?.items || []).splice(0, 4);
 
-  if(query?.isLoading){
-    return <Loader/>
+  if (query?.isLoading) {
+    return <Loader />;
   }
 
   return (
