@@ -102,7 +102,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               const data = queryClient.getQueryData(queryKey);
               queryClient.setQueryData(
                 queryKey,
-                [event, ...(data as any)].slice(0, 50)
+                [event, ...(data as any)].slice(0, 50),
               );
             }
           }
@@ -122,7 +122,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink
+        sink,
       );
     }
 
@@ -219,91 +219,93 @@ export default function SwapsTable({ token }: { token: IToken }) {
         </TableHeader>
         <TableBody>
           {(items || [])?.length > 0
-            ? items?.map((swap, _) => {
-                const {
-                  account,
-                  swapType,
-                  solana,
-                  usdValue,
-                  tokenAmount,
-                  transactionHash,
-                  timestamp,
-                } = dataExtractor(swap);
-                return (
-                  <TableRow
-                    className="hover:bg-white/5"
-                    key={`${transactionHash}_${_}`}
-                  >
-                    <TableCell className="text-left text-sm">
-                      <Link
-                        to={env.getAccountUrl(account)}
-                        target="_blank"
-                        className="hover:text-autofun-text-highlight"
-                      >
-                        {shortenAddress(account)}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-center text-sm">
-                      <Triangle
-                        color={
-                          swapType === "Buy"
-                            ? "bg-[#03FF24] m-auto"
-                            : "bg-[#EF5350] rotate-180 m-auto"
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src="/solana.svg"
-                          width={32}
-                          height={32}
-                          className="size-2.5 rounded-full"
-                        />
-                        <span className="text-sm">
-                          {formatSwapAmount(solana, true)}
-                        </span>
-                        {usdValue ? (
-                          <span className="text-autofun-text-secondary text-xs">
-                            {formatNumber(usdValue, true)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-left text-sm">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={
-                            token?.image
-                              ? resizeImage(token.image, 50, 50)
-                              : "/placeholder.png"
+            ? ((items || []).length > 100 ? items?.splice(0, 50) : items)?.map(
+                (swap, _) => {
+                  const {
+                    account,
+                    swapType,
+                    solana,
+                    usdValue,
+                    tokenAmount,
+                    transactionHash,
+                    timestamp,
+                  } = dataExtractor(swap);
+                  return (
+                    <TableRow
+                      className="hover:bg-white/5"
+                      key={`${transactionHash}_${_}`}
+                    >
+                      <TableCell className="text-left text-sm">
+                        <Link
+                          to={env.getAccountUrl(account)}
+                          target="_blank"
+                          className="hover:text-autofun-text-highlight"
+                        >
+                          {shortenAddress(account)}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        <Triangle
+                          color={
+                            swapType === "Buy"
+                              ? "bg-[#03FF24] m-auto"
+                              : "bg-[#EF5350] rotate-180 m-auto"
                           }
-                          width={32}
-                          height={32}
-                          className="size-2.5 rounded-full"
                         />
-                        <span className="text-sm">
-                          {formatSwapAmount(tokenAmount, true)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-autofun-text-secondary">
-                      <Interval
-                        ms={800}
-                        resolver={() => fromNow(timestamp, true)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <Link
-                        to={env.getTransactionUrl(transactionHash)}
-                        target="_blank"
-                      >
-                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src="/solana.svg"
+                            width={32}
+                            height={32}
+                            className="size-2.5 rounded-full"
+                          />
+                          <span className="text-sm">
+                            {formatSwapAmount(solana, true)}
+                          </span>
+                          {usdValue ? (
+                            <span className="text-autofun-text-secondary text-xs">
+                              {formatNumber(usdValue, true)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-left text-sm">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={
+                              token?.image
+                                ? resizeImage(token.image, 50, 50)
+                                : "/placeholder.png"
+                            }
+                            width={32}
+                            height={32}
+                            className="size-2.5 rounded-full"
+                          />
+                          <span className="text-sm">
+                            {formatSwapAmount(tokenAmount, true)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-autofun-text-secondary">
+                        <Interval
+                          ms={800}
+                          resolver={() => fromNow(timestamp, true)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <Link
+                          to={env.getTransactionUrl(transactionHash)}
+                          target="_blank"
+                        >
+                          <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+              )
             : null}
         </TableBody>
       </Table>
