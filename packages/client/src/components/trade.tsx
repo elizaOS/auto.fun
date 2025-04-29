@@ -47,7 +47,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -92,7 +92,7 @@ export default function Trade({ token }: { token: IToken }) {
       const scaleFactor = 10 ** decimalPlaces;
       const amountBN = new BN(Math.round(amount * scaleFactor));
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).div(new BN(scaleFactor)).toNumber()
@@ -114,7 +114,7 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
       const swapAmount = swapAmountResult?.estimatedOutput || 0;
       const priceImpact = swapAmountResult?.priceImpact || "0";
@@ -214,7 +214,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -307,8 +307,9 @@ export default function Trade({ token }: { token: IToken }) {
                   </button>
                   {!isTokenSelling ? (
                     <>
-                      {["0.1", "0.5", "1.0"].map((but, _) => (
+                      {["0.1", "0.5", "1.0"].map((but: string) => (
                         <button
+                          key={but}
                           onClick={() => {
                             setInputAmount(but);
                           }}
@@ -321,12 +322,13 @@ export default function Trade({ token }: { token: IToken }) {
                     </>
                   ) : (
                     <>
-                      {["25", "50", "75", "100"].map((perc, _) => (
+                      {["25", "50", "75", "100"].map((perc: string) => (
                         <button
+                          key={perc}
                           onClick={() => {
                             const percentage = parseFloat(perc) / 100;
                             setInputAmount(
-                              String(Number(balance) * percentage),
+                              String(Number(balance) * percentage)
                             );
                           }}
                           disabled={isButtonDisabled("25")}
