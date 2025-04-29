@@ -69,26 +69,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
     enabled: isCodex,
   });
 
-  const formatSwapAmount = (amount: number | string, isToken: boolean) => {
-    const numericAmount =
-      typeof amount === "string" ? parseFloat(amount) : amount;
-
-    if (isNaN(numericAmount)) return "0";
-
-    if (isToken) {
-      // Format token amount
-      if (numericAmount >= 1000000) {
-        return `${(numericAmount / 1000000).toFixed(2)}M`;
-      } else if (numericAmount >= 1000) {
-        return `${(numericAmount / 1000).toFixed(2)}K`;
-      } else {
-        return numericAmount.toFixed(2);
-      }
-    } else {
-      return numericAmount.toFixed(4);
-    }
-  };
-
   const items = isCodex ? query?.data : data;
 
   useEffect(() => {
@@ -102,7 +82,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               const data = queryClient.getQueryData(queryKey);
               queryClient.setQueryData(
                 queryKey,
-                [event, ...(data as any)].slice(0, 50),
+                Array.from(new Set([event, ...(data as any)])).slice(0, 50),
               );
             }
           }
@@ -211,7 +191,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           <TableRow className="bg-transparent">
             <TableHead className="w-[120px]">Account</TableHead>
             <TableHead className="text-center w-[75px]">Type</TableHead>
-            <TableHead className="text-left">SOL</TableHead>
+            <TableHead className="text-left w-[275px]">SOL</TableHead>
             <TableHead className="text-left">Token</TableHead>
             <TableHead className="text-right w-[80px]">Date</TableHead>
             <TableHead className="text-right w-[50px]" />
@@ -262,7 +242,8 @@ export default function SwapsTable({ token }: { token: IToken }) {
                             className="size-2.5 rounded-full"
                           />
                           <span className="text-sm">
-                            {formatSwapAmount(solana, true)}
+                            {solana}
+                            {/* {formatNumber(solana, true, true)} */}
                           </span>
                           {usdValue ? (
                             <span className="text-autofun-text-secondary text-xs">
@@ -284,7 +265,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                             className="size-2.5 rounded-full"
                           />
                           <span className="text-sm">
-                            {formatSwapAmount(tokenAmount, true)}
+                            {formatNumber(tokenAmount, true, true)}
                           </span>
                         </div>
                       </TableCell>
