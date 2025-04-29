@@ -888,13 +888,17 @@ export default function CommunityTab() {
           window.location.hash,
       );
 
-      console.log("OAUTH_REDIRECT_ORIGIN_KEY", OAUTH_REDIRECT_ORIGIN_KEY, window.location.pathname +
-        window.location.search +
-        window.location.hash)
+      console.log(
+        "OAUTH_REDIRECT_ORIGIN_KEY",
+        OAUTH_REDIRECT_ORIGIN_KEY,
+        window.location.pathname +
+          window.location.search +
+          window.location.hash,
+      );
 
       const apiUrl = env.apiUrl;
 
-      console.log("apiUrl", apiUrl)
+      console.log("apiUrl", apiUrl);
 
       if (!apiUrl) {
         toast.error("API URL not configured.");
