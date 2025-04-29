@@ -304,7 +304,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       </TableCell>
                     </TableRow>
                   );
-                }
+                },
               )
             : null}
         </TableBody>
