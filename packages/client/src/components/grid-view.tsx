@@ -13,7 +13,7 @@ export default function GridView({ data }: { data: IToken[] }) {
           <Link
             to={`/token/${token.mint}`}
             key={token.mint}
-            className="bg-autofun-background-card animate-fade-in group"
+            className="bg-autofun-background-card group"
           >
             <div className="flex flex-col min-w-0 relative">
               <div className="absolute top-0 left-0 p-2 px-3 z-10 group-hover:opacity-100 opacity-0 transition-opacity duration-200">
