@@ -18,6 +18,7 @@ module.exports = {
             highlight: "#03FF24",
             "action-highlight": "#03FF24",
             "action-disabled": "#171717",
+            muted: "#0C0C0C",
           },
           stroke: {
             primary: "#262626",

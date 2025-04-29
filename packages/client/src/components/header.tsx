@@ -56,7 +56,6 @@ export default function Header() {
             {pathname !== "/create" && (
               <>
                 <SearchBar />
-
                 <Link to="/create">
                   <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#03FF24] min-w-34">
                     New Coin{" "}
@@ -76,7 +75,7 @@ export default function Header() {
 
       {/* mobile menu */}
       <div
-        className={`sticky block md:hidden z-50 w-full ${pathname === "/create" ? "bg-transparent" : "bg-[#171717]"}`}
+        className={`sticky block md:hidden z-50 w-full mb-4 md:mb-0 ${pathname === "/create" ? "bg-transparent" : "bg-[#171717]"}`}
       >
         <div className="flex items-center justify-between lg:hidden w-full py-2 px-2">
           <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
