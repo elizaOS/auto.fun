@@ -110,7 +110,11 @@ export default function Chart({ token }: ChartProps) {
       localization: {
         // priceFormatter: (price: number) => formatNumber(price, true, false),
         priceFormatter: (price: number) => {
-          const decimalsLength = String(price)?.split(".")?.[1];
+          // Force the price into standard decimal notation (no scientific notation), keeping up to 12 digits after the decimal
+          // Example: 3.5898363524445996e-8 → "0.000000035898"
+          const normal = Number(price).toFixed(12);
+          const decimalsLength = normal.split(".")[1]?.replace(/0+$/, "")?.length || 1;
+
           return new Intl.NumberFormat("en-US", {
             notation: "standard",
             style: "currency",
