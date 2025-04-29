@@ -143,6 +143,11 @@ export default function Page() {
       </Helmet>
       <div className="w-full min-h-[50vh] pb-24 flex flex-col gap-6">
         {/* Featured section */}
+
+        <div className="w-full hidden md:block">
+          <img src="hero.svg" className="w-full my-auto" alt="hero-svg" />
+        </div>
+
         <FeaturedSection />
         {/* Top Navigation */}
         <div
