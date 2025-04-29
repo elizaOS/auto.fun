@@ -138,6 +138,9 @@ export default function Chart({ token }: ChartProps) {
       downColor: "rgb(225, 50, 85)",
       baseLineColor: "#212121",
       borderVisible: false,
+      priceFormat: {
+        minMove: 0.00000001,
+      },
     });
 
     candlestickSeriesRef.current = candlestickSeries;
