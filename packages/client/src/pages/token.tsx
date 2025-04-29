@@ -496,7 +496,7 @@ export default function Page() {
                   }
 
                   return (
-                    <div className="flex items-stretch gap-0.5">
+                    <div className="flex items-stretch gap-4">
                       {/* Use flex and items-stretch */}
                       {availableLinks.map((link) => (
                         <Link
