@@ -100,7 +100,10 @@ export default function SwapsTable({ token }: { token: IToken }) {
           for (const event of events) {
             if (event?.eventType === EventType.Swap) {
               const data = queryClient.getQueryData(queryKey);
-              queryClient.setQueryData(queryKey, [event, ...(data as any)]);
+              queryClient.setQueryData(
+                queryKey,
+                [event, ...(data as any)].slice(0, 50)
+              );
             }
           }
         }
@@ -119,7 +122,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink,
+        sink
       );
     }
 
