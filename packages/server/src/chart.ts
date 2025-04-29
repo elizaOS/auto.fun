@@ -7,6 +7,7 @@ import {
 import { getDB, tokens } from "./db";
 import { getGlobalRedisCache } from "./redis";
 import { logger } from "./util";
+import { getSOLPrice } from "./mcap";
 
 // Define interface for the API response types
 interface DexScreenerPair {
@@ -41,6 +42,7 @@ interface PriceFeedInfo {
   price: number;
   timestamp: Date;
   volume: number;
+  priceUsd?: number;
 }
 
 type CandlePrice = {
@@ -150,18 +152,20 @@ export async function fetchPriceChartData(
       );
       return []; // Return empty if cache fails
     }
+    const solPrice = await getSOLPrice();
 
     // Filter swaps by timestamp in application code
     const filteredSwaps = swapRecordsRaw.filter((swap) => {
       const swapTime = new Date(swap.timestamp).getTime();
       return swapTime >= start && swapTime <= end;
-    });
+    })
 
     // Convert to PriceFeedInfo array - ensure timestamp is not null
     const priceFeeds: PriceFeedInfo[] = filteredSwaps
       .filter(
         (swap: {
           price: number | null; // Allow null price
+          priceUsd: number | null | undefined; // Allow null priceUsd
           timestamp: string | Date; // Allow string or Date
           direction: number;
           amountIn: number | null;
@@ -170,13 +174,15 @@ export async function fetchPriceChartData(
       ) // Filter out swaps with null price or timestamp
       .map(
         (swap: {
+          priceUsd: number | undefined;
           price: number; // Not null after filter
           timestamp: string | Date; // Not null after filter
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
         }) => ({
-          price: swap.price,
+          price: swap.priceUsd || swap.price, // Use priceUsd if available, otherwise fallback to price
+          priceUsd: swap.priceUsd || undefined,
           timestamp: new Date(swap.timestamp), // Ensure it's a Date object
           // If direction is 0 (buy), amountIn is SOL
           // If direction is 1 (sell), amountOut is SOL
@@ -186,6 +192,14 @@ export async function fetchPriceChartData(
               : (swap.amountOut || 0) / 1e9,
         })
       );
+
+    // convert price to USD if priceUSD is not available
+    priceFeeds.forEach((feed) => {
+      if (!feed.priceUsd) {
+        feed.price = feed.price * solPrice;
+      }
+    }
+    );
 
     if (!priceFeeds.length) return [];
 

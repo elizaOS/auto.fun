@@ -45,16 +45,8 @@ const WebhookTokenPairEvent = z.object({
 
 router.post("/webhook", async (c) => {
   console.log("helius webhook received");
-  // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
-  console.log("Authorization", authorization);
-  console.log(
-    "HELUS_WEBHOOK_AUTH_TOKEN",
-    process.env.HELIUS_WEBHOOK_AUTH_TOKEN
-  );
 
-  console.log("authorization", authorization);
-  console.log("HELIUS_WEBHOOK_AUTH_TOKEN", process.env.HELIUS_WEBHOOK_AUTH_TOKEN);
 
   if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
     return c.json(

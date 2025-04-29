@@ -244,27 +244,22 @@ export async function processTransactionLogs(
     wsClient = getWebSocketClient();
   }
   console.log("Processing transaction logs:", logs);
-  // Try each handler in sequence and return on first match
   try {
     await handleNewToken(logs, signature, wsClient);
   } catch (err) {
     logger.info(`Error in NewToken handler: ${err}`);
   }
-  // if (newTokenResult) return newTokenResult;
   try {
     await handleSwap(logs, signature, wsClient);
   } catch (err) {
     logger.info(`Error in Swap handler: ${err}`);
   }
-  // if (swapResult) return swapResult;
   try {
     await handleCurveComplete(logs, signature, wsClient);
   } catch (err) {
     logger.info(`Error in CurveComplete handler: ${err}`);
   }
-  // if (curveResult) return curveResult;
 
-  // Default: no event found
   return { found: false };
 }
 
@@ -384,7 +379,10 @@ async function handleSwap(
       );
       console.log("fetched token market data", tokenWithMarketData);
       const marketCapUSD = tokenWithMarketData.marketCapUSD;
-
+      const price = direction === "1"
+        ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
+        : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS);
+      const priceUsd = price * solPrice
       const swapRecord = {
         id: crypto.randomUUID(),
         tokenMint: mintAddress,
@@ -394,9 +392,8 @@ async function handleSwap(
         amountIn: Number(amount),
         amountOut: Number(amountOut),
         price:
-          direction === "1"
-            ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
-            : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS),
+          price,
+        priceUsd: priceUsd,
         txId: signature,
         timestamp: new Date(),
       };
