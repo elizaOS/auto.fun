@@ -447,7 +447,7 @@ export default function Page() {
                   ];
 
                   const availableLinks = socialLinks.filter(
-                    (link) => !!link.url
+                    (link) => !!link.url,
                   );
 
                   if (availableLinks.length === 0) {
@@ -659,7 +659,7 @@ export default function Page() {
                     {formatNumber(
                       tokenBalance * priceSOL * solanaPrice,
                       true,
-                      false
+                      false,
                     )}
                   </span>
                 </div>
@@ -722,7 +722,7 @@ export default function Page() {
                         (token?.reserveLamport - token?.virtualReserves) /
                           LAMPORTS_PER_SOL,
                         true,
-                        true
+                        true,
                       )}{" "}
                       SOL in the bonding curve.
                     </p>

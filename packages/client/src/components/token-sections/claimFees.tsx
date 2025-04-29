@@ -30,7 +30,7 @@ export default function ClaimFees({ tokenMint }: { tokenMint: string }) {
     onError: (error) => {
       console.error("Error claiming fees:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to claim fees"
+        error instanceof Error ? error.message : "Failed to claim fees",
       );
     },
   });
