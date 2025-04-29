@@ -5,7 +5,7 @@ const Footer = () => {
   const isHomepage = pathname === "/";
 
   return (
-    <div className="flex flex-col gap-2 bg-gradient-to-t from-black pt-4 to-transparent">
+    <div className="flex flex-col gap-2 bg-gradient-to-t from-black to-transparent p-4">
       {!isHomepage && (
         <img
           className="w-auto h-16 mt-16 mb-16 select-none"

@@ -186,6 +186,10 @@ export default function Trade({ token }: { token: IToken }) {
     setSellAmount(Number(inputAmount));
   }, [inputAmount]);
 
+  useEffect(() => {
+    setInputAmount("0");
+  }, [isTokenSelling]);
+
   return (
     <div className="relative">
       <div className="grid grid-cols-1 gap-4">
@@ -290,7 +294,7 @@ export default function Trade({ token }: { token: IToken }) {
                   <Balance
                     token={token}
                     isSolana={!isTokenSelling}
-                    setSellAmount={setSellAmount}
+                    setSellAmount={setInputAmount}
                     balance={isTokenSelling ? tokenBalance : Number(solBalance)}
                   />
                 </div>

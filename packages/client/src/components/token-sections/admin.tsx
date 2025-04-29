@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/utils/api";
 import { useWallet } from "@solana/wallet-adapter-react";
 import AudioPlayer from "../audio-player";
+import Loader from "../loader";
 
 type FormData = {
   links: {
@@ -534,11 +535,7 @@ export default function AdminTab() {
   };
 
   if (isLoading) {
-    return (
-      <div className="p-4 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#03FF24]"></div>
-      </div>
-    );
+    return <Loader />;
   }
 
   // If not a moderator or owner, don't render the admin controls
@@ -551,8 +548,8 @@ export default function AdminTab() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col p-4 gap-4">
-      <div className="grid grid-cols-1">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-0.5">
         {/* Website Field */}
         <Controller
           control={control}

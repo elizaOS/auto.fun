@@ -221,7 +221,7 @@ button {
 }
 
 .chat-scroll-container::-webkit-scrollbar-thumb {
-  background-color: #03FF24; /* Green thumb */
+  background-color: #03ff24; /* Green thumb */
   border-radius: 0; /* Force rectangular */
   border: none;
 }
@@ -254,7 +254,7 @@ button {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #03FF24;
+  background-color: #03ff24;
   border-radius: 0;
   border: none;
 }
@@ -262,5 +262,5 @@ button {
 /* For Firefox */
 * {
   scrollbar-width: auto;
-  scrollbar-color: #03FF24 #212121;
+  scrollbar-color: #03ff24 #212121;
 }
