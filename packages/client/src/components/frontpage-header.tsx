@@ -162,11 +162,12 @@ interface DiceRollerProps {
 const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Track loaded dice instead of a global loading state
+  const [loadedDice, setLoadedDice] = useState<Set<number>>(new Set());
   const dicePositionsRef = useRef<THREE.Vector3[]>([]);
   const [selectedCube, setSelectedCube] = useState<THREE.Mesh | null>(null);
   const [selectedTokenData, setSelectedTokenData] = useState<IToken | null>(
-    null,
+    null
   );
   const [clickPosition, setClickPosition] = useState<{
     x: number;
@@ -200,83 +201,106 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     if (!tokens.length) return;
 
-    // Randomly select up to 5 tokens
-    const shuffled = [...tokens].sort(() => 0.5 - Math.random());
-    const selected = shuffled
-      .slice(0, Math.min(5, tokens.length))
-      .map((token) => ({
-        address: token.mint || "",
-        image: token.image || "header/placeholder/logo.jpg", // Fallback if no image
-      }));
+    // Only select tokens once and never change them after initial selection
+    if (!tokensProcessedRef.current) {
+      // Randomly select up to 5 tokens
+      const shuffled = [...tokens].sort(() => 0.5 - Math.random());
+      const selected = shuffled
+        .slice(0, Math.min(5, tokens.length))
+        .map((token) => ({
+          address: token.mint || "",
+          image: token.image || "header/placeholder/logo.jpg", // Fallback if no image
+        }));
 
-    setSelectedTokens(selected);
+      setSelectedTokens(selected);
 
-    // Initialize random dice positions
-    const positions: THREE.Vector3[] = [];
-    for (let i = 0; i < Math.min(5, tokens.length); i++) {
-      positions.push(
-        new THREE.Vector3(
-          Math.random() * 50 - 25,
-          20 + i * 2,
-          Math.random() * 16 - 8,
-        ),
-      );
+      // Initialize random dice positions
+      const positions: THREE.Vector3[] = [];
+      for (let i = 0; i < Math.min(5, tokens.length); i++) {
+        positions.push(
+          new THREE.Vector3(
+            Math.random() * 50 - 25,
+            20 + i * 2,
+            Math.random() * 16 - 8
+          )
+        );
+      }
+      dicePositionsRef.current = positions;
+
+      // Mark tokens as processed
+      tokensProcessedRef.current = true;
     }
-    dicePositionsRef.current = positions;
-
-    // Mark tokens as processed
-    tokensProcessedRef.current = true;
   }, [tokens]);
 
-  // Function to throw dice with physics
+  // Function to throw dice with physics - optimized for smoother initial movement
   const throwDice = () => {
     if (!diceBodiesRef.current.length) return;
 
-    for (let i = 0; i < diceBodiesRef.current.length; i++) {
-      const dieBody = diceBodiesRef.current[i];
+    // Stagger the dice throws to prevent all dice from moving at once
+    // This helps reduce initial lag by spreading out the physics calculations
+    const staggerDelay = 50; // milliseconds between each die throw
+    
+    diceBodiesRef.current.forEach((dieBody, i) => {
+      // Use setTimeout to stagger the throws
+      setTimeout(() => {
+        if (!dieBody) return;
+        
+        // Reset position with less extreme values
+        dieBody.position.set(
+          (Math.random() - 0.5) * 30, // Less extreme horizontal spread
+          15 + i * 1.5, // Lower height with less spacing
+          (Math.random() - 0.5) * 12 // Less extreme depth
+        );
 
-      // Reset position higher for more energy
-      dieBody.position.set(
-        Math.random() * 50 - 25,
-        20 + i * 2,
-        Math.random() * 16 - 8,
-      );
+        // Reset rotation with less extreme angles
+        dieBody.quaternion.setFromEuler(
+          Math.random() * Math.PI * 0.5,
+          Math.random() * Math.PI * 0.5,
+          Math.random() * Math.PI * 0.5
+        );
 
-      // Reset rotation
-      dieBody.quaternion.setFromEuler(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-      );
+        // Clear any existing motion
+        dieBody.velocity.set(0, 0, 0);
+        dieBody.angularVelocity.set(0, 0, 0);
 
-      // Clear any existing motion
-      dieBody.velocity.set(0, 0, 0);
-      dieBody.angularVelocity.set(0, 0, 0);
+        // Wake up the body
+        dieBody.wakeUp();
 
-      // Wake up the body
-      dieBody.wakeUp();
+        // Apply gentler velocity
+        const velocity = new CANNON.Vec3(
+          (Math.random() - 0.5) * 8, // Reduced horizontal velocity
+          -5 - Math.random() * 8,    // Reduced downward velocity
+          (Math.random() - 0.5) * 8  // Reduced depth velocity
+        );
+        dieBody.velocity.copy(velocity);
 
-      // Apply random velocity
-      const velocity = new CANNON.Vec3(
-        (Math.random() - 0.5) * 15,
-        -10 - Math.random() * 15,
-        (Math.random() - 0.5) * 15,
-      );
-      dieBody.velocity.copy(velocity);
-
-      // Apply spin
-      const angularVelocity = new CANNON.Vec3(
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20,
-      );
-      dieBody.angularVelocity.copy(angularVelocity);
-    }
+        // Apply gentler spin
+        const angularVelocity = new CANNON.Vec3(
+          (Math.random() - 0.5) * 8,  // Reduced spin
+          (Math.random() - 0.5) * 8,  // Reduced spin
+          (Math.random() - 0.5) * 8   // Reduced spin
+        );
+        dieBody.angularVelocity.copy(angularVelocity);
+        
+        // Apply higher damping initially to reduce jitter
+        dieBody.linearDamping = 0.4;
+        dieBody.angularDamping = 0.4;
+        
+        // Return to normal damping after settling
+        setTimeout(() => {
+          if (dieBody) {
+            dieBody.linearDamping = 0.3;
+            dieBody.angularDamping = 0.3;
+          }
+        }, 1000);
+      }, i * staggerDelay);
+    });
   };
 
   // Handle clicking anywhere on the container
   const handleContainerClick = (event: React.MouseEvent) => {
-    if (isLoading) return;
+    // Only allow interaction if at least one die is loaded
+    if (loadedDice.size === 0) return;
 
     // Store click position relative to the container
     const rect = containerRef.current?.getBoundingClientRect();
@@ -293,7 +317,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Calculate normalized mouse position
     const mouse = new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
 
     // Setup raycaster
@@ -368,34 +392,42 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   //   }
   // };
 
-  // Apply force to all dice when clicking background
+  // Apply force to all dice when clicking background - optimized for smoother movement
   // @ts-ignore
   const applyForceToAllDice = (event: MouseEvent) => {
     if (!diceBodiesRef.current.length) {
       return;
     }
 
-    // Force for all dice
+    // Force for all dice - more controlled and less chaotic
     for (const dieBody of diceBodiesRef.current) {
       // Wake up the body
       dieBody.wakeUp();
 
-      // Apply random force
+      // Apply more controlled force with less randomness
       const forceVector = new CANNON.Vec3(
-        (Math.random() - 0.5) * 200,
-        Math.random() * 50,
-        (Math.random() - 0.5) * 200,
+        (Math.random() - 0.5) * 100, // Reduced horizontal force
+        Math.random() * 30, // Reduced upward force
+        (Math.random() - 0.5) * 100 // Reduced horizontal force
       );
 
-      // Apply direct velocity for immediate effect
-      dieBody.velocity.set(forceVector.x, forceVector.y, forceVector.z);
+      // Apply gentler velocity changes
+      // Blend current velocity with new velocity for smoother transitions
+      dieBody.velocity.x = dieBody.velocity.x * 0.2 + forceVector.x * 0.8;
+      dieBody.velocity.y = Math.max(dieBody.velocity.y, 0) * 0.2 + forceVector.y * 0.8;
+      dieBody.velocity.z = dieBody.velocity.z * 0.2 + forceVector.z * 0.8;
 
-      // Add random spin
-      dieBody.angularVelocity.set(
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10,
+      // Add more controlled spin with less randomness
+      const angularVelocity = new CANNON.Vec3(
+        (Math.random() - 0.5) * 5, // Reduced spin
+        (Math.random() - 0.5) * 5, // Reduced spin
+        (Math.random() - 0.5) * 5  // Reduced spin
       );
+      
+      // Blend current angular velocity with new angular velocity
+      dieBody.angularVelocity.x = dieBody.angularVelocity.x * 0.3 + angularVelocity.x * 0.7;
+      dieBody.angularVelocity.y = dieBody.angularVelocity.y * 0.3 + angularVelocity.y * 0.7;
+      dieBody.angularVelocity.z = dieBody.angularVelocity.z * 0.3 + angularVelocity.z * 0.7;
     }
   };
 
@@ -466,39 +498,47 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     sceneRef.current = scene;
     scene.background = null; // Make scene background transparent
 
-    // Physics world
+    // Physics world with optimized settings
     const world = new CANNON.World();
     worldRef.current = world;
-    world.gravity.set(0, -9.8 * 20, 0); // stronger gravity for faster falls
+    world.gravity.set(0, -9.8 * 10, 0); // Reduced gravity for smoother movement
     world.broadphase = new CANNON.NaiveBroadphase();
-    world.solver.iterations = 8;
+    world.solver.iterations = 4; // Reduced iterations for better performance
     world.allowSleep = true;
+    world.defaultContactMaterial.contactEquationStiffness = 1e6; // Increased stiffness for more stable contacts
+    world.defaultContactMaterial.contactEquationRelaxation = 3; // Relaxation for smoother contacts
 
     // Setup materials
     const floorMaterial = new CANNON.Material(FLOOR_MATERIAL);
     const wallMaterial = new CANNON.Material(WALL_MATERIAL);
     const diceMaterial = new CANNON.Material(DICE_BODY_MATERIAL);
 
-    // Define contact behaviors
+    // Define optimized contact behaviors
     world.addContactMaterial(
       new CANNON.ContactMaterial(floorMaterial, diceMaterial, {
-        friction: 0.6,
-        restitution: 0.5,
-      }),
+        friction: 0.4, // Lower friction for smoother sliding
+        restitution: 0.3, // Lower restitution for less bouncing
+        contactEquationStiffness: 1e7, // Stiffer contacts for stability
+        contactEquationRelaxation: 3, // Relaxation for smoother contacts
+      })
     );
 
     world.addContactMaterial(
       new CANNON.ContactMaterial(wallMaterial, diceMaterial, {
-        friction: 0.6,
-        restitution: 0.9,
-      }),
+        friction: 0.4, // Lower friction for smoother sliding
+        restitution: 0.5, // Moderate restitution for walls
+        contactEquationStiffness: 1e7, // Stiffer contacts for stability
+        contactEquationRelaxation: 3, // Relaxation for smoother contacts
+      })
     );
 
     world.addContactMaterial(
       new CANNON.ContactMaterial(diceMaterial, diceMaterial, {
-        friction: 0.6,
-        restitution: 0.5,
-      }),
+        friction: 0.4, // Lower friction for smoother sliding
+        restitution: 0.3, // Lower restitution for less bouncing
+        contactEquationStiffness: 1e7, // Stiffer contacts for stability
+        contactEquationRelaxation: 3, // Relaxation for smoother contacts
+      })
     );
 
     // Calculate dimensions based on aspect ratio
@@ -514,7 +554,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       frustumHeight / 2,
       frustumHeight / -2,
       0.001,
-      1000,
+      1000
     );
     cameraRef.current = camera;
     camera.position.set(0, 50, 0);
@@ -570,7 +610,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const floorBody = new CANNON.Body({
       mass: 0, // static body
       shape: new CANNON.Box(
-        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2),
+        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2)
       ),
       material: floorMaterial,
     });
@@ -660,9 +700,35 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     const fallbackTexture = "header/placeholder/logo.jpg";
 
+    // Create a texture cache to avoid reloading the same textures
+    const textureCache = new Map<string, THREE.Texture>();
+
     // Helper function to create materials for a die with the same texture on all sides
     const createDieMaterialsWithSameTexture = (tokenImage: string) => {
       return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
+        // Check if texture is already in cache
+        if (textureCache.has(tokenImage)) {
+          const cachedTexture = textureCache.get(tokenImage)!;
+
+          // Create materials with the cached texture
+          const materials = Array(6)
+            .fill(null)
+            .map(
+              () =>
+                new THREE.MeshStandardMaterial({
+                  map: cachedTexture,
+                  roughness: 0.75,
+                  metalness: 0.2,
+                  emissiveMap: cachedTexture,
+                  emissiveIntensity: 0.3,
+                })
+            );
+
+          // No need to set loading state here anymore
+          resolve(materials);
+          return;
+        }
+
         // Make sure textureLoader has crossOrigin set
         if (!textureLoader.crossOrigin) {
           textureLoader.crossOrigin = "anonymous";
@@ -673,7 +739,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           (texture) => {
             // Success callback - only resolve here
             texture.colorSpace = THREE.SRGBColorSpace;
-            setIsLoading(false);
+
+            // Cache the texture for future use
+            textureCache.set(tokenImage, texture);
 
             // Create materials with the successfully loaded texture
             const materials = Array(6)
@@ -686,7 +754,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                     metalness: 0.2,
                     emissiveMap: texture,
                     emissiveIntensity: 0.3,
-                  }),
+                  })
               );
 
             resolve(materials);
@@ -695,12 +763,32 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           (error) => {
             console.warn("Error loading texture:", error);
 
+            // Check if fallback is already in cache
+            if (textureCache.has(fallbackTexture)) {
+              const cachedFallback = textureCache.get(fallbackTexture)!;
+
+              resolve(
+                Array(6).fill(
+                  new THREE.MeshStandardMaterial({
+                    map: cachedFallback,
+                    roughness: 1.0,
+                    metalness: 0.3,
+                    emissiveMap: cachedFallback,
+                    emissiveIntensity: 0.3,
+                  })
+                )
+              );
+              return;
+            }
+
             // Load fallback texture if the token image fails
             textureLoader.load(
               fallbackTexture, // Make sure this variable is defined
               (fallbackTex) => {
                 fallbackTex.colorSpace = THREE.SRGBColorSpace;
-                setIsLoading(false);
+
+                // Cache the fallback texture
+                textureCache.set(fallbackTexture, fallbackTex);
 
                 // Resolve with fallback materials
                 resolve(
@@ -711,15 +799,14 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                       metalness: 0.3,
                       emissiveMap: fallbackTex,
                       emissiveIntensity: 0.3,
-                    }),
-                  ),
+                    })
+                  )
                 );
               },
               undefined,
               (fallbackError) => {
                 // Handle fallback texture loading error
                 console.error("Fallback texture also failed:", fallbackError);
-                setIsLoading(false);
 
                 // Create a solid color material as last resort
                 const solidMaterial = new THREE.MeshStandardMaterial({
@@ -729,9 +816,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                 });
 
                 resolve(Array(6).fill(solidMaterial));
-              },
+              }
             );
-          },
+          }
         );
       });
     };
@@ -747,14 +834,14 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     async function createDie(
       position: THREE.Vector3,
       scale: number = 1,
-      tokenIndex: number,
+      tokenIndex: number
     ) {
       const tokenData = selectedTokens[tokenIndex] || {
         address: "",
         image: fallbackTexture,
       };
       const dieMaterials = await createDieMaterialsWithSameTexture(
-        resizeImage(tokenData.image, 100, 100),
+        resizeImage(tokenData.image, 100, 100)
       );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 
@@ -766,17 +853,19 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Store token address as a custom property
       die.userData = { tokenAddress: tokenData.address };
 
-      // Create physics body
+      // Create physics body with more reasonable mass and damping
       const halfExtents = new CANNON.Vec3(
         scale + 0.5,
         scale + 0.25,
-        scale + 0.25,
+        scale + 0.25
       );
       const dieBody = new CANNON.Body({
-        mass: 10000, // heavier for better physics
+        mass: 100, // Reduced mass for smoother physics
         shape: new CANNON.Box(halfExtents),
         material: diceMaterial,
         allowSleep: true,
+        linearDamping: 0.3, // Add damping to reduce jitter
+        angularDamping: 0.3, // Add angular damping to reduce spin jitter
       });
 
       // Set initial position and rotation
@@ -784,7 +873,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI,
+        Math.random() * Math.PI
       );
 
       // Store the mesh and token data with the body for updates
@@ -803,73 +892,101 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       return { die, dieBody };
     }
 
-    // Create dice with token images
-    const createAllDice = async () => {
+    // Create dice with token images - modified to add dice as they load
+    const createAllDice = () => {
       // Clear any existing dice
       diceRef.current = [];
       diceBodiesRef.current = [];
 
       const numDice = Math.min(5, selectedTokens.length);
 
-      for (let i = 0; i < numDice; i++) {
-        const position =
-          dicePositionsRef.current[i] ||
-          new THREE.Vector3(
-            Math.random() * 50 - 25,
-            20 + i * 2,
-            Math.random() * 16 - 8,
-          );
-        const { die, dieBody } = await createDie(position, scale, i);
-        diceRef.current.push(die);
-        diceBodiesRef.current.push(dieBody);
-      }
+      // Create each die individually as textures load
+      const createDiceSequentially = async () => {
+        // First create dice for actual tokens
+        for (let i = 0; i < numDice; i++) {
+          const position =
+            dicePositionsRef.current[i] ||
+            new THREE.Vector3(
+              Math.random() * 50 - 25,
+              20 + i * 2,
+              Math.random() * 16 - 8
+            );
 
-      // If we have fewer than 5 tokens, fill remaining slots with empty dice
-      if (numDice < 5) {
-        for (let i = numDice; i < 5; i++) {
-          const position = new THREE.Vector3(
-            Math.random() * 50 - 25,
-            20 + i * 2,
-            Math.random() * 16 - 8,
-          );
-          const { die, dieBody } = await createDie(
-            position,
-            scale,
-            i % numDice,
-          );
+          // Create die and add to scene
+          const { die, dieBody } = await createDie(position, scale, i);
           diceRef.current.push(die);
           diceBodiesRef.current.push(dieBody);
-        }
-      }
 
-      // setDiceInitialized(true);
+          // Update loaded dice state
+          setLoadedDice((prev) => new Set(prev).add(i));
+        }
+
+        // If we have fewer than 5 tokens, fill remaining slots with empty dice
+        if (numDice < 5) {
+          for (let i = numDice; i < 5; i++) {
+            const position = new THREE.Vector3(
+              Math.random() * 50 - 25,
+              20 + i * 2,
+              Math.random() * 16 - 8
+            );
+
+            // Create die and add to scene
+            const { die, dieBody } = await createDie(
+              position,
+              scale,
+              i % numDice
+            );
+            diceRef.current.push(die);
+            diceBodiesRef.current.push(dieBody);
+
+            // Update loaded dice state
+            setLoadedDice((prev) => new Set(prev).add(i));
+          }
+        }
+      };
+
+      // Start creating dice
+      createDiceSequentially();
     };
 
     // Create all dice
     createAllDice();
 
-    // Replace the collision handler with a simpler version
+    // Improved collision handler with less randomness for smoother movement
     function handleCollisions(event: any) {
-      // Simple collision detection using Cannon.js's 'collide' event
       try {
         // In this event, event.body is the body that has a collision
         const impactedBody = event.body;
-
+        
         if (!impactedBody || impactedBody.mass <= 0) return;
-
-        // Add random spin whenever a die collides with anything
-        const randomX = (Math.random() - 0.5) * 10;
-        const randomY = (Math.random() - 0.5) * 10;
-        const randomZ = (Math.random() - 0.5) * 10;
-
-        impactedBody.angularVelocity.x += randomX;
-        impactedBody.angularVelocity.y += randomY;
-        impactedBody.angularVelocity.z += randomZ;
-
-        // Add a small upward bounce for better movement
-        if (impactedBody.velocity.y < 0.5) {
-          impactedBody.velocity.y += Math.random() * 2;
+        
+        // Only add a small amount of randomness to prevent jitter
+        // Use much smaller values and apply them more gently
+        const randomX = (Math.random() - 0.5) * 2; // Reduced randomness
+        const randomY = (Math.random() - 0.5) * 2; // Reduced randomness
+        const randomZ = (Math.random() - 0.5) * 2; // Reduced randomness
+        
+        // Apply gentler changes to angular velocity
+        impactedBody.angularVelocity.x = impactedBody.angularVelocity.x * 0.8 + randomX * 0.2;
+        impactedBody.angularVelocity.y = impactedBody.angularVelocity.y * 0.8 + randomY * 0.2;
+        impactedBody.angularVelocity.z = impactedBody.angularVelocity.z * 0.8 + randomZ * 0.2;
+        
+        // Add a very small upward bounce only if needed
+        if (impactedBody.velocity.y < 0.2) {
+          impactedBody.velocity.y += Math.random() * 0.5; // Much smaller bounce
         }
+        
+        // Apply damping to reduce jitter after collisions
+        impactedBody.linearDamping = 0.5; // Increase damping after collision
+        impactedBody.angularDamping = 0.5; // Increase damping after collision
+        
+        // Schedule damping to return to normal after a short delay
+        setTimeout(() => {
+          if (impactedBody) {
+            impactedBody.linearDamping = 0.3;
+            impactedBody.angularDamping = 0.3;
+          }
+        }, 300);
       } catch (error) {
         console.warn("Error in collision handler:", error);
       }
@@ -878,20 +995,32 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Add collision event listener to world (use collide event instead of beginContact)
     world.addEventListener("collide", handleCollisions);
 
-    // Animation function
-    function animate() {
-      requestAnimationFrame(animate);
+    // Animation function with performance optimizations
+    let lastTime = 0;
+    const fixedTimeStep = 1 / 60; // 60 fps
+    const maxSubSteps = 3; // Maximum physics substeps
+    let animationFrameId: number;
 
-      // Step the physics world
-      world.step(1 / 60);
+    function animate(time = 0) {
+      animationFrameId = requestAnimationFrame(animate);
 
-      // Update dice positions and rotations
+      // Calculate delta time in seconds
+      const deltaTime = Math.min((time - lastTime) / 1000, 0.1); // Cap at 100ms to avoid large jumps
+      lastTime = time;
+
+      // Step the physics world with proper time step
+      world.step(fixedTimeStep, deltaTime, maxSubSteps);
+
+      // Update dice positions and rotations - only for dice that are moving
       for (let i = 0; i < diceBodies.length; i++) {
         const dieBody = diceBodies[i];
         const die = dice[i];
 
-        die.position.copy(dieBody.position as any);
-        die.quaternion.copy(dieBody.quaternion as any);
+        // Only update if the body is awake (moving)
+        if (dieBody.sleepState !== CANNON.Body.SLEEPING) {
+          die.position.copy(dieBody.position as any);
+          die.quaternion.copy(dieBody.quaternion as any);
+        }
       }
 
       renderer.render(scene, camera);
@@ -903,7 +1032,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Track resize timeout for debouncing
     let resizeTimeout: number | null = null;
 
-    // Updated window resize handler
+    // Optimized window resize handler
     const onWindowResize = () => {
       if (!containerRef.current) return;
 
@@ -911,33 +1040,15 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         window.clearTimeout(resizeTimeout);
       }
 
+      // Immediate minimal update for responsive feel - just update renderer size
       const newContainerWidth = containerRef.current.clientWidth;
-      const newAspect = newContainerWidth / containerHeight;
-      const newFrustumHeight = frustumSize;
-      const newFrustumWidth = frustumSize * newAspect;
-
-      // Update camera
-      camera.left = newFrustumWidth / -2;
-      camera.right = newFrustumWidth / 2;
-      camera.top = newFrustumHeight / 2;
-      camera.bottom = newFrustumHeight / -2;
-      camera.updateProjectionMatrix();
-
-      // Update renderer size
       renderer.setSize(newContainerWidth, containerHeight);
 
-      // Update mesh positions and scales
-      floor.position.set(0, -0.5, 0);
-      floor.scale.set(
-        newFrustumWidth / frustumWidth,
-        1,
-        newFrustumHeight / frustumHeight,
-      );
-
-      // Debounce resize updates
+      // Debounce expensive updates
       resizeTimeout = window.setTimeout(() => {
-        const newContainerWidth =
-          containerRef.current?.clientWidth || containerWidth;
+        if (!containerRef.current) return;
+
+        const newContainerWidth = containerRef.current.clientWidth;
         const newAspect = newContainerWidth / containerHeight;
         const newFrustumHeight = frustumSize;
         const newFrustumWidth = frustumSize * newAspect;
@@ -949,7 +1060,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         camera.bottom = newFrustumHeight / -2;
         camera.updateProjectionMatrix();
 
-        // Update renderer size
+        // Update renderer size again with proper dimensions
         renderer.setSize(newContainerWidth, containerHeight);
 
         // Update mesh positions and scales
@@ -957,7 +1068,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         floor.scale.set(
           newFrustumWidth / frustumWidth,
           1,
-          newFrustumHeight / frustumHeight,
+          newFrustumHeight / frustumHeight
         );
 
         backWall.position.set(0, 2, -newFrustumHeight / 2);
@@ -983,40 +1094,39 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         // Floor physics body
         floorBody.position.set(0, -0.5, 0);
         floorBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
+          new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2)
         );
         world.addBody(floorBody);
 
         // Back wall physics body
         backWallBody.position.set(0, 2, -newFrustumHeight / 2);
         backWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5),
+          new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5)
         );
         world.addBody(backWallBody);
 
         // Front wall physics body
         frontWallBody.position.set(0, 2, newFrustumHeight / 2);
         frontWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5),
+          new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5)
         );
         world.addBody(frontWallBody);
 
         // Left wall physics body
         leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
         leftWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(0.5, 20, newFrustumHeight / 2),
+          new CANNON.Vec3(0.5, 20, newFrustumHeight / 2)
         );
         world.addBody(leftWallBody);
 
         // Right wall physics body
         rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
         rightWallBody.shapes[0] = new CANNON.Box(
-          new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
+          new CANNON.Vec3(0.5, 50, newFrustumHeight / 2)
         );
         world.addBody(rightWallBody);
         // Do NOT reposition and reroll dice when resizing
-        // Removed: throwDice();
-      }, 100); // Debounce for 100ms
+      }, 250); // Longer debounce time for better performance
     };
 
     window.addEventListener("resize", onWindowResize);
@@ -1028,7 +1138,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     return () => {
       // Reset initialization flags on unmount
       sceneInitializedRef.current = false;
-      tokensProcessedRef.current = false;
+      // Don't reset tokensProcessedRef to preserve token selection
+
+      // Cancel animation frame
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
 
       // Clear any pending resize timeout
       if (resizeTimeout) {
@@ -1039,15 +1154,30 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       // Dispose of resources
       renderer.dispose();
+
+      // Dispose of geometries and materials
+      diceGeometry.dispose();
+      dice.forEach((die) => {
+        if (Array.isArray(die.material)) {
+          die.material.forEach((mat) => mat.dispose());
+        } else if (die.material) {
+          die.material.dispose();
+        }
+      });
+
+      // Clear texture cache
+      textureCache.forEach((texture) => texture.dispose());
+      textureCache.clear();
     };
   }, [selectedTokens]);
 
   return (
     <div
-      className="w-full h-[300px] relative overflow-hidden cursor-pointer my-6 xl:mt-0"
+      className="w-full h-[300px] overflow-hidden cursor-pointer my-6 xl:mt-0 relative"
       onClick={handleContainerClick}
     >
       {/* SVG background placed below the canvas */}
+      <div className="absolute size-full border-8 border-autofun-background-action-highlight" />
       <div className="absolute inset-0 flex justify-center items-center z-0">
         {/* Face with eyes overlay - ensure proportions maintained */}
         <div className="relative h-full flex-shrink-0">
@@ -1075,101 +1205,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         ref={containerRef}
         className="w-full h-full absolute top-0 left-0 z-0"
       />
-
-      {isLoading && (
-        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-autofun-background-card bg-opacity-75 text-white text-xl z-20">
-          Loading...
-        </div>
-      )}
-
-      {/* Token Data Display */}
-      {/* {selectedTokenData && (
-        <div
-          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
-          // @ts-ignore
-          style={getDisplayPosition()}
-        >
-          <button
-            onClick={handleCloseTokenData}
-            className="absolute top-2 right-3 text-autofun-text-secondary hover:text-autofun-text-primary"
-          >
-            ✕
-          </button>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between pr-8">
-              <div className="flex items-center gap-2">
-                <div className="w-14 h-14 overflow-hidden">
-                  <img
-                    src={selectedTokenData.image}
-                    alt={selectedTokenData.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <h3 className="text-lg font-bold text-autofun-text-primary">
-                    {selectedTokenData.name}
-                  </h3>
-                  <span className="text-sm text-autofun-text-secondary">
-                    ${selectedTokenData.ticker}
-                  </span>
-                  <span className="text-xs text-autofun-text-secondary">
-                    Created: {formatDate(selectedTokenData.createdAt)}
-                  </span>
-                </div>
-              </div>
-              <Link to={`/token/${selectedTokenData.mint}`}>
-                <button className="py-0.5 px-2 bg-[#03ff24] text-black font-bold uppercase tracking-wide text-xs">
-                  Trade
-                </button>
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-1 -my-1">
-              <span className="text-[10px] text-autofun-text-secondary truncate">
-                {selectedTokenData.mint}
-              </span>
-              <div onClick={(e) => e.stopPropagation()} className="scale-75">
-                <CopyButton text={selectedTokenData.mint} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">
-                  Price USD
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
-                  ${selectedTokenData.currentPrice?.toFixed(6) || "0.000000"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">
-                  Market Cap
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
-                  ${selectedTokenData.marketCapUSD?.toFixed(2) || "0.00"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">
-                  24h Volume
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
-                  ${selectedTokenData.volume24h?.toFixed(2) || "0.00"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">
-                  Holders
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
-                  {selectedTokenData.holderCount || "0"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 };
