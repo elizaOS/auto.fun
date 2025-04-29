@@ -33,7 +33,6 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/create" element={<Create />} />
           <Route path="/testing" element={<Testing />} />
           <Route path="/callback" element={<CallbackPage />} />
-          <Route path="/callback-oauth1" element={<CallbackPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:mint" element={<ChatPage />} />
           <Route path="/admin/*" element={<Admin />} />
