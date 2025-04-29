@@ -47,7 +47,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -92,7 +92,7 @@ export default function Trade({ token }: { token: IToken }) {
       const scaleFactor = 10 ** decimalPlaces;
       const amountBN = new BN(Math.round(amount * scaleFactor));
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).div(new BN(scaleFactor)).toNumber()
@@ -114,7 +114,7 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
       const swapAmount = swapAmountResult?.estimatedOutput || 0;
       const priceImpact = swapAmountResult?.priceImpact || "0";
@@ -214,7 +214,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -231,11 +231,11 @@ export default function Trade({ token }: { token: IToken }) {
             </button>
           </div>
 
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-4">
             {/* Selling */}
             <div
               className={twMerge([
-                "flex flex-col py-1 px-2 gap-[18px] transition-colors duration-200",
+                "flex flex-col py-1 px-2 gap-4 transition-colors duration-200",
                 error ? "border-autofun-text-error" : "",
               ])}
             >
@@ -297,49 +297,45 @@ export default function Trade({ token }: { token: IToken }) {
               </div>
 
               {/* Balance Selection Buttons */}
-              <div className="flex flex-col gap-3">
-                <div className="flex gap-1 mt-1 w-full">
-                  <button
-                    onClick={() => setSellAmount(0)}
-                    className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Reset
-                  </button>
-                  {!isTokenSelling ? (
-                    <>
-                      {["0.1", "0.5", "1.0"].map((but: string) => (
-                        <button
-                          key={but}
-                          onClick={() => {
-                            setInputAmount(but);
-                          }}
-                          disabled={isButtonDisabled(but)}
-                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          {String(but)}
-                        </button>
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      {["25", "50", "75", "100"].map((perc: string) => (
-                        <button
-                          key={perc}
-                          onClick={() => {
-                            const percentage = parseFloat(perc) / 100;
-                            setInputAmount(
-                              String(Number(balance) * percentage),
-                            );
-                          }}
-                          disabled={isButtonDisabled("25")}
-                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          {perc}%
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </div>
+              <div className="flex gap-1 w-full">
+                <button
+                  onClick={() => setSellAmount(0)}
+                  className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Reset
+                </button>
+                {!isTokenSelling ? (
+                  <>
+                    {["0.1", "0.5", "1.0"].map((but: string) => (
+                      <button
+                        key={but}
+                        onClick={() => {
+                          setInputAmount(but);
+                        }}
+                        disabled={isButtonDisabled(but)}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        {String(but)}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {["25", "50", "75", "100"].map((perc: string) => (
+                      <button
+                        key={perc}
+                        onClick={() => {
+                          const percentage = parseFloat(perc) / 100;
+                          setInputAmount(String(Number(balance) * percentage));
+                        }}
+                        disabled={isButtonDisabled("25")}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        {perc}%
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
 
