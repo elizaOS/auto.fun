@@ -48,7 +48,7 @@ export class TokenMigrator {
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
     public redisCache: RedisCacheService
-  ) {}
+  ) { }
   LOCK_TTL_MS = 2 * 60_000;
   async resetMigration(mint: string): Promise<void> {
     const stepNames = this.getMigrationSteps().map((s) => s.name);
