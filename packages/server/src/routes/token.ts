@@ -1082,12 +1082,19 @@ tokenRouter.get("/tokens", async (c) => {
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
   const MAX_LIMIT = 50;
-  
+
   const requestedLimit =
     parseInt(queryParams?.limit ? queryParams.limit : ("0" as string)) || 50;
 
   const limit = isSearching ? 5 : Math.min(requestedLimit, MAX_LIMIT);
-  const page = parseInt(queryParams.page as string) || 1;
+
+  const requestedPage =
+    parseInt(queryParams?.page ? queryParams.page : ("1" as string)) || 1;
+    
+  const MAX_PAGE = 1000;
+
+  const page = Math.min(requestedPage, MAX_PAGE);
+
   const skip = (page - 1) * limit;
   const status = queryParams.status as string | undefined;
   const hideImportedParam = queryParams.hideImported;
