@@ -1,13 +1,9 @@
 import {
   GetObjectCommand,
   ListObjectsV2Command,
-  PutObjectCommand
+  PutObjectCommand,
 } from "@aws-sdk/client-s3"; // S3 Import
-import {
-  AccountInfo,
-  Connection,
-  PublicKey
-} from "@solana/web3.js";
+import { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { and, count, eq, getTableColumns, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
@@ -30,7 +26,7 @@ import {
   getDevnetRpcUrl,
   getFeaturedMaxValues,
   getMainnetRpcUrl,
-  logger
+  logger,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
@@ -1083,7 +1079,6 @@ async function checkBlockchainTokenBalance(
 
 // --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
-  // --- Parameter Reading ---
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
   const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
@@ -1091,7 +1086,6 @@ tokenRouter.get("/tokens", async (c) => {
   const skip = (page - 1) * limit;
   const status = queryParams.status as string | undefined;
   const hideImportedParam = queryParams.hideImported;
-  // Ensure hideImported is number or undefined, handle potential string '1' or '0'
   const hideImported =
     hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
   const creator = queryParams.creator as string | undefined;
@@ -1105,38 +1099,25 @@ tokenRouter.get("/tokens", async (c) => {
     `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`
   );
 
-  // --- RE-ENABLE CACHE GET ---
-  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
-  const redisCache = await getGlobalRedisCache(); // Ensure env is cast if needed
+  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
+
+  const redisCache = await getGlobalRedisCache();
+  
   if (redisCache) {
-    try {
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        logger.log(`Cache hit for ${cacheKey}`);
-        const parsedData = JSON.parse(cachedData);
-        if (parsedData && Array.isArray(parsedData.tokens)) {
-          return c.json(parsedData);
-        } else {
-          logger.warn(
-            `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`
-          );
-        }
-      } else {
-        logger.log(`Cache miss for ${cacheKey}`);
-      }
-    } catch (cacheError) {
-      logger.error(`Redis cache GET error:`, cacheError);
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      logger.log(`Cache hit for ${cacheKey}`);
+      const parsedData = JSON.parse(cachedData);
+      return c.json(parsedData);
+    } else {
+      logger.log(`Cache miss for ${cacheKey}`);
     }
   }
-  // --- END RE-ENABLE CACHE GET ---
 
   const db = getDB();
 
-  // Get max values needed by builder for column selection
   const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
-  // --- Build Base Queries ---
-  // Pass sorting info needed for column selection to builder
   const filterParams = {
     hideImported,
     status,
@@ -1147,25 +1128,20 @@ tokenRouter.get("/tokens", async (c) => {
     maxHolders,
   };
   let baseQuery = buildTokensBaseQuery(db, filterParams);
-  const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
+  const countQuery = buildTokensCountBaseQuery(db, filterParams);
 
-  // --- Apply Sorting to Main Query ---
-  // Column selection is now done inside buildTokensBaseQuery
   const validSortColumns = {
     createdAt: tokens.createdAt,
     marketCapUSD: tokens.marketCapUSD,
     volume24h: tokens.volume24h,
     holderCount: tokens.holderCount,
     curveProgress: tokens.curveProgress,
-    // Add other valid columns here
   };
 
   if (sortBy === "featured") {
-    // REMOVE baseQuery.select - done in builder
     baseQuery = applyFeaturedSort(baseQuery, maxVolume, maxHolders, sortOrder);
     logger.log(`[Query Build] Applied sort: featured weighted`);
   } else {
-    // REMOVE baseQuery.select - done in builder
     const sortColumn =
       validSortColumns[sortBy as keyof typeof validSortColumns] ||
       tokens.createdAt;
@@ -1184,14 +1160,11 @@ tokenRouter.get("/tokens", async (c) => {
     }
   }
 
-  // --- Apply Pagination to Main Query ---
   baseQuery = baseQuery.limit(limit).offset(skip);
   logger.log(
     `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`
   );
 
-  // --- Get SQL representation BEFORE execution ---
-  // Ensure baseQuery and countQuery are accessible here
   let mainQuerySqlString = "N/A";
   let countQuerySqlString = "N/A";
   try {
@@ -1202,22 +1175,10 @@ tokenRouter.get("/tokens", async (c) => {
   } catch (sqlError) {
     logger.error("[SQL Build] Error getting SQL string:", sqlError);
   }
-  // --- END SQL Generation ---
-
-  // --- Execute Queries (Sequentially is safer for SQLite) ---
-  // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
-  // const timeoutPromise = new Promise((_, reject) =>
-  //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
-  // );
-  // const countTimeoutPromise = new Promise<number>((_, reject) =>
-  //   setTimeout(
-  //     () => reject(new Error("Count query timed out")),
-  //     timeoutDuration, // Use same timeout for count
-  //   ),
-  // );
 
   let tokensResult: Token[] | undefined;
   let total = 0;
+
   try {
     logger.log("[Execution] Awaiting baseQuery...");
     // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
@@ -1278,7 +1239,7 @@ tokenRouter.get("/tokens", async (c) => {
 
   // Merge ephemeral stats from Redis into each token
   if (redisCache) {
-    const keys = responseData.tokens.map(t => `token:stats:${t.mint}`);
+    const keys = responseData.tokens.map((t) => `token:stats:${t.mint}`);
     const statsJsonArray = await redisCache.mget(keys);
     responseData.tokens.forEach((t, index) => {
       const statsJson = statsJsonArray[index];
@@ -2444,7 +2405,7 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
   try {
     const mint = c.req.param("mint");
     const user = c.get("user");
-    
+
     if (!user) {
       return c.json({ error: "Authentication required" }, 401);
     }
@@ -2452,14 +2413,17 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
     // Get the form data
     const formData = await c.req.formData();
     const audioFile = formData.get("audio") as File;
-    
+
     if (!audioFile) {
       return c.json({ error: "No audio file provided" }, 400);
     }
 
     // Validate file type
     if (!audioFile.type.startsWith("audio/")) {
-      return c.json({ error: "Invalid file type. Please upload an audio file." }, 400);
+      return c.json(
+        { error: "Invalid file type. Please upload an audio file." },
+        400
+      );
     }
 
     // Check file size (10MB limit)
