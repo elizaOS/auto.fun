@@ -1258,7 +1258,7 @@ tokenRouter.get("/tokens", async (c) => {
   // Apply priority token logic for featured sorting on page 1
   if (sortBy === "featured" && page === 1) {
     // Define the two token addresses to prioritize
-    const priorityTokenAddresses: string[] = [];
+    const priorityTokenAddresses: string[] = ["cadj4jmwydhhe5lfqmu8bip3r4u5815jm8utd3f8gyvr"];
 
     // Use the helper function to prioritize tokens
     const modifiedResults = await prioritizeFeaturedTokens(
