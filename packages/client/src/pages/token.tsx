@@ -292,7 +292,10 @@ export default function Page() {
   return (
     <Fragment>
       <Helmet>
-        <title>{`${sanitizeCheckmark(token?.name)} (${sanitizeCheckmark(token?.ticker)})`} - auto.fun</title>
+        <title>
+          {`${sanitizeCheckmark(token?.name)} (${sanitizeCheckmark(token?.ticker)})`}{" "}
+          - auto.fun
+        </title>
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}
@@ -648,7 +651,8 @@ export default function Page() {
                     Balance:
                   </span>
                   <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                    {formatNumber(tokenBalance, false, true)} {sanitizeCheckmark(token?.ticker)}
+                    {formatNumber(tokenBalance, false, true)}{" "}
+                    {sanitizeCheckmark(token?.ticker)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

@@ -357,7 +357,11 @@ export default function Trade({ token }: { token: IToken }) {
                         ? "/solana.svg"
                         : token?.image || "/placeholder.png"
                     }
-                    alt={isTokenSelling ? "SOL" : sanitizeCheckmark(token?.name) || "token"}
+                    alt={
+                      isTokenSelling
+                        ? "SOL"
+                        : sanitizeCheckmark(token?.name) || "token"
+                    }
                     className="size-6 m-2"
                   />
                   {isTokenSelling ? "SOL" : sanitizeCheckmark(token?.ticker)}
@@ -542,7 +546,8 @@ const Balance = ({
       <div className="flex gap-1 justify-end w-full">
         <Wallet className="text-autofun-text-secondary size-[18px]" />
         <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-          {formattedBalance} {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
+          {formattedBalance}{" "}
+          {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
         </span>
       </div>
     </div>

@@ -145,7 +145,9 @@ export function TableView({
                       <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi truncate min-w-0">
                         {window.innerWidth <= 768
                           ? sanitizeCheckmark(token?.name).slice(0, 15) +
-                            (sanitizeCheckmark(token?.name).length > 15 ? "..." : "")
+                            (sanitizeCheckmark(token?.name).length > 15
+                              ? "..."
+                              : "")
                           : token.name}
                       </div>
                       <div className="text-autofun-text-secondary md:ml-2 text-base font-normal font-dm-mono uppercase truncate min-w-0">
