@@ -1057,11 +1057,9 @@ async function checkBlockchainTokenBalance(
       logger.error(
         `Error checking ${network.name} for token balance: ${netError}`
       );
-      // Continue to next network
     }
   }
 
-  // Return the balance information
   logger.log(
     `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`
   );
@@ -1076,11 +1074,7 @@ async function checkBlockchainTokenBalance(
   });
 }
 
-// --- END VALIDATION FUNCTION ---
-
-// --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
-  const t0 = performance.now();
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
   const MAX_LIMIT = 50;
@@ -1109,33 +1103,20 @@ tokenRouter.get("/tokens", async (c) => {
     : (queryParams.sortBy as string) || "createdAt";
   const sortOrder = (queryParams.sortOrder as string) || "desc";
 
-  logger.log(
-    `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`
-  );
-
-  const cacheKey = `compressed-tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
-  const t2 = performance.now();
-  console.log(`[DEBUG] BEFORE GET GLOBAL CACHE took ${t2 - t0} milliseconds.`);
-  const t3 = performance.now();
+  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
 
   const redisCache = await getGlobalRedisCache();
-  const t4 = performance.now();
-
-  console.log(`[DEBUG] AFTER GET GLOBAL CACHE took ${t4 - t3} milliseconds.`);
 
   if (redisCache) {
     const t4 = performance.now();
 
     const cachedData = await redisCache.getCompressed(cacheKey);
     const t5 = performance.now();
-    console.log(`[DEBUG] RETRIEVING CACHE TOOK ${t5 - t4} milliseconds.`);
+    console.log(`[DEBUG] Retrieving cache tool ${t5 - t4} milliseconds.`);
 
     if (cachedData) {
       logger.log(`Cache hit for ${cacheKey}`);
       const parsedData = JSON.parse(cachedData as string) as Token[];
-      // const parsedData = cachedData;
-      const t1 = performance.now();
-      console.log(`[DEBUG] Call to doSomething took ${t1 - t0} milliseconds.`);
       return c.json(parsedData);
     } else {
       logger.log(`Cache miss for ${cacheKey}`);
@@ -1168,7 +1149,6 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (sortBy === "featured") {
     baseQuery = applyFeaturedSort(baseQuery, maxVolume, maxHolders, sortOrder);
-    logger.log(`[Query Build] Applied sort: featured weighted`);
   } else {
     const sortColumn =
       validSortColumns[sortBy as keyof typeof validSortColumns] ||
@@ -1181,25 +1161,16 @@ tokenRouter.get("/tokens", async (c) => {
                 END`,
         sql`${sortColumn} DESC`
       );
-      logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
     } else {
       baseQuery = baseQuery.orderBy(sortColumn);
-      logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
     }
   }
 
   baseQuery = baseQuery.limit(limit).offset(skip);
-  logger.log(
-    `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`
-  );
 
   let mainQuerySqlString = "N/A";
-  let countQuerySqlString = "N/A";
   try {
     mainQuerySqlString = baseQuery.toSQL().sql;
-    countQuerySqlString = countQuery.toSQL().sql;
-    logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
-    logger.log(`[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`);
   } catch (sqlError) {
     logger.error("[SQL Build] Error getting SQL string:", sqlError);
   }
@@ -1208,68 +1179,48 @@ tokenRouter.get("/tokens", async (c) => {
   let total = 0;
 
   try {
-    logger.log("[Execution] Awaiting baseQuery...");
     // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
-    // tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
     tokensResult = await baseQuery.execute(); // Remove race for simplicity/debugging
-    logger.log(
-      `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`
-    );
-    // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
-    // const countResult = await Promise.race([
-    //   countQuery.execute(),
-    //   countTimeoutPromise,
-    // ]);
     const countResult = await countQuery.execute(); // Remove race
     total = Number(countResult[0]?.count || 0);
-    logger.log(`[Execution] countQuery finished, total: ${total}`);
-
-    // --- Pass SQL to VALIDATION CALL ---
-    // Pass the generated SQL string
     await validateQueryResults({ hideImported, status }, tokensResult, {
       mainQuerySql: mainQuerySqlString,
     });
-    // --- END VALIDATION CALL ---
   } catch (error) {
     logger.error("Token query failed, timed out, or failed validation:", error);
     tokensResult = []; // Ensure it's an empty array on error
     total = 0;
   }
 
-  // --- Process and Return ---
   const totalPages = Math.ceil(total / limit);
 
-  // Ensure BigInts are handled before caching/returning
   const serializableTokensResult =
     tokensResult?.map((token) => {
       const serializableToken: Record<string, any> = {};
       if (token) {
-        // Use Object.entries for potentially better type inference
         for (const [key, value] of Object.entries(token)) {
           if (typeof value === "bigint") {
-            // Explicitly cast value to any before calling toString()
             serializableToken[key] = (value as any).toString();
           } else {
             serializableToken[key] = value;
           }
         }
       }
-      return serializableToken as Token; // Keep cast for now
+      return serializableToken as Token;
     }) || [];
 
-  // Apply priority token logic for featured sorting on page 1
   if (sortBy === "featured" && page === 1) {
     // Define the two token addresses to prioritize
-    const priorityTokenAddresses: string[] = ["3aU4AabWUwJyQdyFQrkhmmbj75ejrXaRPQxpiECEpump"];
+    const priorityTokenAddresses: string[] = [
+      "3aU4AabWUwJyQdyFQrkhmmbj75ejrXaRPQxpiECEpump",
+    ];
 
-    // Use the helper function to prioritize tokens
     const modifiedResults = await prioritizeFeaturedTokens(
       serializableTokensResult,
       priorityTokenAddresses,
       limit
     );
 
-    // Replace all elements using splice
     serializableTokensResult.splice(
       0,
       serializableTokensResult.length,
@@ -1286,25 +1237,14 @@ tokenRouter.get("/tokens", async (c) => {
   };
 
   if (redisCache) {
-    const keys = responseData.tokens.map((t) => `token:stats:${t.mint}`);
-    const statsJsonArray = await redisCache.mget(keys);
-    responseData.tokens.forEach((t, index) => {
-      const statsJson = statsJsonArray[index];
-      if (statsJson) Object.assign(t, JSON.parse(statsJson));
-    });
-  }
-
-  if (redisCache) {
     try {
-      await redisCache.setCompressed(cacheKey, JSON.stringify(responseData), 20);
-      logger.log(`Cached data for ${cacheKey} with 20s TTL`);
+      await redisCache.setCompressed(cacheKey, JSON.stringify(responseData), 15);
+      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
     } catch (cacheError) {
       logger.error(`Redis cache SET error:`, cacheError);
     }
   }
 
-  const t1 = performance.now();
-  console.log(`[DEBUG] Call to doSomething took ${t1 - t0} milliseconds.`);
   return c.json(responseData);
 });
 
@@ -1546,7 +1486,11 @@ tokenRouter.get("/token/:mint", async (c) => {
       getSOLPrice(), // Fetch SOL price concurrently
     ]);
 
-    if (!tokenResult || tokenResult.length === 0 || tokenResult?.[0]?.hidden === 1) {
+    if (
+      !tokenResult ||
+      tokenResult.length === 0 ||
+      tokenResult?.[0]?.hidden === 1
+    ) {
       // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
     }
@@ -1605,12 +1549,6 @@ tokenRouter.get("/token/:mint", async (c) => {
         : ((token.reserveLamport - token.virtualReserves) /
           (token.curveLimit - token.virtualReserves)) *
         100;
-
-    // Merge ephemeral stats from Redis
-    if (redisCache) {
-      const statsJson = await redisCache.get(`token:stats:${mint}`);
-      if (statsJson) Object.assign(token, JSON.parse(statsJson));
-    }
 
     // Format response with additional data
     const responseData = token;
