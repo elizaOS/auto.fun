@@ -1081,7 +1081,12 @@ async function checkBlockchainTokenBalance(
 tokenRouter.get("/tokens", async (c) => {
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
-  const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
+  const MAX_LIMIT = 50;
+  
+  const requestedLimit =
+    parseInt(queryParams?.limit ? queryParams.limit : ("0" as string)) || 50;
+
+  const limit = isSearching ? 5 : Math.min(requestedLimit, MAX_LIMIT);
   const page = parseInt(queryParams.page as string) || 1;
   const skip = (page - 1) * limit;
   const status = queryParams.status as string | undefined;
