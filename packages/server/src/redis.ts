@@ -422,7 +422,7 @@ export class RedisPool {
 
 
     let result: T;
-    let t2: number = 0;
+    const t2: number = 0;
     try {
       return await fn(client);
     } finally {
