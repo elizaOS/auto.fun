@@ -40,6 +40,7 @@ export type ChartTable = {
     low: number;
     close: number;
     time: number;
+    volume: number;
   }[];
 };
 
