@@ -2182,7 +2182,7 @@ export default function Create() {
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
               // Include the import flag to indicate this is an imported token
-              imported: true,
+              imported: false,
             }),
           });
 
