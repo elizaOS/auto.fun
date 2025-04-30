@@ -134,7 +134,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
       usdValue = swap?.data?.priceUsdTotal || null;
     } else {
       account = swap?.user || "NA";
-      console.log(swap);
       swapType = swap?.direction === 0 ? "Buy" : "Sell";
 
       solana =
