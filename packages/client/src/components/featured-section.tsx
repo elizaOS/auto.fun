@@ -8,6 +8,7 @@ export default function FeaturedSection() {
     sortBy: "featured",
     sortOrder: "desc",
     enabled: true,
+    pageSize: 4,
     hideImported: 1,
   });
 
