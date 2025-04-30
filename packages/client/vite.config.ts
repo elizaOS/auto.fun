@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { fileURLToPath, URL } from "url";
 import Sitemap from "vite-plugin-sitemap";
+import { VitePluginRadar } from "vite-plugin-radar";
 
 import { config } from "dotenv";
 
@@ -29,6 +30,14 @@ export default defineConfig({
       protocolImports: true,
       // Whether to include the Buffer polyfill
       include: ["buffer", "process"],
+    }),
+    VitePluginRadar({
+      enableDev: true,
+      analytics: [
+        {
+          id: "G-MMJEBG6MES",
+        },
+      ],
     }),
   ],
   server: {
