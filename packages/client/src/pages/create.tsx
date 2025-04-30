@@ -1,4 +1,3 @@
-import CoinDrop from "@/components/coindrop";
 import { EmptyState } from "@/components/empty-state";
 import useAuthentication from "@/hooks/use-authentication";
 import { useCreateToken } from "@/hooks/use-create-token";

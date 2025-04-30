@@ -1,6 +1,6 @@
+import { env } from "@/utils/env";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import { env } from "@/utils/env";
 
 interface SkeletonImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;

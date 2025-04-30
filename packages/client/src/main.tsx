@@ -1,21 +1,21 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Route, Routes } from "react-router";
 import "./index.css";
 import Layout from "./layout/root";
 import Homepage from "./pages";
+import Admin from "./pages/admin";
+import CallbackPage from "./pages/callback";
+import ChatPage from "./pages/chat";
 import Create from "./pages/create";
 import Fees from "./pages/fees";
+import PageNotFound from "./pages/not-found";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Profile from "./pages/profile";
 import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
-import Token from "./pages/token";
 import Testing from "./pages/testing";
-import CallbackPage from "./pages/callback";
-import PageNotFound from "./pages/not-found";
-import Admin from "./pages/admin";
-import ChatPage from "./pages/chat";
-import { HelmetProvider } from "react-helmet-async";
+import Token from "./pages/token";
 
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>

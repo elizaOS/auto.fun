@@ -1,5 +1,4 @@
 import Button from "@/components/button";
-import FrontpageHeader from "@/components/frontpage-header";
 // import FrontpageHeader from "@/components/frontpage-header";
 import GridListSwitcher from "@/components/grid-list-switcher";
 import GridView from "@/components/grid-view";
@@ -8,17 +7,16 @@ import Loader from "@/components/loader";
 import { TableView } from "@/components/table-view";
 // Remove useFilter import, manage state locally for now
 // import { useFilter } from "@/hooks/use-filter";
-import { useTokens, UseTokensParams } from "@/hooks/use-tokens";
-import { useViewMode } from "@/hooks/use-view-mode";
-import { getSocket } from "@/utils/socket";
-import { IToken } from "@/types";
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { Fragment } from "react/jsx-runtime";
-import { FilterIcon, X } from "lucide-react"; // Example icons
-import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
-import { Helmet } from "react-helmet";
-import { useWindowSize } from "@uidotdev/usehooks";
 import FeaturedSection from "@/components/featured-section";
+import { useTokens, UseTokensParams } from "@/hooks/use-tokens";
+import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
+import { useViewMode } from "@/hooks/use-view-mode";
+import { IToken } from "@/types";
+import { getSocket } from "@/utils/socket";
+import { FilterIcon, X } from "lucide-react"; // Example icons
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Helmet } from "react-helmet";
+import { Fragment } from "react/jsx-runtime";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";

@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLocalStorage } from "@uidotdev/usehooks";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 // Define cookie types locally as CookieProvider will be removed
 type CookieType = "necessary" | "analytics" | "preferences";

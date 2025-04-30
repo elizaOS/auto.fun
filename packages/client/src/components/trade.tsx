@@ -6,12 +6,12 @@ import { formatNumber, sanitizeCheckmark } from "@/utils";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BN } from "bn.js";
 import { Info, Wallet } from "lucide-react";
+import numeral from "numeral";
 import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
-import { BN } from "bn.js";
-import numeral from "numeral";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();

@@ -1,16 +1,16 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { LogOut, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 // import { Badge } from "../ui/badge";
-import { env } from "@/utils/env";
-import Button from "../button";
 import { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { IToken } from "@/types";
 import { shortenAddress } from "@/utils";
 import { getToken } from "@/utils/api";
+import { env } from "@/utils/env";
+import Button from "../button";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback

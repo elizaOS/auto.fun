@@ -15,13 +15,13 @@ import {
   sanitizeCheckmark,
   shortenAddress,
 } from "@/utils";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useNavigate } from "react-router";
+import { twMerge } from "tailwind-merge";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
 import SkeletonImage from "./skeleton-image";
-import { twMerge } from "tailwind-merge";
 import Verified from "./verified";
-import { ArrowDown, ArrowUp } from "lucide-react";
 
 type SortOrderType = "asc" | "desc";
 

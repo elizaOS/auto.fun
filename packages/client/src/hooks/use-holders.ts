@@ -1,7 +1,7 @@
-import { z } from "zod";
-import { useEffect } from "react";
-import { usePagination } from "./use-pagination";
 import { getSocket } from "@/utils/socket";
+import { useEffect } from "react";
+import { z } from "zod";
+import { usePagination } from "./use-pagination";
 
 const HolderSchema = z.object({
   address: z.string(),

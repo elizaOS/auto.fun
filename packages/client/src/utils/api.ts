@@ -1,7 +1,7 @@
+import { fetchWithAuth } from "@/hooks/use-authentication";
 import { ChartTable } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 import { env } from "./env";
-import { fetchWithAuth } from "@/hooks/use-authentication";
 
 export const queryClient = new QueryClient();
 

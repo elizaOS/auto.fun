@@ -1,5 +1,5 @@
 import { normalizedProgress } from "@/utils";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Add keyframes for the subtle pulse animation
 const pulseKeyframes = `

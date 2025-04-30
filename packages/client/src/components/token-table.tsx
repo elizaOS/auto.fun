@@ -1,16 +1,16 @@
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
-  useReactTable,
   getSortedRowModel,
   SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
-import { ProfileToken } from "../types/profileTypes";
+import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
-import { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { ProfileToken } from "../types/profileTypes";
 
 const columnHelper = createColumnHelper<ProfileToken>();
 

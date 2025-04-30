@@ -1,20 +1,20 @@
-import { useEffect, useState, useMemo } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
-import { useWallet } from "@solana/wallet-adapter-react";
 import Chat from "@/components/chat/index";
 import Loader from "@/components/loader";
-import { fetchWithAuth } from "@/hooks/use-authentication";
-import { IToken } from "@/types"; // Assuming you have this type
-import { env } from "@/utils/env";
 import SkeletonImage from "@/components/skeleton-image";
-import { resizeImage, shortenAddress } from "@/utils";
 import TokenStatus from "@/components/token-status"; // Reuse status component
 import Verified from "@/components/verified"; // Reuse verified component
-import { ExternalLink } from "lucide-react"; // Reuse icon
-import { Tooltip } from "react-tooltip"; // Reuse tooltip
-import { getToken } from "@/utils/api"; // Reuse API util
-import { ProfileToken } from "@/types/profileTypes"; // Keep ProfileToken type
+import { fetchWithAuth } from "@/hooks/use-authentication";
 import { useSolPriceContext } from "@/providers/use-sol-price-context"; // Import SOL price context
+import { IToken } from "@/types"; // Assuming you have this type
+import { ProfileToken } from "@/types/profileTypes"; // Keep ProfileToken type
+import { resizeImage, shortenAddress } from "@/utils";
+import { getToken } from "@/utils/api"; // Reuse API util
+import { env } from "@/utils/env";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { ExternalLink } from "lucide-react"; // Reuse icon
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Tooltip } from "react-tooltip"; // Reuse tooltip
 
 const API_BASE_URL = env.apiUrl || "";
 

@@ -1,14 +1,14 @@
-import { Link, Route, Routes, useLocation, Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import AdminOverview from "../components/admin/overview";
-import AdminUsers from "../components/admin/users";
-import AdminTokens from "../components/admin/tokens";
-import AdminPregenerated from "../components/admin/pregenerated";
-import AdminModerators from "../components/admin/moderators";
-import useAuthentication from "@/hooks/use-authentication";
-import { env } from "@/utils/env";
-import { fetcher } from "@/utils/api";
 import Loader from "@/components/loader";
+import useAuthentication from "@/hooks/use-authentication";
+import { fetcher } from "@/utils/api";
+import { env } from "@/utils/env";
+import { useQuery } from "@tanstack/react-query";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import AdminModerators from "../components/admin/moderators";
+import AdminOverview from "../components/admin/overview";
+import AdminPregenerated from "../components/admin/pregenerated";
+import AdminTokens from "../components/admin/tokens";
+import AdminUsers from "../components/admin/users";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;

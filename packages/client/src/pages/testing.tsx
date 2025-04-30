@@ -1,6 +1,6 @@
-import { env } from "@/utils/env";
-import { useCallback, useEffect, useState, useRef } from "react"; // Added useRef
 import Button from "@/components/button"; // Import Button component
+import { env } from "@/utils/env";
+import { useCallback, useEffect, useRef, useState } from "react"; // Added useRef
 // --- Vanity Generator Logic ---
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline";

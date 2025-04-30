@@ -1,17 +1,17 @@
-import { useEffect, useRef } from "react";
+import { IToken } from "@/types";
+import { getChartTable } from "@/utils/api";
+import { getSocket, Socket } from "@/utils/socket";
 import { useQuery } from "@tanstack/react-query";
 import {
-  createChart,
   CandlestickSeries,
   ColorType,
+  createChart,
   DeepPartial,
   ChartOptions as LightweightChartOptions,
 } from "lightweight-charts";
-import { getSocket, Socket } from "@/utils/socket";
-import { getChartTable } from "@/utils/api";
-import { IToken } from "@/types";
-import Loader from "./loader";
+import { useEffect, useRef } from "react";
 import { twMerge } from "tailwind-merge";
+import Loader from "./loader";
 
 interface ChartProps {
   token: IToken;

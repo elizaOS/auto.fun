@@ -1,12 +1,12 @@
-import { PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { env } from "@/utils/env";
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { env } from "@/utils/env";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 
 export const Wallet = ({ children }: PropsWithChildren) => {
   // Always use the latest endpoint from environment
