@@ -1253,10 +1253,9 @@ tokenRouter.get("/tokens", async (c) => {
       priorityTokenAddresses,
       limit
     );
-
-    // Replace the original array contents
-    serializableTokensResult.length = 0;
-    serializableTokensResult.push(...modifiedResults);
+    
+    // Replace all elements using splice
+    serializableTokensResult.splice(0, serializableTokensResult.length, ...modifiedResults);
   }
 
   const responseData = {
