@@ -21,6 +21,7 @@ import {
   fromNow,
   LAMPORTS_PER_SOL,
   resizeImage,
+  sanitizeCheckmark,
   shortenAddress,
   useCodex,
 } from "@/utils";
@@ -291,7 +292,7 @@ export default function Page() {
   return (
     <Fragment>
       <Helmet>
-        <title>{`${token?.name} (${token?.ticker})`} - auto.fun</title>
+        <title>{`${sanitizeCheckmark(token?.name)} (${sanitizeCheckmark(token?.ticker)})`} - auto.fun</title>
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}
@@ -336,7 +337,7 @@ export default function Page() {
                   <div className="flex flex-wrap items-center justify-start w-full gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="capitalize text-white text-xl sm:text-2xl font-bold font-satoshi leading-tight truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] max-w-[180px] sm:max-w-none">
-                        {token?.name}
+                        {sanitizeCheckmark(token?.name)}
                       </h3>
                       <Verified isVerified={token?.verified ? true : false} />
                       <Tooltip anchorSelect="#view-on-solscan">
@@ -359,7 +360,7 @@ export default function Page() {
                 {/* Ticker overlapping at bottom - with drop shadow */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/25 to-transparent px-3 py-2.5">
                   <div className="text-autofun-text-highlight text-xl font-bold font-dm-mono uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                    ${token?.ticker}
+                    ${sanitizeCheckmark(token?.ticker)}
                   </div>
                 </div>
               </div>
@@ -647,7 +648,7 @@ export default function Page() {
                     Balance:
                   </span>
                   <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                    {formatNumber(tokenBalance, false, true)} {token?.ticker}
+                    {formatNumber(tokenBalance, false, true)} {sanitizeCheckmark(token?.ticker)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

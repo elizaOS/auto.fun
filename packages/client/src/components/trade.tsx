@@ -2,7 +2,7 @@ import useAuthentication from "@/hooks/use-authentication";
 import { useSwap } from "@/hooks/use-swap";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { IToken } from "@/types";
-import { formatNumber } from "@/utils";
+import { formatNumber, sanitizeCheckmark } from "@/utils";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -357,10 +357,10 @@ export default function Trade({ token }: { token: IToken }) {
                         ? "/solana.svg"
                         : token?.image || "/placeholder.png"
                     }
-                    alt={isTokenSelling ? "SOL" : token?.name || "token"}
+                    alt={isTokenSelling ? "SOL" : sanitizeCheckmark(token?.name) || "token"}
                     className="size-6 m-2"
                   />
-                  {isTokenSelling ? "SOL" : token?.ticker}
+                  {isTokenSelling ? "SOL" : sanitizeCheckmark(token?.ticker)}
                 </div>
               </div>
 
@@ -386,7 +386,7 @@ export default function Trade({ token }: { token: IToken }) {
                   <p className="text-red-600 text-xs font-dm-mono">
                     Insufficient Funds: You have{" "}
                     {Number(balance).toFixed(4) || "0"}{" "}
-                    {isTokenSelling ? token?.ticker : "SOL"}
+                    {isTokenSelling ? sanitizeCheckmark(token?.ticker) : "SOL"}
                   </p>
                 </div>
               </div>
@@ -506,7 +506,7 @@ const TokenDisplay = ({
         className="size-4 mr-2"
       />
       <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
-        {isSolana ? "SOL" : token?.ticker}
+        {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
       </span>
     </div>
   );
@@ -542,7 +542,7 @@ const Balance = ({
       <div className="flex gap-1 justify-end w-full">
         <Wallet className="text-autofun-text-secondary size-[18px]" />
         <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-          {formattedBalance} {isSolana ? "SOL" : token?.ticker}
+          {formattedBalance} {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
         </span>
       </div>
     </div>
