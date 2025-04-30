@@ -32,6 +32,8 @@ import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
 import { token } from "@coral-xyz/anchor/dist/cjs/utils";
 
+import { inArray } from "drizzle-orm";
+
 // --- Validation Function ---
 async function validateQueryResults(
   params: { hideImported?: number; status?: string },
@@ -1239,6 +1241,27 @@ tokenRouter.get("/tokens", async (c) => {
       }
       return serializableToken as Token; // Keep cast for now
     }) || [];
+
+  // Apply priority token logic for featured sorting on page 1
+  if (sortBy === "featured" && page === 1) {
+    // Define the two token addresses to prioritize
+    const priorityTokenAddresses = [
+      "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", // ai16z
+      "Gu3LDkn7Vx3bmCzLafYNKcDxv2mH7YN44NJZFXnypump", // degent sparten
+      "3aU4AabWUwJyQdyFQrkhmmbj75ejrXaRPQxpiECEpump"
+    ];
+    
+    // Use the helper function to prioritize tokens
+    const modifiedResults = await prioritizeFeaturedTokens(
+      serializableTokensResult,
+      priorityTokenAddresses,
+      limit
+    );
+    
+    // Replace the original array contents
+    serializableTokensResult.length = 0; 
+    serializableTokensResult.push(...modifiedResults);
+  }
 
   const responseData = {
     tokens: serializableTokensResult,
@@ -2514,5 +2537,92 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
     return c.json({ error: "Failed to upload audio context" }, 500);
   }
 });
+
+
+/**
+   * Fetches and prioritizes specific tokens at the beginning of the result set
+   * @param db Database instance
+   * @param serializableResults Current serialized token results
+   * @param priorityTokenAddresses Array of token mint addresses to prioritize
+   * @param limit Maximum number of tokens to return
+   * @returns Modified token results with priority tokens at the beginning
+   */
+async function prioritizeFeaturedTokens(
+  serializableResults: Token[],
+  priorityTokenAddresses: string[],
+  limit: number
+): Promise<Token[]> {
+  try {
+    const db = getDB();
+    // Check if priority tokens exist in results
+    const priorityTokensInResults = serializableResults.filter(token => 
+      priorityTokenAddresses.includes(token.mint)
+    );
+    
+    // Get missing priority tokens (if any)
+    const missingTokenAddresses = priorityTokenAddresses.filter(addr => 
+      !priorityTokensInResults.some(token => token.mint === addr)
+    );
+    
+    // If we have missing priority tokens, fetch them
+    let missingTokens: Token[] = [];
+    if (missingTokenAddresses.length > 0) {
+      try {
+        const priorityTokensQuery = db.select().from(tokens)
+          .where(inArray(tokens.mint, missingTokenAddresses));
+        
+        const fetchedTokens = await priorityTokensQuery.execute();
+        
+        // Convert BigInts in fetched tokens
+        missingTokens = fetchedTokens.map(token => {
+          const serializableToken: Record<string, any> = {};
+          for (const [key, value] of Object.entries(token)) {
+            if (typeof value === "bigint") {
+              serializableToken[key] = (value as any).toString();
+            } else {
+              serializableToken[key] = value;
+            }
+          }
+          return serializableToken as Token;
+        });
+        
+        logger.log(`[Featured Sort] Fetched ${missingTokens.length} additional priority tokens`);
+      } catch (error) {
+        logger.error("[Featured Sort] Error fetching priority tokens:", error);
+        // Don't throw error, just continue with what we have
+      }
+    }
+    
+    // Remove any priority tokens from the main result to avoid duplicates
+    const otherTokens = serializableResults.filter(token => 
+      !priorityTokenAddresses.includes(token.mint)
+    );
+    
+    // Combine all priority tokens in the specified order, but only include tokens that exist
+    const allPriorityTokens = [];
+    for (const addr of priorityTokenAddresses) {
+      const existingToken = priorityTokensInResults.find(t => t.mint === addr);
+      if (existingToken) {
+        allPriorityTokens.push(existingToken);
+      } else {
+        const fetchedToken = missingTokens.find(t => t.mint === addr);
+        if (fetchedToken) allPriorityTokens.push(fetchedToken);
+        // If token doesn't exist in DB, we just skip it - no need to add null/undefined to array
+      }
+    }
+    
+    // Combine priority tokens with other tokens, ensuring we don't exceed the limit
+    const combinedResults = [...allPriorityTokens, ...otherTokens];
+    const finalResults = combinedResults.slice(0, limit); // Keep within limit
+    
+    logger.log(`[Featured Sort] Prioritized ${allPriorityTokens.length} tokens at the beginning`);
+    
+    return finalResults;
+  } catch (error) {
+    // If anything fails, return the original results to avoid breaking the API
+    logger.error("[Featured Sort] Error in prioritization process:", error);
+    return serializableResults.slice(0, limit);
+  }
+}
 
 export default tokenRouter;
