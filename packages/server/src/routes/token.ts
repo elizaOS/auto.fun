@@ -30,6 +30,7 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
+import { token } from "@coral-xyz/anchor/dist/cjs/utils";
 
 // --- Validation Function ---
 async function validateQueryResults(
@@ -1709,33 +1710,86 @@ tokenRouter.post("/create-token", async (c) => {
 
       // Handle image upload if base64 data is provided
       let imageUrl = "";
-      if (tokenStats && tokenStats.image) {
+      if (
+        tokenStats &&
+        tokenStats.image &&
+        tokenStats.image.startsWith("http")
+      ) {
         try {
-          // Extract the base64 data from the data URL
+          logger.log(`Fetching image from URL: ${tokenStats.image}`);
+
+          const imageResponse = await fetch(tokenStats.image);
+          if (!imageResponse.ok) {
+            throw new Error(
+              `Failed to fetch image data: ${imageResponse.status} ${imageResponse.statusText}`
+            );
+          }
+
+          const contentType = imageResponse.headers.get("content-type");
+          if (!contentType || !contentType.startsWith("image/")) {
+            // If no content type or not an image, skip processing
+            logger.warn(
+              `Skipping image processing due to invalid content type: ${contentType} for URL: ${tokenStats.image}`
+            );
+            imageUrl = "";
+          } else {
+            const imageArrayBuffer = await imageResponse.arrayBuffer();
+            const imageBuffer = Buffer.from(imageArrayBuffer);
+
+            const ext = contentType.split("/")[1]?.split("+")[0] || "png";
+            const filename = `${mintAddress}-${Date.now()}.${ext}`;
+            logger.log(
+              `Prepared image for upload: ${filename}, Type: ${contentType}, Size: ${imageBuffer.length} bytes`
+            );
+
+            imageUrl = await uploadWithS3(imageBuffer, {
+              filename,
+              contentType,
+              basePath: "token-images",
+            });
+            logger.log(`Image uploaded successfully to: ${imageUrl}`);
+          }
+        } catch (error) {
+          logger.error(
+            `Error processing image from URL ${tokenStats.image}:`,
+            error
+          );
+          imageUrl = "";
+        }
+      } else if (
+        tokenStats &&
+        tokenStats.image &&
+        tokenStats.image.startsWith("data:image")
+      ) {
+        // already data URI
+        try {
+          logger.log(
+            `Processing existing data URI (first 100 chars): ${tokenStats.image.substring(0, 100)}...`
+          );
           const imageMatch = tokenStats.image.match(
             /^data:(image\/[a-z+]+);base64,(.*)$/
           );
           if (!imageMatch) {
-            throw new Error("Invalid image data URI format");
+            throw new Error("Invalid image data URI format provided");
           }
           const contentType = imageMatch[1];
           const base64Data = imageMatch[2];
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // Generate a unique filename
-          const ext = contentType.split("/")[1] || "png"; // Extract extension
+          const ext = contentType.split("/")[1]?.split("+")[0] || "png";
           const filename = `${mintAddress}-${Date.now()}.${ext}`;
 
-          // Upload using the uploader function (which now uses S3)
-          imageUrl = await uploadWithS3(
-            // Pass necessary env vars if uploader expects them (it shouldn't anymore)
-            imageBuffer,
-            { filename, contentType, basePath: "token-images" }
+          imageUrl = await uploadWithS3(imageBuffer, {
+            filename,
+            contentType,
+            basePath: "token-images",
+          });
+          logger.log(
+            `Image from data URI uploaded successfully to: ${imageUrl}`
           );
         } catch (error) {
-          logger.error("Error uploading image via S3 uploader:", error);
-          // Continue without image if upload fails
-          imageUrl = ""; // Ensure imageUrl is empty
+          logger.error(`Error processing image from data URI:`, error);
+          imageUrl = "";
         }
       }
 
