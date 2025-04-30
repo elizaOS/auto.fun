@@ -1,13 +1,9 @@
 import {
   GetObjectCommand,
   ListObjectsV2Command,
-  PutObjectCommand
+  PutObjectCommand,
 } from "@aws-sdk/client-s3"; // S3 Import
-import {
-  AccountInfo,
-  Connection,
-  PublicKey
-} from "@solana/web3.js";
+import { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { and, count, eq, getTableColumns, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
@@ -30,10 +26,12 @@ import {
   getDevnetRpcUrl,
   getFeaturedMaxValues,
   getMainnetRpcUrl,
-  logger
+  logger,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
+import { token } from "@coral-xyz/anchor/dist/cjs/utils";
+
 import { inArray } from "drizzle-orm";
 
 // --- Validation Function ---
@@ -603,7 +601,6 @@ export async function processSwapEvent(
 
 // Helper function to process token info after finding it on a network
 async function processTokenInfo(
-  c: any,
   mintPublicKey: PublicKey,
   tokenInfo: AccountInfo<Buffer>,
   connection: Connection,
@@ -621,11 +618,8 @@ async function processTokenInfo(
   const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
 
   if (!isSplToken && !isSPL2022) {
-    return c.json(
-      {
-        error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
-      },
-      400
+    throw new Error(
+      "Not a valid SPL token. Owner: " + tokenInfo.owner.toString()
     );
   }
 
@@ -769,7 +763,9 @@ async function processTokenInfo(
         logger.error(
           `[search-token] No metadata found for token: ${mintPublicKey.toString()}`
         );
-        return c.json({ error: "No metadata found for this token" }, 404);
+        throw new Error(
+          `No metadata found for token: ${mintPublicKey.toString()}`
+        );
       }
     } else {
       // We found Metaplex metadata
@@ -872,7 +868,7 @@ async function processTokenInfo(
 
   // If we still didn't find metadata from either source, throw error
   if (!foundMetadata && !isSPL2022) {
-    return c.json({ error: "No metadata found for this token" }, 404);
+    throw new Error(`No metadata found for token: ${mintPublicKey.toString()}`);
   }
 
   // For SPL-2022 tokens, we still consider them valid even without metadata
@@ -937,7 +933,7 @@ async function processTokenInfo(
 
   logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
 
-  return c.json(tokenData);
+  return tokenData;
 }
 
 // Helper to check token balance directly on blockchain
@@ -1084,15 +1080,25 @@ async function checkBlockchainTokenBalance(
 
 // --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
-  // --- Parameter Reading ---
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
-  const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
-  const page = parseInt(queryParams.page as string) || 1;
+  const MAX_LIMIT = 50;
+
+  const requestedLimit =
+    parseInt(queryParams?.limit ? queryParams.limit : ("0" as string)) || 50;
+
+  const limit = isSearching ? 5 : Math.min(requestedLimit, MAX_LIMIT);
+
+  const requestedPage =
+    parseInt(queryParams?.page ? queryParams.page : ("1" as string)) || 1;
+    
+  const MAX_PAGE = 1000;
+
+  const page = Math.min(requestedPage, MAX_PAGE);
+
   const skip = (page - 1) * limit;
   const status = queryParams.status as string | undefined;
   const hideImportedParam = queryParams.hideImported;
-  // Ensure hideImported is number or undefined, handle potential string '1' or '0'
   const hideImported =
     hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
   const creator = queryParams.creator as string | undefined;
@@ -1106,38 +1112,25 @@ tokenRouter.get("/tokens", async (c) => {
     `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`
   );
 
-  // --- RE-ENABLE CACHE GET ---
-  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
-  const redisCache = await getGlobalRedisCache(); // Ensure env is cast if needed
+  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
+
+  const redisCache = await getGlobalRedisCache();
+
   if (redisCache) {
-    try {
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        logger.log(`Cache hit for ${cacheKey}`);
-        const parsedData = JSON.parse(cachedData);
-        if (parsedData && Array.isArray(parsedData.tokens)) {
-          return c.json(parsedData);
-        } else {
-          logger.warn(
-            `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`
-          );
-        }
-      } else {
-        logger.log(`Cache miss for ${cacheKey}`);
-      }
-    } catch (cacheError) {
-      logger.error(`Redis cache GET error:`, cacheError);
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      logger.log(`Cache hit for ${cacheKey}`);
+      const parsedData = JSON.parse(cachedData);
+      return c.json(parsedData);
+    } else {
+      logger.log(`Cache miss for ${cacheKey}`);
     }
   }
-  // --- END RE-ENABLE CACHE GET ---
 
   const db = getDB();
 
-  // Get max values needed by builder for column selection
   const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
-  // --- Build Base Queries ---
-  // Pass sorting info needed for column selection to builder
   const filterParams = {
     hideImported,
     status,
@@ -1148,25 +1141,20 @@ tokenRouter.get("/tokens", async (c) => {
     maxHolders,
   };
   let baseQuery = buildTokensBaseQuery(db, filterParams);
-  const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
+  const countQuery = buildTokensCountBaseQuery(db, filterParams);
 
-  // --- Apply Sorting to Main Query ---
-  // Column selection is now done inside buildTokensBaseQuery
   const validSortColumns = {
     createdAt: tokens.createdAt,
     marketCapUSD: tokens.marketCapUSD,
     volume24h: tokens.volume24h,
     holderCount: tokens.holderCount,
     curveProgress: tokens.curveProgress,
-    // Add other valid columns here
   };
 
   if (sortBy === "featured") {
-    // REMOVE baseQuery.select - done in builder
     baseQuery = applyFeaturedSort(baseQuery, maxVolume, maxHolders, sortOrder);
     logger.log(`[Query Build] Applied sort: featured weighted`);
   } else {
-    // REMOVE baseQuery.select - done in builder
     const sortColumn =
       validSortColumns[sortBy as keyof typeof validSortColumns] ||
       tokens.createdAt;
@@ -1185,14 +1173,11 @@ tokenRouter.get("/tokens", async (c) => {
     }
   }
 
-  // --- Apply Pagination to Main Query ---
   baseQuery = baseQuery.limit(limit).offset(skip);
   logger.log(
     `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`
   );
 
-  // --- Get SQL representation BEFORE execution ---
-  // Ensure baseQuery and countQuery are accessible here
   let mainQuerySqlString = "N/A";
   let countQuerySqlString = "N/A";
   try {
@@ -1203,22 +1188,10 @@ tokenRouter.get("/tokens", async (c) => {
   } catch (sqlError) {
     logger.error("[SQL Build] Error getting SQL string:", sqlError);
   }
-  // --- END SQL Generation ---
-
-  // --- Execute Queries (Sequentially is safer for SQLite) ---
-  // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
-  // const timeoutPromise = new Promise((_, reject) =>
-  //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
-  // );
-  // const countTimeoutPromise = new Promise<number>((_, reject) =>
-  //   setTimeout(
-  //     () => reject(new Error("Count query timed out")),
-  //     timeoutDuration, // Use same timeout for count
-  //   ),
-  // );
 
   let tokensResult: Token[] | undefined;
   let total = 0;
+
   try {
     logger.log("[Execution] Awaiting baseQuery...");
     // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
@@ -1298,43 +1271,23 @@ tokenRouter.get("/tokens", async (c) => {
     hasMore: page < totalPages,
   };
 
-  // Merge ephemeral stats from Redis into each token
   if (redisCache) {
-    await Promise.all(
-      responseData.tokens.map(async (t) => {
-        const statsJson = await redisCache.get(`token:stats:${t.mint}`);
-        if (statsJson) Object.assign(t, JSON.parse(statsJson));
-      })
-    );
+    const keys = responseData.tokens.map((t) => `token:stats:${t.mint}`);
+    const statsJsonArray = await redisCache.mget(keys);
+    responseData.tokens.forEach((t, index) => {
+      const statsJson = statsJsonArray[index];
+      if (statsJson) Object.assign(t, JSON.parse(statsJson));
+    });
   }
 
-  // --- RE-ENABLE CACHE SET ---
-  if (
-    redisCache
-    // Cache even if results are empty to prevent re-querying immediately
-    // && serializableTokensResult &&
-    // serializableTokensResult.length > 0
-  ) {
-    // Cache only if results exist
+  if (redisCache) {
     try {
-      // Cache duration remains 15 seconds for the /tokens list endpoint
-      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), 20);
+      logger.log(`Cached data for ${cacheKey} with 20s TTL`);
     } catch (cacheError) {
       logger.error(`Redis cache SET error:`, cacheError);
     }
   }
-  // --- END RE-ENABLE CACHE SET ---
-
-  // Final log and return
-  const returnedMints =
-    serializableTokensResult
-      ?.slice(0, 5)
-      .map((t) => t.mint)
-      .join(", ") || "none";
-  logger.log(
-    `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`
-  );
 
   return c.json(responseData);
 });
@@ -1678,22 +1631,14 @@ tokenRouter.post("/create-token", async (c) => {
     const {
       tokenMint,
       mint,
-      name,
-      symbol,
       txId,
-      description,
       twitter,
       telegram,
       farcaster,
       website,
       discord,
-      imageBase64,
-      metadataUrl,
       imported,
-      creator,
-      isToken2022,
     } = body;
-
     const mintAddress = tokenMint || mint;
     if (!mintAddress) {
       return c.json({ error: "Token mint address is required" }, 400);
@@ -1702,7 +1647,6 @@ tokenRouter.post("/create-token", async (c) => {
     logger.log(`Creating token record for: ${mintAddress}`);
 
     const db = getDB();
-
     // Check if token already exists
     const existingToken = await db
       .select()
@@ -1720,36 +1664,112 @@ tokenRouter.post("/create-token", async (c) => {
       );
     }
 
+    let mintPublicKey;
     try {
+      mintPublicKey = new PublicKey(mintAddress);
+    } catch (e) {
+      logger.error(`Invalid mint address format: ${mintAddress}`, e);
+      return c.json({ error: "Invalid mint address format" }, 400);
+    }
+    const connection = new Connection(getMainnetRpcUrl(), "confirmed");
+    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(`[search-token] Found token on mainnet`);
+      const tokenStats = await processTokenInfo(
+        mintPublicKey,
+        tokenInfo,
+        connection,
+        user.publicKey
+      );
+
+      console.log("****** tokenStats ******\n", tokenStats);
+
+      if (!tokenStats) {
+        return c.json({ error: "Failed to process token info" }, 500);
+      }
+
       // Handle image upload if base64 data is provided
       let imageUrl = "";
-      if (imageBase64) {
+      if (
+        tokenStats &&
+        tokenStats.image &&
+        tokenStats.image.startsWith("http")
+      ) {
         try {
-          // Extract the base64 data from the data URL
-          const imageMatch = imageBase64.match(
+          logger.log(`Fetching image from URL: ${tokenStats.image}`);
+
+          const imageResponse = await fetch(tokenStats.image);
+          if (!imageResponse.ok) {
+            throw new Error(
+              `Failed to fetch image data: ${imageResponse.status} ${imageResponse.statusText}`
+            );
+          }
+
+          const contentType = imageResponse.headers.get("content-type");
+          if (!contentType || !contentType.startsWith("image/")) {
+            // If no content type or not an image, skip processing
+            logger.warn(
+              `Skipping image processing due to invalid content type: ${contentType} for URL: ${tokenStats.image}`
+            );
+            imageUrl = "";
+          } else {
+            const imageArrayBuffer = await imageResponse.arrayBuffer();
+            const imageBuffer = Buffer.from(imageArrayBuffer);
+
+            const ext = contentType.split("/")[1]?.split("+")[0] || "png";
+            const filename = `${mintAddress}-${Date.now()}.${ext}`;
+            logger.log(
+              `Prepared image for upload: ${filename}, Type: ${contentType}, Size: ${imageBuffer.length} bytes`
+            );
+
+            imageUrl = await uploadWithS3(imageBuffer, {
+              filename,
+              contentType,
+              basePath: "token-images",
+            });
+            logger.log(`Image uploaded successfully to: ${imageUrl}`);
+          }
+        } catch (error) {
+          logger.error(
+            `Error processing image from URL ${tokenStats.image}:`,
+            error
+          );
+          imageUrl = "";
+        }
+      } else if (
+        tokenStats &&
+        tokenStats.image &&
+        tokenStats.image.startsWith("data:image")
+      ) {
+        // already data URI
+        try {
+          logger.log(
+            `Processing existing data URI (first 100 chars): ${tokenStats.image.substring(0, 100)}...`
+          );
+          const imageMatch = tokenStats.image.match(
             /^data:(image\/[a-z+]+);base64,(.*)$/
           );
           if (!imageMatch) {
-            throw new Error("Invalid image data URI format");
+            throw new Error("Invalid image data URI format provided");
           }
           const contentType = imageMatch[1];
           const base64Data = imageMatch[2];
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // Generate a unique filename
-          const ext = contentType.split("/")[1] || "png"; // Extract extension
+          const ext = contentType.split("/")[1]?.split("+")[0] || "png";
           const filename = `${mintAddress}-${Date.now()}.${ext}`;
 
-          // Upload using the uploader function (which now uses S3)
-          imageUrl = await uploadWithS3(
-            // Pass necessary env vars if uploader expects them (it shouldn't anymore)
-            imageBuffer,
-            { filename, contentType, basePath: "token-images" }
+          imageUrl = await uploadWithS3(imageBuffer, {
+            filename,
+            contentType,
+            basePath: "token-images",
+          });
+          logger.log(
+            `Image from data URI uploaded successfully to: ${imageUrl}`
           );
         } catch (error) {
-          logger.error("Error uploading image via S3 uploader:", error);
-          // Continue without image if upload fails
-          imageUrl = ""; // Ensure imageUrl is empty
+          logger.error(`Error processing image from data URI:`, error);
+          imageUrl = "";
         }
       }
 
@@ -1760,24 +1780,26 @@ tokenRouter.post("/create-token", async (c) => {
 
       // Convert imported and isToken2022 flags to numbers (0 or 1)
       const importedValue = imported === true ? 1 : 0;
-      const isToken2022Value = isToken2022 === true ? 1 : 0; // <<< Convert flag
+      const isToken2022Value = tokenStats?.isToken2022 === true ? 1 : 0; // <<< Convert flag
 
       // Insert with all required fields from the schema
       await db.insert(tokens).values([
         {
           id: mintAddress,
           mint: mintAddress,
-          name: name || `Token ${mintAddress.slice(0, 8)}`,
-          ticker: symbol || "TOKEN",
-          url: metadataUrl || "",
+          name: tokenStats?.name || `Token ${mintAddress.slice(0, 8)}`,
+          ticker: tokenStats?.symbol || "TOKEN",
+          url: tokenStats?.metadataUri || "",
           image: imageUrl || "", // Use the URL from the uploader
-          description: description || "",
+          description: tokenStats?.description || "",
           twitter: twitter || "",
           telegram: telegram || "",
           farcaster: farcaster || "",
           website: website || "",
           discord: discord || "",
-          creator: creator ? creator : user.publicKey || "unknown",
+          creator: tokenStats?.creator
+            ? tokenStats.creator
+            : user.publicKey || "unknown",
           status: imported ? "locked" : "active",
           tokenPriceUSD: 0.00000001,
           createdAt: now,
@@ -1808,9 +1830,9 @@ tokenRouter.post("/create-token", async (c) => {
       const tokenData = {
         id: tokenId,
         mint: mintAddress,
-        name: name || `Token ${mintAddress.slice(0, 8)}`,
-        ticker: symbol || "TOKEN",
-        description: description || "",
+        name: tokenStats?.name || `Token ${mintAddress.slice(0, 8)}`,
+        ticker: tokenStats?.symbol || "TOKEN",
+        description: tokenStats?.description || "",
         twitter: twitter || "",
         telegram: telegram || "",
         farcaster: farcaster || "",
@@ -1818,7 +1840,7 @@ tokenRouter.post("/create-token", async (c) => {
         discord: discord || "",
         creator: user.publicKey || "unknown",
         status: imported ? "locked" : "active",
-        url: metadataUrl || "",
+        url: tokenStats?.metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
         imported: importedValue,
@@ -1863,30 +1885,20 @@ tokenRouter.post("/create-token", async (c) => {
         (async () =>
           await generateAdditionalTokenImages(
             mintAddress,
-            description || ""
+            tokenStats?.description || ""
           ))();
       }
 
       return c.json({ success: true, token: tokenData });
-    } catch (error) {
-      logger.error("Error creating token:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown error creating token record";
-      return c.json(
-        { error: "Failed to create token record", details: errorMessage },
-        500
-      );
+    } else {
+      logger.error(`[search-token] Token ${mint} not found on mainnet`);
+      return c.json({ error: "Token not found on mainnet" }, 404);
     }
   } catch (error) {
     logger.error("Error in create-token endpoint:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown internal server error";
-    return c.json(
-      { error: "Internal server error", details: errorMessage },
-      500
-    );
+    return c.json({ error: "Could not get token metadata" }, 400);
   }
 });
 
@@ -2389,13 +2401,18 @@ tokenRouter.post("/search-token", async (c) => {
     const tokenInfo = await connection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
       logger.log(`[search-token] Found token on mainnet`);
-      return await processTokenInfo(
-        c,
+      const tokenData = await processTokenInfo(
         mintPublicKey,
         tokenInfo,
         connection,
         requestor
       );
+
+      if (!tokenData) {
+        return c.json({ error: "Failed to process token info" }, 500);
+      }
+
+      return c.json(tokenData);
     } else {
       logger.error(`[search-token] Token ${mint} not found on mainnet`);
       return c.json({ error: "Token not found on mainnet" }, 404);
@@ -2466,7 +2483,7 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
   try {
     const mint = c.req.param("mint");
     const user = c.get("user");
-    
+
     if (!user) {
       return c.json({ error: "Authentication required" }, 401);
     }
@@ -2474,14 +2491,17 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
     // Get the form data
     const formData = await c.req.formData();
     const audioFile = formData.get("audio") as File;
-    
+
     if (!audioFile) {
       return c.json({ error: "No audio file provided" }, 400);
     }
 
     // Validate file type
     if (!audioFile.type.startsWith("audio/")) {
-      return c.json({ error: "Invalid file type. Please upload an audio file." }, 400);
+      return c.json(
+        { error: "Invalid file type. Please upload an audio file." },
+        400
+      );
     }
 
     // Check file size (10MB limit)

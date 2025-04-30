@@ -15,7 +15,6 @@ export async function getGlobalRedisCache(): Promise<RedisCacheService> {
   return globalRedisCachePromise;
 }
 
-
 // Singleton RedisPool instance
 let sharedRedisPool: RedisPool | null = null;
 
@@ -45,7 +44,7 @@ const DEFAULT_REDIS_PORT = 6379;
 const DEFAULT_REDIS_PASSWORD = "MDikUKnhRHlURlnORexvVztDTrNCUBze";
 
 export class RedisCacheService {
-  constructor(public redisPool: RedisPool) { }
+  constructor(public redisPool: RedisPool) {}
 
   async isPoolReady(): Promise<boolean> {
     try {
@@ -59,10 +58,15 @@ export class RedisCacheService {
     }
   }
   async publish(channel: string, message: string): Promise<number> {
-    return this.redisPool.useClient(client => client.publish(channel, message));
+    return this.redisPool.useClient((client) =>
+      client.publish(channel, message)
+    );
   }
 
-  async subscribe(channel: string, handler: (message: string) => void): Promise<void> {
+  async subscribe(
+    channel: string,
+    handler: (message: string) => void
+  ): Promise<void> {
     const subClient = await this.redisPool.getSubscriberClient();
     await subClient.subscribe(channel);
     subClient.on("message", (ch, msg) => {
@@ -102,13 +106,18 @@ export class RedisCacheService {
   }
   async keys(pattern: string): Promise<string[]> {
     const p = this.getKey(pattern);
-    return this.redisPool.useClient(client => client.keys(p));
+    return this.redisPool.useClient((client) => client.keys(p));
   }
   async exists(key: string): Promise<boolean> {
     return this.redisPool.useClient(async (client) => {
       const result = await client.exists(this.getKey(key));
       return result === 1;
     });
+  }
+
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    const prefixedKeys = keys.map((key) => this.getKey(key));
+    return this.redisPool.useClient((client) => client.mget(prefixedKeys));
   }
 
   async ttl(key: string): Promise<number> {
@@ -123,12 +132,10 @@ export class RedisCacheService {
       return 0;
     }
     // logger.info(`LPUSH ${values.length} values to ${this.getKey(key)}`);
-    return this.redisPool.useClient((client) =>
-      client.lpush(this.getKey(key), ...values) // Spread the values array
+    return this.redisPool.useClient(
+      (client) => client.lpush(this.getKey(key), ...values) // Spread the values array
     );
   }
-
-
 
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
     // logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
@@ -201,9 +208,15 @@ export class RedisCacheService {
   // --- END NEW SET METHODS ---
 
   // --- START DISTRIBUTED LOCK METHODS ---
-  async acquireLock(lockKey: string, lockValue: string, ttlMilliseconds: number): Promise<boolean> {
+  async acquireLock(
+    lockKey: string,
+    lockValue: string,
+    ttlMilliseconds: number
+  ): Promise<boolean> {
     const keyWithPrefix = this.getKey(lockKey);
-    logger.info(`Attempting to acquire lock: ${keyWithPrefix} with value ${lockValue} and TTL ${ttlMilliseconds}ms`);
+    logger.info(
+      `Attempting to acquire lock: ${keyWithPrefix} with value ${lockValue} and TTL ${ttlMilliseconds}ms`
+    );
     try {
       const result = await this.redisPool.useClient((client) =>
         client.set(keyWithPrefix, lockValue, "PX", ttlMilliseconds, "NX")
@@ -233,7 +246,8 @@ export class RedisCacheService {
   // Define the script in ioredis if not already done (e.g., during initialization or first use)
   private async defineReleaseLockScript(client: Redis): Promise<void> {
     // Check if script already defined to avoid redefining on every call
-    if (!(client as any).releaseLockScript) { // Check if command name exists
+    if (!(client as any).releaseLockScript) {
+      // Check if command name exists
       try {
         // Define the script command
         (client as any).defineCommand("releaseLockScript", {
@@ -243,8 +257,10 @@ export class RedisCacheService {
         logger.info("Defined releaseLockScript Lua script for Redis client.");
       } catch (err: any) {
         // Handle cases where command might already be defined (e.g., across pool clients)
-        if (err.message.includes('Command name already specified')) {
-          logger.warn("releaseLockScript Lua script already defined for this client.");
+        if (err.message.includes("Command name already specified")) {
+          logger.warn(
+            "releaseLockScript Lua script already defined for this client."
+          );
         } else {
           logger.error("Failed to define releaseLockScript Lua script:", err);
           throw err; // Rethrow if it's a different error
@@ -253,23 +269,29 @@ export class RedisCacheService {
     }
   }
 
-
   async releaseLock(lockKey: string, lockValue: string): Promise<boolean> {
     const keyWithPrefix = this.getKey(lockKey);
-    logger.info(`Attempting to release lock: ${keyWithPrefix} with value ${lockValue}`);
+    logger.info(
+      `Attempting to release lock: ${keyWithPrefix} with value ${lockValue}`
+    );
     try {
       const result = await this.redisPool.useClient(async (client) => {
         // Ensure script is defined for this client connection
         await this.defineReleaseLockScript(client);
         // Execute the Lua script using the defined command name
-        return await (client as any).releaseLockScript(keyWithPrefix, lockValue);
+        return await (client as any).releaseLockScript(
+          keyWithPrefix,
+          lockValue
+        );
       });
 
       const released = result === 1;
       if (released) {
         logger.info(`Successfully released lock: ${keyWithPrefix}`);
       } else {
-        logger.warn(`Failed to release lock (value mismatch or key expired?): ${keyWithPrefix}`);
+        logger.warn(
+          `Failed to release lock (value mismatch or key expired?): ${keyWithPrefix}`
+        );
       }
       return released;
     } catch (error) {
@@ -305,14 +327,20 @@ export class RedisPool {
     // Use environment variables or fall back to defaults
     this.options = {
       host: options.host || process.env.REDIS_HOST || DEFAULT_REDIS_HOST,
-      port: options.port || Number(process.env.REDIS_PORT) || DEFAULT_REDIS_PORT,
-      password: options.password || process.env.REDIS_PASSWORD || DEFAULT_REDIS_PASSWORD,
+      port:
+        options.port || Number(process.env.REDIS_PORT) || DEFAULT_REDIS_PORT,
+      password:
+        options.password ||
+        process.env.REDIS_PASSWORD ||
+        DEFAULT_REDIS_PASSWORD,
       max: options.max || 10,
       min: options.min || 2,
       idleTimeoutMillis: options.idleTimeoutMillis || 30000,
     };
 
-    logger.info(`[RedisPool] Initializing with host: ${this.options.host === DEFAULT_REDIS_HOST ? 'DEFAULT LOCAL HOST' : this.options.host}:${this.options.port}`);
+    logger.info(
+      `[RedisPool] Initializing with host: ${this.options.host === DEFAULT_REDIS_HOST ? "DEFAULT LOCAL HOST" : this.options.host}:${this.options.port}`
+    );
 
     this.pool = createPool<Redis>(
       {
@@ -416,4 +444,3 @@ export class RedisPool {
     return this.subscriberClient;
   }
 }
-
