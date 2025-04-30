@@ -82,7 +82,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               const data = queryClient.getQueryData(queryKey);
               queryClient.setQueryData(
                 queryKey,
-                Array.from(new Set([event, ...(data as any)])).slice(0, 50),
+                Array.from(new Set([event, ...(data as any)])).slice(0, 50)
               );
             }
           }
@@ -102,7 +102,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink,
+        sink
       );
     }
 
@@ -122,8 +122,8 @@ export default function SwapsTable({ token }: { token: IToken }) {
   const dataExtractor = (swap: any) => {
     let account;
     let swapType;
-    let solana;
-    let tokenAmount;
+    let solana = "0";
+    let tokenAmount = "0";
     let transactionHash;
     let timestamp;
     let usdValue;
@@ -139,8 +139,19 @@ export default function SwapsTable({ token }: { token: IToken }) {
     } else {
       account = swap?.user || "NA";
       swapType = swap?.type || "Buy";
-      solana = swap?.solAmount || "0";
-      tokenAmount = swap?.tokenAmount || "0";
+
+      if (swap?.tokenAmount) {
+        tokenAmount = swap?.tokenAmount || "0";
+      } else if (swap?.amountIn && token?.tokenDecimals) {
+        tokenAmount = String(swap?.amountIn / 10 ** token.tokenDecimals);
+      }
+
+      if (swap?.solAmount) {
+        solana = swap?.solAmount || "0";
+      } else if (swap?.amountOut) {
+        solana = String(swap?.amountOut / 10 ** 9);
+      }
+
       transactionHash = swap?.txId || "";
       timestamp = swap?.timestamp || 0;
     }
@@ -285,7 +296,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       </TableCell>
                     </TableRow>
                   );
-                },
+                }
               )
             : null}
         </TableBody>
