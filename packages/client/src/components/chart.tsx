@@ -33,7 +33,7 @@ export default function Chart({ token }: ChartProps) {
     queryKey: ["token", mint, "chart"],
     queryFn: async () => {
       const to = Math.floor(new Date().getTime() / 1000.0);
-      const from = to - 21600 * 2;
+      const from = 0;
 
       const data = await getChartTable({
         pairIndex: 10,
@@ -61,11 +61,13 @@ export default function Chart({ token }: ChartProps) {
 
       return data.table.filter(
         (candle) =>
+          !isNaN(Number(candle.volume)) &&
           !isNaN(Number(candle.open)) &&
           !isNaN(Number(candle.high)) &&
           !isNaN(Number(candle.low)) &&
           !isNaN(Number(candle.close)) &&
-          !isNaN(Number(candle.time)),
+          !isNaN(Number(candle.time)) &&
+          candle.volume > 0,
       );
     },
     staleTime: 60 * 1000,

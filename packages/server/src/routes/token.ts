@@ -964,15 +964,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: process.env.NETWORK || "devnet",
-          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: process.env.NETWORK || "devnet",
+        url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`
@@ -1109,13 +1109,14 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (redisCache) {
     const t4 = performance.now();
-    const cachedData = await redisCache.get(cacheKey);
+
+    const cachedData = await redisCache.getCompressed(cacheKey);
     const t5 = performance.now();
     console.log(`[DEBUG] Retrieving cache tool ${t5 - t4} milliseconds.`);
 
     if (cachedData) {
       logger.log(`Cache hit for ${cacheKey}`);
-      const parsedData = JSON.parse(cachedData);
+      const parsedData = JSON.parse(cachedData as string) as Token[];
       return c.json(parsedData);
     } else {
       logger.log(`Cache miss for ${cacheKey}`);
@@ -1237,7 +1238,7 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (redisCache) {
     try {
-      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+      await redisCache.setCompressed(cacheKey, JSON.stringify(responseData), 15);
       logger.log(`Cached data for ${cacheKey} with 15s TTL`);
     } catch (cacheError) {
       logger.error(`Redis cache SET error:`, cacheError);
@@ -1546,8 +1547,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Format response with additional data
     const responseData = token;

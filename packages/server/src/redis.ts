@@ -1,6 +1,7 @@
 import { createPool, Pool } from "generic-pool";
 import { Redis } from "ioredis";
 import { logger } from "./util";
+import { gzipSync, gunzipSync } from 'zlib';
 
 let globalRedisCachePromise: Promise<RedisCacheService> | null = null;
 
@@ -26,10 +27,8 @@ export function getSharedRedisPool(): RedisPool {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
-      min: 10,
-      max: 200,
-      // Consider adding pool configuration options here if your RedisPool supports them
-      // e.g., minSize, maxSize, connectionTimeout
+      min: 50,
+      max: 300,
     });
 
     logger.info("Shared Redis Pool Initialized");
@@ -46,7 +45,7 @@ const DEFAULT_REDIS_PORT = 6379;
 const DEFAULT_REDIS_PASSWORD = "MDikUKnhRHlURlnORexvVztDTrNCUBze";
 
 export class RedisCacheService {
-  constructor(public redisPool: RedisPool) {}
+  constructor(public redisPool: RedisPool) { }
 
   async isPoolReady(): Promise<boolean> {
     try {
@@ -79,14 +78,15 @@ export class RedisCacheService {
   }
 
   getKey(key: string) {
-    // Avoid double-prefixing if key already includes network
+    if (!key) throw new Error('Redis key must be a non-empty string');
     const prefix = `${process.env.NETWORK}:`;
     if (key.startsWith(prefix)) {
       return key;
     }
     return `${prefix}${key}`;
   }
-  async get(key: string): Promise<string | null> {
+
+  get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
   }
 
@@ -106,10 +106,7 @@ export class RedisCacheService {
   async del(key: string): Promise<number> {
     return this.redisPool.useClient((client) => client.del(this.getKey(key)));
   }
-  async keys(pattern: string): Promise<string[]> {
-    const p = this.getKey(pattern);
-    return this.redisPool.useClient((client) => client.keys(p));
-  }
+
   async exists(key: string): Promise<boolean> {
     return this.redisPool.useClient(async (client) => {
       const result = await client.exists(this.getKey(key));
@@ -195,6 +192,30 @@ export class RedisCacheService {
     return this.redisPool.useClient((client: Redis) =>
       client.smembers(this.getKey(key))
     );
+  }
+  async setCompressed<T>(
+    key: string,
+    obj: T,
+    ttlInSeconds?: number
+  ): Promise<void> {
+    const raw = Buffer.from(JSON.stringify(obj), "utf8");
+    const comp = gzipSync(raw);
+
+    await this.redisPool.useClient(async client => {
+      await client.set(this.getKey(key), comp);
+      if (ttlInSeconds) {
+        await client.expire(this.getKey(key), ttlInSeconds);
+      }
+    });
+  }
+  async getCompressed<T>(key: string): Promise<T | null> {
+    const buf: Buffer | null = await this.redisPool.useClient(c =>
+      c.getBuffer(this.getKey(key))
+    );
+    if (!buf) return null;
+
+    const json = gunzipSync(buf).toString('utf8');
+    return JSON.parse(json) as T;
   }
 
   // Expose useClient for transactions if absolutely necessary, but prefer specific methods
@@ -330,9 +351,10 @@ export class RedisPool {
         options.password ||
         process.env.REDIS_PASSWORD ||
         DEFAULT_REDIS_PASSWORD,
-      max: options.max || 200,
-      min: options.min || 10,
-      idleTimeoutMillis: options.idleTimeoutMillis || 20000,
+      max: options.max || 500,
+      min: options.min || 200,
+      idleTimeoutMillis: options.idleTimeoutMillis || 60_000,
+
     };
 
     logger.info(
@@ -346,10 +368,10 @@ export class RedisPool {
             host: this.options.host,
             port: this.options.port,
             password: this.options.password || undefined, // Pass undefined if no password
-            retryStrategy: (times) => {
-              if (times > 10) return null;
-              return Math.min(times * 100, 3000);
-            },
+            retryStrategy: attempts => Math.min(attempts * 50, 2000),
+            maxRetriesPerRequest: 3,
+            connectTimeout: 3000,
+            enableReadyCheck: true,
           });
 
           client.on("error", (err) => console.error("Redis Client Error", err));
@@ -374,7 +396,8 @@ export class RedisPool {
         max: this.options.max,
         min: this.options.min,
         idleTimeoutMillis: this.options.idleTimeoutMillis,
-        testOnBorrow: true,
+        acquireTimeoutMillis: 10_000,
+        testOnBorrow: false,
       }
     );
   }
@@ -388,11 +411,31 @@ export class RedisPool {
   }
 
   async useClient<T>(fn: (client: Redis) => Promise<T>): Promise<T> {
+    const t0 = performance.now();
     const client = await this.acquire();
+    const t1 = performance.now();
+
+    // ping
+    const pingStart = performance.now();
+    await client.ping();
+    const pingMs = performance.now() - pingStart;
+
+
+    let result: T;
+    let t2: number = 0;
     try {
       return await fn(client);
     } finally {
       await this.release(client);
+      const t3 = performance.now();
+
+      console.log(
+        `[DEBUG][RedisTiming] ` +
+        `acquire=${(t1 - t0).toFixed(1)}ms ` +
+        `exec=${(t2 - t1).toFixed(1)}ms ` +
+        `release=${(t3 - t2).toFixed(1)}ms` +
+        `ping =${pingMs.toFixed(1)}ms`
+      );
     }
   }
 
@@ -415,6 +458,10 @@ export class RedisPool {
         host: this.options.host,
         port: this.options.port,
         password: this.options.password || undefined,
+        enableOfflineQueue: false,
+        enableReadyCheck: false,
+        connectTimeout: 3000,
+        maxRetriesPerRequest: 1,
       });
 
       this.publisherClient.on("error", (err) =>

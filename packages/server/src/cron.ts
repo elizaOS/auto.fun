@@ -210,29 +210,6 @@ type ProcessResult = {
   event?: string;
 };
 
-async function pushSwapToRedis(
-  redis: RedisCacheService,
-  key: string,
-  record: any,
-  maxLength = 100
-) {
-  // 1) fetch raw
-  const raw = await redis.get(key);
-  let list: any[];
-  try {
-    list = raw ? JSON.parse(raw) : [];
-  } catch {
-    console.warn(`[Swap] invalid JSON in ${key}, resetting to []`);
-    list = [];
-  }
-
-  // 2) prepend and trim
-  list.unshift(record);
-  if (list.length > maxLength) list = list.slice(0, maxLength);
-
-  // 3) write back
-  await redis.set(key, JSON.stringify(list));
-}
 
 type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
@@ -244,27 +221,22 @@ export async function processTransactionLogs(
     wsClient = getWebSocketClient();
   }
   console.log("Processing transaction logs:", logs);
-  // Try each handler in sequence and return on first match
   try {
     await handleNewToken(logs, signature, wsClient);
   } catch (err) {
     logger.info(`Error in NewToken handler: ${err}`);
   }
-  // if (newTokenResult) return newTokenResult;
   try {
     await handleSwap(logs, signature, wsClient);
   } catch (err) {
     logger.info(`Error in Swap handler: ${err}`);
   }
-  // if (swapResult) return swapResult;
   try {
     await handleCurveComplete(logs, signature, wsClient);
   } catch (err) {
     logger.info(`Error in CurveComplete handler: ${err}`);
   }
-  // if (curveResult) return curveResult;
 
-  // Default: no event found
   return { found: false };
 }
 
@@ -384,19 +356,23 @@ async function handleSwap(
       );
       console.log("fetched token market data", tokenWithMarketData);
       const marketCapUSD = tokenWithMarketData.marketCapUSD;
-
+      const price = direction === "1"
+        ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
+        : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS);
+      const priceUsd = price * solPrice
       const swapRecord = {
         id: crypto.randomUUID(),
         tokenMint: mintAddress,
+        solAmount,
+        tokenAmount,
         user,
         type: direction === "0" ? "buy" : "sell" as any,
         direction: parseInt(direction) as 1 | 0,
         amountIn: Number(amount),
         amountOut: Number(amountOut),
         price:
-          direction === "1"
-            ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
-            : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS),
+          price,
+        priceUsd: priceUsd,
         txId: signature,
         timestamp: new Date(),
       };

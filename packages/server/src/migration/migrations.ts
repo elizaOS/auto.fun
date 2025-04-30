@@ -13,7 +13,6 @@ import { updateTokenSupplyFromChain } from "../tokenSupplyHelpers";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-import { TokenMigrator } from "./migrateToken";
 import { getGlobalRedisCache } from "../redis";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
@@ -324,14 +323,14 @@ export async function checkMigratingTokens(limit: number) {
     const autofunProgram = new Program<Autofun>(idl, provider) as any;
     const redisCache = await getGlobalRedisCache();
 
-    const tokenMigrator = new TokenMigrator(
-      connection,
-      new Wallet(wallet),
-      program,
-      autofunProgram,
-      provider,
-      redisCache,
-    );
+    // const tokenMigrator = new TokenMigrator(
+    //   connection,
+    //   new Wallet(wallet),
+    //   program,
+    //   autofunProgram,
+    //   provider,
+    //   redisCache,
+    // );
 
     // Filter out tokens that have migration as null or empty object or migration.status is not locked
     const filteredTokens = migratingTokens.filter((token) => {
@@ -346,7 +345,6 @@ export async function checkMigratingTokens(limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(token.mint);
-      // await tokenMigrator.migrateToken(tokenM!);
     }
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);
