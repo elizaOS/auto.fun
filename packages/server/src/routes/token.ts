@@ -1113,7 +1113,7 @@ tokenRouter.get("/tokens", async (c) => {
     `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`
   );
 
-  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
+  const cacheKey = `compressed-tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
   const t2 = performance.now();
   console.log(`[DEBUG] BEFORE GET GLOBAL CACHE took ${t2 - t0} milliseconds.`);
   const t3 = performance.now();
@@ -1125,13 +1125,15 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (redisCache) {
     const t4 = performance.now();
-    const cachedData = await redisCache.get(cacheKey);
+
+    const cachedData = await redisCache.getCompressed(cacheKey);
     const t5 = performance.now();
     console.log(`[DEBUG] RETRIEVING CACHE TOOK ${t5 - t4} milliseconds.`);
 
     if (cachedData) {
       logger.log(`Cache hit for ${cacheKey}`);
-      const parsedData = JSON.parse(cachedData);
+      const parsedData = JSON.parse(cachedData as string) as Token[];
+      // const parsedData = cachedData;
       const t1 = performance.now();
       console.log(`[DEBUG] Call to doSomething took ${t1 - t0} milliseconds.`);
       return c.json(parsedData);
@@ -1294,7 +1296,7 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (redisCache) {
     try {
-      await redisCache.set(cacheKey, JSON.stringify(responseData), 20);
+      await redisCache.setCompressed(cacheKey, JSON.stringify(responseData), 20);
       logger.log(`Cached data for ${cacheKey} with 20s TTL`);
     } catch (cacheError) {
       logger.error(`Redis cache SET error:`, cacheError);

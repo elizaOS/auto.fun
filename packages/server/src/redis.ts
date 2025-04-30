@@ -1,6 +1,7 @@
 import { createPool, Pool } from "generic-pool";
 import { Redis } from "ioredis";
 import { logger } from "./util";
+import { gzipSync, gunzipSync } from 'zlib';
 
 let globalRedisCachePromise: Promise<RedisCacheService> | null = null;
 
@@ -196,6 +197,30 @@ export class RedisCacheService {
     return this.redisPool.useClient((client: Redis) =>
       client.smembers(this.getKey(key))
     );
+  }
+  async setCompressed<T>(
+    key: string,
+    obj: T,
+    ttlInSeconds?: number
+  ): Promise<void> {
+    const raw = Buffer.from(JSON.stringify(obj), "utf8");
+    const comp = gzipSync(raw);
+
+    await this.redisPool.useClient(async client => {
+      await client.set(this.getKey(key), comp);
+      if (ttlInSeconds) {
+        await client.expire(this.getKey(key), ttlInSeconds);
+      }
+    });
+  }
+  async getCompressed<T>(key: string): Promise<T | null> {
+    const buf: Buffer | null = await this.redisPool.useClient(c =>
+      c.getBuffer(this.getKey(key))
+    );
+    if (!buf) return null;
+
+    const json = gunzipSync(buf).toString('utf8');
+    return JSON.parse(json) as T;
   }
 
   // Expose useClient for transactions if absolutely necessary, but prefer specific methods
