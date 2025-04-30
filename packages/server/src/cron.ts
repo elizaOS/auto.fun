@@ -363,6 +363,8 @@ async function handleSwap(
       const swapRecord = {
         id: crypto.randomUUID(),
         tokenMint: mintAddress,
+        solAmount,
+        tokenAmount,
         user,
         type: direction === "0" ? "buy" : "sell" as any,
         direction: parseInt(direction) as 1 | 0,
