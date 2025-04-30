@@ -37,7 +37,6 @@ export const useTransactions = ({
   const pagination = usePagination({
     endpoint: `/api/swaps/${tokenId}`,
     limit: pageSize,
-    validationSchema: TransactionSchema,
     itemsPropertyName: "swaps",
     sortBy: "timestamp",
     useUrlState: true,

@@ -12,6 +12,7 @@ import {
   formatNumber,
   fromNow,
   resizeImage,
+  sanitizeCheckmark,
   shortenAddress,
 } from "@/utils";
 import { useNavigate } from "react-router";
@@ -143,8 +144,10 @@ export function TableView({
                     <div className="flex flex-col md:flex-row min-w-0 items-start">
                       <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi truncate min-w-0">
                         {window.innerWidth <= 768
-                          ? token.name.slice(0, 15) +
-                            (token.name.length > 15 ? "..." : "")
+                          ? sanitizeCheckmark(token?.name).slice(0, 15) +
+                            (sanitizeCheckmark(token?.name).length > 15
+                              ? "..."
+                              : "")
                           : token.name}
                       </div>
                       <div className="text-autofun-text-secondary md:ml-2 text-base font-normal font-dm-mono uppercase truncate min-w-0">
