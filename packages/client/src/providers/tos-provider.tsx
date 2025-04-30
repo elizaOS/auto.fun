@@ -10,14 +10,14 @@ export default function TosProvider() {
   const AllowedRoute = routes.includes(location.pathname);
   const [tosAccepted, setTosAccepted] = useLocalStorage<boolean>(
     "tosAccepted",
-    false,
+    false
   );
   // Add cookie state management from CookieProvider
   const [, setCookieBannerInteracted] = // Renamed for consistency, though interaction is implicit now
     useLocalStorage<boolean>("cookieAccepted", false);
   const [, setCookieTypeAccepted] = useLocalStorage<CookieType[]>(
     "cookieTypeAccepted",
-    [],
+    []
   );
 
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ export default function TosProvider() {
                 Create tokens with AI, build a community with AI content
                 creation, and engage with role-gated chat.
               </p>
-              <p className="text-autofun-text-secondary font-satoshi text-base mb-6">
+              <p className="text-autofun-text-info font-satoshi text-base mb-6">
                 Buy into the bonding curve; bonded tokens are migrated to
                 Raydium.
               </p>
@@ -54,19 +54,19 @@ export default function TosProvider() {
               <p className="text-autofun-text-highlight font-satoshi text-base mb-4">
                 🍪 A Note About Cookies
               </p>
-              <p className="text-autofun-text-secondary font-satoshi text-sm mb-4 px-4">
+              <p className="text-autofun-text-info font-satoshi text-base mb-4 px-4">
                 We use necessary cookies to make our site work. We'd also like
                 to set optional analytics and preference cookies to help us
                 improve it and provide the best experience.
               </p>
-              <p className="text-autofun-text-secondary font-satoshi text-base mb-6">
+              <p className="text-autofun-text-info font-satoshi text-base mb-6">
                 By clicking below, you're agreeing to our Terms of Service and
                 Cookie Policy.
               </p>
 
               <button
                 onClick={acceptTosAndCookies} // Use updated function
-                className="m-4 bg-autofun-background-action-highlight text-black px-6 py-2 hover:bg-gray-200 transition-all font-semibold"
+                className="m-4 bg-autofun-background-action-highlight font-satoshi text-black px-6 py-2 hover:bg-gray-200 transition-all font-semibold"
               >
                 I'm Ready to Have Fun!
               </button>
