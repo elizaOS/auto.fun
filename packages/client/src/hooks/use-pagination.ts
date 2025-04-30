@@ -81,7 +81,7 @@ const fetchPaginatedData = async <
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsKey]
     ? (response[itemsKey] as unknown[]).map((item) =>
-        validationSchema ? validationSchema.parse(item) : (item as TOutput),
+        validationSchema ? validationSchema.parse(item) : (item as TOutput)
       )
     : [];
 
@@ -113,7 +113,7 @@ const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
         setSearchParams(newParams);
       }
     },
-    [searchParams, setSearchParams],
+    [searchParams, setSearchParams]
   );
 
   return { page, setPage: onPageChange };
@@ -154,7 +154,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       page,
       sortBy,
       sortOrder,
-      validationSchema,
+      null,
       hideImported,
       JSON.stringify(additionalParams),
     ],
@@ -166,10 +166,9 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       page,
       sortBy,
       sortOrder,
-      validationSchema,
       hideImported,
       additionalParams,
-    ],
+    ]
   );
 
   const query = useQuery({
@@ -231,7 +230,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       if (pageNumber < 1 || pageNumber > totalPages) return;
       setPage(pageNumber);
     },
-    [totalPages, setPage],
+    [totalPages, setPage]
   );
 
   const setItems = useCallback(
@@ -264,7 +263,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
         });
       }
     },
-    [queryKey, queryClient],
+    [queryKey, queryClient]
   );
 
   return {
@@ -317,7 +316,7 @@ export const useInfinitePagination = <
       limit,
       sortBy,
       sortOrder,
-      validationSchema,
+      null,
       hideImported,
       JSON.stringify(additionalParams),
     ],
@@ -328,10 +327,9 @@ export const useInfinitePagination = <
       limit,
       sortBy,
       sortOrder,
-      validationSchema,
       hideImported,
       additionalParams,
-    ],
+    ]
   );
 
   const query = useInfiniteQuery({
@@ -389,11 +387,11 @@ export const useInfinitePagination = <
   const setItems = useCallback(
     (_itemsOrUpdater: TOutput[] | ((prevItems: TOutput[]) => TOutput[])) => {
       console.warn(
-        "setItems is not fully supported with useInfinitePagination. Please use queryClient.invalidateQueries({ queryKey: [...] }) to refresh data.",
+        "setItems is not fully supported with useInfinitePagination. Please use queryClient.invalidateQueries({ queryKey: [...] }) to refresh data."
       );
       // No-op or basic placeholder action
     },
-    [], // No dependencies needed for a no-op/warning
+    [] // No dependencies needed for a no-op/warning
   );
 
   return {
