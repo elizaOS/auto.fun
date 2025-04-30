@@ -1080,6 +1080,7 @@ async function checkBlockchainTokenBalance(
 
 // --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
+  const t0 = performance.now();
   const queryParams = c.req.query();
   const isSearching = !!queryParams.search;
   const MAX_LIMIT = 50;
@@ -1113,14 +1114,26 @@ tokenRouter.get("/tokens", async (c) => {
   );
 
   const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
+  const t2 = performance.now();
+  console.log(`[DEBUG] BEFORE GET GLOBAL CACHE took ${t2 - t0} milliseconds.`);
+  const t3 = performance.now();
 
   const redisCache = await getGlobalRedisCache();
+  const t4 = performance.now();
+
+  console.log(`[DEBUG] AFTER GET GLOBAL CACHE took ${t4 - t3} milliseconds.`);
 
   if (redisCache) {
+    const t4 = performance.now();
     const cachedData = await redisCache.get(cacheKey);
+    const t5 = performance.now();
+    console.log(`[DEBUG] RETRIEVING CACHE TOOK ${t5 - t4} milliseconds.`);
+
     if (cachedData) {
       logger.log(`Cache hit for ${cacheKey}`);
       const parsedData = JSON.parse(cachedData);
+      const t1 = performance.now();
+      console.log(`[DEBUG] Call to doSomething took ${t1 - t0} milliseconds.`);
       return c.json(parsedData);
     } else {
       logger.log(`Cache miss for ${cacheKey}`);
@@ -1253,9 +1266,13 @@ tokenRouter.get("/tokens", async (c) => {
       priorityTokenAddresses,
       limit
     );
-    
+
     // Replace all elements using splice
-    serializableTokensResult.splice(0, serializableTokensResult.length, ...modifiedResults);
+    serializableTokensResult.splice(
+      0,
+      serializableTokensResult.length,
+      ...modifiedResults
+    );
   }
 
   const responseData = {
@@ -1284,6 +1301,8 @@ tokenRouter.get("/tokens", async (c) => {
     }
   }
 
+  const t1 = performance.now();
+  console.log(`[DEBUG] Call to doSomething took ${t1 - t0} milliseconds.`);
   return c.json(responseData);
 });
 
