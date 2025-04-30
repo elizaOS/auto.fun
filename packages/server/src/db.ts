@@ -93,6 +93,11 @@ export const tokens = pgTable("tokens", {
     featuredIndex: index("tokens_featured_idx").on(table.featured),
     verifiedIndex: index("tokens_verified_idx").on(table.verified),
     hiddenFromFeaturedIndex: index("tokens_hide_from_featured_idx").on(table.hide_from_featured),
+    marketCapUSDIndex: index("tokens_market_cap_usd_idx").on(table.marketCapUSD),
+    volume24hIndex: index("tokens_volume_24h_idx").on(table.volume24h),
+    holderCountIndex: index("tokens_holder_count_idx").on(table.holderCount),
+    curveProgressIndex: index("tokens_curve_progress_idx").on(table.curveProgress),
+    nameIndex: index("tokens_name_idx").on(table.name),
   }));
 
 // Fees schema
