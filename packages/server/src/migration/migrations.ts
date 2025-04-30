@@ -13,7 +13,6 @@ import { updateTokenSupplyFromChain } from "../tokenSupplyHelpers";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-// import { TokenMigrator } from "./migrateToken";
 import { getGlobalRedisCache } from "../redis";
 
 const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
@@ -346,7 +345,6 @@ export async function checkMigratingTokens(limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(token.mint);
-      // await tokenMigrator.migrateToken(tokenM!);
     }
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);

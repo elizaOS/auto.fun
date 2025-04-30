@@ -6,7 +6,6 @@
 // import { Autofun } from '@autodotfun/types/types/autofun';
 // import { RaydiumVault } from '@autodotfun/types/types/raydium_vault';
 // import { Wallet } from '../tokenSupplyHelpers/customWallet';
-// import { TokenMigrator } from './migrateToken';
 // import { getGlobalRedisCache } from '../redis';
 // import { default as pLimit } from 'p-limit';
 

@@ -8,7 +8,6 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { getDB, Token, tokens, users } from "../db";
-import { TokenMigrator } from "../migration/migrateToken";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { createNewTokenData, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
@@ -81,8 +80,6 @@ migrationRouter.post("/migration/resume", async (c) => {
     //   redisCache,
     // );
 
-    // Call migrateToken: process the next migration step.
-    // await tokenMigrator.migrateToken(token);
 
     // Return a success response.
     return c.json({
