@@ -10,14 +10,14 @@ export default function TosProvider() {
   const AllowedRoute = routes.includes(location.pathname);
   const [tosAccepted, setTosAccepted] = useLocalStorage<boolean>(
     "tosAccepted",
-    false
+    false,
   );
   // Add cookie state management from CookieProvider
   const [, setCookieBannerInteracted] = // Renamed for consistency, though interaction is implicit now
     useLocalStorage<boolean>("cookieAccepted", false);
   const [, setCookieTypeAccepted] = useLocalStorage<CookieType[]>(
     "cookieTypeAccepted",
-    []
+    [],
   );
 
   const navigate = useNavigate();
