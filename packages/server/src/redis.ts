@@ -393,7 +393,11 @@ export class RedisPool {
   async useClient<T>(fn: (client: Redis) => Promise<T>): Promise<T> {
     const client = await this.acquire();
     try {
-      return await fn(client);
+      const t4 = performance.now();
+      const a = await fn(client);
+      const t5 = performance.now();
+      console.log(`[DEBUG] REDIS USE CLIENT ${t5 - t4} milliseconds.`);
+      return a;
     } finally {
       await this.release(client);
     }
