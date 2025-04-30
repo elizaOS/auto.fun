@@ -335,9 +335,9 @@ export class RedisPool {
         options.password ||
         process.env.REDIS_PASSWORD ||
         DEFAULT_REDIS_PASSWORD,
-      max: options.max || 10,
-      min: options.min || 2,
-      idleTimeoutMillis: options.idleTimeoutMillis || 30000,
+      max: options.max || 200,
+      min: options.min || 10,
+      idleTimeoutMillis: options.idleTimeoutMillis || 20000,
     };
 
     logger.info(
