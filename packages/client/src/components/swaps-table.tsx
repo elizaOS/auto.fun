@@ -11,6 +11,7 @@ import { IToken } from "@/types";
 import {
   formatNumber,
   fromNow,
+  LAMPORTS_PER_SOL,
   resizeImage,
   shortenAddress,
   useCodex,
@@ -82,7 +83,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               const data = queryClient.getQueryData(queryKey);
               queryClient.setQueryData(
                 queryKey,
-                Array.from(new Set([event, ...(data as any)])).slice(0, 50),
+                Array.from(new Set([event, ...(data as any)])).slice(0, 50)
               );
             }
           }
@@ -102,7 +103,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             tokenAddress: token.mint,
           },
         },
-        sink,
+        sink
       );
     }
 
@@ -138,19 +139,19 @@ export default function SwapsTable({ token }: { token: IToken }) {
       usdValue = swap?.data?.priceUsdTotal || null;
     } else {
       account = swap?.user || "NA";
-      swapType = swap?.type || "Buy";
+      swapType = swap?.direction === 0 ? "Buy" : "Sell";
 
-      if (swap?.tokenAmount) {
-        tokenAmount = swap?.tokenAmount || "0";
-      } else if (swap?.amountIn && token?.tokenDecimals) {
-        tokenAmount = String(swap?.amountIn / 10 ** token.tokenDecimals);
-      }
+      solana = swap?.solAmount
+        ? swap?.solAmount
+        : swap.direction === 0
+          ? String(swap.amountIn / LAMPORTS_PER_SOL)
+          : String(swap.amountOut / LAMPORTS_PER_SOL);
 
-      if (swap?.solAmount) {
-        solana = swap?.solAmount || "0";
-      } else if (swap?.amountOut) {
-        solana = String(swap?.amountOut / 10 ** 9);
-      }
+      tokenAmount = swap?.tokenAmount
+        ? swap.tokenAmount
+        : swap.direction === 0
+          ? String(swap.amountOut / 10 ** 6)
+          : String(swap.amountIn / 10 ** 6);
 
       transactionHash = swap?.txId || "";
       timestamp = swap?.timestamp || 0;
@@ -296,7 +297,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       </TableCell>
                     </TableRow>
                   );
-                },
+                }
               )
             : null}
         </TableBody>
