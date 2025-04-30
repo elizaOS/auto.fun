@@ -1840,7 +1840,7 @@ tokenRouter.post("/create-token", async (c) => {
         discord: discord || "",
         creator: user.publicKey || "unknown",
         status: imported ? "locked" : "active",
-        url: tokenStats?.metadataUrl || "",
+        url: tokenStats?.metadataUri || "",
         image: imageUrl || "",
         createdAt: now,
         imported: importedValue,
