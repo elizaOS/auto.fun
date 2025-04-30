@@ -1,13 +1,9 @@
 import {
   GetObjectCommand,
   ListObjectsV2Command,
-  PutObjectCommand
+  PutObjectCommand,
 } from "@aws-sdk/client-s3"; // S3 Import
-import {
-  AccountInfo,
-  Connection,
-  PublicKey
-} from "@solana/web3.js";
+import { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { and, count, eq, getTableColumns, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
@@ -30,7 +26,7 @@ import {
   getDevnetRpcUrl,
   getFeaturedMaxValues,
   getMainnetRpcUrl,
-  logger
+  logger,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
@@ -602,7 +598,6 @@ export async function processSwapEvent(
 
 // Helper function to process token info after finding it on a network
 async function processTokenInfo(
-  c: any,
   mintPublicKey: PublicKey,
   tokenInfo: AccountInfo<Buffer>,
   connection: Connection,
@@ -620,11 +615,8 @@ async function processTokenInfo(
   const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
 
   if (!isSplToken && !isSPL2022) {
-    return c.json(
-      {
-        error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
-      },
-      400
+    throw new Error(
+      "Not a valid SPL token. Owner: " + tokenInfo.owner.toString()
     );
   }
 
@@ -768,7 +760,9 @@ async function processTokenInfo(
         logger.error(
           `[search-token] No metadata found for token: ${mintPublicKey.toString()}`
         );
-        return c.json({ error: "No metadata found for this token" }, 404);
+        throw new Error(
+          `No metadata found for token: ${mintPublicKey.toString()}`
+        );
       }
     } else {
       // We found Metaplex metadata
@@ -871,7 +865,7 @@ async function processTokenInfo(
 
   // If we still didn't find metadata from either source, throw error
   if (!foundMetadata && !isSPL2022) {
-    return c.json({ error: "No metadata found for this token" }, 404);
+    throw new Error(`No metadata found for token: ${mintPublicKey.toString()}`);
   }
 
   // For SPL-2022 tokens, we still consider them valid even without metadata
@@ -936,7 +930,7 @@ async function processTokenInfo(
 
   logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
 
-  return c.json(tokenData);
+  return tokenData;
 }
 
 // Helper to check token balance directly on blockchain
@@ -1656,22 +1650,14 @@ tokenRouter.post("/create-token", async (c) => {
     const {
       tokenMint,
       mint,
-      name,
-      symbol,
       txId,
-      description,
       twitter,
       telegram,
       farcaster,
       website,
       discord,
-      imageBase64,
-      metadataUrl,
       imported,
-      creator,
-      isToken2022,
     } = body;
-
     const mintAddress = tokenMint || mint;
     if (!mintAddress) {
       return c.json({ error: "Token mint address is required" }, 400);
@@ -1680,7 +1666,6 @@ tokenRouter.post("/create-token", async (c) => {
     logger.log(`Creating token record for: ${mintAddress}`);
 
     const db = getDB();
-
     // Check if token already exists
     const existingToken = await db
       .select()
@@ -1698,13 +1683,36 @@ tokenRouter.post("/create-token", async (c) => {
       );
     }
 
+    let mintPublicKey;
     try {
+      mintPublicKey = new PublicKey(mintAddress);
+    } catch (e) {
+      logger.error(`Invalid mint address format: ${mintAddress}`, e);
+      return c.json({ error: "Invalid mint address format" }, 400);
+    }
+    const connection = new Connection(getMainnetRpcUrl(), "confirmed");
+    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(`[search-token] Found token on mainnet`);
+      const tokenStats = await processTokenInfo(
+        mintPublicKey,
+        tokenInfo,
+        connection,
+        user.publicKey
+      );
+
+      console.log("****** tokenStats ******\n", tokenStats);
+
+      if (!tokenStats) {
+        return c.json({ error: "Failed to process token info" }, 500);
+      }
+
       // Handle image upload if base64 data is provided
       let imageUrl = "";
-      if (imageBase64) {
+      if (tokenStats && tokenStats.image) {
         try {
           // Extract the base64 data from the data URL
-          const imageMatch = imageBase64.match(
+          const imageMatch = tokenStats.image.match(
             /^data:(image\/[a-z+]+);base64,(.*)$/
           );
           if (!imageMatch) {
@@ -1738,24 +1746,26 @@ tokenRouter.post("/create-token", async (c) => {
 
       // Convert imported and isToken2022 flags to numbers (0 or 1)
       const importedValue = imported === true ? 1 : 0;
-      const isToken2022Value = isToken2022 === true ? 1 : 0; // <<< Convert flag
+      const isToken2022Value = tokenStats?.isToken2022 === true ? 1 : 0; // <<< Convert flag
 
       // Insert with all required fields from the schema
       await db.insert(tokens).values([
         {
           id: mintAddress,
           mint: mintAddress,
-          name: name || `Token ${mintAddress.slice(0, 8)}`,
-          ticker: symbol || "TOKEN",
-          url: metadataUrl || "",
+          name: tokenStats?.name || `Token ${mintAddress.slice(0, 8)}`,
+          ticker: tokenStats?.symbol || "TOKEN",
+          url: tokenStats?.metadataUri || "",
           image: imageUrl || "", // Use the URL from the uploader
-          description: description || "",
+          description: tokenStats?.description || "",
           twitter: twitter || "",
           telegram: telegram || "",
           farcaster: farcaster || "",
           website: website || "",
           discord: discord || "",
-          creator: creator ? creator : user.publicKey || "unknown",
+          creator: tokenStats?.creator
+            ? tokenStats.creator
+            : user.publicKey || "unknown",
           status: imported ? "locked" : "active",
           tokenPriceUSD: 0.00000001,
           createdAt: now,
@@ -1786,9 +1796,9 @@ tokenRouter.post("/create-token", async (c) => {
       const tokenData = {
         id: tokenId,
         mint: mintAddress,
-        name: name || `Token ${mintAddress.slice(0, 8)}`,
-        ticker: symbol || "TOKEN",
-        description: description || "",
+        name: tokenStats?.name || `Token ${mintAddress.slice(0, 8)}`,
+        ticker: tokenStats?.symbol || "TOKEN",
+        description: tokenStats?.description || "",
         twitter: twitter || "",
         telegram: telegram || "",
         farcaster: farcaster || "",
@@ -1796,7 +1806,7 @@ tokenRouter.post("/create-token", async (c) => {
         discord: discord || "",
         creator: user.publicKey || "unknown",
         status: imported ? "locked" : "active",
-        url: metadataUrl || "",
+        url: tokenStats?.metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
         imported: importedValue,
@@ -1841,30 +1851,20 @@ tokenRouter.post("/create-token", async (c) => {
         (async () =>
           await generateAdditionalTokenImages(
             mintAddress,
-            description || ""
+            tokenStats?.description || ""
           ))();
       }
 
       return c.json({ success: true, token: tokenData });
-    } catch (error) {
-      logger.error("Error creating token:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown error creating token record";
-      return c.json(
-        { error: "Failed to create token record", details: errorMessage },
-        500
-      );
+    } else {
+      logger.error(`[search-token] Token ${mint} not found on mainnet`);
+      return c.json({ error: "Token not found on mainnet" }, 404);
     }
   } catch (error) {
     logger.error("Error in create-token endpoint:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown internal server error";
-    return c.json(
-      { error: "Internal server error", details: errorMessage },
-      500
-    );
+    return c.json({ error: "Could not get token metadata" }, 400);
   }
 });
 
@@ -2367,13 +2367,18 @@ tokenRouter.post("/search-token", async (c) => {
     const tokenInfo = await connection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
       logger.log(`[search-token] Found token on mainnet`);
-      return await processTokenInfo(
-        c,
+      const tokenData = await processTokenInfo(
         mintPublicKey,
         tokenInfo,
         connection,
         requestor
       );
+
+      if (!tokenData) {
+        return c.json({ error: "Failed to process token info" }, 500);
+      }
+
+      return c.json(tokenData);
     } else {
       logger.error(`[search-token] Token ${mint} not found on mainnet`);
       return c.json({ error: "Token not found on mainnet" }, 404);
@@ -2444,7 +2449,7 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
   try {
     const mint = c.req.param("mint");
     const user = c.get("user");
-    
+
     if (!user) {
       return c.json({ error: "Authentication required" }, 401);
     }
@@ -2452,14 +2457,17 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
     // Get the form data
     const formData = await c.req.formData();
     const audioFile = formData.get("audio") as File;
-    
+
     if (!audioFile) {
       return c.json({ error: "No audio file provided" }, 400);
     }
 
     // Validate file type
     if (!audioFile.type.startsWith("audio/")) {
-      return c.json({ error: "Invalid file type. Please upload an audio file." }, 400);
+      return c.json(
+        { error: "Invalid file type. Please upload an audio file." },
+        400
+      );
     }
 
     // Check file size (10MB limit)
