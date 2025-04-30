@@ -30,6 +30,9 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
+import { token } from "@coral-xyz/anchor/dist/cjs/utils";
+
+import { inArray } from "drizzle-orm";
 
 // --- Validation Function ---
 async function validateQueryResults(
@@ -598,7 +601,6 @@ export async function processSwapEvent(
 
 // Helper function to process token info after finding it on a network
 async function processTokenInfo(
-  c: any,
   mintPublicKey: PublicKey,
   tokenInfo: AccountInfo<Buffer>,
   connection: Connection,
@@ -616,11 +618,8 @@ async function processTokenInfo(
   const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
 
   if (!isSplToken && !isSPL2022) {
-    return c.json(
-      {
-        error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
-      },
-      400
+    throw new Error(
+      "Not a valid SPL token. Owner: " + tokenInfo.owner.toString()
     );
   }
 
@@ -764,7 +763,9 @@ async function processTokenInfo(
         logger.error(
           `[search-token] No metadata found for token: ${mintPublicKey.toString()}`
         );
-        return c.json({ error: "No metadata found for this token" }, 404);
+        throw new Error(
+          `No metadata found for token: ${mintPublicKey.toString()}`
+        );
       }
     } else {
       // We found Metaplex metadata
@@ -867,7 +868,7 @@ async function processTokenInfo(
 
   // If we still didn't find metadata from either source, throw error
   if (!foundMetadata && !isSPL2022) {
-    return c.json({ error: "No metadata found for this token" }, 404);
+    throw new Error(`No metadata found for token: ${mintPublicKey.toString()}`);
   }
 
   // For SPL-2022 tokens, we still consider them valid even without metadata
@@ -932,7 +933,7 @@ async function processTokenInfo(
 
   logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
 
-  return c.json(tokenData);
+  return tokenData;
 }
 
 // Helper to check token balance directly on blockchain
@@ -1090,7 +1091,7 @@ tokenRouter.get("/tokens", async (c) => {
 
   const requestedPage =
     parseInt(queryParams?.page ? queryParams.page : ("1" as string)) || 1;
-    
+
   const MAX_PAGE = 1000;
 
   const page = Math.min(requestedPage, MAX_PAGE);
@@ -1240,6 +1241,26 @@ tokenRouter.get("/tokens", async (c) => {
       }
       return serializableToken as Token; // Keep cast for now
     }) || [];
+
+  // Apply priority token logic for featured sorting on page 1
+  if (sortBy === "featured" && page === 1) {
+    // Define the two token addresses to prioritize
+    const priorityTokenAddresses = [
+      "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", // ai16z
+      "Gu3LDkn7Vx3bmCzLafYNKcDxv2mH7YN44NJZFXnypump", // degent sparten
+    ];
+
+    // Use the helper function to prioritize tokens
+    const modifiedResults = await prioritizeFeaturedTokens(
+      serializableTokensResult,
+      priorityTokenAddresses,
+      limit
+    );
+
+    // Replace the original array contents
+    serializableTokensResult.length = 0;
+    serializableTokensResult.push(...modifiedResults);
+  }
 
   const responseData = {
     tokens: serializableTokensResult,
@@ -1609,22 +1630,14 @@ tokenRouter.post("/create-token", async (c) => {
     const {
       tokenMint,
       mint,
-      name,
-      symbol,
       txId,
-      description,
       twitter,
       telegram,
       farcaster,
       website,
       discord,
-      imageBase64,
-      metadataUrl,
       imported,
-      creator,
-      isToken2022,
     } = body;
-
     const mintAddress = tokenMint || mint;
     if (!mintAddress) {
       return c.json({ error: "Token mint address is required" }, 400);
@@ -1633,7 +1646,6 @@ tokenRouter.post("/create-token", async (c) => {
     logger.log(`Creating token record for: ${mintAddress}`);
 
     const db = getDB();
-
     // Check if token already exists
     const existingToken = await db
       .select()
@@ -1651,36 +1663,112 @@ tokenRouter.post("/create-token", async (c) => {
       );
     }
 
+    let mintPublicKey;
     try {
+      mintPublicKey = new PublicKey(mintAddress);
+    } catch (e) {
+      logger.error(`Invalid mint address format: ${mintAddress}`, e);
+      return c.json({ error: "Invalid mint address format" }, 400);
+    }
+    const connection = new Connection(getMainnetRpcUrl(), "confirmed");
+    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(`[search-token] Found token on mainnet`);
+      const tokenStats = await processTokenInfo(
+        mintPublicKey,
+        tokenInfo,
+        connection,
+        user.publicKey
+      );
+
+      console.log("****** tokenStats ******\n", tokenStats);
+
+      if (!tokenStats) {
+        return c.json({ error: "Failed to process token info" }, 500);
+      }
+
       // Handle image upload if base64 data is provided
       let imageUrl = "";
-      if (imageBase64) {
+      if (
+        tokenStats &&
+        tokenStats.image &&
+        tokenStats.image.startsWith("http")
+      ) {
         try {
-          // Extract the base64 data from the data URL
-          const imageMatch = imageBase64.match(
+          logger.log(`Fetching image from URL: ${tokenStats.image}`);
+
+          const imageResponse = await fetch(tokenStats.image);
+          if (!imageResponse.ok) {
+            throw new Error(
+              `Failed to fetch image data: ${imageResponse.status} ${imageResponse.statusText}`
+            );
+          }
+
+          const contentType = imageResponse.headers.get("content-type");
+          if (!contentType || !contentType.startsWith("image/")) {
+            // If no content type or not an image, skip processing
+            logger.warn(
+              `Skipping image processing due to invalid content type: ${contentType} for URL: ${tokenStats.image}`
+            );
+            imageUrl = "";
+          } else {
+            const imageArrayBuffer = await imageResponse.arrayBuffer();
+            const imageBuffer = Buffer.from(imageArrayBuffer);
+
+            const ext = contentType.split("/")[1]?.split("+")[0] || "png";
+            const filename = `${mintAddress}-${Date.now()}.${ext}`;
+            logger.log(
+              `Prepared image for upload: ${filename}, Type: ${contentType}, Size: ${imageBuffer.length} bytes`
+            );
+
+            imageUrl = await uploadWithS3(imageBuffer, {
+              filename,
+              contentType,
+              basePath: "token-images",
+            });
+            logger.log(`Image uploaded successfully to: ${imageUrl}`);
+          }
+        } catch (error) {
+          logger.error(
+            `Error processing image from URL ${tokenStats.image}:`,
+            error
+          );
+          imageUrl = "";
+        }
+      } else if (
+        tokenStats &&
+        tokenStats.image &&
+        tokenStats.image.startsWith("data:image")
+      ) {
+        // already data URI
+        try {
+          logger.log(
+            `Processing existing data URI (first 100 chars): ${tokenStats.image.substring(0, 100)}...`
+          );
+          const imageMatch = tokenStats.image.match(
             /^data:(image\/[a-z+]+);base64,(.*)$/
           );
           if (!imageMatch) {
-            throw new Error("Invalid image data URI format");
+            throw new Error("Invalid image data URI format provided");
           }
           const contentType = imageMatch[1];
           const base64Data = imageMatch[2];
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // Generate a unique filename
-          const ext = contentType.split("/")[1] || "png"; // Extract extension
+          const ext = contentType.split("/")[1]?.split("+")[0] || "png";
           const filename = `${mintAddress}-${Date.now()}.${ext}`;
 
-          // Upload using the uploader function (which now uses S3)
-          imageUrl = await uploadWithS3(
-            // Pass necessary env vars if uploader expects them (it shouldn't anymore)
-            imageBuffer,
-            { filename, contentType, basePath: "token-images" }
+          imageUrl = await uploadWithS3(imageBuffer, {
+            filename,
+            contentType,
+            basePath: "token-images",
+          });
+          logger.log(
+            `Image from data URI uploaded successfully to: ${imageUrl}`
           );
         } catch (error) {
-          logger.error("Error uploading image via S3 uploader:", error);
-          // Continue without image if upload fails
-          imageUrl = ""; // Ensure imageUrl is empty
+          logger.error(`Error processing image from data URI:`, error);
+          imageUrl = "";
         }
       }
 
@@ -1691,24 +1779,26 @@ tokenRouter.post("/create-token", async (c) => {
 
       // Convert imported and isToken2022 flags to numbers (0 or 1)
       const importedValue = imported === true ? 1 : 0;
-      const isToken2022Value = isToken2022 === true ? 1 : 0; // <<< Convert flag
+      const isToken2022Value = tokenStats?.isToken2022 === true ? 1 : 0; // <<< Convert flag
 
       // Insert with all required fields from the schema
       await db.insert(tokens).values([
         {
           id: mintAddress,
           mint: mintAddress,
-          name: name || `Token ${mintAddress.slice(0, 8)}`,
-          ticker: symbol || "TOKEN",
-          url: metadataUrl || "",
+          name: tokenStats?.name || `Token ${mintAddress.slice(0, 8)}`,
+          ticker: tokenStats?.symbol || "TOKEN",
+          url: tokenStats?.metadataUri || "",
           image: imageUrl || "", // Use the URL from the uploader
-          description: description || "",
+          description: tokenStats?.description || "",
           twitter: twitter || "",
           telegram: telegram || "",
           farcaster: farcaster || "",
           website: website || "",
           discord: discord || "",
-          creator: creator ? creator : user.publicKey || "unknown",
+          creator: tokenStats?.creator
+            ? tokenStats.creator
+            : user.publicKey || "unknown",
           status: imported ? "locked" : "active",
           tokenPriceUSD: 0.00000001,
           createdAt: now,
@@ -1739,9 +1829,9 @@ tokenRouter.post("/create-token", async (c) => {
       const tokenData = {
         id: tokenId,
         mint: mintAddress,
-        name: name || `Token ${mintAddress.slice(0, 8)}`,
-        ticker: symbol || "TOKEN",
-        description: description || "",
+        name: tokenStats?.name || `Token ${mintAddress.slice(0, 8)}`,
+        ticker: tokenStats?.symbol || "TOKEN",
+        description: tokenStats?.description || "",
         twitter: twitter || "",
         telegram: telegram || "",
         farcaster: farcaster || "",
@@ -1749,7 +1839,7 @@ tokenRouter.post("/create-token", async (c) => {
         discord: discord || "",
         creator: user.publicKey || "unknown",
         status: imported ? "locked" : "active",
-        url: metadataUrl || "",
+        url: tokenStats?.metadataUri || "",
         image: imageUrl || "",
         createdAt: now,
         imported: importedValue,
@@ -1794,30 +1884,20 @@ tokenRouter.post("/create-token", async (c) => {
         (async () =>
           await generateAdditionalTokenImages(
             mintAddress,
-            description || ""
+            tokenStats?.description || ""
           ))();
       }
 
       return c.json({ success: true, token: tokenData });
-    } catch (error) {
-      logger.error("Error creating token:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown error creating token record";
-      return c.json(
-        { error: "Failed to create token record", details: errorMessage },
-        500
-      );
+    } else {
+      logger.error(`[search-token] Token ${mint} not found on mainnet`);
+      return c.json({ error: "Token not found on mainnet" }, 404);
     }
   } catch (error) {
     logger.error("Error in create-token endpoint:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown internal server error";
-    return c.json(
-      { error: "Internal server error", details: errorMessage },
-      500
-    );
+    return c.json({ error: "Could not get token metadata" }, 400);
   }
 });
 
@@ -2320,13 +2400,18 @@ tokenRouter.post("/search-token", async (c) => {
     const tokenInfo = await connection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
       logger.log(`[search-token] Found token on mainnet`);
-      return await processTokenInfo(
-        c,
+      const tokenData = await processTokenInfo(
         mintPublicKey,
         tokenInfo,
         connection,
         requestor
       );
+
+      if (!tokenData) {
+        return c.json({ error: "Failed to process token info" }, 500);
+      }
+
+      return c.json(tokenData);
     } else {
       logger.error(`[search-token] Token ${mint} not found on mainnet`);
       return c.json({ error: "Token not found on mainnet" }, 404);
@@ -2451,5 +2536,99 @@ tokenRouter.post("/token/:mint/audio-context", async (c) => {
     return c.json({ error: "Failed to upload audio context" }, 500);
   }
 });
+
+/**
+ * Fetches and prioritizes specific tokens at the beginning of the result set
+ * @param db Database instance
+ * @param serializableResults Current serialized token results
+ * @param priorityTokenAddresses Array of token mint addresses to prioritize
+ * @param limit Maximum number of tokens to return
+ * @returns Modified token results with priority tokens at the beginning
+ */
+async function prioritizeFeaturedTokens(
+  serializableResults: Token[],
+  priorityTokenAddresses: string[],
+  limit: number
+): Promise<Token[]> {
+  try {
+    const db = getDB();
+    // Check if priority tokens exist in results
+    const priorityTokensInResults = serializableResults.filter((token) =>
+      priorityTokenAddresses.includes(token.mint)
+    );
+
+    // Get missing priority tokens (if any)
+    const missingTokenAddresses = priorityTokenAddresses.filter(
+      (addr) => !priorityTokensInResults.some((token) => token.mint === addr)
+    );
+
+    // If we have missing priority tokens, fetch them
+    let missingTokens: Token[] = [];
+    if (missingTokenAddresses.length > 0) {
+      try {
+        const priorityTokensQuery = db
+          .select()
+          .from(tokens)
+          .where(inArray(tokens.mint, missingTokenAddresses));
+
+        const fetchedTokens = await priorityTokensQuery.execute();
+
+        // Convert BigInts in fetched tokens
+        missingTokens = fetchedTokens.map((token) => {
+          const serializableToken: Record<string, any> = {};
+          for (const [key, value] of Object.entries(token)) {
+            if (typeof value === "bigint") {
+              serializableToken[key] = (value as any).toString();
+            } else {
+              serializableToken[key] = value;
+            }
+          }
+          return serializableToken as Token;
+        });
+
+        logger.log(
+          `[Featured Sort] Fetched ${missingTokens.length} additional priority tokens`
+        );
+      } catch (error) {
+        logger.error("[Featured Sort] Error fetching priority tokens:", error);
+        // Don't throw error, just continue with what we have
+      }
+    }
+
+    // Remove any priority tokens from the main result to avoid duplicates
+    const otherTokens = serializableResults.filter(
+      (token) => !priorityTokenAddresses.includes(token.mint)
+    );
+
+    // Combine all priority tokens in the specified order, but only include tokens that exist
+    const allPriorityTokens = [];
+    for (const addr of priorityTokenAddresses) {
+      const existingToken = priorityTokensInResults.find(
+        (t) => t.mint === addr
+      );
+      if (existingToken) {
+        allPriorityTokens.push(existingToken);
+      } else {
+        const fetchedToken = missingTokens.find((t) => t.mint === addr);
+        if (fetchedToken) allPriorityTokens.push(fetchedToken);
+        // If token doesn't exist in DB, we just skip it - no need to add null/undefined to array
+      }
+    }
+
+    // Combine priority tokens with other tokens, ensuring we don't exceed the limit
+    const combinedResults = [...allPriorityTokens, ...otherTokens];
+    const finalResults = combinedResults.slice(0, limit); // Keep within limit
+
+    logger.log(
+      `[Featured Sort] Prioritized ${allPriorityTokens.length} tokens at the beginning`
+    );
+
+    return finalResults;
+  } catch (error) {
+    // If anything fails, return the original results to avoid breaking the API
+    logger.error("[Featured Sort] Error in prioritization process:", error);
+    return serializableResults.slice(0, limit);
+  }
+}
 
 export default tokenRouter;

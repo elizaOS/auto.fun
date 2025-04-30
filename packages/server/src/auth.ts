@@ -463,10 +463,9 @@ export const verifyAuth = async (
   c: Context<{ Bindings: Env }>,
   next: Function
 ) => {
-  const bypassVerifyAuth = ["/api/webhook", "/api/tokens", "/api/token"];
-  
+  const bypassVerifyAuth = ["/api/webhook", "/api/tokens", "/api/token", "/sol-price"];
+
   if (bypassVerifyAuth.includes(c.req.path)) {
-    logger.info(`bypassed route ${c.req.path}`)
     return next();
   }
 
