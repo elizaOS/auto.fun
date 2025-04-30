@@ -26,6 +26,8 @@ export function getSharedRedisPool(): RedisPool {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
+      min: 10,
+      max: 200,
       // Consider adding pool configuration options here if your RedisPool supports them
       // e.g., minSize, maxSize, connectionTimeout
     });
