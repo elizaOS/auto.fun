@@ -25,30 +25,21 @@ import swapRouter from "./routes/swap";
 import tokenRouter from "./routes/token";
 import webhookRouter from "./routes/webhooks";
 import { logger } from "./util";
-// import { claimFees } from "./claimFees";
 import { webSocketManager } from "./websocket-manager";
-// Assuming getSharedRedisPool is exported from redisCacheService or redisPool
 import { fork } from "node:child_process";
 import path from "node:path";
 import { getSOLPrice } from './mcap';
 import { getGlobalRedisCache } from "./redis";
-// import { resumeMigrationsOnStart } from "./migration/resumeMigrationsOnStart";
-// import "./workers/scheduler";
-const migrationWorkerChild: ReturnType<typeof fork> | null = null;
 
-// Define Variables type matching the original Hono app
+
 interface AppVariables {
   user?: { publicKey: string } | null;
-  // Add any other variables used in middleware/routes
 }
 
-// Initialize Hono app with Node.js compatible types
 const app = new Hono<{ Variables: AppVariables }>();
 
-// --- Environment Setup (Load or Validate Env Vars) ---
-// Ensure necessary env vars are loaded (dotenv should have done this)
-// You might want to validate required env vars here (like REDIS_HOST etc.)
-const env = process.env as unknown as Env; // Cast process.env, ensure Env type matches
+
+const env = process.env as unknown as Env;
 
 // Setup Solana connection
 const RPC_URL = (
@@ -240,38 +231,3 @@ export default {
 };
 
 
-// function startLogWorker() {
-
-//   const child = fork(path.join(__dirname, "subscription/logWorker"), [], {
-//     env: process.env,
-//   });
-
-//   logger.info("🚀 Started log subscription worker with PID", child.pid);
-
-//   child.on("exit", (code) => {
-//     logger.error(`❌ Log subscription worker exited with code ${code}. Restarting...`);
-//     setTimeout(startLogWorker, 1000); // Restart after 1s
-//   });
-
-//   child.on("error", (err) => {
-//     logger.error("❌ Error in log subscription worker:", err);
-//   });
-// }
-// startLogWorker();
-
-
-
-// const sched = fork(
-//   path.join(__dirname, "workers", "scheduler.ts"),
-//   { env: process.env, stdio: "inherit" }
-// );
-
-// sched.on("exit", (code, signal) => {
-//   console.error(`Scheduler exited (${signal || code}), restarting…`);
-//   setTimeout(() => {
-//     fork(path.join(__dirname, "workers", "scheduler.ts"), {
-//       env: process.env,
-//       stdio: "inherit",
-//     });
-//   }, 1000);
-// });

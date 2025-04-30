@@ -4,7 +4,6 @@ import { processTransactionLogs } from "../cron";
 import { createRedisCache, getGlobalRedisCache } from "../redis";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { logger } from "../util";
-import { queueJob } from "../workers/processPool";
 
 const router = new Hono<{
   Variables: {

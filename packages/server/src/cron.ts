@@ -210,29 +210,6 @@ type ProcessResult = {
   event?: string;
 };
 
-async function pushSwapToRedis(
-  redis: RedisCacheService,
-  key: string,
-  record: any,
-  maxLength = 100
-) {
-  // 1) fetch raw
-  const raw = await redis.get(key);
-  let list: any[];
-  try {
-    list = raw ? JSON.parse(raw) : [];
-  } catch {
-    console.warn(`[Swap] invalid JSON in ${key}, resetting to []`);
-    list = [];
-  }
-
-  // 2) prepend and trim
-  list.unshift(record);
-  if (list.length > maxLength) list = list.slice(0, maxLength);
-
-  // 3) write back
-  await redis.set(key, JSON.stringify(list));
-}
 
 type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
