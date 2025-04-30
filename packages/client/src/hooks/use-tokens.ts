@@ -96,7 +96,7 @@ export const useTokens = (params: UseTokensParams) => {
       socket.off("newToken", handleUpdate);
       socket.off("updateToken", handleUpdate);
     };
-  }, [enabled, validationSchema, infiniteQuery.setItems]);
+  }, [enabled, infiniteQuery.setItems]);
 
   return infiniteQuery;
 };
