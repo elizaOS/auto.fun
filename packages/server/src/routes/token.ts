@@ -1278,12 +1278,12 @@ tokenRouter.get("/tokens", async (c) => {
 
   // Merge ephemeral stats from Redis into each token
   if (redisCache) {
-    await Promise.all(
-      responseData.tokens.map(async (t) => {
-        const statsJson = await redisCache.get(`token:stats:${t.mint}`);
-        if (statsJson) Object.assign(t, JSON.parse(statsJson));
-      })
-    );
+    const keys = responseData.tokens.map(t => `token:stats:${t.mint}`);
+    const statsJsonArray = await redisCache.mget(keys);
+    responseData.tokens.forEach((t, index) => {
+      const statsJson = statsJsonArray[index];
+      if (statsJson) Object.assign(t, JSON.parse(statsJson));
+    });
   }
 
   // --- RE-ENABLE CACHE SET ---
