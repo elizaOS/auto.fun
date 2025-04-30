@@ -331,8 +331,8 @@ export class RedisPool {
         options.password ||
         process.env.REDIS_PASSWORD ||
         DEFAULT_REDIS_PASSWORD,
-      max: options.max || 200,
-      min: options.min || 50,
+      max: options.max || 500,
+      min: options.min || 200,
       idleTimeoutMillis: options.idleTimeoutMillis || 60_000,
 
     };
@@ -377,7 +377,7 @@ export class RedisPool {
         min: this.options.min,
         idleTimeoutMillis: this.options.idleTimeoutMillis,
         acquireTimeoutMillis: 10_000,
-        testOnBorrow: true,
+        testOnBorrow: false,
       }
     );
   }
@@ -395,6 +395,12 @@ export class RedisPool {
     const client = await this.acquire();
     const t1 = performance.now();
 
+    // ping
+    const pingStart = performance.now();
+    await client.ping();
+    const pingMs = performance.now() - pingStart;
+
+
     let result: T;
     let t2: number = 0;
     try {
@@ -409,7 +415,8 @@ export class RedisPool {
         `[DEBUG][RedisTiming] ` +
         `acquire=${(t1 - t0).toFixed(1)}ms ` +
         `exec=${(t2 - t1).toFixed(1)}ms ` +
-        `release=${(t3 - t2).toFixed(1)}ms`
+        `release=${(t3 - t2).toFixed(1)}ms` +
+        `ping =${pingMs.toFixed(1)}ms`
       );
     }
   }
@@ -433,6 +440,10 @@ export class RedisPool {
         host: this.options.host,
         port: this.options.port,
         password: this.options.password || undefined,
+        enableOfflineQueue: false,
+        enableReadyCheck: false,
+        connectTimeout: 3000,
+        maxRetriesPerRequest: 1,
       });
 
       this.publisherClient.on("error", (err) =>
