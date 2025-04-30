@@ -1102,7 +1102,7 @@ tokenRouter.get("/tokens", async (c) => {
   const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
 
   const redisCache = await getGlobalRedisCache();
-  
+
   if (redisCache) {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
@@ -1237,7 +1237,6 @@ tokenRouter.get("/tokens", async (c) => {
     hasMore: page < totalPages,
   };
 
-  // Merge ephemeral stats from Redis into each token
   if (redisCache) {
     const keys = responseData.tokens.map((t) => `token:stats:${t.mint}`);
     const statsJsonArray = await redisCache.mget(keys);
@@ -1247,33 +1246,14 @@ tokenRouter.get("/tokens", async (c) => {
     });
   }
 
-  // --- RE-ENABLE CACHE SET ---
-  if (
-    redisCache
-    // Cache even if results are empty to prevent re-querying immediately
-    // && serializableTokensResult &&
-    // serializableTokensResult.length > 0
-  ) {
-    // Cache only if results exist
+  if (redisCache) {
     try {
-      // Cache duration remains 15 seconds for the /tokens list endpoint
-      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), 20);
+      logger.log(`Cached data for ${cacheKey} with 20s TTL`);
     } catch (cacheError) {
       logger.error(`Redis cache SET error:`, cacheError);
     }
   }
-  // --- END RE-ENABLE CACHE SET ---
-
-  // Final log and return
-  const returnedMints =
-    serializableTokensResult
-      ?.slice(0, 5)
-      .map((t) => t.mint)
-      .join(", ") || "none";
-  logger.log(
-    `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`
-  );
 
   return c.json(responseData);
 });
