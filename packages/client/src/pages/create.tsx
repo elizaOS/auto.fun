@@ -240,7 +240,7 @@ const FormImageInput = ({
   setGeneratingField: (value: string | null) => void;
   onPromptFunctionsChange: (
     setPrompt: (prompt: string) => void,
-    onPromptChange: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void
   ) => void;
   onPreviewChange?: (previewUrl: string | null) => void;
   imageUrl?: string | null;
@@ -254,7 +254,7 @@ const FormImageInput = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
-    null,
+    null
   );
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
@@ -289,7 +289,7 @@ const FormImageInput = ({
         onPromptChange(value);
       }, 500);
     },
-    [onPromptChange],
+    [onPromptChange]
   );
 
   // Update lastGeneratedImage only when preview changes
@@ -315,7 +315,7 @@ const FormImageInput = ({
       setPrompt(value);
       debouncedPromptChange(value);
     },
-    [debouncedPromptChange],
+    [debouncedPromptChange]
   );
 
   const handleCancel = useCallback(() => {
@@ -341,7 +341,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -354,7 +354,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Handle drag & drop
@@ -375,7 +375,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -388,7 +388,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -603,7 +603,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage with quote handling
@@ -640,7 +640,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
     // Specifically handle authentication errors
     if (response.status === 401) {
       throw new Error(
-        "Authentication required. Please connect your wallet and try again.",
+        "Authentication required. Please connect your wallet and try again."
       );
     }
     throw new Error("Failed to upload image: " + (await response.text()));
@@ -654,7 +654,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
 
     // Generate a fallback URL using the mint address or a UUID
     result.metadataUrl = env.getMetadataUrl(
-      metadata.tokenMint || crypto.randomUUID(),
+      metadata.tokenMint || crypto.randomUUID()
     );
   }
 
@@ -740,7 +740,7 @@ export default function Create() {
   const [isGeneratingVanity, setIsGeneratingVanity] = useState(false);
   const [vanityResult, setVanityResult] = useState<VanityResult | null>(null);
   const [displayedPublicKey, setDisplayedPublicKey] = useState<string>(
-    "--- Generate a vanity address ---",
+    "--- Generate a vanity address ---"
   ); // Placeholder
   const [suffixError, setSuffixError] = useState<string | null>(null);
   const workersRef = useRef<Worker[]>([]);
@@ -907,7 +907,7 @@ export default function Create() {
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(
-    null,
+    null
   );
 
   // Create ref to track image URL creation to prevent infinite loops
@@ -1141,7 +1141,7 @@ export default function Create() {
   const createTokenOnChain = async (
     tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    metadataUrl: string,
+    metadataUrl: string
   ) => {
     try {
       if (!publicKey) {
@@ -1155,7 +1155,7 @@ export default function Create() {
       // Ensure we have a valid metadata URL
       if (!metadataUrl || metadataUrl === "undefined" || metadataUrl === "") {
         console.warn(
-          "No metadata URL provided, generating minimal metadata...",
+          "No metadata URL provided, generating minimal metadata..."
         );
 
         // Upload minimal metadata
@@ -1202,10 +1202,10 @@ export default function Create() {
           error.message.includes("Error Number: 102"))
       ) {
         console.error(
-          "Transaction failed due to instruction deserialization error.",
+          "Transaction failed due to instruction deserialization error."
         );
         console.error(
-          "This is likely due to parameter mismatch with the on-chain program.",
+          "This is likely due to parameter mismatch with the on-chain program."
         );
 
         // Trigger the flush animation on error
@@ -1214,7 +1214,7 @@ export default function Create() {
         }
 
         throw new Error(
-          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
+          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support."
         );
       }
 
@@ -1267,7 +1267,7 @@ export default function Create() {
             prompt: userPrompt,
             fields: ["name", "symbol", "description", "prompt"],
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -1325,7 +1325,7 @@ export default function Create() {
             prompt: data.metadata.prompt,
             type: "image",
           }),
-        },
+        }
       );
 
       if (!imageResponse.ok) {
@@ -1353,7 +1353,7 @@ export default function Create() {
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
-              `Failed to fetch image: ${r.status} ${r.statusText}`,
+              `Failed to fetch image: ${r.status} ${r.statusText}`
             );
           return r.blob();
         });
@@ -1397,7 +1397,7 @@ export default function Create() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again.",
+          : "Failed to generate token from prompt. Please try again."
       );
     } finally {
       setIsProcessingPrompt(false);
@@ -1476,11 +1476,11 @@ export default function Create() {
           } catch (parseError) {
             if (response.status === 404) {
               throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
+                "The token doesn't exist or doesn't have metadata."
               );
             } else {
               throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data. Token either doesn't exist or is already imported.`,
+                `Server error (${response.status}): Unable to retrieve token data. Token either doesn't exist or is already imported.`
               );
             }
           }
@@ -1519,7 +1519,7 @@ export default function Create() {
                       reader.readAsDataURL(imageBlob);
                     }),
                   }),
-                },
+                }
               );
 
               if (uploadResponse.ok) {
@@ -1600,7 +1600,7 @@ export default function Create() {
 
   // Handle paste in the import address field
   const handleImportAddressPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLInputElement>
   ) => {
     const pastedText = e.clipboardData.getData("text");
 
@@ -1645,7 +1645,7 @@ export default function Create() {
   const generateAll = useCallback(
     async (
       setPrompt?: ((prompt: string) => void) | null,
-      onPromptChange?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null
     ) => {
       try {
         setIsGenerating(true);
@@ -1670,7 +1670,7 @@ export default function Create() {
             method: "GET",
             headers,
             credentials: "include",
-          },
+          }
         );
 
         if (!response.ok) {
@@ -1753,7 +1753,7 @@ export default function Create() {
                 prompt: token.prompt,
                 type: "image",
               }),
-            },
+            }
           );
 
           if (!imageResponse.ok) {
@@ -1792,14 +1792,14 @@ export default function Create() {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to generate metadata. Please try again.",
+            : "Failed to generate metadata. Please try again."
         );
       } finally {
         setIsGenerating(false);
         setGeneratingField(null);
       }
     },
-    [setIsGenerating, setGeneratingField],
+    [setIsGenerating, setGeneratingField]
   );
 
   // --- Vanity Generation Functions --- (Copied and adapted)
@@ -1884,7 +1884,7 @@ export default function Create() {
       let result = "";
       for (let i = 0; i < length; i++) {
         result += base58Chars.charAt(
-          Math.floor(Math.random() * base58Chars.length),
+          Math.floor(Math.random() * base58Chars.length)
         );
       }
       return result;
@@ -1913,7 +1913,7 @@ export default function Create() {
                 if (secretKeyUint8Array.length !== 64) {
                   console.error(
                     "Worker sent invalid secret key length:",
-                    secretKeyUint8Array.length,
+                    secretKeyUint8Array.length
                   );
                   // Handle error - maybe try next result? For now, stop.
                   stopVanityGeneration();
@@ -1925,7 +1925,7 @@ export default function Create() {
                 // Double-check the derived public key matches
                 if (foundKeypair.publicKey.toString() !== data.publicKey) {
                   console.error(
-                    "Public key mismatch between worker and derived key!",
+                    "Public key mismatch between worker and derived key!"
                   );
                   setSuffixError("Key validation mismatch.");
                   stopVanityGeneration(); // Stop on critical error
@@ -1940,7 +1940,7 @@ export default function Create() {
                 stopVanityGeneration(); // Stop all workers
               } else {
                 console.warn(
-                  `Worker ${data.workerId} found potential match but validation failed.`,
+                  `Worker ${data.workerId} found potential match but validation failed.`
                 );
                 // Keep searching
               }
@@ -2182,7 +2182,7 @@ export default function Create() {
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
               // Include the import flag to indicate this is an imported token
-              imported: true,
+              imported: false,
             }),
           });
 
@@ -2275,7 +2275,7 @@ export default function Create() {
           if (!metadataUrl || metadataUrl === "undefined") {
             console.error(
               "Upload succeeded but metadata URL is invalid:",
-              metadataUrl,
+              metadataUrl
             );
             // Fallback: generate a unique metadata URL based on mint address
             metadataUrl = env.getMetadataUrl(tokenMint);
@@ -2298,7 +2298,7 @@ export default function Create() {
           metadataUrl = env.getMetadataUrl(tokenMint);
           console.log(
             "Using default metadata URL for imported token:",
-            metadataUrl,
+            metadataUrl
           );
         }
       } else if (!media_base64 && !metadataUrl) {
@@ -2338,7 +2338,7 @@ export default function Create() {
               // Wait a moment before retrying
               await new Promise((resolve) => setTimeout(resolve, 1000));
               toast.info(
-                "Retrying token creation with different parameters...",
+                "Retrying token creation with different parameters..."
               );
 
               // Modify token metadata for retry
@@ -2429,7 +2429,7 @@ export default function Create() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
       setIsCreating(false);
       setCreationStep("");
@@ -2514,7 +2514,7 @@ export default function Create() {
               method: "GET",
               headers,
               credentials: "include",
-            },
+            }
           );
 
           if (!response.ok) {
@@ -2754,7 +2754,7 @@ export default function Create() {
       !Object.values(errors).some(
         (error) =>
           error &&
-          !["userPrompt", "importAddress", "percentage"].includes(error), // Ignore non-blocking errors
+          !["userPrompt", "importAddress", "percentage"].includes(error) // Ignore non-blocking errors
       )
     );
   };
@@ -3111,7 +3111,7 @@ export default function Create() {
                   onClick={() =>
                     generateAll(
                       promptFunctions.setPrompt,
-                      promptFunctions.onPromptChange,
+                      promptFunctions.onPromptChange
                     )
                   } // Pass prompt fns
                   isLoading={isGenerating && generatingField === "description"}
@@ -3293,7 +3293,7 @@ export default function Create() {
                           ) {
                             wholePart = wholePart.slice(
                               0,
-                              String(Math.floor(MAX_INITIAL_SOL)).length,
+                              String(Math.floor(MAX_INITIAL_SOL)).length
                             );
                           }
                           // Limit decimal part length
@@ -3338,7 +3338,7 @@ export default function Create() {
                   <div className="text-right text-xs text-neutral-400">
                     ≈{" "}
                     {calculatePercentage(
-                      calculateTokensFromSol(parseFloat(buyValue as string)),
+                      calculateTokensFromSol(parseFloat(buyValue as string))
                     ).toFixed(2)}{" "}
                     % of supply
                   </div>
