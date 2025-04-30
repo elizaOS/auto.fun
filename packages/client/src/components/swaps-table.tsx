@@ -7,36 +7,31 @@ import {
   TableRow,
 } from "@/components/ui/table-raw";
 import usePause from "@/hooks/use-pause";
+import { useTransactions } from "@/hooks/use-transactions";
 import { IToken } from "@/types";
 import {
   formatNumber,
   fromNow,
   LAMPORTS_PER_SOL,
+  networkId,
   resizeImage,
   shortenAddress,
   useCodex,
 } from "@/utils";
-import { ExternalLink, RefreshCw } from "lucide-react";
-import { Link } from "react-router";
-import { twMerge } from "tailwind-merge";
-import PausedIndicator from "./paused-indicator";
-import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
-import Pagination from "./pagination";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Codex } from "@codex-data/sdk";
 import { RankingDirection } from "@codex-data/sdk/dist/resources/graphql";
 import {
   AddTokenEventsOutput,
   EventType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
-import { networkId } from "@/utils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
 import { useEffect } from "react";
-import { Tooltip } from "react-tooltip";
-import dayjs from "dayjs";
+import { Link } from "react-router";
 import Interval from "./interval";
+import PausedIndicator from "./paused-indicator";
 import Triangle from "./triangle";
-import Loader from "./loader";
 
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 

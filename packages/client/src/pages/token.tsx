@@ -1,10 +1,12 @@
 import Button from "@/components/button";
+import Chart from "@/components/chart";
+import Chat from "@/components/chat";
 import CopyButton from "@/components/copy-button";
 import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
 import AdminSection from "@/components/token-sections/admin";
 import AgentsSection from "@/components/token-sections/agents";
-import Chat from "@/components/chat";
+import ClaimFees from "@/components/token-sections/claimFees";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
@@ -13,7 +15,6 @@ import Verified from "@/components/verified";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
-import { Helmet } from "react-helmet-async";
 import {
   abbreviateNumber,
   formatNumber,
@@ -26,19 +27,16 @@ import {
   useCodex,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
-import { getAuthToken } from "@/utils/auth";
 import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
+import { Codex } from "@codex-data/sdk";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useParams } from "react-router";
-import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
-import Chart from "@/components/chart";
-import { Codex } from "@codex-data/sdk";
-import ClaimFees from "@/components/token-sections/claimFees";
 
 // Use admin addresses from environment
 const { adminAddresses } = env;

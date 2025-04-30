@@ -1,5 +1,5 @@
 import * as CANNON from "cannon-es";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { InstancedMesh } from "three";
 // @ts-ignore

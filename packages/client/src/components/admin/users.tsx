@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
-import { fetcher } from "@/utils/api";
-import { useAdminUsers } from "@/hooks/use-admin-users";
 import Loader from "@/components/loader";
 import Pagination from "@/components/pagination";
+import { useAdminUsers } from "@/hooks/use-admin-users";
+import { fetcher } from "@/utils/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
 // Type definitions
 interface User {

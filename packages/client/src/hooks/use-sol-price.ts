@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { env } from "@/utils/env";
+import { useQuery } from "@tanstack/react-query";
 
 interface SolPriceResponse {
   price: number;

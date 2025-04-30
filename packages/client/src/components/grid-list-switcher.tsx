@@ -1,6 +1,6 @@
-import Button from "./button";
-import { Grid, List } from "lucide-react";
 import { useViewMode } from "@/hooks/use-view-mode";
+import { Grid, List } from "lucide-react";
+import Button from "./button";
 
 export default function GridListSwitcher() {
   const [activeTab, setActiveTab] = useViewMode();

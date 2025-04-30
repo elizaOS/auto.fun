@@ -1,10 +1,10 @@
+import Loader from "@/components/loader";
+import useAuthentication from "@/hooks/use-authentication";
+import { fetcher } from "@/utils/api";
+import { env } from "@/utils/env";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import useAuthentication from "@/hooks/use-authentication";
-import { env } from "@/utils/env";
-import { fetcher } from "@/utils/api";
-import Loader from "@/components/loader";
 
 interface Moderator {
   id: string;

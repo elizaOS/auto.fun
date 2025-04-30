@@ -1,8 +1,8 @@
 import { useProgram } from "@/utils/program";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export const useSolBalance = ({
   enabled = true,

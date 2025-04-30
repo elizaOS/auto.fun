@@ -1,8 +1,8 @@
 import IDL from "@autodotfun/types/idl/autofun.json";
+import { Autofun } from "@autodotfun/types/types/autofun.ts";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMemo } from "react";
-import { Autofun } from "@autodotfun/types/types/autofun.ts";
 
 export const SEED_CONFIG = "config";
 export const SEED_BONDING_CURVE = "bonding_curve";

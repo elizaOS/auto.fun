@@ -1,4 +1,5 @@
 import { IToken } from "@/types";
+import { env } from "@/utils/env";
 import { sendTxUsingJito } from "@/utils/jito";
 import { SEED_BONDING_CURVE, useProgram } from "@/utils/program";
 import { getJupiterSwapIx, swapIx } from "@/utils/swapUtils";
@@ -16,7 +17,6 @@ import { getConfigAccount } from "./use-config-account";
 import { useMevProtection } from "./use-mev-protection";
 import { useSlippage } from "./use-slippage";
 import { useTransactionSpeed } from "./use-transaction-speed";
-import { env } from "@/utils/env";
 
 interface SwapParams {
   style: "buy" | "sell";

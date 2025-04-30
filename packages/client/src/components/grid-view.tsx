@@ -2,8 +2,8 @@ import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
 import { abbreviateNumber, fromNow, resizeImage } from "@/utils";
 import { Link } from "react-router";
-import Verified from "./verified";
 import TokenStatus from "./token-status";
+import Verified from "./verified";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (

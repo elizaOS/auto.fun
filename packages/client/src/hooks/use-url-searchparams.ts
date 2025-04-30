@@ -1,5 +1,5 @@
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { useState, useCallback, useEffect } from "react";
 
 export function useUrlSearchParams<T>(
   key: string,

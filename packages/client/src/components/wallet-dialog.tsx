@@ -1,4 +1,3 @@
-import SkeletonImage from "@/components/skeleton-image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import useAuthentication from "@/hooks/use-authentication";
 import { useWalletModal } from "@/hooks/use-wallet-modal";

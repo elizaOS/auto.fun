@@ -8,15 +8,15 @@ import {
 } from "@/components/ui/table-raw";
 import { IToken } from "@/types";
 import { networkId, shortenAddress } from "@/utils";
-import { ExternalLink, RefreshCw } from "lucide-react";
-import { Link } from "react-router";
 import { env } from "@/utils/env";
 import { Codex } from "@codex-data/sdk";
-import { useQuery } from "@tanstack/react-query";
 import {
   HoldersSortAttribute,
   RankingDirection,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import { useQuery } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
+import { Link } from "react-router";
 import Loader from "./loader";
 
 function getPercentageOfTotal(value: number, total: number): string | number {

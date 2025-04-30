@@ -1,16 +1,16 @@
 import { FormInput } from "@/pages/create";
 import { isFromDomain } from "@/utils";
+import { fetcher } from "@/utils/api";
 import { env } from "@/utils/env";
-import { useEffect, useState, useRef } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { useLocation, useParams, Link } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import AudioPlayer from "../audio-player";
 import CopyButton from "../copy-button";
 import { Icons } from "../icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetcher } from "@/utils/api";
-import { useWallet } from "@solana/wallet-adapter-react";
-import AudioPlayer from "../audio-player";
 import Loader from "../loader";
 
 type FormData = {
