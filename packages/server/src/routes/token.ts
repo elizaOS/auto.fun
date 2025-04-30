@@ -1245,10 +1245,7 @@ tokenRouter.get("/tokens", async (c) => {
   // Apply priority token logic for featured sorting on page 1
   if (sortBy === "featured" && page === 1) {
     // Define the two token addresses to prioritize
-    const priorityTokenAddresses = [
-      "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", // ai16z
-      "Gu3LDkn7Vx3bmCzLafYNKcDxv2mH7YN44NJZFXnypump", // degent sparten
-    ];
+    const priorityTokenAddresses: string[] = [];
 
     // Use the helper function to prioritize tokens
     const modifiedResults = await prioritizeFeaturedTokens(
@@ -1256,10 +1253,9 @@ tokenRouter.get("/tokens", async (c) => {
       priorityTokenAddresses,
       limit
     );
-
-    // Replace the original array contents
-    serializableTokensResult.length = 0;
-    serializableTokensResult.push(...modifiedResults);
+    
+    // Replace all elements using splice
+    serializableTokensResult.splice(0, serializableTokensResult.length, ...modifiedResults);
   }
 
   const responseData = {
