@@ -173,3 +173,8 @@ export const useCodex = (token: IToken) => {
 
   return false;
 };
+
+export const sanitizeCheckmark = (name?: string | null) => {
+  if (!name) return "";
+  return name.replaceAll("✅", "");
+};

@@ -1,6 +1,6 @@
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
 import { IToken } from "@/types";
-import { abbreviateNumber, shortenAddress } from "@/utils";
+import { abbreviateNumber, sanitizeCheckmark, shortenAddress } from "@/utils";
 import { getSearchTokens } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
@@ -117,9 +117,9 @@ const AgentSearchResult = ({
         />
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="text-white text-[16px] font-medium group-hover:text-[#03FF24] transition-colors flex items-center gap-1">
-            <span className="truncate">{token?.name}</span>
+            <span className="truncate">{sanitizeCheckmark(token?.name)}</span>
             <span className="text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors flex-shrink-0">
-              ${token?.ticker}
+              ${sanitizeCheckmark(token?.ticker)}
             </span>
             <Verified isVerified={token?.verified ? true : false} />
           </div>
