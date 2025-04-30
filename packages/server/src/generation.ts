@@ -332,6 +332,113 @@ async function checkBlockchainTokenBalance(
   }
 }
 
+// Helper function to parse timestamp string to seconds
+function parseTimestampToSeconds(timestamp: string | undefined): number {
+  if (!timestamp) return 0;
+  
+  const match = timestamp.match(/\[(\d{2}):(\d{2})\.(\d{2})\]/);
+  if (!match) return 0;
+  
+  const minutes = parseInt(match[1], 10);
+  const seconds = parseInt(match[2], 10);
+  const milliseconds = parseInt(match[3], 10);
+  return minutes * 60 + seconds + milliseconds / 100;
+}
+
+// Helper function to determine song structure based on tempo and duration
+function determineSongStructure(bpm: number, duration: string): { 
+  hasIntro: boolean, 
+  linesPerSection: { intro: number, verse: number, chorus: number },
+  beatsPerLine: number
+} {
+  const durationSeconds = parseInt(duration.replace('s', ''));
+  const isSlowTempo = bpm < 100;
+  const isShortDuration = durationSeconds <= 95;
+
+  // Calculate total beats available
+  const totalBeats = (durationSeconds * bpm) / 60;
+  
+  // Calculate beats needed for structure
+  const introBeats = isSlowTempo || isShortDuration ? 0 : 4; // 1 bar before intro
+  const verseBeats = 8; // 2 bars before verse
+  const chorusBeats = 4; // 1 bar before chorus
+  const totalStructureBeats = introBeats + (verseBeats * 2) + (chorusBeats * 2);
+  
+  // Calculate remaining beats for lyrics
+  const remainingBeats = totalBeats - totalStructureBeats;
+  
+  // Calculate total lines
+  const totalLines = (isSlowTempo || isShortDuration ? 0 : 2) + (4 * 2) + (4 * 2); // intro + 2 verses + 2 choruses
+  
+  // Calculate beats per line, ensuring we don't exceed the duration
+  let beatsPerLine = Math.floor(remainingBeats / totalLines);
+  
+  // Ensure minimum and maximum beats per line
+  beatsPerLine = Math.max(6, Math.min(12, beatsPerLine));
+
+  // For slow tempos or short durations, use a simpler structure
+  if (isSlowTempo || isShortDuration) {
+    return {
+      hasIntro: false,
+      linesPerSection: {
+        intro: 0,
+        verse: 4,
+        chorus: 4
+      },
+      beatsPerLine
+    };
+  }
+
+  // For normal tempos and longer durations, use full structure
+  return {
+    hasIntro: true,
+    linesPerSection: {
+      intro: 2,
+      verse: 4,
+      chorus: 4
+    },
+    beatsPerLine
+  };
+}
+
+// Helper function to calculate timestamps based on BPM
+function calculateTimestamps(bpm: number, numLines: number, startTime: number = 0, sectionType: 'intro' | 'verse' | 'chorus' = 'verse'): string[] {
+  const beatDuration = 60 / bpm; // Duration of one beat in seconds
+  const timestamps: string[] = [];
+  let currentTime = startTime;
+
+  // Add section-specific spacing based on BPM
+  if (sectionType === 'intro') {
+    // Add 1 bar of instrumental before first lyrics
+    const introBars = 1;
+    currentTime += (introBars * 4 * beatDuration);
+  } else if (sectionType === 'verse') {
+    // Add 2 bars after intro/chorus for a proper fill
+    const verseBars = 2;
+    currentTime += (verseBars * 4 * beatDuration);
+  } else if (sectionType === 'chorus') {
+    // Add 1 bar after verse
+    const chorusBars = 1;
+    currentTime += (chorusBars * 4 * beatDuration);
+  }
+
+  // Calculate line durations - adjust based on tempo
+  const beatsPerLine = bpm < 100 ? 8 : 12; // Shorter lines for slower tempos
+  for (let i = 0; i < numLines; i++) {
+    const minutes = Math.floor(currentTime / 60);
+    const seconds = Math.floor(currentTime % 60);
+    const milliseconds = Math.floor((currentTime % 1) * 100);
+    
+    const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
+    timestamps.push(timestamp);
+    
+    // Adjust line duration based on tempo
+    currentTime += beatDuration * beatsPerLine;
+  }
+
+  return timestamps;
+}
+
 // Function definition moved earlier
 async function generateLyrics(
   tokenMetadata: {
@@ -339,8 +446,10 @@ async function generateLyrics(
     symbol: string;
     description?: string;
   },
-  stylePrompt?: string
-): Promise<string> { // Ensure it promises a string
+  stylePrompt?: string,
+  bpm: number = 120, // Default to 120 BPM
+  duration: string = "95s" // Default to 95 seconds
+): Promise<string> {
   try {
     if (!process.env.FAL_API_KEY) {
       throw new Error(
@@ -349,120 +458,169 @@ async function generateLyrics(
     }
     fal.config({ credentials: process.env.FAL_API_KEY });
 
+    // Determine song structure based on tempo and duration
+    const structure = determineSongStructure(bpm, duration);
+    const beatDuration = 60 / bpm; // Duration of one beat in seconds
+
     const systemPrompt = `You are a creative songwriter. Create lyrics for a song about the token "${tokenMetadata.name}" (${tokenMetadata.symbol}).
     The song should capture the essence of the token's description: "${tokenMetadata.description}".
     ${stylePrompt ? `The musical style should be: ${stylePrompt}` : ""}
 
-    Format the lyrics with timestamps in the format [MM:SS.mm] at the start of each line.
-    Include at least two sections: a verse and a chorus.
-    Each section should be marked with [verse] or [chorus] at the start.
+    The song should have the following structure:
+    ${structure.hasIntro ? `- An intro section (${structure.linesPerSection.intro} lines) - starts after 1 bar of instrumental` : ''}
+    - A verse section (${structure.linesPerSection.verse} lines) - starts after ${structure.hasIntro ? '2' : '1'} bars of instrumental
+    - A chorus section (${structure.linesPerSection.chorus} lines) - starts after 1 bar of instrumental
+    - A second verse section (${structure.linesPerSection.verse} lines) - starts after 1 bar of instrumental
+    - A final chorus section (${structure.linesPerSection.chorus} lines) - starts after 1 bar of instrumental
 
-    The lyrics should be concise and focused on the content of the prompt
+    IMPORTANT: The chorus must be:
+    1. The most memorable and catchy part of the song
+    2. Use the same exact lines each time it appears
+    3. Be simple and repetitive
+    4. Focus on the main theme or hook
+    5. Be easy to sing along to
 
+    The verses should:
+    1. Tell a story or build up to the chorus
+    2. Be more descriptive and detailed
+    3. Lead naturally into the chorus
+    4. Be concise and impactful
 
-    Output ONLY the formatted lyrics.
+    Each line should be concise and focused on the content of the prompt.
+    The lyrics should flow naturally and be suitable for a ${bpm} BPM song.
+    Each line should be able to be sung over ${structure.beatsPerLine} beats (${structure.beatsPerLine/4} bars), allowing for proper phrasing and musical expression.
 
-    Example format:
-    [verse]
-    [00:00.00] First line of verse
-    [00:02.50] Second line of verse
-    [00:05.00] Third line of verse
-
-    [chorus]
-    [00:07.50] First line of chorus
-    [00:10.00] Second line of chorus
-    [00:12.50] Third line of chorus`;
+    Output ONLY the lyrics text, one line per line, without any timestamps or section markers.
+    The system will add the proper timing and structure.`;
 
     const falInput = {
       model: "anthropic/claude-3.5-sonnet" as const,
       system_prompt: systemPrompt,
       prompt: "Generate the lyrics based on the system prompt instructions.",
-      // Temperature adjustment might need different handling with Fal
     };
 
     const response: any = await fal.subscribe("fal-ai/any-llm", {
       input: falInput,
-      logs: true, // Optional: for debugging
+      logs: true,
     });
 
-    // Ensure the lyrics have proper formatting
-    let lyrics = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
+    let lyrics = response?.data?.output || response?.output || "";
     lyrics = lyrics.trim();
 
-    // Basic validation - return fallback STRING on failure
-    if (!lyrics || !lyrics.includes("[") || lyrics.length < 20) {
+    if (!lyrics || lyrics.length < 20) {
       logger.error(
-        "Failed to generate valid lyrics structure from Fal AI. Response:",
+        "Failed to generate valid lyrics from Fal AI. Response:",
         lyrics
       );
-      // Return a fallback string
-      return `[verse]\n[00:00.00] Song about ${tokenMetadata.name}\n[00:03.00] Symbol ${tokenMetadata.symbol}\n[chorus]\n[00:06.00] Based on: ${tokenMetadata.description?.substring(0, 50)}...\n[00:09.00] Fal AI generation failed.`;
+      return `[verse]\n[00:00.00] Song about ${tokenMetadata.name}\n[00:02.00] Symbol ${tokenMetadata.symbol}\n[chorus]\n[00:04.00] Based on: ${tokenMetadata.description?.substring(0, 50)}...\n[00:06.00] Fal AI generation failed.`;
     }
 
-    // Add section markers if they're missing (might be less necessary if prompt works well)
-    if (!lyrics.includes("[verse]")) {
-      lyrics = `[verse]\n${lyrics}`;
-    }
-    if (!lyrics.includes("[chorus]")) {
-      // Find the first timestamp after [verse] lines and insert [chorus] before it
-      const lines = lyrics.split("\n");
-      let verseEnded = false;
-      let chorusInserted = false;
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes("[verse]")) verseEnded = true;
-        if (
-          verseEnded &&
-          lines[i].match(/\[\d{2}:\d{2}\.\d{2}\]/) &&
-          !lines[i - 1]?.includes("[verse]")
-        ) {
-          lines.splice(i, 0, "[chorus]");
-          chorusInserted = true;
-          break;
-        }
-      }
-      if (!chorusInserted)
-        lyrics = lyrics + "\n[chorus]\n[00:15.00] Default chorus line."; // Add fallback chorus if needed
-      else lyrics = lines.join("\n");
-    }
+    // Split lyrics into lines and clean up
+    const lines = lyrics.split("\n").filter((line: string) => line.trim() !== "");
+    
+    // Get the actual lyric lines (excluding section markers)
+    const lyricLines = lines.filter((line: string) => 
+      !line.toLowerCase().includes("[verse]") &&
+      !line.toLowerCase().includes("[chorus]") &&
+      !line.toLowerCase().includes("[bridge]") &&
+      !line.toLowerCase().includes("[intro]") &&
+      !line.toLowerCase().includes("[outro]") &&
+      !line.toLowerCase().includes("(verse)") &&
+      !line.toLowerCase().includes("(chorus)") &&
+      !line.toLowerCase().includes("(bridge)") &&
+      !line.toLowerCase().includes("(intro)") &&
+      !line.toLowerCase().includes("(outro)")
+    );
 
-    // Add timestamps if they're missing (less likely if prompt works)
-    const lines = lyrics.split("\n");
+    // Calculate timestamps for each section with proper spacing
     let currentTime = 0;
-    const formattedLines = lines.map((line: string) => {
-      if (
-        line.trim() === "" ||
-        (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/))
-      ) {
-        return line; // Keep section markers or empty lines as is
-      }
-      if (!line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
-        const minutes = Math.floor(currentTime / 60);
-        const seconds = Math.floor(currentTime % 60);
-        const milliseconds = Math.floor((currentTime % 1) * 100);
-        const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
-        currentTime += 2.5; // Add 2.5 seconds between lines
-        return `${timestamp} ${line.trim()}`;
-      } else {
-        // Extract time if present to keep track for subsequent lines
-        const timeMatch = line.match(/\[(\d{2}):(\d{2})\.(\d{2})\]/);
-        if (timeMatch) {
-          const minutes = parseInt(timeMatch[1], 10);
-          const seconds = parseInt(timeMatch[2], 10);
-          const ms = parseInt(timeMatch[3], 10);
-          currentTime = minutes * 60 + seconds + ms / 100 + 2.5; // Update current time based on last timestamp + delta
-        }
-      }
-      return line;
-    });
+    
+    // Add initial instrumental
+    currentTime += 4 * beatDuration; // 1 bar of instrumental before first lyrics
 
-    return formattedLines.join("\n"); // Return the final string
+    // Intro section
+    const introTimestamps: string[] = [];
+    for (let i = 0; i < structure.linesPerSection.intro; i++) {
+      const minutes = Math.floor(currentTime / 60);
+      const seconds = Math.floor(currentTime % 60);
+      const milliseconds = Math.floor((currentTime % 1) * 100);
+      introTimestamps.push(`[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`);
+      currentTime += structure.beatsPerLine * beatDuration;
+    }
 
+    // Add 2 bars after intro
+    currentTime += 8 * beatDuration;
+
+    // Verse 1 section
+    const verse1Timestamps: string[] = [];
+    for (let i = 0; i < structure.linesPerSection.verse; i++) {
+      const minutes = Math.floor(currentTime / 60);
+      const seconds = Math.floor(currentTime % 60);
+      const milliseconds = Math.floor((currentTime % 1) * 100);
+      verse1Timestamps.push(`[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`);
+      currentTime += structure.beatsPerLine * beatDuration;
+    }
+
+    // Add 1 bar after verse
+    currentTime += 4 * beatDuration;
+
+    // Chorus 1 section
+    const chorus1Timestamps: string[] = [];
+    for (let i = 0; i < structure.linesPerSection.chorus; i++) {
+      const minutes = Math.floor(currentTime / 60);
+      const seconds = Math.floor(currentTime % 60);
+      const milliseconds = Math.floor((currentTime % 1) * 100);
+      chorus1Timestamps.push(`[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`);
+      currentTime += structure.beatsPerLine * beatDuration;
+    }
+
+    // Add 1 bar after chorus
+    currentTime += 4 * beatDuration;
+
+    // Verse 2 section
+    const verse2Timestamps: string[] = [];
+    for (let i = 0; i < structure.linesPerSection.verse; i++) {
+      const minutes = Math.floor(currentTime / 60);
+      const seconds = Math.floor(currentTime % 60);
+      const milliseconds = Math.floor((currentTime % 1) * 100);
+      verse2Timestamps.push(`[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`);
+      currentTime += structure.beatsPerLine * beatDuration;
+    }
+
+    // Add 1 bar after verse
+    currentTime += 4 * beatDuration;
+
+    // Chorus 2 section
+    const chorus2Timestamps: string[] = [];
+    for (let i = 0; i < structure.linesPerSection.chorus; i++) {
+      const minutes = Math.floor(currentTime / 60);
+      const seconds = Math.floor(currentTime % 60);
+      const milliseconds = Math.floor((currentTime % 1) * 100);
+      chorus2Timestamps.push(`[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`);
+      currentTime += structure.beatsPerLine * beatDuration;
+    }
+
+    // Log the final duration for debugging
+    logger.log(`Final song duration: ${Math.floor(currentTime)} seconds`);
+
+    // Combine sections with proper markers and timestamps
+    const formattedLyrics = [
+      "[intro]",
+      ...lyricLines.slice(0, structure.linesPerSection.intro).map((line: string, i: number) => `${introTimestamps[i]} ${line}`),
+      "[verse]",
+      ...lyricLines.slice(structure.linesPerSection.intro, structure.linesPerSection.intro + structure.linesPerSection.verse).map((line: string, i: number) => `${verse1Timestamps[i]} ${line}`),
+      "[chorus]",
+      ...lyricLines.slice(structure.linesPerSection.intro + structure.linesPerSection.verse, structure.linesPerSection.intro + structure.linesPerSection.verse + structure.linesPerSection.chorus).map((line: string, i: number) => `${chorus1Timestamps[i]} ${line}`),
+      "[verse]",
+      ...lyricLines.slice(structure.linesPerSection.intro + structure.linesPerSection.verse + structure.linesPerSection.chorus, structure.linesPerSection.intro + structure.linesPerSection.verse + structure.linesPerSection.chorus + structure.linesPerSection.verse).map((line: string, i: number) => `${verse2Timestamps[i]} ${line}`),
+      "[chorus]",
+      ...lyricLines.slice(structure.linesPerSection.intro + structure.linesPerSection.verse + structure.linesPerSection.chorus + structure.linesPerSection.verse, structure.linesPerSection.intro + structure.linesPerSection.verse + structure.linesPerSection.chorus + structure.linesPerSection.verse + structure.linesPerSection.chorus).map((line: string, i: number) => `${chorus2Timestamps[i]} ${line}`)
+    ].join("\n");
+
+    return formattedLyrics;
   } catch (error) {
     logger.error("Error generating lyrics:", error);
-    // Also return a fallback string on catch
-     return `[verse]\n[00:00.00] Error generating lyrics for ${tokenMetadata.name}.`;
-    // OR re-throw if generateMedia should handle the error
-    // throw error;
+    return `[verse]\n[00:00.00] Error generating lyrics for ${tokenMetadata.name}.`;
   }
 }
 
@@ -532,7 +690,17 @@ function formatLyricsForDiffrhythm(lyrics: string): string {
       line.includes("...") || // Ellipses often indicate incomplete/filler
       line.includes("---") || // Separators
       line.includes("***") || // Separators
-      /^\s*$/.test(line) // Empty or whitespace-only lines
+      /^\s*$/.test(line) || // Empty or whitespace-only lines
+      line.toLowerCase().includes("(verse)") || // Filter out section markers in lyrics
+      line.toLowerCase().includes("(chorus)") ||
+      line.toLowerCase().includes("(bridge)") ||
+      line.toLowerCase().includes("(intro)") ||
+      line.toLowerCase().includes("(outro)") ||
+      line.toLowerCase().includes("[verse]") || // Filter out section markers in brackets
+      line.toLowerCase().includes("[chorus]") ||
+      line.toLowerCase().includes("[bridge]") ||
+      line.toLowerCase().includes("[intro]") ||
+      line.toLowerCase().includes("[outro]")
     ) {
       continue;
     }
@@ -711,7 +879,9 @@ export async function generateMedia(data: {
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
         },
-        data.style_prompt || stylePrompt
+        data.style_prompt || stylePrompt,
+        data.bpm || 120,
+        data.music_duration || "95s"
       );
     }
 
@@ -756,7 +926,7 @@ export async function generateMedia(data: {
       reference_audio_url: referenceAudioUrl,
       style_prompt: data.style_prompt || stylePrompt,
       music_duration: data.music_duration || "95s",
-      cfg_strength: data.cfg_strength || 4,
+      cfg_strength: data.cfg_strength || 8,
       scheduler: data.scheduler || "euler",
       num_inference_steps: data.num_inference_steps || 32,
     };
