@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetcher } from "@/utils/api";
 import Loader from "@/components/loader";
 import { formatNumber } from "@/utils";
+import { fetcher } from "@/utils/api";
+import { useQuery } from "@tanstack/react-query";
 
 interface AdminStats {
   userCount: number;

@@ -1,7 +1,7 @@
-import { z } from "zod";
+import { getSocket } from "@/utils/socket";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useEffect } from "react";
-import { getSocket } from "@/utils/socket";
+import { z } from "zod";
 import { usePagination } from "./use-pagination";
 
 const TransactionSchema = z

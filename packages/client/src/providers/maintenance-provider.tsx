@@ -1,5 +1,3 @@
-import { PropsWithChildren } from "react";
-
 export default function MainentenaceProvider() {
   const isEnabled = import.meta.env.VITE_MAINTENANCE_MODE
     ? Boolean(import.meta.env.VITE_MAINTENANCE_MODE)

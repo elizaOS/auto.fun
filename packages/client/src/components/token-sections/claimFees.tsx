@@ -1,7 +1,7 @@
-import { toast } from "react-toastify";
-import { env } from "@/utils/env";
 import { fetchWithAuth } from "@/hooks/use-authentication";
+import { env } from "@/utils/env";
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 export default function ClaimFees({ tokenMint }: { tokenMint: string }) {
   const { mutate: claimFees, isPending } = useMutation({

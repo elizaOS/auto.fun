@@ -1,13 +1,13 @@
+import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import Button from "../button";
-import { useTokenBalance } from "@/hooks/use-token-balance";
-import Loader from "../loader";
-import CopyButton from "../copy-button";
 import AudioPlayer from "../audio-player";
+import Button from "../button";
+import CopyButton from "../copy-button";
+import Loader from "../loader";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -34,10 +34,10 @@ const getTabIconPath = (
 };
 
 // Additional imports for balance checking
+import { fetchWithAuth } from "@/hooks/use-authentication";
 import { env } from "@/utils/env";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Tooltip } from "react-tooltip";
-import { fetchWithAuth } from "@/hooks/use-authentication";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";

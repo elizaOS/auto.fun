@@ -1,7 +1,7 @@
+import { fetchWithAuth } from "@/hooks/use-authentication";
 import { ChartTable } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 import { env } from "./env";
-import { fetchWithAuth } from "@/hooks/use-authentication";
 
 export const queryClient = new QueryClient();
 
@@ -101,14 +101,4 @@ export const getChartTable = async ({
     console.error(err);
     return undefined;
   }
-};
-
-export const getMaintenanceMode = async () => {
-  // if query params include ?dev=true, return true
-  const dev = new URLSearchParams(window.location.search).get("dev");
-  if (dev === "true") {
-    return false;
-  }
-
-  return await fetcher("/maintenance-mode", "GET");
 };

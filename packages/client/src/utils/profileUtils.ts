@@ -1,14 +1,14 @@
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useState, useEffect, useCallback } from "react";
-import { ProfileToken } from "../types/profileTypes";
-import { AccountLayout, RawAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { SEED_BONDING_CURVE, useProgram } from "./program";
-import { env } from "./env";
-import { BN } from "@coral-xyz/anchor";
-import { calculateAmountOutSell } from "./swapUtils";
-import { getToken } from "./api";
 import { IToken } from "@/types";
+import { BN } from "@coral-xyz/anchor";
+import { AccountLayout, RawAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useCallback, useEffect, useState } from "react";
+import { ProfileToken } from "../types/profileTypes";
+import { getToken } from "./api";
+import { env } from "./env";
+import { SEED_BONDING_CURVE, useProgram } from "./program";
+import { calculateAmountOutSell } from "./swapUtils";
 
 // --- Types for User Profile Data ---
 export interface UserProfileData {
@@ -22,7 +22,7 @@ export interface UserProfileData {
   suspended: number;
 }
 
-export interface ProfileApiResponse {
+interface ProfileApiResponse {
   user: UserProfileData;
   transactions: any[];
   tokensCreated: ProfileToken[];
@@ -281,8 +281,7 @@ const useGetProfileTokens = () => {
   return getProfileTokens;
 };
 
-// Make sure this hook is exported
-export const useOwnedTokens = () => {
+const useOwnedTokens = () => {
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
   const getTokenMetadata = useTokenMetadata();

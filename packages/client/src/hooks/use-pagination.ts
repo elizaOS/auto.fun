@@ -1,14 +1,14 @@
 import { fetcher } from "@/utils/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { z } from "zod";
-import { useSearchParams } from "react-router";
 import {
-  useInfiniteQuery,
-  useQueryClient,
-  QueryKey,
-  useQuery,
   keepPreviousData,
+  QueryKey,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
+import { z } from "zod";
 
 interface PaginatedResponse<T> {
   items: T[];

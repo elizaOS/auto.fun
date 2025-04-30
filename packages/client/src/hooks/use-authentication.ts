@@ -1,9 +1,9 @@
-import { env } from "@/utils/env";
 import { getAuthToken, isTokenExpired, parseJwt } from "@/utils/auth";
+import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useLocalStorage } from "@uidotdev/usehooks";
-import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocalStorage } from "@uidotdev/usehooks";
+import { useEffect, useRef, useState } from "react";
 
 // Helper function to send auth token in headers
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {

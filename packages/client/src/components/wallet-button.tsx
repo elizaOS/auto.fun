@@ -1,17 +1,15 @@
 import useAuthentication from "@/hooks/use-authentication";
 import { useUser } from "@/hooks/use-user";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
-import { shortenAddress } from "@/utils";
+import { abbreviateNumber, shortenAddress } from "@/utils";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ChevronDown, Copy, LogOut, Trophy, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Button from "./button";
-import { abbreviateNumber } from "@/utils";
 // Force re-initialization of PhantomWalletAdapter
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { useSolBalance } from "@/hooks/use-token-balance";
-import SkeletonImage from "./skeleton-image";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 
 const WalletButton = () => {
   const navigate = useNavigate();

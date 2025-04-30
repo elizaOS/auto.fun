@@ -1,29 +1,28 @@
-import { useMemo, useState, useRef, useCallback, useEffect } from "react";
-import {
-  useProfile,
-  useUserProfile,
-  updateUserProfile,
-  UserProfileData,
-  uploadProfilePicture,
-  generateProfilePicture,
-} from "../utils/profileUtils";
-import { TokenTable } from "../components/token-table";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { env } from "../utils/env";
-import Loader from "@/components/loader";
 import Button from "@/components/button";
-import { Link, useParams } from "react-router";
+import Loader from "@/components/loader";
+import { useWallet } from "@solana/wallet-adapter-react";
 import {
-  ExternalLink,
-  User,
-  Save,
-  XCircle,
-  Upload,
-  Zap,
-  Edit2,
   Check,
+  Edit2,
+  ExternalLink,
+  Upload,
+  User,
+  XCircle,
+  Zap,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
+import { TokenTable } from "../components/token-table";
+import { env } from "../utils/env";
+import {
+  generateProfilePicture,
+  updateUserProfile,
+  uploadProfilePicture,
+  useProfile,
+  UserProfileData,
+  useUserProfile,
+} from "../utils/profileUtils";
 
 interface EditableProfileHeaderProps {
   user: UserProfileData | null;

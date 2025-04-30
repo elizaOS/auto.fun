@@ -1,7 +1,7 @@
-import relativeTime from "dayjs/plugin/relativeTime";
-import dayjs from "dayjs";
-import { env } from "./env";
 import { IToken } from "@/types";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import { env } from "./env";
 
 dayjs.extend(relativeTime);
 

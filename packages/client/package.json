@@ -15,7 +15,6 @@
     "knip": "knip"
   },
   "dependencies": {
-    "@autodotfun/types": "workspace:*",
     "@codex-data/sdk": "^1.0.6",
     "@coral-xyz/anchor": "^0.31.0",
     "@noble/ed25519": "^2.2.3",
@@ -35,7 +34,7 @@
     "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
     "canvas-confetti": "^1.9.3",
-    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
     "dotenv": "^16.5.0",
     "lightweight-charts": "^5.0.6",
@@ -94,6 +93,7 @@
     "globals": "^16.0.0",
     "knip": "^5.50.5",
     "postcss": "^8.5.3",
+    "prettier-plugin-organize-imports": "^4.1.0",
     "serve": "^14.2.4",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3",
