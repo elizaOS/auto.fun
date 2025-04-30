@@ -26,10 +26,8 @@ export function getSharedRedisPool(): RedisPool {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
-      min: 10,
-      max: 200,
-      // Consider adding pool configuration options here if your RedisPool supports them
-      // e.g., minSize, maxSize, connectionTimeout
+      min: 50,
+      max: 300,
     });
 
     logger.info("Shared Redis Pool Initialized");
@@ -46,7 +44,7 @@ const DEFAULT_REDIS_PORT = 6379;
 const DEFAULT_REDIS_PASSWORD = "MDikUKnhRHlURlnORexvVztDTrNCUBze";
 
 export class RedisCacheService {
-  constructor(public redisPool: RedisPool) {}
+  constructor(public redisPool: RedisPool) { }
 
   async isPoolReady(): Promise<boolean> {
     try {
@@ -79,14 +77,15 @@ export class RedisCacheService {
   }
 
   getKey(key: string) {
-    // Avoid double-prefixing if key already includes network
+    if (!key) throw new Error('Redis key must be a non-empty string');
     const prefix = `${process.env.NETWORK}:`;
     if (key.startsWith(prefix)) {
       return key;
     }
     return `${prefix}${key}`;
   }
-  async get(key: string): Promise<string | null> {
+
+  get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
   }
 
@@ -106,10 +105,7 @@ export class RedisCacheService {
   async del(key: string): Promise<number> {
     return this.redisPool.useClient((client) => client.del(this.getKey(key)));
   }
-  async keys(pattern: string): Promise<string[]> {
-    const p = this.getKey(pattern);
-    return this.redisPool.useClient((client) => client.keys(p));
-  }
+
   async exists(key: string): Promise<boolean> {
     return this.redisPool.useClient(async (client) => {
       const result = await client.exists(this.getKey(key));
@@ -336,8 +332,9 @@ export class RedisPool {
         process.env.REDIS_PASSWORD ||
         DEFAULT_REDIS_PASSWORD,
       max: options.max || 200,
-      min: options.min || 10,
-      idleTimeoutMillis: options.idleTimeoutMillis || 20000,
+      min: options.min || 50,
+      idleTimeoutMillis: options.idleTimeoutMillis || 60_000,
+
     };
 
     logger.info(
@@ -351,10 +348,10 @@ export class RedisPool {
             host: this.options.host,
             port: this.options.port,
             password: this.options.password || undefined, // Pass undefined if no password
-            retryStrategy: (times) => {
-              if (times > 10) return null;
-              return Math.min(times * 100, 3000);
-            },
+            retryStrategy: attempts => Math.min(attempts * 50, 2000),
+            maxRetriesPerRequest: 3,
+            connectTimeout: 3000,
+            enableReadyCheck: true,
           });
 
           client.on("error", (err) => console.error("Redis Client Error", err));
@@ -379,6 +376,7 @@ export class RedisPool {
         max: this.options.max,
         min: this.options.min,
         idleTimeoutMillis: this.options.idleTimeoutMillis,
+        acquireTimeoutMillis: 10_000,
         testOnBorrow: true,
       }
     );
