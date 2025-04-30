@@ -117,11 +117,6 @@ export class RedisCacheService {
     });
   }
 
-  async mget(keys: string[]): Promise<(string | null)[]> {
-    const prefixedKeys = keys.map((key) => this.getKey(key));
-    return this.redisPool.useClient((client) => client.mget(prefixedKeys));
-  }
-
   async ttl(key: string): Promise<number> {
     return this.redisPool.useClient((client) => client.ttl(this.getKey(key)));
   }
@@ -395,11 +390,7 @@ export class RedisPool {
   async useClient<T>(fn: (client: Redis) => Promise<T>): Promise<T> {
     const client = await this.acquire();
     try {
-      const t4 = performance.now();
-      const a = await fn(client);
-      const t5 = performance.now();
-      console.log(`[DEBUG] REDIS USE CLIENT ${t5 - t4} milliseconds.`);
-      return a;
+      return await fn(client);
     } finally {
       await this.release(client);
     }
