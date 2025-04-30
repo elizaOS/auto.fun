@@ -22,7 +22,7 @@ export interface UserProfileData {
   suspended: number;
 }
 
-export interface ProfileApiResponse {
+interface ProfileApiResponse {
   user: UserProfileData;
   transactions: any[];
   tokensCreated: ProfileToken[];
@@ -281,8 +281,7 @@ const useGetProfileTokens = () => {
   return getProfileTokens;
 };
 
-// Make sure this hook is exported
-export const useOwnedTokens = () => {
+const useOwnedTokens = () => {
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
   const getTokenMetadata = useTokenMetadata();

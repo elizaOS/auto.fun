@@ -102,13 +102,3 @@ export const getChartTable = async ({
     return undefined;
   }
 };
-
-export const getMaintenanceMode = async () => {
-  // if query params include ?dev=true, return true
-  const dev = new URLSearchParams(window.location.search).get("dev");
-  if (dev === "true") {
-    return false;
-  }
-
-  return await fetcher("/maintenance-mode", "GET");
-};
