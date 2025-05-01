@@ -142,7 +142,8 @@ function buildTokensBaseQuery(
     hidden: tokens.hidden,
     featured: tokens.featured,
     hide_from_featured: tokens.hide_from_featured,
-    ticker: tokens.ticker
+    ticker: tokens.ticker,
+    verified: tokens.verified,
   }).from(tokens).$dynamic();
   const conditions: (SQL | undefined)[] = [];
 
