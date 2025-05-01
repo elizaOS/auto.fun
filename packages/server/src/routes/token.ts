@@ -1301,7 +1301,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const page = params.page;
     const offset = params.offset;
 
-    let allHolders: any[] = [];
+    const allHolders: any[] = [];
 
     const redisCache = await getGlobalRedisCache();
     const cacheKey = `holders:${mint}`;
