@@ -411,32 +411,15 @@ export class RedisPool {
   }
 
   async useClient<T>(fn: (client: Redis) => Promise<T>): Promise<T> {
-    const t0 = performance.now();
     const client = await this.acquire();
-    const t1 = performance.now();
-
-    // ping
-    const pingStart = performance.now();
     await client.ping();
-    const pingMs = performance.now() - pingStart;
-
 
     let result: T;
     try {
       result = await fn(client);
       return result;
     } finally {
-      const t2 = performance.now();
       await this.release(client);
-      const t3 = performance.now();
-
-      console.log(
-        `[DEBUG][RedisTiming] ` +
-        `acquire=${(t1 - t0).toFixed(1)}ms ` +
-        `exec=${(t2 - t1).toFixed(1)}ms ` +
-        `release=${(t3 - t2).toFixed(1)}ms ` +
-        `ping=${pingMs.toFixed(1)}ms`
-      );
     }
   }
 
