@@ -86,7 +86,8 @@ router.get("/swaps/:mint", async (c) => {
     }
     const limit = 50;
     const redisCache = await getGlobalRedisCache();
-    const cacheKey = `swapsList:${mint}`;
+    const cacheKey = `swapsListCompressed:${mint}`;
+    const lookUpKey = `swapsList${mint}`;
 
     /** Check if cache is present */
     const cache = await redisCache.getCompressed(cacheKey);
@@ -149,7 +150,7 @@ router.get("/swaps/:mint", async (c) => {
       let swapsResultRaw: any[] = [];
 
       const [swapStrings] = await Promise.all([
-        redisCache.lrange(cacheKey, 0, limit - 1),
+        redisCache.lrange(lookUpKey, 0, limit - 1),
       ]);
 
       swapsResultRaw = swapStrings.map((s) => JSON.parse(s));
