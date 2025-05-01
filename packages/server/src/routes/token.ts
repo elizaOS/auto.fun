@@ -13,7 +13,7 @@ import { ExternalToken } from "../externalToken";
 import { generateAdditionalTokenImages } from "../generation";
 import { getSOLPrice } from "../mcap";
 import { generateOgImage } from "../ogImageGenerator"; // <<< Trying path relative to src
-import { getGlobalRedisCache } from "../redis";
+import { getGlobalRedisCache, RedisCache, RedisCacheService } from "../redis";
 import { getS3Client } from "../s3Client"; // Import shared S3 client function
 import {
   processTokenUpdateEvent,
@@ -1340,27 +1340,13 @@ tokenRouter.get("/token/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
     const redisCache = await getGlobalRedisCache();
+
     if (redisCache) {
-      try {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          logger.log(`[Cache Hit] ${cacheKey}`);
-          const parsedData = JSON.parse(cachedData);
-          // Basic validation
-          if (parsedData && parsedData.mint === mint) {
-            return c.json(parsedData);
-          } else {
-            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-          }
-        } else {
-          logger.log(`[Cache Miss] ${cacheKey}`);
-        }
-      } catch (cacheError) {
-        logger.error(`Redis cache error:`, cacheError);
-        // Continue without caching if there's an error
+      const cachedData = await redisCache.getCompressed(cacheKey);
+      if (cachedData) {
+        return c.json(cachedData);
       }
     }
 
@@ -1421,13 +1407,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     const tokenPriceInSol = token.currentPrice || 0; // Price is already per whole token
     token.tokenPriceUSD = tokenPriceInSol * solPrice;
 
-    // const tokenMarketData = await calculateTokenMarketData(token, solPrice, process.env);
-
-    // Update solPriceUSD
     token.solPriceUSD = solPrice;
-
-    // Calculate or update marketCapUSD if we have tokenPriceUSD
-    // token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = process.env.VIRTUAL_RESERVES
@@ -1449,17 +1429,11 @@ tokenRouter.get("/token/:mint", async (c) => {
             (token.curveLimit - token.virtualReserves)) *
           100;
 
-    // Format response with additional data
     const responseData = token;
-    if (redisCache) {
-      try {
-        // Cache for 30 seconds (increased from 10s)
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-        logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-      } catch (cacheError) {
-        logger.error(`Error caching token data:`, cacheError);
-      }
-    }
+
+    await redisCache.setCompressed(cacheKey, responseData, 15);
+
+    logger.log(`Cached data for ${cacheKey} with 15s TTL`);
 
     return c.json(responseData);
   } catch (error) {
