@@ -30,9 +30,13 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
-import { features, token } from "@coral-xyz/anchor/dist/cjs/utils";
 
 import { inArray } from "drizzle-orm";
+import { parseTokensQuery } from "./validators/tokenQuery";
+import { parseHoldersQuery } from "./validators/tokenHoldersQuery";
+import { parseSolanaAddress, parsePaginationQuery } from "./validators/global";
+import { parseUpdateTokenRequest, UpdateTokenBody } from "./validators/tokenUpdateQuery";
+import { parseSearchTokenRequest } from "./validators/tokenSearchQuery";
 
 // --- Validation Function ---
 async function validateQueryResults(
@@ -1098,6 +1102,7 @@ async function checkBlockchainTokenBalance(
 
 tokenRouter.get("/tokens", async (c) => {
   const queryParams = c.req.query();
+  parseTokensQuery(c.req.query())
   const isSearching = !!queryParams.search;
   const MAX_LIMIT = 50;
 
@@ -1272,16 +1277,13 @@ tokenRouter.get("/tokens", async (c) => {
 
 tokenRouter.get("/token/:mint/holders", async (c) => {
   try {
-    const mint = c.req.param("mint");
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
+    const params = parseHoldersQuery(c.req.param("mint"), c.req.query());
+    const mint = params.mint
 
     // Parse pagination parameters
-    const limit = parseInt(c.req.query("limit") || "50");
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * limit;
+    const limit = params.limit;
+    const page = params.page;
+    const offset = params.offset;
 
     let allHolders: any[] = [];
     const redisCache = await getGlobalRedisCache();
@@ -1366,12 +1368,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
 tokenRouter.get("/token/:mint/price", async (c) => {
   try {
-    const mint = c.req.param("mint");
-
-    // Validate mint address
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
+    const mint = parseSolanaAddress(c.req.param("mint"), "mint address");
 
     // --- BEGIN REDIS CACHE CHECK ---
     const cacheKey = `tokenPrice:${mint}`;
@@ -1456,12 +1453,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 
 tokenRouter.get("/token/:mint", async (c) => {
   try {
-    const mint = c.req.param("mint");
-
-    // Validate mint address
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
+    const mint = parseSolanaAddress(c.req.param("mint"), "mint address");
 
     // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
@@ -1880,10 +1872,7 @@ tokenRouter.post("/create-token", async (c) => {
 
 tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
   try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
+    const mint = parseSolanaAddress(c.req.param("mint"), "mint address");
 
     // Require authentication
     const user = c.get("user");
@@ -1891,12 +1880,6 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
       return c.json({ error: "Authentication required" }, 401);
     }
 
-    // logger.log(
-    //   `Refreshing holders data for token ${mint} requested by ${user.publicKey}`,
-    // );
-
-    // Update holders for this specific token
-    // Determine if token is imported - fetch from DB first
     const db = getDB();
     const tokenData = await db
       .select({ imported: tokens.imported })
@@ -1905,7 +1888,6 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
       .limit(1);
     const imported = tokenData.length > 0 ? tokenData[0].imported === 1 : false;
 
-    // Run update in background (simple async call)
     (async () => await updateHoldersCache(mint, imported))();
 
     return c.json({
@@ -1923,16 +1905,21 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
 });
 
 tokenRouter.post("/token/:mint/update", async (c) => {
-  const mint = c.req.param("mint");
-  const user = c.get("user");
-  const body = await c.req.json();
+  let mint: string;
+  let body: UpdateTokenBody;
+  let userId: string;
   const db = getDB();
 
-  // Basic validation & auth checks
-  // ... (validation for mint)
-  // ... (check for user)
+  try {
+    ({ mint, body, userId } = parseUpdateTokenRequest({
+      mint: c.req.param("mint"),
+      body: await c.req.json(),
+      user: c.get("user"),
+    }));
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 400);
+  }
 
-  // Get the token to check permissions and get metadata URL
   const tokenDataResult = await db
     .select({
       creator: tokens.creator,
@@ -1948,8 +1935,11 @@ tokenRouter.post("/token/:mint/update", async (c) => {
   }
   const currentTokenData = tokenDataResult[0];
 
+
   // Permission check
-  // ... (check if user === currentTokenData.creator)
+  if (userId !== currentTokenData.creator) {
+    return c.json({ error: "Unauthorized" }, 403);
+  }
 
   // Define allowed fields for update and prepare updateData
   const allowedUpdateFields = [
@@ -2163,21 +2153,15 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
 tokenRouter.get("/token/:mint/check-balance", async (c) => {
   try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
+    const mint = parseSolanaAddress(c.req.param("mint"), "mint address");
+
 
     // Get wallet address from query parameter
-    const address = c.req.query("address");
-    if (!address || address.length < 32 || address.length > 44) {
+    const address = parseSolanaAddress(c.req.query("address"), "wallet address");
+    if (!address) {
       return c.json({ error: "Invalid wallet address" }, 400);
     }
 
-    // Check if we're in local mode (which will check both networks)
-    // Local mode check removed - rely on LOCAL_DEV env var or specific flags if needed
-    // const mode = c.req.query("mode");
-    // const isLocalMode = mode === "local";
     const checkOnChain = c.req.query("onchain") === "true";
 
     logger.log(
@@ -2333,21 +2317,19 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 });
 
 tokenRouter.post("/search-token", async (c) => {
-  const body = await c.req.json();
-  const { mint, requestor } = body;
-
-  if (!mint || typeof mint !== "string") {
-    return c.json({ error: "Invalid mint address" }, 400);
+  let input;
+  try {
+    input = parseSearchTokenRequest(await c.req.json());
+  } catch (err: any) {
+    return c.json({ error: err.errors ?? err.message }, 400);
   }
+  const { mint, requestor } = input;
+
   let mintPublicKey;
   try {
     mintPublicKey = new PublicKey(mint);
   } catch (e) {
     return c.json({ error: "Invalid mint address format" }, 400);
-  }
-
-  if (!requestor || typeof requestor !== "string") {
-    return c.json({ error: "Missing or invalid requestor" }, 400);
   }
 
   logger.log(`[search-token] Searching for token ${mint}`);
