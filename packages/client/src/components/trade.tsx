@@ -1,4 +1,5 @@
 import useAuthentication from "@/hooks/use-authentication";
+import { useSlippage } from "@/hooks/use-slippage";
 import { useSwap } from "@/hooks/use-swap";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { IToken } from "@/types";
@@ -20,8 +21,10 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [inputAmount, setInputAmount] = useState<string>("");
-  const [slippage, setSlippage] = useState<number>(2);
-  const [displaySlippage, setDisplaySlippage] = useState<string>("2");
+  const [slippage, setSlippage] = useSlippage();
+  const [displaySlippage, setDisplaySlippage] = useState<string>(
+    String(slippage),
+  );
   const { isAuthenticated } = useAuthentication();
 
   useEffect(() => {
