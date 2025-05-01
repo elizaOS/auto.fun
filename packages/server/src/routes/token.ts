@@ -1146,14 +1146,8 @@ tokenRouter.get("/tokens", async (c) => {
   const redisCache = await getGlobalRedisCache();
 
   if (redisCache) {
-    const t4 = performance.now();
-
     const cachedData = await redisCache.getCompressed(cacheKey);
-    const t5 = performance.now();
-    console.log(`[DEBUG] Retrieving cache tool ${t5 - t4} milliseconds.`);
-
     if (cachedData) {
-      logger.log(`Cache hit for ${cacheKey}`);
       const parsedData = JSON.parse(cachedData as string) as Token[];
       return c.json(parsedData);
     } else {
