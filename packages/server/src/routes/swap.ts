@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cache as honoCacheMiddleware } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
-import { getDB, tokens } from "../db";
+import { getDB, Token, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { logger } from "../util";
 import { Codex } from "@codex-data/sdk";
@@ -18,6 +18,18 @@ if (!process.env.CODEX_API_KEY) {
 }
 
 const codex = new Codex(process.env.CODEX_API_KEY);
+
+export const useCodex = (token: Pick<Token, "imported" | "status">) => {
+  if (
+    token?.imported === 1 ||
+    token?.status === "locked" ||
+    token?.status === "migrated"
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 const router = new Hono<{
   Variables: {
@@ -84,23 +96,34 @@ router.get("/swaps/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
     const limit = 50;
-    const codexParam = Boolean(c.req.query("isCodex") || "false");
-    const isCodex = codexParam ? Boolean(codexParam) : false;
-
     const redisCache = await getGlobalRedisCache();
-    const cacheKey = isCodex
-      ? `swapsList:${isCodex}:${mint}`
-      : `swapsList:${mint}`;
+    const cacheKey = `swapsList:${mint}`;
 
     /** Check if cache is present */
     const cache = await redisCache.getCompressed(cacheKey);
     if (cache) {
-      return c.json(JSON.parse(cache as string));
+      return c.json(cache);
     }
 
     let responseData: {
       swaps?: any;
     } = {};
+
+    /** Lookup the token to determine whether we should query Codex */
+    const db = getDB();
+    const token = (
+      await db
+        .select({
+          imported: tokens.imported,
+          status: tokens.status,
+        })
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1)
+    )?.[0];
+
+    if (!token) throw new Error("Token not found");
+    const isCodex = useCodex(token);
 
     if (isCodex) {
       const data = await codex.queries.getTokenEvents({

@@ -35,7 +35,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const data = await getSwaps({ address: token.mint, isCodex });
+      const data = await getSwaps({ address: token.mint });
       return data;
     },
     refetchInterval: 7500,
