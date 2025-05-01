@@ -422,10 +422,11 @@ export class RedisPool {
 
 
     let result: T;
-    const t2: number = 0;
     try {
-      return await fn(client);
+      result = await fn(client);
+      return result;
     } finally {
+      const t2 = performance.now();
       await this.release(client);
       const t3 = performance.now();
 
@@ -433,8 +434,8 @@ export class RedisPool {
         `[DEBUG][RedisTiming] ` +
         `acquire=${(t1 - t0).toFixed(1)}ms ` +
         `exec=${(t2 - t1).toFixed(1)}ms ` +
-        `release=${(t3 - t2).toFixed(1)}ms` +
-        `ping =${pingMs.toFixed(1)}ms`
+        `release=${(t3 - t2).toFixed(1)}ms ` +
+        `ping=${pingMs.toFixed(1)}ms`
       );
     }
   }
