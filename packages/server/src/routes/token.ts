@@ -30,7 +30,7 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
-import { token } from "@coral-xyz/anchor/dist/cjs/utils";
+import { features, token } from "@coral-xyz/anchor/dist/cjs/utils";
 
 import { inArray } from "drizzle-orm";
 
@@ -117,7 +117,29 @@ function buildTokensBaseQuery(
   } = params;
   // Select specific columns needed eventually (adjust as needed)
   // Selecting all initially, will be refined before sorting
-  let query = db.select().from(tokens).$dynamic();
+  let query = db.select({
+    id: tokens.id,
+    mint: tokens.mint,
+    name: tokens.name,
+    tokenPriceUSD: tokens.tokenPriceUSD,
+    priceChange24h: tokens.priceChange24h,
+    volume24h: tokens.volume24h,
+    marketCapUSD: tokens.marketCapUSD,
+    currentPrice: tokens.currentPrice,
+    lastPriceUpdate: tokens.lastPriceUpdate,
+    status: tokens.status,
+    holderCount: tokens.holderCount,
+    tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
+    image: tokens.image,
+    createdAt: tokens.createdAt,
+    curveProgress: tokens.curveProgress,
+    curveLimit: tokens.curveLimit,
+    imported: tokens.imported,
+    hidden: tokens.hidden,
+    featured: tokens.featured,
+    hide_from_featured: tokens.hide_from_featured,
+
+  }).from(tokens).$dynamic();
   const conditions: (SQL | undefined)[] = [];
 
   if (hideImported === 1) {
