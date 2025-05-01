@@ -7,148 +7,59 @@ import {
   TableRow,
 } from "@/components/ui/table-raw";
 import usePause from "@/hooks/use-pause";
-import { useTransactions } from "@/hooks/use-transactions";
 import { IToken } from "@/types";
 import {
   formatNumber,
   fromNow,
   LAMPORTS_PER_SOL,
-  networkId,
   resizeImage,
   shortenAddress,
   useCodex,
 } from "@/utils";
+import { getSwaps } from "@/utils/api";
 import { env } from "@/utils/env";
-import { Codex } from "@codex-data/sdk";
-import { RankingDirection } from "@codex-data/sdk/dist/resources/graphql";
-import {
-  AddTokenEventsOutput,
-  EventType,
-} from "@codex-data/sdk/dist/sdk/generated/graphql";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
-import { useEffect } from "react";
 import { Link } from "react-router";
 import Interval from "./interval";
+import Loader from "./loader";
 import PausedIndicator from "./paused-indicator";
 import Triangle from "./triangle";
-
-const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
   const isCodex = useCodex(token);
 
-  const queryClient = useQueryClient();
-  const { items: data, isLoading } = useTransactions({
-    tokenId: token.mint,
-    isPaused: paused || isCodex,
-  });
+  const queryKey = ["token", token.mint, "swaps"];
 
-  const queryKey = ["token", token.mint, "swaps", isCodex];
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const data = await codex.queries.getTokenEvents({
-        query: {
-          address: token.mint,
-          networkId,
-          eventType: EventType.Swap,
-        },
-        direction: RankingDirection.Desc,
-        limit: 50,
-      });
-
-      const items = data?.getTokenEvents?.items;
-      return items;
+      const data = await getSwaps({ address: token.mint });
+      return data;
     },
-    enabled: isCodex,
+    refetchInterval: 7500,
   });
 
-  const items = isCodex ? query?.data : data;
-
-  useEffect(() => {
-    let cleanupPromise: any;
-    const sink = {
-      next({ data }: { data: { onTokenEventsCreated: AddTokenEventsOutput } }) {
-        const events = data?.onTokenEventsCreated?.events || [];
-        if (events?.length > 1) {
-          for (const event of events) {
-            if (event?.eventType === EventType.Swap) {
-              const data = queryClient.getQueryData(queryKey);
-              queryClient.setQueryData(
-                queryKey,
-                Array.from(new Set([event, ...(data as any)])).slice(0, 50),
-              );
-            }
-          }
-        }
-      },
-      complete() {},
-      error(error) {
-        console.error("SWAPS SUBSCRIPTION: ", error);
-      },
-    };
-
-    if (isCodex) {
-      cleanupPromise = codex.subscriptions.onTokenEventsCreated(
-        {
-          input: {
-            networkId,
-            tokenAddress: token.mint,
-          },
-        },
-        sink,
-      );
-    }
-
-    return () => {
-      if (cleanupPromise) {
-        cleanupPromise
-          .then((cleanupFn) => {
-            cleanupFn();
-          })
-          .catch((error) => {
-            console.error("Error during codex subscription cleanup:", error);
-          });
-      }
-    };
-  }, []);
+  const items = query?.data?.swaps;
 
   const dataExtractor = (swap: any) => {
-    let account;
-    let swapType;
-    let solana = "0";
-    let tokenAmount = "0";
-    let transactionHash;
-    let timestamp;
-    let usdValue;
+    if (isCodex) return swap;
+    const account = swap?.user || "NA";
+    const swapType = swap?.direction === 0 ? "Buy" : "Sell";
 
-    if (isCodex) {
-      account = swap?.maker || "NA";
-      swapType = swap?.eventDisplayType || "Buy";
-      solana = swap?.data?.priceBaseTokenTotal || "0";
-      tokenAmount = swap?.data?.amountNonLiquidityToken || "0";
-      transactionHash = swap?.transactionHash || "";
-      timestamp = swap?.timestamp * 1000 || 0;
-      usdValue = swap?.data?.priceUsdTotal || null;
-    } else {
-      account = swap?.user || "NA";
-      swapType = swap?.direction === 0 ? "Buy" : "Sell";
+    const solana =
+      swap.direction === 0
+        ? String(swap.amountIn / LAMPORTS_PER_SOL)
+        : String(swap.amountOut / LAMPORTS_PER_SOL);
 
-      solana =
-        swap.direction === 0
-          ? String(swap.amountIn / LAMPORTS_PER_SOL)
-          : String(swap.amountOut / LAMPORTS_PER_SOL);
+    const tokenAmount =
+      swap.direction === 0
+        ? String(swap.amountOut / 10 ** 6)
+        : String(swap.amountIn / 10 ** 6);
 
-      tokenAmount =
-        swap.direction === 0
-          ? String(swap.amountOut / 10 ** 6)
-          : String(swap.amountIn / 10 ** 6);
-
-      transactionHash = swap?.txId || "";
-      timestamp = swap?.timestamp || 0;
-    }
+    const transactionHash = swap?.txId || "";
+    const timestamp = swap?.timestamp || 0;
 
     return {
       account,
@@ -157,12 +68,12 @@ export default function SwapsTable({ token }: { token: IToken }) {
       tokenAmount,
       transactionHash,
       timestamp,
-      usdValue,
+      usdValue: null,
     };
   };
 
-  if (!isCodex ? isLoading : query?.isPending) {
-    return <></>;
+  if (query?.isPending) {
+    return <Loader />;
   }
 
   if ((items || [])?.length === 0) {
