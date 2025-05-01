@@ -7,13 +7,9 @@ import {
   TableRow,
 } from "@/components/ui/table-raw";
 import { IToken } from "@/types";
-import { networkId, shortenAddress } from "@/utils";
+import { shortenAddress } from "@/utils";
+import { getHolders } from "@/utils/api";
 import { env } from "@/utils/env";
-import { Codex } from "@codex-data/sdk";
-import {
-  HoldersSortAttribute,
-  RankingDirection,
-} from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
@@ -28,23 +24,13 @@ function getPercentageOfTotal(value: number, total: number): string | number {
   return percentage?.toFixed(2);
 }
 
-const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
-
 export default function HoldersTable({ token }: { token: IToken }) {
   const query = useQuery({
     queryKey: ["token", token.mint, "holders"],
     queryFn: async () => {
-      const holders = await codex.queries.holders({
-        input: {
-          tokenId: `${token.mint}:${networkId}`,
-          sort: {
-            attribute: HoldersSortAttribute.Balance,
-            direction: RankingDirection.Desc,
-          },
-        },
-      });
+      const holders = await getHolders({ address: token.mint });
 
-      return holders?.holders?.items;
+      return holders?.holders;
     },
     refetchInterval: 30_000,
   });

@@ -884,3 +884,15 @@ export function applyFeaturedSort(
     return tokensQuery.orderBy(featuredScore);
   }
 }
+
+export const useCodex = (token: Pick<Token, "imported" | "status">) => {
+  if (
+    token?.imported === 1 ||
+    token?.status === "locked" ||
+    token?.status === "migrated"
+  ) {
+    return true;
+  }
+
+  return false;
+};

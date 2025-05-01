@@ -30,9 +30,20 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { uploadToStorage } from "./files";
-import { features, token } from "@coral-xyz/anchor/dist/cjs/utils";
 
 import { inArray } from "drizzle-orm";
+import { Codex } from "@codex-data/sdk";
+import {
+  HoldersSortAttribute,
+  RankingDirection,
+} from "@codex-data/sdk/dist/resources/graphql";
+
+if (!process.env.CODEX_API_KEY) {
+  logger.error("Missing CODEX_API_KEY from .env");
+  process.exit(1);
+}
+
+const codex = new Codex(process.env.CODEX_API_KEY);
 
 // --- Validation Function ---
 async function validateQueryResults(
@@ -117,29 +128,32 @@ function buildTokensBaseQuery(
   } = params;
   // Select specific columns needed eventually (adjust as needed)
   // Selecting all initially, will be refined before sorting
-  let query = db.select({
-    id: tokens.id,
-    mint: tokens.mint,
-    name: tokens.name,
-    tokenPriceUSD: tokens.tokenPriceUSD,
-    priceChange24h: tokens.priceChange24h,
-    volume24h: tokens.volume24h,
-    marketCapUSD: tokens.marketCapUSD,
-    currentPrice: tokens.currentPrice,
-    lastPriceUpdate: tokens.lastPriceUpdate,
-    status: tokens.status,
-    holderCount: tokens.holderCount,
-    tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
-    image: tokens.image,
-    createdAt: tokens.createdAt,
-    curveProgress: tokens.curveProgress,
-    curveLimit: tokens.curveLimit,
-    imported: tokens.imported,
-    hidden: tokens.hidden,
-    featured: tokens.featured,
-    hide_from_featured: tokens.hide_from_featured,
-    ticker: tokens.ticker
-  }).from(tokens).$dynamic();
+  let query = db
+    .select({
+      id: tokens.id,
+      mint: tokens.mint,
+      name: tokens.name,
+      tokenPriceUSD: tokens.tokenPriceUSD,
+      priceChange24h: tokens.priceChange24h,
+      volume24h: tokens.volume24h,
+      marketCapUSD: tokens.marketCapUSD,
+      currentPrice: tokens.currentPrice,
+      lastPriceUpdate: tokens.lastPriceUpdate,
+      status: tokens.status,
+      holderCount: tokens.holderCount,
+      tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
+      image: tokens.image,
+      createdAt: tokens.createdAt,
+      curveProgress: tokens.curveProgress,
+      curveLimit: tokens.curveLimit,
+      imported: tokens.imported,
+      hidden: tokens.hidden,
+      featured: tokens.featured,
+      hide_from_featured: tokens.hide_from_featured,
+      ticker: tokens.ticker,
+    })
+    .from(tokens)
+    .$dynamic();
   const conditions: (SQL | undefined)[] = [];
 
   if (hideImported === 1) {
@@ -986,15 +1000,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: process.env.NETWORK || "devnet",
-        url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: process.env.NETWORK || "devnet",
+          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`
@@ -1262,7 +1276,11 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (redisCache) {
     try {
-      await redisCache.setCompressed(cacheKey, JSON.stringify(responseData), 15);
+      await redisCache.setCompressed(
+        cacheKey,
+        JSON.stringify(responseData),
+        15
+      );
       logger.log(`Cached data for ${cacheKey} with 15s TTL`);
     } catch (cacheError) {
       logger.error(`Redis cache SET error:`, cacheError);
@@ -1280,77 +1298,29 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    // Parse pagination parameters
-    const limit = parseInt(c.req.query("limit") || "50");
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * limit;
-
-    let allHolders: any[] = [];
     const redisCache = await getGlobalRedisCache();
-    const holdersListKey = `holders:${mint}`;
-    try {
-      const holdersString = await redisCache.get(holdersListKey);
-      if (holdersString) {
-        allHolders = JSON.parse(holdersString);
-        logger.log(
-          `Retrieved ${allHolders.length} holders from Redis key ${holdersListKey}`
-        );
-        const ts = await redisCache.get(`${holdersListKey}:lastUpdated`);
-        if (!ts || Date.now() - new Date(ts).getTime() > 5 * 60_000) {
-          // >5 min old (or never set) → refresh in background
-          void updateHoldersCache(mint)
-            .then((cnt) =>
-              logger.log(`Async holders refresh for ${mint}, got ${cnt}`)
-            )
-            .catch((err) => logger.error(`Async holders refresh failed:`, err));
-        }
-      } else {
-        logger.log(`No holders found in Redis for key ${holdersListKey}`);
-        // Return empty if not found in cache (as updateHoldersCache should populate it)
-        void updateHoldersCache(mint)
-          .then((cnt) =>
-            logger.log(`Async holders refresh for ${mint}, got ${cnt}`)
-          )
-          .catch((err) => logger.error(`Async holders refresh failed:`, err));
-        return c.json({
-          holders: [],
-          page: 1,
-          totalPages: 0,
-          total: 0,
-        });
-      }
-    } catch (redisError) {
-      logger.error(`Failed to get holders from Redis for ${mint}:`, redisError);
-      return c.json({ error: "Failed to retrieve holder data" }, 500);
-    }
-    // ---> END CHANGE
+    const cacheKey = `holders:${mint}`;
 
-    const totalHolders = allHolders.length;
-
-    if (totalHolders === 0) {
-      // This case is handled above if Redis returns null/empty
-      // Kept for safety, but should be unreachable if Redis logic is correct
-      const responseData = {
-        holders: [],
-        page: 1,
-        totalPages: 0,
-        total: 0,
-      };
-      return c.json(responseData);
+    const cache = await redisCache.getCompressed(cacheKey);
+    if (cache) {
+      return c.json(cache);
     }
 
-    // Paginate results in application code
-    const paginatedHolders = allHolders.slice(offset, offset + limit);
-    const totalPages = Math.ceil(totalHolders / limit);
+    const holders = await codex.queries.holders({
+      input: {
+        tokenId: `${mint}:1399811149`,
+        sort: {
+          attribute: HoldersSortAttribute.Balance,
+          direction: RankingDirection.Desc,
+        },
+      },
+    });
 
-    const responseData = {
-      holders: paginatedHolders,
-      page: page,
-      totalPages: totalPages,
-      total: totalHolders,
-    };
+    const items = holders?.holders?.items?.splice(0, 50);
 
-    return c.json(responseData);
+    await redisCache.setCompressed(cacheKey, items, 15);
+
+    return c.json({ holders: items });
   } catch (error) {
     logger.error(`Error in token holders route: ${error}`);
     return c.json(
@@ -1361,7 +1331,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
         total: 0,
         error: "Database error",
       },
-      500
+      400
     );
   }
 });
@@ -1571,8 +1541,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Format response with additional data
     const responseData = token;

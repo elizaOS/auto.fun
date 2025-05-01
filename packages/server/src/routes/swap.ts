@@ -3,9 +3,9 @@ import { Hono } from "hono";
 import { cache as honoCacheMiddleware } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
-import { getDB, Token, tokens } from "../db";
+import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
-import { logger } from "../util";
+import { logger, useCodex } from "../util";
 import { Codex } from "@codex-data/sdk";
 import {
   EventType,
@@ -18,18 +18,6 @@ if (!process.env.CODEX_API_KEY) {
 }
 
 const codex = new Codex(process.env.CODEX_API_KEY);
-
-export const useCodex = (token: Pick<Token, "imported" | "status">) => {
-  if (
-    token?.imported === 1 ||
-    token?.status === "locked" ||
-    token?.status === "migrated"
-  ) {
-    return true;
-  }
-
-  return false;
-};
 
 const router = new Hono<{
   Variables: {
@@ -92,6 +80,7 @@ router.post("/creator-tokens", async (c) => {
 router.get("/swaps/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
+
     if (!mint || mint.length < 32 || mint.length > 44) {
       return c.json({ error: "Invalid mint address" }, 400);
     }
@@ -123,6 +112,7 @@ router.get("/swaps/:mint", async (c) => {
     )?.[0];
 
     if (!token) throw new Error("Token not found");
+
     const isCodex = useCodex(token);
 
     if (isCodex) {
@@ -178,6 +168,7 @@ router.get("/swaps/:mint", async (c) => {
     }
     /** Cache the response */
     await redisCache.setCompressed(cacheKey, responseData, 7);
+
     return c.json(responseData);
   } catch (error) {
     logger.error("Error in swaps history route:", error);
