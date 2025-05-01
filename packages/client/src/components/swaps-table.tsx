@@ -45,21 +45,21 @@ export default function SwapsTable({ token }: { token: IToken }) {
 
   const dataExtractor = (swap: any) => {
     if (isCodex) return swap;
-    let account = swap?.user || "NA";
-    let swapType = swap?.direction === 0 ? "Buy" : "Sell";
+    const account = swap?.user || "NA";
+    const swapType = swap?.direction === 0 ? "Buy" : "Sell";
 
-    let solana =
+    const solana =
       swap.direction === 0
         ? String(swap.amountIn / LAMPORTS_PER_SOL)
         : String(swap.amountOut / LAMPORTS_PER_SOL);
 
-    let tokenAmount =
+    const tokenAmount =
       swap.direction === 0
         ? String(swap.amountOut / 10 ** 6)
         : String(swap.amountIn / 10 ** 6);
 
-    let transactionHash = swap?.txId || "";
-    let timestamp = swap?.timestamp || 0;
+    const transactionHash = swap?.txId || "";
+    const timestamp = swap?.timestamp || 0;
 
     return {
       account,

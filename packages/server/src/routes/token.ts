@@ -1318,7 +1318,8 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
     const items = holders?.holders?.items?.splice(0, 50);
 
-    await redisCache.setCompressed(cacheKey, items, 15);
+    /** Set cache for 20 seconds */
+    await redisCache.setCompressed(cacheKey, items, 20);
 
     return c.json({ holders: items });
   } catch (error) {
