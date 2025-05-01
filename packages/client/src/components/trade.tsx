@@ -462,7 +462,7 @@ export default function Trade({ token }: { token: IToken }) {
               <p
                 className={twMerge([
                   "text-orange-500 font-dm-mono text-xs transition-opacity duration-300",
-                  slippage > 4 ? "opacity-100" : "h-0 opacity-0",
+                  slippage > 6 ? "opacity-100" : "h-0 opacity-0",
                 ])}
               >
                 Your transaction may be frontrun and result in an unfavorable
