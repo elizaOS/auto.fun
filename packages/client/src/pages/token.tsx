@@ -218,6 +218,7 @@ export default function Page() {
   }, [address]);
 
   const token = tokenQuery?.data as IToken;
+  console.log('token', token);
   const isCodex = useCodex(token);
 
   const codexQuery = useQuery({
@@ -711,7 +712,7 @@ export default function Page() {
                     {/* Percentage text */}
                     <div className="absolute right-2 top-0 h-full flex items-center">
                       <span className="text-autofun-text-secondary font-bold font-dm-mono text-[16px]">
-                        {(token?.curveProgress || 0).toFixed(0)}%
+                        {Math.floor((token?.curveProgress || 0) * 10) / 10}%
                       </span>
                     </div>
                   </div>
