@@ -218,7 +218,6 @@ export default function Page() {
   }, [address]);
 
   const token = tokenQuery?.data as IToken;
-  console.log('token', token);
   const isCodex = useCodex(token);
 
   const codexQuery = useQuery({
@@ -283,6 +282,11 @@ export default function Page() {
       </div>
     );
   }
+
+  // token?.reserveLamport - token?.virtualReserves) /
+  //                         LAMPORTS_PER_SOL,
+
+  // log for debug
 
   const queryLoading = isCodex
     ? tokenQuery?.isPending || codexQuery?.isPending
