@@ -102,3 +102,13 @@ export const getChartTable = async ({
     return undefined;
   }
 };
+
+export const getSwaps = async ({ address }: { address: string }) => {
+  const endpoint = `/api/swaps/${address}`;
+  return await fetcher(endpoint, "GET");
+};
+
+export const getHolders = async ({ address }: { address: string }) => {
+  const endpoint = `/api/token/${address}/holders`;
+  return await fetcher(endpoint, "GET");
+};
