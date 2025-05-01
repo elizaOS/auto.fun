@@ -102,3 +102,14 @@ export const getChartTable = async ({
     return undefined;
   }
 };
+
+export const getSwaps = async ({
+  address,
+  isCodex = false,
+}: {
+  address: string;
+  isCodex?: boolean;
+}) => {
+  const endpoint = `/api/swaps/${address}?isCodex=${isCodex}`;
+  return await fetcher(endpoint, "GET");
+};

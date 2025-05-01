@@ -6,6 +6,18 @@ import { fetchPriceChartData } from "../chart";
 import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { logger } from "../util";
+import { Codex } from "@codex-data/sdk";
+import {
+  EventType,
+  RankingDirection,
+} from "@codex-data/sdk/dist/resources/graphql";
+
+if (!process.env.CODEX_API_KEY) {
+  logger.error("Missing CODEX_API_KEY from .env");
+  process.exit(1);
+}
+
+const codex = new Codex(process.env.CODEX_API_KEY);
 
 const router = new Hono<{
   Variables: {
@@ -35,7 +47,7 @@ router.get(
         params.start * 1000,
         params.end * 1000,
         params.range,
-        params.token,
+        params.token
       );
       return c.json({ table: data });
     } catch (error) {
@@ -46,7 +58,7 @@ router.get(
         c.json({ error: "Internal server error" }, 500);
       }
     }
-  },
+  }
 );
 
 router.post("/creator-tokens", async (c) => {
@@ -68,82 +80,90 @@ router.post("/creator-tokens", async (c) => {
 router.get("/swaps/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
-
     if (!mint || mint.length < 32 || mint.length > 44) {
       return c.json({ error: "Invalid mint address" }, 400);
     }
-
-    // Parse pagination parameters
-    const limit = parseInt(c.req.query("limit") || "50");
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * limit;
+    const limit = 50;
+    const codexParam = Boolean(c.req.query("isCodex") || "false");
+    const isCodex = codexParam ? Boolean(codexParam) : false;
 
     const redisCache = await getGlobalRedisCache();
-    const listKey = `swapsList:${mint}`;
-    let totalSwaps = 0;
-    let swapsResultRaw: any[] = []; // Use any[] for initial parsed data
+    const cacheKey = isCodex
+      ? `swapsList:${isCodex}:${mint}`
+      : `swapsList:${mint}`;
 
-    try {
-      // Fetch total count and paginated swaps concurrently
-      const [countResult, swapStrings] = await Promise.all([
-        redisCache.llen(listKey),
-        redisCache.lrange(listKey, offset, offset + limit - 1),
-      ]);
-
-      totalSwaps = countResult;
-      swapsResultRaw = swapStrings.map((s) => JSON.parse(s));
-      logger.log(
-        `Retrieved ${swapsResultRaw.length} swaps (total: ${totalSwaps}) from Redis list ${listKey}`,
-      );
-    } catch (redisError) {
-      logger.error(
-        `Failed to read swaps from Redis list ${listKey}:`,
-        redisError,
-      );
-      // Return error or empty list depending on desired behavior
-      return c.json(
-        {
-          swaps: [],
-          page: page,
-          totalPages: 0,
-          total: 0,
-          error: "Failed to retrieve swap history from cache",
-        },
-        500,
-      );
+    /** Check if cache is present */
+    const cache = await redisCache.getCompressed(cacheKey);
+    if (cache) {
+      return c.json(JSON.parse(cache as string));
     }
 
-    // const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
-    const totalPages = Math.ceil(totalSwaps / limit);
+    let responseData: {
+      swaps?: any;
+    } = {};
 
-    // Format directions for better readability
-    // Also convert timestamp string back to ISO string if needed by frontend
-    const formattedSwaps = swapsResultRaw.map((swap) => ({
-      ...swap,
-      directionText: swap.direction === 0 ? "buy" : "sell",
-      // Ensure timestamp is in a consistent format (ISO string)
-      timestamp: swap.timestamp ? new Date(swap.timestamp).toISOString() : null,
-    }));
+    if (isCodex) {
+      const data = await codex.queries.getTokenEvents({
+        query: {
+          address: mint,
+          networkId: 1399811149,
+          eventType: EventType.Swap,
+        },
+        direction: RankingDirection.Desc,
+        limit: 50,
+      });
 
-    const responseData = {
-      swaps: formattedSwaps,
-      page,
-      totalPages,
-      total: totalSwaps,
-    };
+      const items = data?.getTokenEvents?.items;
 
+      responseData = {
+        swaps: items?.map((swap) => {
+          return {
+            account: swap?.maker || "NA",
+            swapType: swap?.eventDisplayType || "Buy",
+            // @ts-ignore - TS error but property exists
+            solana: swap?.data?.priceBaseTokenTotal || "0",
+            // @ts-ignore - TS error but property exists
+            tokenAmount: swap?.data?.amountNonLiquidityToken || "0",
+            transactionHash: swap?.transactionHash || "",
+            // @ts-ignore - TS error but property exists
+            timestamp: swap?.timestamp * 1000 || 0,
+            // @ts-ignore - TS error but property exists
+            usdValue: swap?.data?.priceUsdTotal || null,
+          };
+        }),
+      };
+    } else {
+      let swapsResultRaw: any[] = [];
+
+      const [swapStrings] = await Promise.all([
+        redisCache.lrange(cacheKey, 0, limit - 1),
+      ]);
+
+      swapsResultRaw = swapStrings.map((s) => JSON.parse(s));
+
+      const formattedSwaps = swapsResultRaw.map((swap) => ({
+        ...swap,
+        directionText: swap.direction === 0 ? "buy" : "sell",
+        timestamp: swap.timestamp
+          ? new Date(swap.timestamp).toISOString()
+          : null,
+      }));
+
+      responseData = {
+        swaps: formattedSwaps,
+      };
+    }
+    /** Cache the response */
+    await redisCache.setCompressed(cacheKey, responseData, 7);
     return c.json(responseData);
   } catch (error) {
     logger.error("Error in swaps history route:", error);
     return c.json(
       {
         swaps: [],
-        page: parseInt(c.req.query("page") || "1"),
-        totalPages: 0,
-        total: 0,
         error: "Failed to fetch swap history",
       },
-      500,
+      500
     );
   }
 });

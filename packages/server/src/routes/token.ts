@@ -1115,10 +1115,12 @@ tokenRouter.get("/tokens", async (c) => {
 
   const skip = (page - 1) * limit;
   const status = queryParams.status as string | undefined;
+
   const hideImportedParam = queryParams.hideImported;
   const hideImported =
     hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
   const creator = queryParams.creator as string | undefined;
+
   const search = queryParams.search as string | undefined;
   const sortBy = search
     ? "marketCapUSD"
