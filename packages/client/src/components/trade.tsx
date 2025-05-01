@@ -32,7 +32,7 @@ export default function Trade({ token }: { token: IToken }) {
   const handleSlippageBlur = () => {
     const value = displaySlippage.trim();
 
-    if (value === '') {
+    if (value === "") {
       setDisplaySlippage(String(slippage));
       return;
     }
@@ -44,7 +44,7 @@ export default function Trade({ token }: { token: IToken }) {
       return;
     }
 
-    let finalValue = Math.max(0, Math.min(50, numSlippage));
+    const finalValue = Math.max(0, Math.min(50, numSlippage));
 
     if (finalValue !== slippage) {
       setSlippage(finalValue);
@@ -221,14 +221,13 @@ export default function Trade({ token }: { token: IToken }) {
   }, [isTokenSelling]);
 
   const changeSlippage = (value: string) => {
-
     if (isNaN(Number(value))) {
       console.warn(`Invalid slippage input: "${value}" is not a number.`);
       return;
     }
 
-    setDisplaySlippage(value)
-  }
+    setDisplaySlippage(value);
+  };
 
   return (
     <div className="relative">
