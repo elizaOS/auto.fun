@@ -1281,9 +1281,6 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const params = parseHoldersQuery(c.req.param("mint"), c.req.query());
     const mint = params.mint
 
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
     // Parse pagination parameters
     const limit = params.limit;
     const page = params.page;
