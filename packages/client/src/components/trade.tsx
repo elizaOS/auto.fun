@@ -1,4 +1,5 @@
 import useAuthentication from "@/hooks/use-authentication";
+import { useSlippage } from "@/hooks/use-slippage";
 import { useSwap } from "@/hooks/use-swap";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { IToken } from "@/types";
@@ -20,8 +21,40 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [inputAmount, setInputAmount] = useState<string>("");
-  const [slippage, setSlippage] = useState<number>(2);
+  const [slippage, setSlippage] = useSlippage();
+  const [displaySlippage, setDisplaySlippage] = useState<string>(
+    String(slippage),
+  );
   const { isAuthenticated } = useAuthentication();
+
+  useEffect(() => {
+    // if somehow the slippage gets updated somewhere else
+    setDisplaySlippage(String(slippage));
+  }, [slippage]);
+
+  const handleSlippageBlur = () => {
+    const value = displaySlippage.trim();
+
+    if (value === "") {
+      setDisplaySlippage(String(slippage));
+      return;
+    }
+
+    const numSlippage = Number(value);
+
+    if (isNaN(numSlippage)) {
+      setDisplaySlippage(String(slippage));
+      return;
+    }
+
+    const finalValue = Math.max(0, Math.min(50, numSlippage));
+
+    if (finalValue !== slippage) {
+      setSlippage(finalValue);
+    }
+
+    setDisplaySlippage(String(finalValue));
+  };
 
   const program = useProgram();
 
@@ -189,6 +222,15 @@ export default function Trade({ token }: { token: IToken }) {
   useEffect(() => {
     setInputAmount("0");
   }, [isTokenSelling]);
+
+  const changeSlippage = (value: string) => {
+    if (isNaN(Number(value))) {
+      console.warn(`Invalid slippage input: "${value}" is not a number.`);
+      return;
+    }
+
+    setDisplaySlippage(value);
+  };
 
   return (
     <div className="relative">
@@ -406,8 +448,9 @@ export default function Trade({ token }: { token: IToken }) {
                     min="0.1"
                     max="100"
                     step="0.1"
-                    value={slippage}
-                    onChange={(e) => setSlippage(Number(e.target.value))}
+                    onBlur={handleSlippageBlur}
+                    value={displaySlippage}
+                    onChange={(e) => changeSlippage(e.target.value)}
                     className="w-16 py-1 pl-2 pr-6 bg-[#1a1a1a] border-b border-white/50 hover:border-white focus:border-white font-dm-mono text-autofun-text-secondary text-right"
                   />
                   <span className="absolute right-2 text-sm font-dm-mono text-autofun-text-secondary">

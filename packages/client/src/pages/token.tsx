@@ -283,6 +283,11 @@ export default function Page() {
     );
   }
 
+  // token?.reserveLamport - token?.virtualReserves) /
+  //                         LAMPORTS_PER_SOL,
+
+  // log for debug
+
   const queryLoading = isCodex
     ? tokenQuery?.isPending || codexQuery?.isPending
     : tokenQuery?.isPending;
@@ -711,7 +716,7 @@ export default function Page() {
                     {/* Percentage text */}
                     <div className="absolute right-2 top-0 h-full flex items-center">
                       <span className="text-autofun-text-secondary font-bold font-dm-mono text-[16px]">
-                        {(token?.curveProgress || 0).toFixed(0)}%
+                        {Math.floor((token?.curveProgress || 0) * 10) / 10}%
                       </span>
                     </div>
                   </div>
