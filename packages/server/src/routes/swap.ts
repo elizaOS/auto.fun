@@ -87,7 +87,7 @@ router.get("/swaps/:mint", async (c) => {
     const limit = 50;
     const redisCache = await getGlobalRedisCache();
     const cacheKey = `swapsListCompressed:${mint}`;
-    const lookUpKey = `swapsList${mint}`;
+    const lookUpKey = `swapsList:${mint}`;
 
     /** Check if cache is present */
     const cache = await redisCache.getCompressed(cacheKey);
@@ -124,7 +124,7 @@ router.get("/swaps/:mint", async (c) => {
           eventType: EventType.Swap,
         },
         direction: RankingDirection.Desc,
-        limit: 50,
+        limit,
       });
 
       const items = data?.getTokenEvents?.items;
