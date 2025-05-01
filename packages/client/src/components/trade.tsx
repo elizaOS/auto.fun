@@ -21,7 +21,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [inputAmount, setInputAmount] = useState<string>("");
-  const [slippage, setSlippage] = useSlippage();
+  const [slippage, setSlippage] = useSlippage()
   const [displaySlippage, setDisplaySlippage] = useState<string>(String(slippage));
   const { isAuthenticated } = useAuthentication();
 
