@@ -485,6 +485,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : "",
               ])}
             >
+              
               <img
                 src={
                   isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
