@@ -12,6 +12,7 @@ import numeral from "numeral";
 import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
+import { useSlippage } from "@/hooks/use-slippage";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -20,8 +21,8 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [inputAmount, setInputAmount] = useState<string>("");
-  const [slippage, setSlippage] = useState<number>(2);
-  const [displaySlippage, setDisplaySlippage] = useState<string>("2");
+  const [slippage, setSlippage] = useSlippage();
+  const [displaySlippage, setDisplaySlippage] = useState<string>(String(slippage));
   const { isAuthenticated } = useAuthentication();
 
   useEffect(() => {
