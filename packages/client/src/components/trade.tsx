@@ -1,4 +1,5 @@
 import useAuthentication from "@/hooks/use-authentication";
+import { useSlippage } from "@/hooks/use-slippage";
 import { useSwap } from "@/hooks/use-swap";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { IToken } from "@/types";
@@ -12,7 +13,6 @@ import numeral from "numeral";
 import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
-import { useSlippage } from "@/hooks/use-slippage";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -21,8 +21,10 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [inputAmount, setInputAmount] = useState<string>("");
-  const [slippage, setSlippage] = useSlippage()
-  const [displaySlippage, setDisplaySlippage] = useState<string>(String(slippage));
+  const [slippage, setSlippage] = useSlippage();
+  const [displaySlippage, setDisplaySlippage] = useState<string>(
+    String(slippage),
+  );
   const { isAuthenticated } = useAuthentication();
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function Trade({ token }: { token: IToken }) {
   const handleSlippageBlur = () => {
     const value = displaySlippage.trim();
 
-    if (value === '') {
+    if (value === "") {
       setDisplaySlippage(String(slippage));
       return;
     }
@@ -45,7 +47,7 @@ export default function Trade({ token }: { token: IToken }) {
       return;
     }
 
-    let finalValue = Math.max(0, Math.min(50, numSlippage));
+    const finalValue = Math.max(0, Math.min(50, numSlippage));
 
     if (finalValue !== slippage) {
       setSlippage(finalValue);
@@ -222,14 +224,13 @@ export default function Trade({ token }: { token: IToken }) {
   }, [isTokenSelling]);
 
   const changeSlippage = (value: string) => {
-
     if (isNaN(Number(value))) {
       console.warn(`Invalid slippage input: "${value}" is not a number.`);
       return;
     }
 
-    setDisplaySlippage(value)
-  }
+    setDisplaySlippage(value);
+  };
 
   return (
     <div className="relative">
