@@ -1296,15 +1296,8 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const params = parseHoldersQuery(c.req.param("mint"), c.req.query());
     const mint = params.mint
 
-    // Parse pagination parameters
-    const limit = params.limit;
-    const page = params.page;
-    const offset = params.offset;
-
-    const allHolders: any[] = [];
-
     const redisCache = await getGlobalRedisCache();
-    const cacheKey = `holders:${mint}`;
+    const cacheKey = `holdersCompressed:${mint}`;
 
     const cache = await redisCache.getCompressed(cacheKey);
     if (cache) {
