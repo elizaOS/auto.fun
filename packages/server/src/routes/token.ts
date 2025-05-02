@@ -1251,6 +1251,7 @@ tokenRouter.get("/tokens", async (c) => {
   if (sortBy === "featured" && page === 1) {
     // Define the two token addresses to prioritize
     const priorityTokenAddresses: string[] = [
+      "4iMXU48tGWmd8BuYrtAj3JRgs8emFgKX56egJyREUVSv",
       "CdZuiJEgdwQVZBWZrd6MvYwZshsT5HvB6tJYAjzuUTAP",
       "3aU4AabWUwJyQdyFQrkhmmbj75ejrXaRPQxpiECEpump",
     ];
