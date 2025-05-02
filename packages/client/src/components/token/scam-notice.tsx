@@ -12,9 +12,9 @@ export default function ScamWarning() {
       </div>
       <p className="mt-2 text-sm">
         This token has been flagged as potentially fraudulent or part of a scam.
-        Trading it carries a <strong>very high risk of loss</strong>. Proceed with
-        extreme caution, and make sure to do your own thorough research before
-        buying.
+        Trading it carries a <strong>very high risk of loss</strong>. Proceed
+        with extreme caution, and make sure to do your own thorough research
+        before buying.
       </p>
     </div>
   );

@@ -9,11 +9,11 @@ import AgentsSection from "@/components/token-sections/agents";
 import ClaimFees from "@/components/token-sections/claimFees";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
+import Scam from "@/components/token/scam-flag";
+import ScamNotice from "@/components/token/scam-notice";
 import Trade from "@/components/trade";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import Verified from "@/components/verified";
-import Scam from "@/components/token/scam-flag";
-import ScamNotice from "@/components/token/scam-notice";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
@@ -321,7 +321,7 @@ export default function Page() {
             value={token?.createdAt ? fromNow(token?.createdAt, true) : "-"}
           />
         </div>
-        <ScamNotice />  
+        <ScamNotice />
 
         {/* Three Column Layout */}
         <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4">
