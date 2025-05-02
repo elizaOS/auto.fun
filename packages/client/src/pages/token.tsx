@@ -321,7 +321,7 @@ export default function Page() {
             value={token?.createdAt ? fromNow(token?.createdAt, true) : "-"}
           />
         </div>
-        <ScamNotice />
+        <ScamNotice isHidden={token?.hidden ? true : false} />
 
         {/* Three Column Layout */}
         <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4">
