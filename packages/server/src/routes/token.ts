@@ -1344,12 +1344,12 @@ tokenRouter.get("/token/:mint", async (c) => {
     const cacheKey = `token:${mint}`;
     const redisCache = await getGlobalRedisCache();
 
-    // if (redisCache) {
-    //   const cachedData = await redisCache.getCompressed(cacheKey);
-    //   if (cachedData) {
-    //     return c.json(cachedData);
-    //   }
-    // }
+    if (redisCache) {
+      const cachedData = await redisCache.getCompressed(cacheKey);
+      if (cachedData) {
+        return c.json(cachedData);
+      }
+    }
 
     // Get token data and potentially creator profile
     const db = getDB();
