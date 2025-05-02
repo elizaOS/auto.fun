@@ -1,7 +1,9 @@
 import { AlertTriangle } from "lucide-react";
 
-export default function ScamWarning() {
-  return (
+export default function ScamWarning({ isHidden }: { isHidden?: boolean }) {
+   if (!isHidden) return null;
+   return (
+     
     <div
       className=" border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-4 -mt-8"
       role="alert"
