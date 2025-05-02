@@ -2,6 +2,7 @@ type PolicySection = {
   header: string;
   subheader: string;
   content: string | string[];
+  subcontent?: string[];
 };
 
 const PRIVACY_POLICY: PolicySection[] = [
@@ -9,7 +10,12 @@ const PRIVACY_POLICY: PolicySection[] = [
     header: "Introduction",
     subheader: "Overview",
     content:
-      "This Privacy Policy applies to Eliza Foundation OpCo Ltd and outlines how personal information is collected, used, and disclosed in connection with the Services provided by Auto.fun.",
+      'This Privacy Policy (this "Policy") applies to Eliza Foundation OpCo Ltd and the personal information we collect, use, and disclose in connection with your use of our Services (as defined below) and other business interactions you have with us. At Auto.fun (the "Company," "we," or "us"), we want you to be familiar with how we collect, use, and disclose personal information. This Privacy Policy describes our practices in connection with personal information that we collect through our "Services," which together, include:',
+    subcontent: [
+      'Websites operated by us, and any subsequent healthcare services you receive through the same (together, the "Platform");',
+      "Email and text messages that we send to you or other communications with you; and",
+      "Offline business interactions you have with us.",
+    ],
   },
   {
     header: "Scope of Services",
@@ -152,6 +158,13 @@ const PrivacyPolicy = () => {
                   ? item.content
                   : item.content.map((line, idx) => <li key={idx}>{line}</li>)}
               </div>
+              {item.subcontent ? (
+                <div>
+                  {item.subcontent.map((line, idx) => (
+                    <li key={idx}>{line}</li>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
