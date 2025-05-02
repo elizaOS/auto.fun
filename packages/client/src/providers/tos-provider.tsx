@@ -43,12 +43,16 @@ export default function TosProvider() {
             </div>
             <div className="p-6 text-center">
               <p className="text-autofun-text-info font-satoshi text-base mb-4">
-                Create tokens with AI, build a community with AI content
-                creation, and engage with role-gated chat.
+              Fair launch a meme coin in seconds. When you create a token you get to keep a portion of the swap fees to help you grow a real community powered by Al content tools!
               </p>
               <p className="text-autofun-text-info font-satoshi text-base mb-6">
-                Buy into the bonding curve; bonded tokens are migrated to
-                Raydium.
+              No early dumps — everyone starts at the same line.
+              </p>
+              <p className="text-autofun-text-info font-satoshi text-base mb-6">
+              You earn swap fees — built-in rewards for the creators.
+              </p>
+              <p className="text-autofun-text-info font-satoshi text-base mb-6">
+              Al art + text - instant memes and tweets.
               </p>
               {/* Added Cookie Text */}
               <p className="text-autofun-text-highlight font-satoshi text-base mb-4">
