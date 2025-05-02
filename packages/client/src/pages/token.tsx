@@ -9,6 +9,8 @@ import AgentsSection from "@/components/token-sections/agents";
 import ClaimFees from "@/components/token-sections/claimFees";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
+import Scam from "@/components/token/scam-flag";
+import ScamNotice from "@/components/token/scam-notice";
 import Trade from "@/components/trade";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import Verified from "@/components/verified";
@@ -319,6 +321,7 @@ export default function Page() {
             value={token?.createdAt ? fromNow(token?.createdAt, true) : "-"}
           />
         </div>
+        <ScamNotice />
 
         {/* Three Column Layout */}
         <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4">
@@ -346,6 +349,7 @@ export default function Page() {
                         {sanitizeCheckmark(token?.name)}
                       </h3>
                       <Verified isVerified={token?.verified ? true : false} />
+                      <Scam isHidden={token?.hidden ? true : false} />
                       <Tooltip anchorSelect="#view-on-solscan">
                         <span>View on Solscan</span>
                       </Tooltip>
