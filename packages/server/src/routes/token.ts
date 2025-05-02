@@ -159,7 +159,7 @@ function buildTokensBaseQuery(
     ticker: tokens.ticker,
     verified: tokens.verified,
   }).from(tokens).$dynamic();
-    
+
   const conditions: (SQL | undefined)[] = [];
 
   if (hideImported === 1) {
@@ -1006,15 +1006,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: process.env.NETWORK || "devnet",
-          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: process.env.NETWORK || "devnet",
+        url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`
@@ -1344,12 +1344,12 @@ tokenRouter.get("/token/:mint", async (c) => {
     const cacheKey = `token:${mint}`;
     const redisCache = await getGlobalRedisCache();
 
-    if (redisCache) {
-      const cachedData = await redisCache.getCompressed(cacheKey);
-      if (cachedData) {
-        return c.json(cachedData);
-      }
-    }
+    // if (redisCache) {
+    //   const cachedData = await redisCache.getCompressed(cacheKey);
+    //   if (cachedData) {
+    //     return c.json(cachedData);
+    //   }
+    // }
 
     // Get token data and potentially creator profile
     const db = getDB();
@@ -1374,8 +1374,8 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     if (
       !tokenResult ||
-      tokenResult.length === 0 ||
-      tokenResult?.[0]?.hidden === 1
+      tokenResult.length === 0
+      // || tokenResult?.[0]?.hidden === 1
     ) {
       // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
@@ -1427,8 +1427,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     const responseData = token;
 
