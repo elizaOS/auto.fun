@@ -29,6 +29,7 @@ const requireAdmin = async (c: any, next: Function) => {
     return c.json({ error: "Admin privileges required" }, 403);
   }
 
+  logger.info(`Admin access being used by: ${user.publicKey}`);
   await next();
 };
 
@@ -40,14 +41,16 @@ const requireAdminOrModerator = async (c: any, next: Function) => {
   }
 
   const isAdmin = adminAddresses.includes(user.publicKey);
-  
+
   if (isAdmin) {
     // Set a context variable to indicate this is a full admin
-    c.set('isFullAdmin', true);
+    c.set("isFullAdmin", true);
+    logger.info(`Admin access being used by: ${user.publicKey}`);
+
     await next();
     return;
   }
-  
+
   // Check if user is a moderator
   const db = getDB();
   const moderatorCheck = await db
@@ -55,15 +58,18 @@ const requireAdminOrModerator = async (c: any, next: Function) => {
     .from(users)
     .where(eq(users.address, user.publicKey))
     .limit(1);
-  
-  const isModerator = moderatorCheck.length > 0 && moderatorCheck[0].isModerator === 1;
-  
+
+  const isModerator =
+    moderatorCheck.length > 0 && moderatorCheck[0].isModerator === 1;
+
   if (!isModerator) {
     return c.json({ error: "Admin or moderator privileges required" }, 403);
   }
-  
+
+  logger.info(`Moderator access being used by: ${user.publicKey}`)
+
   // Mark this user as a moderator but not a full admin
-  c.set('isFullAdmin', false);
+  c.set("isFullAdmin", false);
   await next();
 };
 
@@ -122,128 +128,136 @@ adminRouter.post("/tokens/:mint/social", requireAdminOrModerator, async (c) => {
     logger.error("Error updating token social links:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
 
 // Route to set featured flag on tokens
-adminRouter.post("/tokens/:mint/featured", requireAdminOrModerator, async (c) => {
-  try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
+adminRouter.post(
+  "/tokens/:mint/featured",
+  requireAdminOrModerator,
+  async (c) => {
+    try {
+      const mint = c.req.param("mint");
+      if (!mint || mint.length < 32 || mint.length > 44) {
+        return c.json({ error: "Invalid mint address" }, 400);
+      }
+
+      const body = await c.req.json();
+      const { featured } = body;
+
+      if (featured === undefined || typeof featured !== "boolean") {
+        return c.json({ error: "Featured flag must be a boolean" }, 400);
+      }
+
+      const db = getDB();
+
+      // Check if token exists
+      const tokenData = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      if (!tokenData || tokenData.length === 0) {
+        return c.json({ error: "Token not found" }, 404);
+      }
+
+      await db
+        .update(tokens)
+        .set({
+          featured: featured ? 1 : 0,
+          lastUpdated: new Date(),
+        })
+        .where(eq(tokens.mint, mint));
+
+      logger.log(`Admin set featured flag to ${featured} for token ${mint}`);
+
+      // Get the updated token data
+      const updatedToken = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        message: `Token featured flag set to ${featured}`,
+        token: updatedToken[0],
+      });
+    } catch (error) {
+      logger.error("Error setting token featured flag:", error);
+      return c.json(
+        { error: error instanceof Error ? error.message : "Unknown error" },
+        500
+      );
     }
-
-    const body = await c.req.json();
-    const { featured } = body;
-
-    if (featured === undefined || typeof featured !== "boolean") {
-      return c.json({ error: "Featured flag must be a boolean" }, 400);
-    }
-
-    const db = getDB();
-
-    // Check if token exists
-    const tokenData = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    if (!tokenData || tokenData.length === 0) {
-      return c.json({ error: "Token not found" }, 404);
-    }
-
-    await db
-      .update(tokens)
-      .set({
-        featured: featured ? 1 : 0,
-        lastUpdated: new Date(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    logger.log(`Admin set featured flag to ${featured} for token ${mint}`);
-
-    // Get the updated token data
-    const updatedToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    return c.json({
-      success: true,
-      message: `Token featured flag set to ${featured}`,
-      token: updatedToken[0],
-    });
-  } catch (error) {
-    logger.error("Error setting token featured flag:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
   }
-});
+);
 
 // Route to set verified flag on tokens
-adminRouter.post("/tokens/:mint/verified", requireAdminOrModerator, async (c) => {
-  try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
+adminRouter.post(
+  "/tokens/:mint/verified",
+  requireAdminOrModerator,
+  async (c) => {
+    try {
+      const mint = c.req.param("mint");
+      if (!mint || mint.length < 32 || mint.length > 44) {
+        return c.json({ error: "Invalid mint address" }, 400);
+      }
+
+      const body = await c.req.json();
+      const { verified } = body;
+
+      if (verified === undefined || typeof verified !== "boolean") {
+        return c.json({ error: "Verified flag must be a boolean" }, 400);
+      }
+
+      const db = getDB();
+
+      // Check if token exists
+      const tokenData = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      if (!tokenData || tokenData.length === 0) {
+        return c.json({ error: "Token not found" }, 404);
+      }
+
+      await db
+        .update(tokens)
+        .set({
+          verified: verified ? 1 : 0,
+          lastUpdated: new Date(),
+        })
+        .where(eq(tokens.mint, mint));
+
+      logger.log(`Admin set verified flag to ${verified} for token ${mint}`);
+
+      // Get the updated token data
+      const updatedToken = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        message: `Token verified flag set to ${verified}`,
+        token: updatedToken[0],
+      });
+    } catch (error) {
+      logger.error("Error setting token verified flag:", error);
+      return c.json(
+        { error: error instanceof Error ? error.message : "Unknown error" },
+        500
+      );
     }
-
-    const body = await c.req.json();
-    const { verified } = body;
-
-    if (verified === undefined || typeof verified !== "boolean") {
-      return c.json({ error: "Verified flag must be a boolean" }, 400);
-    }
-
-    const db = getDB();
-
-    // Check if token exists
-    const tokenData = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    if (!tokenData || tokenData.length === 0) {
-      return c.json({ error: "Token not found" }, 404);
-    }
-
-    await db
-      .update(tokens)
-      .set({
-        verified: verified ? 1 : 0,
-        lastUpdated: new Date(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    logger.log(`Admin set verified flag to ${verified} for token ${mint}`);
-
-    // Get the updated token data
-    const updatedToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    return c.json({
-      success: true,
-      message: `Token verified flag set to ${verified}`,
-      token: updatedToken[0],
-    });
-  } catch (error) {
-    logger.error("Error setting token verified flag:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
   }
-});
+);
 
 // Route to set hidden flag on tokens
 adminRouter.post("/tokens/:mint/hidden", requireAdminOrModerator, async (c) => {
@@ -300,76 +314,82 @@ adminRouter.post("/tokens/:mint/hidden", requireAdminOrModerator, async (c) => {
     logger.error("Error setting token hidden flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
 
 // Route to set a user to suspended
-adminRouter.post("/users/:address/suspended", requireAdminOrModerator, async (c) => {
-  try {
-    const address = c.req.param("address");
-    if (!address || address.length < 32 || address.length > 44) {
-      return c.json({ error: "Invalid wallet address" }, 400);
+adminRouter.post(
+  "/users/:address/suspended",
+  requireAdminOrModerator,
+  async (c) => {
+    try {
+      const address = c.req.param("address");
+      if (!address || address.length < 32 || address.length > 44) {
+        return c.json({ error: "Invalid wallet address" }, 400);
+      }
+
+      const body = await c.req.json();
+      const { suspended } = body;
+
+      if (suspended === undefined || typeof suspended !== "boolean") {
+        return c.json({ error: "Suspended flag must be a boolean" }, 400);
+      }
+
+      const db = getDB();
+
+      // Check if user exists
+      const userData = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, address))
+        .limit(1);
+
+      if (!userData || userData.length === 0) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      // Update the suspended field directly
+      await db
+        .update(users)
+        .set({
+          suspended: suspended ? 1 : 0,
+        })
+        .where(eq(users.address, address));
+
+      logger.log(
+        `Admin set suspended flag to ${suspended} for user ${address}`
+      );
+
+      // Get the updated user data
+      const updatedUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, address))
+        .limit(1);
+
+      // For backward compatibility, also check if the name has the [SUSPENDED] prefix
+      // and include a suspended property in the response
+      const isSuspended = updatedUser[0].suspended === 1;
+
+      return c.json({
+        success: true,
+        message: `User suspended flag set to ${suspended}`,
+        user: {
+          ...updatedUser[0],
+          suspended: isSuspended,
+        },
+      });
+    } catch (error) {
+      logger.error("Error setting user suspended flag:", error);
+      return c.json(
+        { error: error instanceof Error ? error.message : "Unknown error" },
+        500
+      );
     }
-
-    const body = await c.req.json();
-    const { suspended } = body;
-
-    if (suspended === undefined || typeof suspended !== "boolean") {
-      return c.json({ error: "Suspended flag must be a boolean" }, 400);
-    }
-
-    const db = getDB();
-
-    // Check if user exists
-    const userData = await db
-      .select()
-      .from(users)
-      .where(eq(users.address, address))
-      .limit(1);
-
-    if (!userData || userData.length === 0) {
-      return c.json({ error: "User not found" }, 404);
-    }
-
-    // Update the suspended field directly
-    await db
-      .update(users)
-      .set({
-        suspended: suspended ? 1 : 0,
-      })
-      .where(eq(users.address, address));
-
-    logger.log(`Admin set suspended flag to ${suspended} for user ${address}`);
-
-    // Get the updated user data
-    const updatedUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.address, address))
-      .limit(1);
-
-    // For backward compatibility, also check if the name has the [SUSPENDED] prefix
-    // and include a suspended property in the response
-    const isSuspended = updatedUser[0].suspended === 1;
-
-    return c.json({
-      success: true,
-      message: `User suspended flag set to ${suspended}`,
-      user: {
-        ...updatedUser[0],
-        suspended: isSuspended,
-      },
-    });
-  } catch (error) {
-    logger.error("Error setting user suspended flag:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
   }
-});
+);
 
 // Route to get a single user by address
 adminRouter.get("/users/:address", requireAdminOrModerator, async (c) => {
@@ -420,7 +440,7 @@ adminRouter.get("/users/:address", requireAdminOrModerator, async (c) => {
     logger.error("Error getting user:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -460,7 +480,7 @@ adminRouter.get("/stats", requireAdminOrModerator, async (c) => {
     logger.error("Error getting admin stats:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -490,15 +510,15 @@ adminRouter.get("/users", requireAdminOrModerator, async (c) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Database query timed out")),
-        timeoutDuration,
-      ),
+        timeoutDuration
+      )
     );
 
     const countTimeoutPromise = new Promise<number>((_, reject) =>
       setTimeout(
         () => reject(new Error("Count query timed out")),
-        timeoutDuration / 2,
-      ),
+        timeoutDuration / 2
+      )
     );
 
     const db = getDB();
@@ -510,9 +530,9 @@ adminRouter.get("/users", requireAdminOrModerator, async (c) => {
         const allUsersColumns = Object.fromEntries(
           Object.entries(users)
             .filter(
-              ([key, value]) => typeof value === "object" && "name" in value,
+              ([key, value]) => typeof value === "object" && "name" in value
             )
-            .map(([key, value]) => [key, value]),
+            .map(([key, value]) => [key, value])
         );
 
         // Start with a basic query
@@ -522,11 +542,11 @@ adminRouter.get("/users", requireAdminOrModerator, async (c) => {
         // For backward compatibility, also check the name prefix
         if (showSuspended) {
           usersQuery = usersQuery.where(
-            sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`,
+            sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`
           );
         } else {
           usersQuery = usersQuery.where(
-            sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`,
+            sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`
           );
         }
 
@@ -534,7 +554,7 @@ adminRouter.get("/users", requireAdminOrModerator, async (c) => {
           // This is a simplified implementation - in production you'd use a proper search mechanism
           usersQuery = usersQuery.where(
             sql`(${users.name} LIKE ${"%" + search + "%"} OR 
-                 ${users.address} LIKE ${"%" + search + "%"})`,
+                 ${users.address} LIKE ${"%" + search + "%"})`
           );
         }
 
@@ -574,18 +594,18 @@ adminRouter.get("/users", requireAdminOrModerator, async (c) => {
 
       if (showSuspended) {
         finalQuery = countQuery.where(
-          sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`,
+          sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`
         );
       } else {
         finalQuery = countQuery.where(
-          sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`,
+          sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`
         );
       }
 
       if (search) {
         finalQuery = countQuery.where(
           sql`(${users.name} LIKE ${"%" + search + "%"} OR 
-               ${users.address} LIKE ${"%" + search + "%"})`,
+               ${users.address} LIKE ${"%" + search + "%"})`
         );
       }
 
@@ -650,15 +670,18 @@ const requireTokenOwner = async (c: any, next: Function) => {
 
   // Fetch token data to check ownership using Drizzle syntax
   const db = getDB();
-  const tokenResult = await db.select({ creator: tokens.creator })
-                               .from(tokens)
-                               .where(eq(tokens.mint, tokenMint))
-                               .limit(1);
+  const tokenResult = await db
+    .select({ creator: tokens.creator })
+    .from(tokens)
+    .where(eq(tokens.mint, tokenMint))
+    .limit(1);
 
   const tokenCreator = tokenResult[0]?.creator;
 
   if (!tokenCreator || tokenCreator !== user.publicKey) {
-    logger.warn(`Ownership check failed: User ${user.publicKey} tried to access owner route for token ${tokenMint} owned by ${tokenCreator || 'not found'}`);
+    logger.warn(
+      `Ownership check failed: User ${user.publicKey} tried to access owner route for token ${tokenMint} owned by ${tokenCreator || "not found"}`
+    );
     return c.json({ error: "Token ownership required" }, 403);
   }
 
@@ -722,7 +745,7 @@ function buildAdminTokensBaseQuery(
     sortBy?: string;
     maxVolume?: number;
     maxHolders?: number;
-  },
+  }
 ): PgSelect {
   const { hideImported, search, sortBy, maxVolume, maxHolders } = params;
   // Select all columns initially, similar to the original builder
@@ -737,10 +760,10 @@ function buildAdminTokensBaseQuery(
   if (search) {
     conditions.push(
       or(
-        sql`${tokens.name} ILIKE ${'%' + search + '%'}`,
-        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`,
-        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`,
-      ),
+        sql`${tokens.name} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.mint} ILIKE ${"%" + search + "%"}`
+      )
     );
     logger.log(`[Admin Query Build] Adding condition: search LIKE ${search}`);
   }
@@ -757,7 +780,7 @@ function buildAdminTokensCountBaseQuery(
   params: {
     hideImported?: number;
     search?: string;
-  },
+  }
 ): PgSelect {
   let query = db.select({ count: count() }).from(tokens).$dynamic();
   const { hideImported, search } = params;
@@ -771,10 +794,10 @@ function buildAdminTokensCountBaseQuery(
   if (search) {
     conditions.push(
       or(
-        sql`${tokens.name} ILIKE ${'%' + search + '%'}`,
-        sql`${tokens.ticker} ILIKE ${'%' + search + '%'}`,
-        sql`${tokens.mint} ILIKE ${'%' + search + '%'}`,
-      ),
+        sql`${tokens.name} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.ticker} ILIKE ${"%" + search + "%"}`,
+        sql`${tokens.mint} ILIKE ${"%" + search + "%"}`
+      )
     );
     logger.log(`[Admin Count Build] Adding condition: search LIKE ${search}`);
   }
@@ -803,18 +826,18 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
 
   // Handle frontend-specific sort keys if passed directly
   if (sortBy === "all") {
-      sortBy = "featured";
-      sortOrder = "desc";
+    sortBy = "featured";
+    sortOrder = "desc";
   } else if (sortBy === "oldest") {
-      sortBy = "createdAt";
-      sortOrder = "asc";
+    sortBy = "createdAt";
+    sortOrder = "asc";
   } else if (!sortBy) {
-      sortBy = "createdAt";
-      sortOrder = "desc";
+    sortBy = "createdAt";
+    sortOrder = "desc";
   }
 
   logger.log(
-    `[GET /api/admin/tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, search=${search}, limit=${limit}, page=${page}`,
+    `[GET /api/admin/tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, search=${search}, limit=${limit}, page=${page}`
   );
 
   // No caching for the admin endpoint to ensure freshness
@@ -845,7 +868,7 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
     logger.log(`[Admin Query Build] Applied sort: featured weighted`);
   } else {
     const sortColumn = validSortColumns[sortBy] || tokens.createdAt;
-     if (sortOrder === "desc") {
+    if (sortOrder === "desc") {
       baseQuery = baseQuery.orderBy(
         sql`CASE WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 ELSE 0 END`,
         sql`${sortColumn} DESC NULLS LAST`
@@ -853,8 +876,8 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
       logger.log(`[Admin Query Build] Applied sort: ${sortBy} DESC`);
     } else {
       baseQuery = baseQuery.orderBy(
-          sql`CASE WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 ELSE 0 END`,
-          sql`${sortColumn} ASC NULLS LAST`
+        sql`CASE WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 ELSE 0 END`,
+        sql`${sortColumn} ASC NULLS LAST`
       );
       logger.log(`[Admin Query Build] Applied sort: ${sortBy} ASC`);
     }
@@ -863,7 +886,7 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
   // --- Apply Pagination ---
   baseQuery = baseQuery.limit(limit).offset(skip);
   logger.log(
-    `[Admin Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
+    `[Admin Query Build] Applied pagination: limit=${limit}, offset=${skip}`
   );
 
   // --- Execute Queries ---
@@ -874,7 +897,7 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
     // Cast to any[] as a workaround for persistent Drizzle/TS type inference issues
     tokensResult = (await baseQuery.execute()) as any[];
     logger.log(
-      `[Admin Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
+      `[Admin Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`
     );
     const countResult = await countQuery.execute();
     total = Number(countResult[0]?.count || 0);
@@ -891,22 +914,22 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
   // Map results to plain objects with necessary conversions
   const resultTokens =
     tokensResult?.map((token) => {
-       const plainToken: Record<string, any> = { ...token }; // Start with plain object
+      const plainToken: Record<string, any> = { ...token }; // Start with plain object
 
-       // Convert BigInts to strings
-       for (const [key, value] of Object.entries(plainToken)) {
-           if (typeof value === 'bigint') {
-               plainToken[key] = value.toString();
-           }
-           // Add other conversions like Dates if needed
-       }
+      // Convert BigInts to strings
+      for (const [key, value] of Object.entries(plainToken)) {
+        if (typeof value === "bigint") {
+          plainToken[key] = value.toString();
+        }
+        // Add other conversions like Dates if needed
+      }
 
-       // Ensure flags are booleans
-       plainToken.hidden = !!plainToken.hidden;
-       plainToken.featured = !!plainToken.featured;
-       plainToken.verified = !!plainToken.verified;
+      // Ensure flags are booleans
+      plainToken.hidden = !!plainToken.hidden;
+      plainToken.featured = !!plainToken.featured;
+      plainToken.verified = !!plainToken.verified;
 
-       return plainToken; // Return the plain, processed object
+      return plainToken; // Return the plain, processed object
     }) || [];
 
   const responseData = {
@@ -917,7 +940,9 @@ adminRouter.get("/tokens", requireAdminOrModerator, async (c) => {
     hasMore: page < totalPages,
   };
 
-  logger.log(`[Admin API Response] Returning ${responseData.tokens.length} tokens.`);
+  logger.log(
+    `[Admin API Response] Returning ${responseData.tokens.length} tokens.`
+  );
   return c.json(responseData);
 });
 // --- END NEW ADMIN GET TOKENS ROUTE ---
@@ -935,21 +960,21 @@ adminRouter.put("/tokens/:mint/details", requireAdminOrModerator, async (c) => {
     const { name, ticker, image, url, description } = body;
 
     // Basic validation (can be more sophisticated)
-    if (name !== undefined && (typeof name !== 'string' || name === "")) {
-        return c.json({ error: "Invalid name provided" }, 400);
+    if (name !== undefined && (typeof name !== "string" || name === "")) {
+      return c.json({ error: "Invalid name provided" }, 400);
     }
-     if (ticker !== undefined && (typeof ticker !== 'string' || ticker === "")) {
-        return c.json({ error: "Invalid ticker provided" }, 400);
+    if (ticker !== undefined && (typeof ticker !== "string" || ticker === "")) {
+      return c.json({ error: "Invalid ticker provided" }, 400);
     }
     // Allow empty string for image/url/description to clear the field
-    if (image !== undefined && typeof image !== 'string') {
-         return c.json({ error: "Invalid image URL provided" }, 400);
+    if (image !== undefined && typeof image !== "string") {
+      return c.json({ error: "Invalid image URL provided" }, 400);
     }
-    if (url !== undefined && typeof url !== 'string') {
-        return c.json({ error: "Invalid metadata URL provided" }, 400);
+    if (url !== undefined && typeof url !== "string") {
+      return c.json({ error: "Invalid metadata URL provided" }, 400);
     }
-    if (description !== undefined && typeof description !== 'string') {
-        return c.json({ error: "Invalid description provided" }, 400);
+    if (description !== undefined && typeof description !== "string") {
+      return c.json({ error: "Invalid description provided" }, 400);
     }
 
     const db = getDB();
@@ -973,18 +998,23 @@ adminRouter.put("/tokens/:mint/details", requireAdminOrModerator, async (c) => {
     if (url !== undefined) updatePayload.url = url;
     if (description !== undefined) updatePayload.description = description; // Add description
 
-     // Only update if there are changes other than lastUpdated
+    // Only update if there are changes other than lastUpdated
     if (Object.keys(updatePayload).length <= 1) {
-       // Return current token data even if no changes were made?
-       const currentToken = await db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1);
-       return c.json({ success: true, message: "No details provided to update.", token: currentToken[0] });
+      // Return current token data even if no changes were made?
+      const currentToken = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+      return c.json({
+        success: true,
+        message: "No details provided to update.",
+        token: currentToken[0],
+      });
     }
 
     // Update token with the new details
-    await db
-      .update(tokens)
-      .set(updatePayload)
-      .where(eq(tokens.mint, mint));
+    await db.update(tokens).set(updatePayload).where(eq(tokens.mint, mint));
 
     logger.log(`Admin updated details for token ${mint}`);
 
@@ -1001,234 +1031,328 @@ adminRouter.put("/tokens/:mint/details", requireAdminOrModerator, async (c) => {
       token: updatedToken[0], // Return the full updated token
     });
   } catch (error) {
-    logger.error(`Error updating token details for ${c.req.param("mint")}:`, error);
+    logger.error(
+      `Error updating token details for ${c.req.param("mint")}:`,
+      error
+    );
     return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error updating details" },
-      500,
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error updating details",
+      },
+      500
     );
   }
 });
 // --- END PUT ROUTE ---
 
 // --- NEW: Route to update metadata JSON ---
-adminRouter.post("/tokens/:mint/metadata", requireAdminOrModerator, async (c) => {
+adminRouter.post(
+  "/tokens/:mint/metadata",
+  requireAdminOrModerator,
+  async (c) => {
     try {
-        const mint = c.req.param("mint");
-        if (!mint || mint.length < 32 || mint.length > 44) {
-            return c.json({ error: "Invalid mint address" }, 400);
-        }
+      const mint = c.req.param("mint");
+      if (!mint || mint.length < 32 || mint.length > 44) {
+        return c.json({ error: "Invalid mint address" }, 400);
+      }
 
-        // Get updated metadata content from request body
-        const body = await c.req.text(); // Expect raw JSON string
-        let updatedMetadata: object;
-        try {
-            updatedMetadata = JSON.parse(body);
-        } catch (e) {
-            return c.json({ error: "Invalid JSON format provided" }, 400);
-        }
+      // Get updated metadata content from request body
+      const body = await c.req.text(); // Expect raw JSON string
+      let updatedMetadata: object;
+      try {
+        updatedMetadata = JSON.parse(body);
+      } catch (e) {
+        return c.json({ error: "Invalid JSON format provided" }, 400);
+      }
 
-        const db = getDB();
+      const db = getDB();
 
-        // Get token data, including URL and imported status
-        const tokenData = await db
-            .select({ url: tokens.url, imported: tokens.imported })
-            .from(tokens)
-            .where(eq(tokens.mint, mint))
-            .limit(1);
+      // Get token data, including URL and imported status
+      const tokenData = await db
+        .select({ url: tokens.url, imported: tokens.imported })
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
 
-        if (!tokenData || tokenData.length === 0) {
-            return c.json({ error: "Token not found" }, 404);
-        }
+      if (!tokenData || tokenData.length === 0) {
+        return c.json({ error: "Token not found" }, 404);
+      }
 
-        const token = tokenData[0];
+      const token = tokenData[0];
 
-        // --- Check if token is imported ---
-        if (token.imported === 1) {
-            logger.warn(`Admin attempted to update metadata for imported token ${mint}`);
-            return c.json({ error: "Cannot update metadata for imported tokens" }, 403);
-        }
-
-        // --- Check if original metadata URL exists ---
-        if (!token.url) {
-            return c.json({ error: "Token does not have existing metadata URL to update" }, 400);
-        }
-
-        // --- Extract S3 Object Key from URL ---
-        let objectKey = "";
-        // Get public base URL from shared client to help parse
-        const { publicBaseUrl } = await getS3Client(); 
-        
-        // Define potential prefixes
-        const expectedR2Prefix = "https://storage.autofun.tech/"; // Hardcode for now, or get dynamically
-        const expectedMinioPrefixPattern = /^http:\/\/localhost:9000\/[^\/]+\//; // Matches http://localhost:9000/bucketname/
-        const localApiPrefix = "/api/metadata/"; // Assuming API route is consistent
-
-        if (token.url.startsWith(publicBaseUrl + "/")) { // Check primary case: starts with current base URL
-            objectKey = new URL(token.url).pathname.substring(publicBaseUrl.length + 1);
-        } else if (token.url.startsWith(expectedR2Prefix)) { // Check legacy/hardcoded R2 prefix
-             objectKey = token.url.substring(expectedR2Prefix.length);
-             logger.warn(`[Admin Metadata Update] URL ${token.url} used R2 prefix directly.`);
-        } else if (expectedMinioPrefixPattern.test(token.url)) { // Check if it looks like a MinIO path URL
-             objectKey = new URL(token.url).pathname.substring(1); // Get path after hostname (includes bucket)
-             logger.warn(`[Admin Metadata Update] URL ${token.url} matched MinIO pattern.`);
-        } else {
-             // Fallback for local API path or other unknowns
-             try {
-                const parsedUrl = new URL(token.url);
-                const path = parsedUrl.pathname;
-                if (path.startsWith(localApiPrefix)) {
-                    const filename = path.substring(localApiPrefix.length);
-                    // Attempt to construct a likely S3 key (assuming token-metadata prefix)
-                    objectKey = `token-metadata/${filename}`; 
-                    logger.log(`[Admin Metadata Update] Parsed local API URL. Constructed S3 key: ${objectKey}`);
-                } else {
-                     logger.error(`[Admin Metadata Update] Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`);
-                     return c.json({ error: "Cannot determine storage key from token metadata URL format" }, 500);
-                }
-             } catch (urlParseError) {
-                 logger.error(`[Admin Metadata Update] Failed to parse metadata URL to get object key for ${mint}: ${token.url}`, urlParseError);
-                 return c.json({ error: "Could not determine storage key from token metadata URL" }, 500);
-             }
-        }
-
-        if (!objectKey) {
-             logger.error(`[Admin Metadata Update] Failed to extract a valid object key for ${mint} from URL: ${token.url}`);
-             return c.json({ error: "Failed to extract valid storage key from metadata URL" }, 500);
-        }
-        logger.log(`[Admin Metadata Update] Determined object key: ${objectKey}`);
-
-        // --- Upload updated metadata to S3 --- 
-        // Use shared client
-        const { client: s3Client, bucketName } = await getS3Client(); 
-
-        const metadataBuffer = Buffer.from(JSON.stringify(updatedMetadata, null, 2), 'utf8'); // Pretty print JSON
-
-        // --- Add Logging Here ---
-        logger.log(`Attempting S3 PutObject: Bucket=${bucketName}, Key=${objectKey}, ContentLength=${metadataBuffer.length}`);
-        // --- End Logging ---
-
-        const putCommand = new PutObjectCommand({
-            Bucket: bucketName,
-            Key: objectKey,
-            Body: metadataBuffer,
-            ContentType: "application/json",
-            CacheControl: "public, max-age=3600", // Shorter cache for potentially changing metadata? Or keep long? Let's use 1 hour.
-            Metadata: { publicAccess: "true" } // Ensure public access if needed
-        });
-
-        logger.log(`Uploading updated metadata to S3: Bucket=${bucketName}, Key=${objectKey}`);
-        await s3Client.send(putCommand);
-        logger.log(`S3 metadata update successful for Key: ${objectKey}`);
-
-        // Optionally, update the token's lastUpdated timestamp in the DB
-        await db.update(tokens).set({ lastUpdated: new Date() }).where(eq(tokens.mint, mint));
-
-        return c.json({
-            success: true,
-            message: "Token metadata updated successfully",
-            metadataUrl: token.url // Return the original URL which should now point to updated content
-        });
-
-    } catch (error) {
-        logger.error(`Error updating token metadata for ${c.req.param("mint")}:`, error);
-        return c.json(
-            { error: error instanceof Error ? error.message : "Unknown error updating metadata" },
-            500
+      // --- Check if token is imported ---
+      if (token.imported === 1) {
+        logger.warn(
+          `Admin attempted to update metadata for imported token ${mint}`
         );
+        return c.json(
+          { error: "Cannot update metadata for imported tokens" },
+          403
+        );
+      }
+
+      // --- Check if original metadata URL exists ---
+      if (!token.url) {
+        return c.json(
+          { error: "Token does not have existing metadata URL to update" },
+          400
+        );
+      }
+
+      // --- Extract S3 Object Key from URL ---
+      let objectKey = "";
+      // Get public base URL from shared client to help parse
+      const { publicBaseUrl } = await getS3Client();
+
+      // Define potential prefixes
+      const expectedR2Prefix = "https://storage.autofun.tech/"; // Hardcode for now, or get dynamically
+      const expectedMinioPrefixPattern = /^http:\/\/localhost:9000\/[^\/]+\//; // Matches http://localhost:9000/bucketname/
+      const localApiPrefix = "/api/metadata/"; // Assuming API route is consistent
+
+      if (token.url.startsWith(publicBaseUrl + "/")) {
+        // Check primary case: starts with current base URL
+        objectKey = new URL(token.url).pathname.substring(
+          publicBaseUrl.length + 1
+        );
+      } else if (token.url.startsWith(expectedR2Prefix)) {
+        // Check legacy/hardcoded R2 prefix
+        objectKey = token.url.substring(expectedR2Prefix.length);
+        logger.warn(
+          `[Admin Metadata Update] URL ${token.url} used R2 prefix directly.`
+        );
+      } else if (expectedMinioPrefixPattern.test(token.url)) {
+        // Check if it looks like a MinIO path URL
+        objectKey = new URL(token.url).pathname.substring(1); // Get path after hostname (includes bucket)
+        logger.warn(
+          `[Admin Metadata Update] URL ${token.url} matched MinIO pattern.`
+        );
+      } else {
+        // Fallback for local API path or other unknowns
+        try {
+          const parsedUrl = new URL(token.url);
+          const path = parsedUrl.pathname;
+          if (path.startsWith(localApiPrefix)) {
+            const filename = path.substring(localApiPrefix.length);
+            // Attempt to construct a likely S3 key (assuming token-metadata prefix)
+            objectKey = `token-metadata/${filename}`;
+            logger.log(
+              `[Admin Metadata Update] Parsed local API URL. Constructed S3 key: ${objectKey}`
+            );
+          } else {
+            logger.error(
+              `[Admin Metadata Update] Could not determine S3 key from unexpected URL format for ${mint}: ${token.url}`
+            );
+            return c.json(
+              {
+                error:
+                  "Cannot determine storage key from token metadata URL format",
+              },
+              500
+            );
+          }
+        } catch (urlParseError) {
+          logger.error(
+            `[Admin Metadata Update] Failed to parse metadata URL to get object key for ${mint}: ${token.url}`,
+            urlParseError
+          );
+          return c.json(
+            {
+              error: "Could not determine storage key from token metadata URL",
+            },
+            500
+          );
+        }
+      }
+
+      if (!objectKey) {
+        logger.error(
+          `[Admin Metadata Update] Failed to extract a valid object key for ${mint} from URL: ${token.url}`
+        );
+        return c.json(
+          { error: "Failed to extract valid storage key from metadata URL" },
+          500
+        );
+      }
+      logger.log(`[Admin Metadata Update] Determined object key: ${objectKey}`);
+
+      // --- Upload updated metadata to S3 ---
+      // Use shared client
+      const { client: s3Client, bucketName } = await getS3Client();
+
+      const metadataBuffer = Buffer.from(
+        JSON.stringify(updatedMetadata, null, 2),
+        "utf8"
+      ); // Pretty print JSON
+
+      // --- Add Logging Here ---
+      logger.log(
+        `Attempting S3 PutObject: Bucket=${bucketName}, Key=${objectKey}, ContentLength=${metadataBuffer.length}`
+      );
+      // --- End Logging ---
+
+      const putCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: objectKey,
+        Body: metadataBuffer,
+        ContentType: "application/json",
+        CacheControl: "public, max-age=3600", // Shorter cache for potentially changing metadata? Or keep long? Let's use 1 hour.
+        Metadata: { publicAccess: "true" }, // Ensure public access if needed
+      });
+
+      logger.log(
+        `Uploading updated metadata to S3: Bucket=${bucketName}, Key=${objectKey}`
+      );
+      await s3Client.send(putCommand);
+      logger.log(`S3 metadata update successful for Key: ${objectKey}`);
+
+      // Optionally, update the token's lastUpdated timestamp in the DB
+      await db
+        .update(tokens)
+        .set({ lastUpdated: new Date() })
+        .where(eq(tokens.mint, mint));
+
+      return c.json({
+        success: true,
+        message: "Token metadata updated successfully",
+        metadataUrl: token.url, // Return the original URL which should now point to updated content
+      });
+    } catch (error) {
+      logger.error(
+        `Error updating token metadata for ${c.req.param("mint")}:`,
+        error
+      );
+      return c.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unknown error updating metadata",
+        },
+        500
+      );
     }
-});
+  }
+);
 // --- END METADATA UPDATE ROUTE ---
 
 // --- NEW: Route to upload a new image for a token ---
 adminRouter.post("/tokens/:mint/image", requireAdminOrModerator, async (c) => {
-    try {
-        const mint = c.req.param("mint");
-        if (!mint || mint.length < 32 || mint.length > 44) {
-            return c.json({ error: "Invalid mint address" }, 400);
-        }
-
-        const body = await c.req.json();
-        if (!body.imageBase64) {
-            logger.warn(`[/admin/tokens/:mint/image] Request missing imageBase64 for mint: ${mint}`);
-            return c.json({ error: "Image data (imageBase64) is required" }, 400);
-        }
-
-        // Basic regex to extract content type and base64 data
-        const matches = body.imageBase64.match(/^data:(image\/[A-Za-z-+.]+);base64,(.+)$/);
-        if (!matches || matches.length !== 3) {
-            logger.warn(`[/admin/tokens/:mint/image] Invalid image data format for mint: ${mint}`);
-            return c.json({ error: "Invalid image format (expected data:image/...;base64,...)" }, 400);
-        }
-
-        const contentType = matches[1];
-        const imageData = matches[2];
-        const imageBuffer = Buffer.from(imageData, "base64");
-
-        const db = getDB();
-
-        // Check if token exists
-        const tokenData = await db
-            .select({ id: tokens.id, ticker: tokens.ticker }) // Select ticker for filename
-            .from(tokens)
-            .where(eq(tokens.mint, mint))
-            .limit(1);
-
-        if (!tokenData || tokenData.length === 0) {
-            return c.json({ error: "Token not found" }, 404);
-        }
-
-        // Generate filename (e.g., using mint and timestamp for uniqueness)
-        const sanitizedMint = mint.substring(0, 8); // Use part of mint for readability
-        let extension = ".jpg"; // Default
-        if (contentType === "image/png") extension = ".png";
-        else if (contentType === "image/gif") extension = ".gif";
-        else if (contentType === "image/svg+xml") extension = ".svg";
-        else if (contentType === "image/webp") extension = ".webp";
-        const imageFilename = `${sanitizedMint}_${Date.now()}${extension}`;
-        const imageKey = `token-images/${imageFilename}`; // Store in standard token-images path
-
-        // --- Upload Image using shared function ---
-        logger.log(`[/admin/tokens/:mint/image] Uploading new image to Storage key: ${imageKey}`);
-        const imageUrl = await uploadToStorage(imageBuffer, { contentType, key: imageKey });
-        logger.log(`[/admin/tokens/:mint/image] New image uploaded successfully: ${imageUrl}`);
-        // --- End Image Upload ---
-
-        // --- Update Token in Database ---
-        await db
-            .update(tokens)
-            .set({
-                image: imageUrl, // Update the image URL
-                lastUpdated: new Date(),
-            })
-            .where(eq(tokens.mint, mint));
-        logger.log(`[/admin/tokens/:mint/image] Updated token ${mint} image URL in DB.`);
-        // --- End DB Update ---
-
-        // Get the fully updated token data to return
-        const updatedToken = await db
-            .select()
-            .from(tokens)
-            .where(eq(tokens.mint, mint))
-            .limit(1);
-
-        return c.json({
-            success: true,
-            message: "Token image updated successfully",
-            imageUrl: imageUrl, // Return the new URL
-            token: updatedToken[0], // Return the full updated token
-        });
-
-    } catch (error) {
-        logger.error(`Error updating token image for ${c.req.param("mint")}:`, error);
-        return c.json(
-            { error: error instanceof Error ? error.message : "Unknown error updating image" },
-            500
-        );
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
     }
+
+    const body = await c.req.json();
+    if (!body.imageBase64) {
+      logger.warn(
+        `[/admin/tokens/:mint/image] Request missing imageBase64 for mint: ${mint}`
+      );
+      return c.json({ error: "Image data (imageBase64) is required" }, 400);
+    }
+
+    // Basic regex to extract content type and base64 data
+    const matches = body.imageBase64.match(
+      /^data:(image\/[A-Za-z-+.]+);base64,(.+)$/
+    );
+    if (!matches || matches.length !== 3) {
+      logger.warn(
+        `[/admin/tokens/:mint/image] Invalid image data format for mint: ${mint}`
+      );
+      return c.json(
+        { error: "Invalid image format (expected data:image/...;base64,...)" },
+        400
+      );
+    }
+
+    const contentType = matches[1];
+    const imageData = matches[2];
+    const imageBuffer = Buffer.from(imageData, "base64");
+
+    const db = getDB();
+
+    // Check if token exists
+    const tokenData = await db
+      .select({ id: tokens.id, ticker: tokens.ticker }) // Select ticker for filename
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Generate filename (e.g., using mint and timestamp for uniqueness)
+    const sanitizedMint = mint.substring(0, 8); // Use part of mint for readability
+    let extension = ".jpg"; // Default
+    if (contentType === "image/png") extension = ".png";
+    else if (contentType === "image/gif") extension = ".gif";
+    else if (contentType === "image/svg+xml") extension = ".svg";
+    else if (contentType === "image/webp") extension = ".webp";
+    const imageFilename = `${sanitizedMint}_${Date.now()}${extension}`;
+    const imageKey = `token-images/${imageFilename}`; // Store in standard token-images path
+
+    // --- Upload Image using shared function ---
+    logger.log(
+      `[/admin/tokens/:mint/image] Uploading new image to Storage key: ${imageKey}`
+    );
+    const imageUrl = await uploadToStorage(imageBuffer, {
+      contentType,
+      key: imageKey,
+    });
+    logger.log(
+      `[/admin/tokens/:mint/image] New image uploaded successfully: ${imageUrl}`
+    );
+    // --- End Image Upload ---
+
+    // --- Update Token in Database ---
+    await db
+      .update(tokens)
+      .set({
+        image: imageUrl, // Update the image URL
+        lastUpdated: new Date(),
+      })
+      .where(eq(tokens.mint, mint));
+    logger.log(
+      `[/admin/tokens/:mint/image] Updated token ${mint} image URL in DB.`
+    );
+    // --- End DB Update ---
+
+    // Get the fully updated token data to return
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token image updated successfully",
+      imageUrl: imageUrl, // Return the new URL
+      token: updatedToken[0], // Return the full updated token
+    });
+  } catch (error) {
+    logger.error(
+      `Error updating token image for ${c.req.param("mint")}:`,
+      error
+    );
+    return c.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error updating image",
+      },
+      500
+    );
+  }
 });
 // --- END IMAGE UPLOAD ROUTE ---
 
-// --- NEW: Route to DELETE a token --- 
+// --- NEW: Route to DELETE a token ---
 adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
   try {
     const mint = c.req.param("mint");
@@ -1248,7 +1372,10 @@ adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
     if (!tokenData || tokenData.length === 0) {
       // Return success even if not found, as the desired state (deleted) is achieved
       logger.warn(`Admin attempt to delete non-existent token ${mint}`);
-      return c.json({ success: true, message: "Token not found or already deleted" });
+      return c.json({
+        success: true,
+        message: "Token not found or already deleted",
+      });
       // Alternatively, return 404: return c.json({ error: "Token not found" }, 404);
     }
 
@@ -1264,7 +1391,9 @@ adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
       return c.json({ error: "Failed to delete token" }, 500);
     }
 
-    logger.log(`Admin deleted token ${mint} (ID: ${deleteResult[0].deletedId})`);
+    logger.log(
+      `Admin deleted token ${mint} (ID: ${deleteResult[0].deletedId})`
+    );
 
     // Optionally: Add logic here to delete associated data (e.g., holders, S3 assets) if needed
 
@@ -1272,11 +1401,15 @@ adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
       success: true,
       message: `Token ${mint} deleted successfully`,
     });
-
   } catch (error) {
     logger.error(`Error deleting token ${c.req.param("mint")}:`, error);
     return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error deleting token" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error deleting token",
+      },
       500
     );
   }
@@ -1288,17 +1421,17 @@ adminRouter.delete("/tokens/:mint", requireAdminOrModerator, async (c) => {
 adminRouter.get("/moderators", requireAdminOrModerator, async (c) => {
   try {
     const db = getDB();
-    
+
     // Get all moderator users
     const moderators = await db
       .select()
       .from(users)
       .where(eq(users.isModerator, 1));
-    
+
     return c.json({
-      moderators: moderators.map(mod => ({
+      moderators: moderators.map((mod) => ({
         ...mod,
-        isAdmin: adminAddresses.includes(mod.address)
+        isAdmin: adminAddresses.includes(mod.address),
       })),
     });
   } catch (error) {
@@ -1315,27 +1448,27 @@ adminRouter.post("/moderators", requireAdmin, async (c) => {
   try {
     const body = await c.req.json();
     const { address } = body;
-    
+
     if (!address || address.length < 32 || address.length > 44) {
       return c.json({ error: "Invalid wallet address" }, 400);
     }
 
     const db = getDB();
-    
+
     // Check if user exists
     let userData = await db
       .select()
       .from(users)
       .where(eq(users.address, address))
       .limit(1);
-    
+
     // If user doesn't exist, create them
     if (!userData || userData.length === 0) {
       await db.insert(users).values({
         address,
         isModerator: 1,
       });
-      
+
       // Get the newly created user
       userData = await db
         .select()
@@ -1348,7 +1481,7 @@ adminRouter.post("/moderators", requireAdmin, async (c) => {
         .update(users)
         .set({ isModerator: 1 })
         .where(eq(users.address, address));
-      
+
       // Get updated user data
       userData = await db
         .select()
@@ -1356,9 +1489,9 @@ adminRouter.post("/moderators", requireAdmin, async (c) => {
         .where(eq(users.address, address))
         .limit(1);
     }
-    
+
     logger.log(`Admin set ${address} as a moderator`);
-    
+
     return c.json({
       success: true,
       message: `User ${address} is now a moderator`,
@@ -1377,37 +1510,40 @@ adminRouter.post("/moderators", requireAdmin, async (c) => {
 adminRouter.delete("/moderators/:address", requireAdmin, async (c) => {
   try {
     const address = c.req.param("address");
-    
+
     if (!address || address.length < 32 || address.length > 44) {
       return c.json({ error: "Invalid wallet address" }, 400);
     }
-    
+
     // Don't allow removing admins from moderator status
     if (adminAddresses.includes(address)) {
-      return c.json({ error: "Cannot remove admin from moderator status" }, 403);
+      return c.json(
+        { error: "Cannot remove admin from moderator status" },
+        403
+      );
     }
 
     const db = getDB();
-    
+
     // Check if user exists and is a moderator
     const userData = await db
       .select()
       .from(users)
       .where(and(eq(users.address, address), eq(users.isModerator, 1)))
       .limit(1);
-    
+
     if (!userData || userData.length === 0) {
       return c.json({ error: "User not found or not a moderator" }, 404);
     }
-    
+
     // Update user to remove moderator status
     await db
       .update(users)
       .set({ isModerator: 0 })
       .where(eq(users.address, address));
-    
+
     logger.log(`Admin removed moderator status from ${address}`);
-    
+
     return c.json({
       success: true,
       message: `User ${address} is no longer a moderator`,
