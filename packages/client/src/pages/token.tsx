@@ -37,7 +37,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { Tooltip } from "react-tooltip";
 
 // Use admin addresses from environment
@@ -119,8 +119,10 @@ const setLastTab = (address: string, tab: string) => {
 const codex = new Codex(import.meta.env.VITE_CODEX_API_KEY);
 
 export default function Page() {
-  const params = useParams<{ address: string }>();
-  const address = params?.address;
+  const { address } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState("chart");
+  const [isInitialMount, setIsInitialMount] = useState(true);
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
@@ -131,41 +133,54 @@ export default function Page() {
     : false;
   // ---- End Moderator Check ----
 
-  // ---- State for active tab ----
-  // Initialize with default, effect will override from localStorage
-  const [activeTab, setActiveTab] = useState<
-    "chart" | "ai" | "agents" | "chat"
-  >("chart");
-  const isInitialMount = useRef(true); // Ref to track initial mount
-
-  // Effect to READ last tab from localStorage on mount/address change
+  // Effect to set initial tab from query param or localStorage
   useEffect(() => {
-    if (address) {
-      const lastTabs = getLastTabs();
-      const savedTab = lastTabs[address];
-      if (savedTab && ["chart", "ai", "agents", "chat"].includes(savedTab)) {
-        setActiveTab(savedTab as typeof activeTab);
+    if (!address) return;
+
+    const tab = searchParams.get("tab");
+    if (tab && ["chart", "ai", "agents", "chat"].includes(tab)) {
+      setActiveTab(tab);
+    } else {
+      const lastTab = getLastTabs()[address];
+      if (lastTab) {
+        setActiveTab(lastTab);
       } else {
-        setActiveTab("chart"); // Default if no valid saved tab
+        setActiveTab("chart"); // Explicitly set to chart if no saved tab
       }
-      // Ensure initial mount flag is handled correctly after first render potential
-      requestAnimationFrame(() => {
-        isInitialMount.current = false;
-      });
     }
-    // Reset initial mount flag when address changes
-    return () => {
-      isInitialMount.current = true;
-    };
-  }, [address]);
+  }, [address, searchParams]);
 
-  // Effect to WRITE active tab to localStorage on change
+  // Effect to update URL and localStorage when tab changes
   useEffect(() => {
-    // Don't write during initial mount/restore phase
-    if (!isInitialMount.current && address) {
-      setLastTab(address, activeTab);
+    if (!address || isInitialMount) {
+      setIsInitialMount(false);
+      return;
     }
-  }, [activeTab, address]);
+
+    // Update localStorage
+    setLastTab(address, activeTab);
+
+    const params = new URLSearchParams(searchParams);
+    
+    // If switching to chart tab, clear all query parameters
+    if (activeTab === "chart") {
+      setSearchParams(new URLSearchParams());
+      return;
+    }
+    
+    // If switching to a non-chat tab, remove the tier parameter
+    if (activeTab !== "chat") {
+      params.delete("tier");
+    }
+    
+    // Update the tab parameter
+    params.set("tab", activeTab);
+
+    // Only update URL if there are actual changes
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params);
+    }
+  }, [activeTab, address, searchParams, setSearchParams, isInitialMount]);
 
   // Fetch token details from API
   const tokenQuery = useQuery({
@@ -256,7 +271,7 @@ export default function Page() {
     : Number(tokenPriceUSD) / token?.solPriceUSD;
 
   const { tokenBalance } = useTokenBalance({
-    tokenId: token?.mint || (params?.address as string),
+    tokenId: token?.mint || (address as string),
   });
   const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
 

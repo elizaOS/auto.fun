@@ -2,7 +2,7 @@ import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import AudioPlayer from "../audio-player";
 import Button from "../button";
@@ -85,6 +85,29 @@ export default function CommunityTab() {
     "idle" | "processing" | "processed" | "failed"
   >("idle");
   const { publicKey } = useWallet();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Effect to set initial tab from query param
+  useEffect(() => {
+    const mediaType = searchParams.get("mediaType");
+    if (mediaType && ["Image", "Video", "Audio"].includes(mediaType)) {
+      setCommunityTab(mediaType as ICommunityTabs);
+    }
+  }, [searchParams]);
+
+  // Effect to update URL when tab changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (communityTab !== "Image") {
+      params.set("mediaType", communityTab);
+    } else {
+      params.delete("mediaType");
+    }
+    const newUrl = `${location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", newUrl);
+  }, [communityTab, location.pathname, searchParams]);
+
   // Remove these older duplicate declarations
   // const [isSharing, setIsSharing] = useState(false);
   // const [shareError, setShareError] = useState<string | null>(null);
@@ -118,7 +141,6 @@ export default function CommunityTab() {
 
   // Get token mint from URL params with better fallback logic
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
-  const location = useLocation();
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
