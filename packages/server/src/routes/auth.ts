@@ -5,7 +5,7 @@ import {
   authStatus,
   generateNonce,
   logout
-} from "../auth";
+} from "../auth/auth";
 import { getDB, users } from "../db";
 import { awardUserPoints } from "../points";
 import { logger } from "../util";
@@ -18,28 +18,6 @@ const authRouter = new Hono<{
 
 authRouter.post("/register", async (c) => {
   try {
-    // Special handling for test environment
-    if (process.env.NODE_ENV === "test") {
-      const body = await c.req.json();
-      const { address } = body;
-
-      if (!address) {
-        return c.json({ error: "Address is required" }, 400);
-      }
-
-      // In test mode, just return a success with mock user data
-      return c.json(
-        {
-          user: {
-            id: "mock-user-id",
-            address,
-            name: "Test User",
-            createdAt: new Date().toISOString(),
-          },
-        },
-        200,
-      );
-    }
 
     const body = await c.req.json();
 
@@ -71,7 +49,7 @@ authRouter.post("/register", async (c) => {
       // ** Points system **
       // Award points for registration
       awardUserPoints(
-                userData.address,
+        userData.address,
         { type: "wallet_connected" },
         "User registered",
       );
