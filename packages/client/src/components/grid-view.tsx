@@ -4,60 +4,123 @@ import { abbreviateNumber, fromNow, resizeImage } from "@/utils";
 import { Link } from "react-router";
 import TokenStatus from "./token-status";
 import Verified from "./verified";
+import CurveProgressBar from "@/components/home/curve-progress-bar";
+import { useState } from "react";
+import { Copy, Check } from "lucide-react";
+import ExpandableText from "./global/ExpandableText";
+import CopyableTruncatedText from "./global/CopyTruncatedText";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
       {data.map((token: IToken, _: number) => {
         return <GridItem token={token} key={token.mint} />;
       })}
     </div>
   );
 }
+const truncateMiddle = (s: string, start = 4, end = 4) =>
+  `${s.slice(0, start)}…${s.slice(s.length - end)}`;
 
-export const GridItem = ({ token }: { token: IToken }) => {
+export const GridItem = ({ token, featuredSection = false }: { token: IToken, featuredSection?: boolean }) => {
   return (
     <Link
       to={`/token/${token.mint}`}
-      className="bg-autofun-background-card group"
+      className={`
+        flex
+        bg-[#171717]
+        border border-[#262626]
+        rounded-[2px]
+        overflow-hidden
+        hover:scale-[1.01]
+        transition-transform duration-200
+        cursor-pointer
+        flex-col
+      `}
+      aria-label={`View details for ${token.name}`}
     >
-      <div className="flex flex-col min-w-0 relative">
-        <div className="absolute top-0 left-0 p-2 px-3 z-10 group-hover:opacity-100 opacity-0 transition-opacity duration-200">
-          <TokenStatus token={token} />
-        </div>
-        <div className="absolute left-0 bottom-0 p-2 px-3 w-full z-10">
-          <div className="flex items-center gap-4 justify-between">
-            <div className="flex items-center gap-2 w-full min-w-0">
-              <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-primary text-lg font-bold font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-                ${token.ticker}
-              </div>
-              <Verified isVerified={token?.verified ? true : false} />
-            </div>
-            <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-primary text-lg shrink-0 font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-              {fromNow(token.createdAt, true)}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-col w-full min-w-0 z-10">
-          <div className="absolute flex flex-col top-0 right-0 p-2 px-3 items-end min-w-0 gap-2">
-            <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-              MC {abbreviateNumber(token.marketCapUSD)}
-            </div>
-            <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-primary text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-              Vol {abbreviateNumber(token.volume24h)}
-            </div>
-          </div>
+      <div className={
+        `flex gap-4  w-full
+        ${featuredSection ? 'flex-col ' : 'flex-row px-4 py-2'}`}>
+        <div className={`
+          ${featuredSection ? 'w-full ' : 'w-30 h-30'}
+          flex-shrink-0
+          relative
+          rounded-md
+          overflow-hidden
+        `}>
+          <SkeletonImage
+            src={resizeImage(token.image, 350, 350)}
+            alt={`${token.name} logo`}
+            className="w-full h-full object-cover"
+          />
+
         </div>
 
-        <div className="w-full h-full aspect-square relative">
-          <div className="absolute top-0 rotate-180 aspect-square size-full bg-[linear-gradient(to_bottom,rgba(0,0,0,0.8)_0%,transparent_20%,transparent_80%,rgba(0,0,0,0.5)_100%)] z-1" />
-          <SkeletonImage
-            src={resizeImage(token.image, 300, 300)}
-            alt="image"
-            className="w-full h-full object-cover aspect-square z-[-1]"
-          />
+        <div className={`flex-1 flex flex-col
+           justify-between text-[#A6A6A6]
+             w-full
+              ${featuredSection ? 'p-2' : 'p-0'}
+             `}>
+          <div className="flex items-center space-x-2 w-full">
+            <h3 className="text-md font-bold truncate text-white">
+              {token.name}
+            </h3>
+            <Verified isVerified={!!token.verified} />
+
+            <span className="text-xs font-mono  truncate">
+              ${token.ticker}
+            </span>
+            <time
+              dateTime={token.createdAt}
+              className="
+              ml-auto
+             border border-[#262626]
+              px-[2px] text-xs 
+              font-mono"
+            >
+              {fromNow(token.createdAt, true)}
+            </time>
+          </div>
+          <div className="flex items-baseline justify-between ">
+            <div className="mt-2 flex items-baseline justify-between flex-col">
+              <span className="text-md ">
+                Market Cap
+              </span>
+              <span className="text-lg font-bold text-green-400">
+                {abbreviateNumber(token.marketCapUSD)}
+              </span>
+            </div>
+            <CopyableTruncatedText
+              text={token.mint} />
+
+          </div>
+
         </div>
       </div>
+      {token.status === "active" && token.imported === 0  && !featuredSection && (
+            <div className="px-4 mb-2">
+              <div className="flex justify-between items-center text-sm font-medium text-gray-200 mb-1">
+                <span className="text-[#A6A6A6]">Bonding Curve Progress</span>
+                <span className="stext-[#03ff24]">{Math.round(token.curveProgress)}%</span>
+              </div>
+              <CurveProgressBar progress={token.curveProgress} />
+            </div>
+          )}
+      {token.description && !featuredSection && (
+        <div className="px-4 py-2 border-t border-[#262626] text-[#A6A6A6]">
+          <ExpandableText
+            text={token.description}
+            className="text-sm text-autofun-text-primary"
+            limit={100}
+            moreLabel="See more"
+            lessLabel="See less"
+          />
+        </div>
+      )}
+
     </Link>
   );
 };
+
+

@@ -1,4 +1,5 @@
 import { IToken } from "@/types";
+import { info } from "console";
 import { twMerge } from "tailwind-merge";
 
 type TVariant = "info" | "destructive" | "warning" | "imported";
@@ -17,6 +18,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
     withdrawn: "Withdrawn",
     partner_import: "Imported",
     imported: "Imported",
+    undefined: undefined,
   };
 
   const variantStatus: Record<IToken["status"] | "imported", TVariant> = {
@@ -30,6 +32,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
     withdrawn: "warning",
     partner_import: "info",
     imported: "imported",
+    undefined: "info",
   };
 
   const variants: Record<TVariant, string> = {

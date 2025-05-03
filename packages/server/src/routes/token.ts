@@ -158,6 +158,7 @@ function buildTokensBaseQuery(
     hide_from_featured: tokens.hide_from_featured,
     ticker: tokens.ticker,
     verified: tokens.verified,
+    description: tokens.description,
   }).from(tokens).$dynamic();
 
   const conditions: (SQL | undefined)[] = [];
@@ -1152,15 +1153,15 @@ tokenRouter.get("/tokens", async (c) => {
 
   const redisCache = await getGlobalRedisCache();
 
-  if (redisCache) {
-    const cachedData = await redisCache.getCompressed(cacheKey);
-    if (cachedData) {
-      const parsedData = JSON.parse(cachedData as string) as Token[];
-      return c.json(parsedData);
-    } else {
-      logger.log(`Cache miss for ${cacheKey}`);
-    }
-  }
+  // if (redisCache) {
+  //   const cachedData = await redisCache.getCompressed(cacheKey);
+  //   if (cachedData) {
+  //     const parsedData = JSON.parse(cachedData as string) as Token[];
+  //     return c.json(parsedData);
+  //   } else {
+  //     logger.log(`Cache miss for ${cacheKey}`);
+  //   }
+  // }
 
   const db = getDB();
 
