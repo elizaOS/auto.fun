@@ -26,14 +26,12 @@ interface AuthTokenData {
   expiresAt?: number;
 }
 
-// Extend Context type for user info
 declare module "hono" {
   interface ContextVariableMap {
     user?: { publicKey: string } | null;
   }
 }
 
-// Context type with env bindings and variables
 type AppContext = Context<{
   Bindings: Env;
   Variables: {
@@ -49,76 +47,7 @@ interface AuthTokenData {
   expiresAt?: number;
 }
 
-/**
- * Validates a JWT token
- */
-async function validateJwtToken(token: string): Promise<AuthTokenData | null> {
-  try {
-    // For development, always use a standard salt if not provided
-    const salt =
-      process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
 
-    // Verify the JWT token
-    const isValid = await jwt.verify(token, salt);
-
-    if (!isValid) {
-      logger.error("JWT token verification failed");
-      return null;
-    }
-
-    // Decode the token to get the payload
-    const decoded = jwt.decode(token);
-
-    if (!decoded || !decoded.payload) {
-      logger.error("JWT token missing payload");
-      return null;
-    }
-
-    // Check if the token is expired
-    if (
-      decoded.payload.exp &&
-      decoded.payload.exp < Math.floor(Date.now() / 1000)
-    ) {
-      logger.error("JWT token has expired");
-      return null;
-    }
-
-    // Extract the public key from the subject field
-    const publicKey = decoded.payload.sub;
-
-    if (!publicKey) {
-      logger.error("JWT token missing subject/publicKey");
-      return null;
-    }
-
-    // Create a type for custom payload with privileges
-    interface CustomJwtPayload {
-      sub?: string;
-      jti?: string;
-      iat?: number;
-      exp?: number;
-      privileges?: string[];
-      [key: string]: any;
-    }
-
-    // Use the extended payload type
-    const payload = decoded.payload as CustomJwtPayload;
-
-    // Convert to our standard AuthTokenData format
-    const tokenData: AuthTokenData = {
-      publicKey,
-      tokenId: payload.jti || `jwt_${Date.now()}`,
-      timestamp: payload.iat ? payload.iat * 1000 : Date.now(),
-      expiresAt: payload.exp ? payload.exp * 1000 : undefined,
-      privileges: payload.privileges || [],
-    };
-
-    return tokenData;
-  } catch (error) {
-    logger.error("Error validating JWT token:", error);
-    return null;
-  }
-}
 
 
 export const generateNonce = async (c: AppContext) => {
@@ -133,20 +62,17 @@ export const generateNonce = async (c: AppContext) => {
       return c.json({ message: "Invalid request format: malformed JSON" }, 400);
     }
 
-    // Generate a timestamp-based nonce
     const timestamp = Date.now();
 
     return c.json({ nonce: timestamp.toString() });
   } catch (error) {
     logger.error("Error generating nonce:", error);
-    // Still return a nonce even on error for test compatibility
     return c.json({ nonce: Date.now().toString() });
   }
 };
 
 export const authenticate = async (c: AppContext) => {
   try {
-    // Safely parse JSON, using try-catch to handle malformed JSON
     let body;
     try {
       body = await c.req.json();
@@ -174,7 +100,6 @@ export const authenticate = async (c: AppContext) => {
       return c.json({ message: "Invalid signature" }, 401);
     }
 
-    // First, prioritize checking for SIP-99 format (Sign-in with Solana)
     if (header && payload && signature) {
       try {
         const msg = new SIWS({ header, payload });
