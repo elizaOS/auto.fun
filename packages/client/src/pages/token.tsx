@@ -161,18 +161,18 @@ export default function Page() {
     setLastTab(address, activeTab);
 
     const params = new URLSearchParams(searchParams);
-    
+
     // If switching to chart tab, clear all query parameters
     if (activeTab === "chart") {
       setSearchParams(new URLSearchParams());
       return;
     }
-    
+
     // If switching to a non-chat tab, remove the tier parameter
     if (activeTab !== "chat") {
       params.delete("tier");
     }
-    
+
     // Update the tab parameter
     params.set("tab", activeTab);
 
