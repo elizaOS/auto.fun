@@ -182,10 +182,10 @@ For avoidance of doubt, your use of the platform does not grant you any rights i
   {
     header: "General",
     content: `
-    You must not assign, sublicense, transfer or otherwise deal in any other way with any of your rights or obligations under these terms and conditions. We may assign our rights under these terms and conditions at our discretion. 
-Any waiver of any term on these terms and conditions by us can only be done in express writing. Any failure on our part to enforce a term does not constitute a waiver and we reserve the right in relation to all breaches unless expressly stated otherwise. 
-The contents of these terms and conditions constitute the entire agreement between you and us and supersede any prior negotiations, representations, understandings or arrangements made between you and us regarding the subject matter of this agreement or your access to or use of the platform, whether made orally or in writing. 
-If a provision of these terms and conditions is invalid or unenforceable it is to be read down or severed to the extent necessary without affecting the validity or enforceability of the remaining provisions. 
+    You must not assign, sublicense, transfer or otherwise deal in any other way with any of your rights or obligations under these terms and conditions. We may assign our rights under these terms and conditions at our discretion.
+Any waiver of any term on these terms and conditions by us can only be done in express writing. Any failure on our part to enforce a term does not constitute a waiver and we reserve the right in relation to all breaches unless expressly stated otherwise.
+The contents of these terms and conditions constitute the entire agreement between you and us and supersede any prior negotiations, representations, understandings or arrangements made between you and us regarding the subject matter of this agreement or your access to or use of the platform, whether made orally or in writing.
+If a provision of these terms and conditions is invalid or unenforceable it is to be read down or severed to the extent necessary without affecting the validity or enforceability of the remaining provisions.
 Eliza Foundation OpCo Ltd, a company incorporated in the Cayman Islands, holds the benefit of these terms and conditions on trust for and for the benefit of its affiliates, related entities and other members of the group of companies forming the Auto.Fun group (together, the Eliza Group) and may enforce these terms for and on behalf of each such other person. 
 A provision of these terms and conditions which can and is intended to operate after its conclusion or termination will remain in full force and effect, including all indemnities, limitations on liability and releases.
 You may not commence court proceedings relating to any dispute arising from, or in connection with, the platform without first meeting with us to seek (in good faith) to resolve that dispute.
