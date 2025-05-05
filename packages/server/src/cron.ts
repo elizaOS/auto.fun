@@ -1,18 +1,19 @@
-import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
+import {
+  TokenData,
+  TokenDBData,
+} from "@autodotfun/raydium/src/types/tokenData";
 import * as idlJson from "@autodotfun/types/idl/autofun.json";
 import * as raydium_vault_IDL_JSON from "@autodotfun/types/idl/raydium_vault.json";
 import { Autofun } from "@autodotfun/types/types/autofun";
 import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import { S3Client } from "@aws-sdk/client-s3"; // S3 Import
 import { eq, sql } from "drizzle-orm";
-import { Buffer } from 'node:buffer'; // Buffer import
+import { Buffer } from "node:buffer"; // Buffer import
 import crypto from "node:crypto"; // Import crypto for lock value
 import { getLatestCandle } from "./chart";
 import { getDB, Token, tokens } from "./db";
 import { ExternalToken } from "./externalToken";
-import {
-  checkAndReplenishTokens
-} from "./generation";
+import { checkAndReplenishTokens } from "./generation";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { getToken } from "./migration/migrations";
 import { awardGraduationPoints, awardUserPoints } from "./points";
@@ -22,41 +23,13 @@ import {
   calculateFeaturedScore,
   createNewTokenData,
   getFeaturedMaxValues,
-  logger
+  logger,
 } from "./util";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 
-const idl: Autofun = JSON.parse(JSON.stringify(idlJson));
-const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
-
-
-// S3 Client Helper (copied from uploader.ts, using process.env)
-let s3ClientInstance: S3Client | null = null;
-function getS3Client(): S3Client {
-  if (s3ClientInstance) return s3ClientInstance;
-  const accountId = process.env.S3_ACCOUNT_ID;
-  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-  const bucketName = process.env.S3_BUCKET_NAME;
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-    logger.error("Missing R2 S3 API environment variables.");
-    throw new Error("Missing required R2 S3 API environment variables.");
-  }
-  const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-  s3ClientInstance = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
-  logger.log(`S3 Client initialized for endpoint: ${endpoint}`);
-  return s3ClientInstance;
-}
-
-// Store the last processed signature to avoid duplicate processing
-const lastProcessedSignature: string | null = null;
-
-// Define max swaps to keep in Redis list
-const MAX_SWAPS_TO_KEEP = 1000;
-
 export function sanitizeTokenForWebSocket(
   token: Partial<Token>,
-  maxBytes = 95000,
+  maxBytes = 95000
 ): Partial<Token> {
   const clone = { ...token };
 
@@ -104,7 +77,7 @@ export function sanitizeTokenForWebSocket(
   };
 }
 function convertTokenDataToDBData(
-  tokenData: Partial<TokenData>,
+  tokenData: Partial<TokenData>
 ): Partial<TokenDBData> {
   const now = new Date();
   return {
@@ -116,7 +89,7 @@ function convertTokenDataToDBData(
         : tokenData.migration,
     withdrawnAmounts:
       tokenData.withdrawnAmounts &&
-        typeof tokenData.withdrawnAmounts !== "string"
+      typeof tokenData.withdrawnAmounts !== "string"
         ? JSON.stringify(tokenData.withdrawnAmounts)
         : tokenData.withdrawnAmounts,
     poolInfo:
@@ -127,7 +100,7 @@ function convertTokenDataToDBData(
 }
 
 export async function updateTokenInDB(
-  tokenData: Partial<TokenData>,
+  tokenData: Partial<TokenData>
 ): Promise<Token> {
   const db = getDB();
   const now = new Date().toISOString();
@@ -210,12 +183,11 @@ type ProcessResult = {
   event?: string;
 };
 
-
 type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
   logs: string[],
   signature: string,
-  wsClient?: WebSocketClient,
+  wsClient?: WebSocketClient
 ): Promise<ProcessResult> {
   if (!wsClient) {
     wsClient = getWebSocketClient();
@@ -243,7 +215,7 @@ export async function processTransactionLogs(
 async function handleNewToken(
   logs: string[],
   signature: string,
-  wsClient: WebSocketClient,
+  wsClient: WebSocketClient
 ): Promise<HandlerResult> {
   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
   if (!newTokenLog) return null;
@@ -262,8 +234,14 @@ async function handleNewToken(
     const newToken = await createNewTokenData(
       signature,
       rawTokenAddress,
-      rawCreatorAddress,
+      rawCreatorAddress
     );
+    if (newToken.tokenSupplyUiAmount !== 1000000000) {
+      logger.error(
+        `Token supply is not 1 billion for ${rawTokenAddress}: ${newToken.tokenSupplyUiAmount}`
+      );
+      return null;
+    }
     if (!newToken) {
       logger.error(`Failed to create new token data for ${rawTokenAddress}`);
       return null;
@@ -272,7 +250,11 @@ async function handleNewToken(
       .insert(tokens)
       .values([newToken as Token])
       .onConflictDoNothing();
-    await wsClient.emit("global", "newToken", sanitizeTokenForWebSocket(newToken));
+    await wsClient.emit(
+      "global",
+      "newToken",
+      sanitizeTokenForWebSocket(newToken)
+    );
     await updateHoldersCache(rawTokenAddress);
 
     return { found: true, tokenAddress: rawTokenAddress, event: "newToken" };
@@ -285,7 +267,7 @@ async function handleNewToken(
 async function handleSwap(
   logs: string[],
   signature: string,
-  wsClient: WebSocketClient,
+  wsClient: WebSocketClient
 ): Promise<HandlerResult | null> {
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
@@ -293,16 +275,19 @@ async function handleSwap(
   const feeLog = logs.find((log) => log.includes("Fee:"));
   const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
 
-
   if (mintLog && swapLog && reservesLog && swapeventLog) {
     try {
       const mintAddress = mintLog?.match(/Mint:\s*([A-Za-z0-9]+)/)?.[1];
-      const swapMatch = swapLog?.match(/Swap:\s+([A-Za-z0-9]+)\s+(\d+)\s+(\d+)/);
+      const swapMatch = swapLog?.match(
+        /Swap:\s+([A-Za-z0-9]+)\s+(\d+)\s+(\d+)/
+      );
       const user = swapMatch?.[1];
       const direction = swapMatch?.[2];
       const amount = swapMatch?.[3];
 
-      const amountOut = swapeventLog?.match(/SwapEvent:\s+\S+\s+\d+\s+(\d+)/)?.[1];
+      const amountOut = swapeventLog?.match(
+        /SwapEvent:\s+\S+\s+\d+\s+(\d+)/
+      )?.[1];
       const reserveMatch = reservesLog?.match(/Reserves:\s*(\d+)\s+(\d+)/);
       const reserveToken = reserveMatch?.[1];
       const reserveLamport = reserveMatch?.[2];
@@ -345,33 +330,35 @@ async function handleSwap(
       const currentPrice = solAmount / tokenAmount;
       const tokenPriceInSol = currentPrice / 10 ** TOKEN_DECIMALS;
       const tokenPriceUSD =
-        currentPrice > 0 ? tokenPriceInSol * solPrice * 10 ** TOKEN_DECIMALS : 0;
+        currentPrice > 0
+          ? tokenPriceInSol * solPrice * 10 ** TOKEN_DECIMALS
+          : 0;
 
       tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
       tokenWithSupply.currentPrice = currentPrice;
 
       const tokenWithMarketData = await calculateTokenMarketData(
         tokenWithSupply,
-        solPrice,
+        solPrice
       );
       console.log("fetched token market data", tokenWithMarketData);
       const marketCapUSD = tokenWithMarketData.marketCapUSD;
-      const price = direction === "1"
-        ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
-        : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS);
-      const priceUsd = price * solPrice
+      const price =
+        direction === "1"
+          ? Number(amountOut) / 1e9 / (Number(amount) / 10 ** TOKEN_DECIMALS)
+          : Number(amount) / 1e9 / (Number(amountOut) / 10 ** TOKEN_DECIMALS);
+      const priceUsd = price * solPrice;
       const swapRecord = {
         id: crypto.randomUUID(),
         tokenMint: mintAddress,
         solAmount,
         tokenAmount,
         user,
-        type: direction === "0" ? "buy" : "sell" as any,
+        type: direction === "0" ? "buy" : ("sell" as any),
         direction: parseInt(direction) as 1 | 0,
         amountIn: Number(amount),
         amountOut: Number(amountOut),
-        price:
-          price,
+        price: price,
         priceUsd: priceUsd,
         txId: signature,
         timestamp: new Date(),
@@ -392,7 +379,6 @@ async function handleSwap(
         timestamp: swapRecord.timestamp.toISOString(),
       });
 
-
       const liquidity =
         (Number(reserveLamport) / 1e9) * solPrice +
         (Number(reserveToken) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
@@ -409,20 +395,21 @@ async function handleSwap(
           solPriceUSD: solPrice,
           curveProgress:
             ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES)) /
-              (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) *
+              (Number(process.env.CURVE_LIMIT) -
+                Number(process.env.VIRTUAL_RESERVES))) *
             100,
           txId: signature,
           lastUpdated: new Date(),
-          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
-            ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-            : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-            }`,
+          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
+            direction === "1"
+              ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+              : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          }`,
         })
         .where(eq(tokens.mint, mintAddress))
         .returning();
       console.log("updating the holder cache", mintAddress);
       await updateHoldersCache(mintAddress, false);
-
 
       const newToken = updatedTokens[0];
       const usdVolume =
@@ -431,9 +418,7 @@ async function handleSwap(
           : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
 
       const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
-      console.log("awarding user points",
-        swapRecord.user,
-      );
+      console.log("awarding user points", swapRecord.user);
       try {
         await awardUserPoints(swapRecord.user, {
           type: `${bondStatus}_${swapRecord.type}` as any,
@@ -463,9 +448,6 @@ async function handleSwap(
         logger.error("Failed to award first_buyer:", err);
       }
 
-
-
-
       const latestCandle = await getLatestCandle(mintAddress, swapRecord);
       console.log("fetched latest candle", latestCandle);
       await wsClient.to(`token-${mintAddress}`).emit("newCandle", latestCandle);
@@ -484,7 +466,6 @@ async function handleSwap(
         tokenAddress: mintAddress,
         event: "swap",
       };
-
     } catch (err) {
       logger.error(`Error in Swap handler: ${err}`);
       return null;
@@ -493,13 +474,12 @@ async function handleSwap(
     logger.log("Swap log not found or incomplete.");
     return null;
   }
-
 }
 
 async function handleCurveComplete(
   logs: string[],
   signature: string,
-  wsClient: WebSocketClient,
+  wsClient: WebSocketClient
 ): Promise<HandlerResult> {
   const completeLog = logs.find((log) => log.includes("curve is completed"));
   const mintLog = logs.find((log) => log.includes("Mint:"));
@@ -517,7 +497,6 @@ async function handleCurveComplete(
       logger.error(`Token not found: ${mintAddress}`);
       return null;
     }
-
 
     // const connection = new Connection(
     //   process.env.NETWORK === "devnet"
@@ -561,7 +540,7 @@ async function handleCurveComplete(
     await wsClient.emit(
       `token-${mintAddress}`,
       "updateToken",
-      sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
+      sanitizeTokenForWebSocket(convertTokenDataToDBData(token))
     );
     // const ext = await ExternalToken.create(mintAddress, redisCache);
 

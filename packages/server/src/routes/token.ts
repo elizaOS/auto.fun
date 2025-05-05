@@ -42,7 +42,10 @@ import {
 import { parseTokensQuery } from "./validators/tokenQuery";
 import { parseHoldersQuery } from "./validators/tokenHoldersQuery";
 import { parseSolanaAddress, parsePaginationQuery } from "./validators/global";
-import { parseUpdateTokenRequest, UpdateTokenBody } from "./validators/tokenUpdateQuery";
+import {
+  parseUpdateTokenRequest,
+  UpdateTokenBody,
+} from "./validators/tokenUpdateQuery";
 import { parseSearchTokenRequest } from "./validators/tokenSearchQuery";
 
 if (!process.env.CODEX_API_KEY) {
@@ -135,32 +138,38 @@ function buildTokensBaseQuery(
   } = params;
   // Select specific columns needed eventually (adjust as needed)
   // Selecting all initially, will be refined before sorting
-  let query = db.select({
-    id: tokens.id,
-    mint: tokens.mint,
-    name: tokens.name,
-    tokenPriceUSD: tokens.tokenPriceUSD,
-    priceChange24h: tokens.priceChange24h,
-    volume24h: tokens.volume24h,
-    marketCapUSD: tokens.marketCapUSD,
-    currentPrice: tokens.currentPrice,
-    lastPriceUpdate: tokens.lastPriceUpdate,
-    status: tokens.status,
-    holderCount: tokens.holderCount,
-    tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
-    image: tokens.image,
-    createdAt: tokens.createdAt,
-    curveProgress: tokens.curveProgress,
-    curveLimit: tokens.curveLimit,
-    imported: tokens.imported,
-    hidden: tokens.hidden,
-    featured: tokens.featured,
-    hide_from_featured: tokens.hide_from_featured,
-    ticker: tokens.ticker,
-    verified: tokens.verified,
-  }).from(tokens).$dynamic();
+  let query = db
+    .select({
+      id: tokens.id,
+      mint: tokens.mint,
+      name: tokens.name,
+      tokenPriceUSD: tokens.tokenPriceUSD,
+      priceChange24h: tokens.priceChange24h,
+      volume24h: tokens.volume24h,
+      marketCapUSD: tokens.marketCapUSD,
+      currentPrice: tokens.currentPrice,
+      lastPriceUpdate: tokens.lastPriceUpdate,
+      status: tokens.status,
+      holderCount: tokens.holderCount,
+      tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
+      image: tokens.image,
+      createdAt: tokens.createdAt,
+      curveProgress: tokens.curveProgress,
+      curveLimit: tokens.curveLimit,
+      imported: tokens.imported,
+      hidden: tokens.hidden,
+      featured: tokens.featured,
+      hide_from_featured: tokens.hide_from_featured,
+      ticker: tokens.ticker,
+      verified: tokens.verified,
+    })
+    .from(tokens)
+    .$dynamic();
 
   const conditions: (SQL | undefined)[] = [];
+
+  conditions.push(sql`${tokens.tokenSupplyUiAmount} = ${1000000000}`);
+  conditions.push(sql`${tokens.curveProgress} < ${0}`);
 
   if (hideImported === 1) {
     conditions.push(sql`${tokens.imported} = 0`);
@@ -1006,15 +1015,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: process.env.NETWORK || "devnet",
-        url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: process.env.NETWORK || "devnet",
+          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`
@@ -1118,7 +1127,7 @@ async function checkBlockchainTokenBalance(
 
 tokenRouter.get("/tokens", async (c) => {
   const queryParams = c.req.query();
-  parseTokensQuery(c.req.query())
+  parseTokensQuery(c.req.query());
   const isSearching = !!queryParams.search;
   const MAX_LIMIT = 50;
 
@@ -1296,7 +1305,7 @@ tokenRouter.get("/tokens", async (c) => {
 tokenRouter.get("/token/:mint/holders", async (c) => {
   try {
     const params = parseHoldersQuery(c.req.param("mint"), c.req.query());
-    const mint = params.mint
+    const mint = params.mint;
 
     const redisCache = await getGlobalRedisCache();
     const cacheKey = `holdersCompressed:${mint}`;
@@ -1374,8 +1383,8 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     if (
       !tokenResult ||
-      tokenResult.length === 0
-      // || tokenResult?.[0]?.hidden === 1
+      tokenResult.length === 0 ||
+      tokenResult?.[0]?.hidden === 1
     ) {
       // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
@@ -1427,8 +1436,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     const responseData = token;
 
@@ -1795,7 +1804,6 @@ tokenRouter.post("/token/:mint/update", async (c) => {
   }
   const currentTokenData = tokenDataResult[0];
 
-
   // Permission check
   if (userId !== currentTokenData.creator) {
     return c.json({ error: "Unauthorized" }, 403);
@@ -2015,9 +2023,11 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
   try {
     const mint = parseSolanaAddress(c.req.param("mint"), "mint address");
 
-
     // Get wallet address from query parameter
-    const address = parseSolanaAddress(c.req.query("address"), "wallet address");
+    const address = parseSolanaAddress(
+      c.req.query("address"),
+      "wallet address"
+    );
     if (!address) {
       return c.json({ error: "Invalid wallet address" }, 400);
     }
