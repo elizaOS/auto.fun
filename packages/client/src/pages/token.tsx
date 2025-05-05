@@ -7,6 +7,7 @@ import SkeletonImage from "@/components/skeleton-image";
 import AdminSection from "@/components/token-sections/admin";
 import AgentsSection from "@/components/token-sections/agents";
 import ClaimFees from "@/components/token-sections/claimFees";
+import { BalanceChecker } from "@/components/token-sections/fees-balance";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Scam from "@/components/token/scam-flag";
@@ -399,7 +400,10 @@ export default function Page() {
                   </div>
                 </div>
                 {token?.creator === normalizedWallet && !token?.imported && (
-                  <ClaimFees tokenMint={token?.mint} />
+                  <>
+                    <ClaimFees tokenMint={token?.mint} />
+                    <BalanceChecker tokenMint={token?.mint} />
+                  </>
                 )}
               </div>
 
