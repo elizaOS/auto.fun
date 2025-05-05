@@ -18,12 +18,14 @@ const PRIVACY_POLICY: PolicySection[] = [
     ],
   },
   {
-    content: 'Please read this Policy carefully to understand our practices regarding your personal information and how we will treat it. This Policy may be updated from time to time and will be made available on our website. Your continued use of our Services is deemed to be acceptance to those updated terms so please check this Policy periodically for any updates. The last date modified above will tell you when changes were last made to this Policy.'
+    content:
+      "Please read this Policy carefully to understand our practices regarding your personal information and how we will treat it. This Policy may be updated from time to time and will be made available on our website. Your continued use of our Services is deemed to be acceptance to those updated terms so please check this Policy periodically for any updates. The last date modified above will tell you when changes were last made to this Policy.",
   },
   {
     header: "The Information We Collect About You",
-    subheader: 'What types of personal information do we collect?',
-    content: 'We collect different types of information about you, including information that may identify you, information about you that does not individually identify you, and information that we combine with information from other sources (aggregate data). We collect information about you directly from you, from third parties, and automatically through your use of an App, the Platform, or our Services.',
+    subheader: "What types of personal information do we collect?",
+    content:
+      "We collect different types of information about you, including information that may identify you, information about you that does not individually identify you, and information that we combine with information from other sources (aggregate data). We collect information about you directly from you, from third parties, and automatically through your use of an App, the Platform, or our Services.",
     subcontent: [
       "Email address",
       "Contact information",
@@ -45,7 +47,7 @@ const PRIVACY_POLICY: PolicySection[] = [
     ],
   },
   {
-    subheader: 'The Platform may automatically collect the following',
+    subheader: "The Platform may automatically collect the following",
     content: [
       "Your browser and device type, IP address and operating system",
       "Web pages you view on the Platform; links you click on our website",
@@ -69,7 +71,8 @@ const PRIVACY_POLICY: PolicySection[] = [
   },
   {
     header: "How we use the personal information we collect?",
-    subheader: "We use your information, including your personal information, for the following purposes:",
+    subheader:
+      "We use your information, including your personal information, for the following purposes:",
     content: [
       "To provide the Services. This includes using your information to operate our services, communicate with you regarding your service usage, address your inquiries, and for general customer support. We also use your information to ensure the Platform's functionality, tailor content, offer location-based services, provide personalized assistance, share relevant information with your primary care provider, process transactions, and manage our contractual obligations, including billing and collections.",
       "To improve the Services. We analyze your information to enhance the operation of our Services, conduct market research, understand user interaction with our Platform, and improve overall user experience.",
@@ -80,14 +83,15 @@ const PRIVACY_POLICY: PolicySection[] = [
   },
   {
     header: "When and with whom we share your personal information?",
-    subheader: "We may share your information, including personal information, as follows:",
+    subheader:
+      "We may share your information, including personal information, as follows:",
     content: [
       "With employees of the Company. We disclose the information we collect from you to certain Company employees on a need-to-know basis to train them and to allow them to perform their job duties.",
       "With service providers. We disclose the information we collect from you to our service providers, contractors, and agents who perform functions on our behalf. These service providers may include, but are not limited to, providers, technology service vendors such as Amazon Web Services, Microsoft, Google, payment processors, and marketing or administrative service providers, including research partners.",
       "With Company Users. Information you post to our Platform, including, without limitation, reviews, comments, and text will be available to, and searchable by, all users of the Platform.",
       "With third parties. With your individual consent, we disclose the information we collect from you to specific third parties authorized by you.",
       "Other. We disclose information we collect from you to other persons, including government agencies, regulatory bodies, and law enforcement agencies as required, authorized or otherwise permitted by law.",
-    ],  
+    ],
   },
   {
     subheader: "We also disclose information in the following circumstances:",
@@ -96,30 +100,30 @@ const PRIVACY_POLICY: PolicySection[] = [
       "In Response to Legal Process. We disclose your information to comply with applicable law, judicial proceeding, court order, or other legal process, such as in response to a court order or a subpoena.",
       "To Protect Us and Others. We disclose your information when we believe it is appropriate to do so to investigate, prevent, or take action regarding illegal activities, suspected fraud, situations involving potential threats to the safety of any person, violations of our Terms and Conditions of Use or this Policy, or as evidence in litigation in which we are involved.",
       "Aggregate and De-Identified Information. We may share aggregate or de-identified information about users with third parties for marketing, advertising, our business purposes, research or similar purposes.",
-      "We do not share, sell or otherwise disclose your personal information for purposes other than those outlined in this Policy, unless we have your consent to do so. "
-    ],  
+      "We do not share, sell or otherwise disclose your personal information for purposes other than those outlined in this Policy, unless we have your consent to do so. ",
+    ],
   },
   {
     header: "What Choices Do I Have Regarding Use of My Personal Information?",
     content: `We may send periodic informational emails to you. You may opt-out of promotional emails by following the unsubscribe instructions contained in the email or by contacting us at the details listed at the end of this Policy. Please note that it may take up to ten (10) business days for us to process unsubscribe requests. If you opt-out of receiving promotional emails, we may still send you emails about your account or any services you have requested or received from us
     As further set forth in the Terms and Conditions of Use, by providing your mobile phone number, you are agreeing to be contacted by or on behalf of the Company at the mobile number you have provided, including through telephone calls and text messages, to receive information, product or service-related messages and communications. Message and data rates may apply. To stop receiving text messages, reply to us with the word "STOP". We may confirm your opt out by text message. Please be aware that by withdrawing your consent, some Services may no longer be available to you. If you stop receiving text messages from us, you may not receive important and helpful information and reminders about your services.
     `,
-    
   },
   {
-    header: "Your Rights Regarding Your Information and Accessing and Correcting Your Information",
+    header:
+      "Your Rights Regarding Your Information and Accessing and Correcting Your Information",
     content:
-    "You may contact us to access or change your personal information that we have about you. You may also be able to review and change your personal information by logging into the Platform through your user account. You can contact us to access or find out what information we have about you and to ensure that the information we have about you is correct, complete and current. We may not be able to accommodate your request, for example, if we believe that it would violate any law or legal requirement or cause the information to be incorrect. If we are not able to accommodate your request, we will provide the reason why your information cannot be provided."
+      "You may contact us to access or change your personal information that we have about you. You may also be able to review and change your personal information by logging into the Platform through your user account. You can contact us to access or find out what information we have about you and to ensure that the information we have about you is correct, complete and current. We may not be able to accommodate your request, for example, if we believe that it would violate any law or legal requirement or cause the information to be incorrect. If we are not able to accommodate your request, we will provide the reason why your information cannot be provided.",
   },
   {
     header: "Information About Online Advertising",
     content: `
-    We use third party advertising networks, data analytics providers, operating systems and platforms, and social networks to serve advertisements regarding goods and services that may be of interest to you. These companies place or recognize a unique cookie on your browser (including through the use of pixel tags). They also use these technologies, along with information they collect about your online and offline use, to recognize you across the devices you use, such as a mobile phone and laptop. `
+    We use third party advertising networks, data analytics providers, operating systems and platforms, and social networks to serve advertisements regarding goods and services that may be of interest to you. These companies place or recognize a unique cookie on your browser (including through the use of pixel tags). They also use these technologies, along with information they collect about your online and offline use, to recognize you across the devices you use, such as a mobile phone and laptop. `,
   },
   {
     header: "Retention",
     content: `
-    We will keep your personal information for as long as your user account is active, in order to allow you to have access to your information and to provide you with our services. We may continue to retain your personal information even after you deactivate your user account or stop using the Services, as reasonably necessary to comply with our legal obligations, to resolve disputes regarding our users, enforce our agreements or protect our legitimate interests, consistent with applicable law.`
+    We will keep your personal information for as long as your user account is active, in order to allow you to have access to your information and to provide you with our services. We may continue to retain your personal information even after you deactivate your user account or stop using the Services, as reasonably necessary to comply with our legal obligations, to resolve disputes regarding our users, enforce our agreements or protect our legitimate interests, consistent with applicable law.`,
   },
   {
     header: "Security",
@@ -130,7 +134,8 @@ const PRIVACY_POLICY: PolicySection[] = [
   },
   {
     header: "Contact",
-    content: 'If you have questions about the privacy aspects of our Services, please contact us by email at inquires@elizaos.ai.'
+    content:
+      "If you have questions about the privacy aspects of our Services, please contact us by email at inquires@elizaos.ai.",
   },
 ];
 
