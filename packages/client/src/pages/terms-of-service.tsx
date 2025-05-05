@@ -218,7 +218,8 @@ A court of competent jurisdiction shall have the authority to enforce these Mass
   },
   {
     header: "Regulatory Compliance",
-    subheader: "By accessing the platform from the United States, you acknowledge and agree that: You are solely responsible for ensuring that your use of our services complies with all applicable federal and state laws, including the Securities Act of 1933 and the Securities Exchange Act of 1934; the Commodity Exchange Act; and anti-money laundering and counter-terrorism financing regulations.",
+    subheader:
+      "By accessing the platform from the United States, you acknowledge and agree that: You are solely responsible for ensuring that your use of our services complies with all applicable federal and state laws, including the Securities Act of 1933 and the Securities Exchange Act of 1934; the Commodity Exchange Act; and anti-money laundering and counter-terrorism financing regulations.",
     content: [
       "You must not:",
       "Use our services in violation of federal or state laws",
@@ -230,24 +231,28 @@ A court of competent jurisdiction shall have the authority to enforce these Mass
     ],
   },
   {
-    content: "If you are located in a state with specific cryptocurrency regulations, you may be restricted from accessing certain features or services provided on the platform."
+    content:
+      "If you are located in a state with specific cryptocurrency regulations, you may be restricted from accessing certain features or services provided on the platform.",
   },
   {
     header: "Taxation Responsibility",
-    subheader: "As a US user, you are solely responsible for understanding and complying with all federal, state, and local tax obligations related to your use of our cryptocurrency services and AI tools. This includes, but is not limited to:",
+    subheader:
+      "As a US user, you are solely responsible for understanding and complying with all federal, state, and local tax obligations related to your use of our cryptocurrency services and AI tools. This includes, but is not limited to:",
     content: [
       "Reporting cryptocurrency gains and losses on your annual tax filings as required by the Internal Revenue Service (IRS) under applicable tax regulations",
       "Calculating and paying any applicable capital gains taxes, income taxes, or self-employment taxes associated with cryptocurrency transactions",
-      "Reporting receipt of cryptocurrency rewards, staking earnings, or any other income derived from digital assets."
+      "Reporting receipt of cryptocurrency rewards, staking earnings, or any other income derived from digital assets.",
     ],
   },
   {
     header: "Governing Law & Arbitration",
-    content: "Except as set forth herein for US users, these terms and conditions are governed by the laws of the Cayman Islands and each party submits to the exclusive jurisdiction of the courts of the Cayman Islands and all courts of appeal from there. Any dispute, controversy, or claim arising out of or relating to these terms and conditions or your use of the platform, including any questions regarding their existence, validity, or termination, shall be referred to and finally resolved by binding arbitration administered by an arbitrator of our choosing. The arbitration shall be conducted in a location selected at our sole discretion. The decision of the arbitrator shall be final and binding on all parties, and judgment thereon may be entered in any court of competent jurisdiction. Each party shall bear its own costs and expenses of arbitration. No party shall bring or participate in any class or collective action against the other, and any claim shall be brought solely in an individual capacity. You agree to irrevocably waive your right to bring any claims in a court of law or to participate in a class action lawsuit."
+    content:
+      "Except as set forth herein for US users, these terms and conditions are governed by the laws of the Cayman Islands and each party submits to the exclusive jurisdiction of the courts of the Cayman Islands and all courts of appeal from there. Any dispute, controversy, or claim arising out of or relating to these terms and conditions or your use of the platform, including any questions regarding their existence, validity, or termination, shall be referred to and finally resolved by binding arbitration administered by an arbitrator of our choosing. The arbitration shall be conducted in a location selected at our sole discretion. The decision of the arbitrator shall be final and binding on all parties, and judgment thereon may be entered in any court of competent jurisdiction. Each party shall bear its own costs and expenses of arbitration. No party shall bring or participate in any class or collective action against the other, and any claim shall be brought solely in an individual capacity. You agree to irrevocably waive your right to bring any claims in a court of law or to participate in a class action lawsuit.",
   },
   {
     header: "Contact Us",
-    content: "If you have any questions about these terms and conditions or otherwise need to contact us for any reason, you can reach us at inquires@elizaos.ai"
+    content:
+      "If you have any questions about these terms and conditions or otherwise need to contact us for any reason, you can reach us at inquires@elizaos.ai",
   },
 ];
 
