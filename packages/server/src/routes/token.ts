@@ -1484,6 +1484,23 @@ tokenRouter.post("/create-token", async (c) => {
     logger.log(`Creating token record for: ${mintAddress}`);
 
     const db = getDB();
+
+    const suspended = await db
+      .select({ suspended: users.suspended })
+      .from(users)
+      .where(eq(users.address, user.publicKey))
+      .limit(1);
+
+    const isSuspended = suspended[0]?.suspended === 1;
+    if (isSuspended) {
+      return c.json(
+        {
+          error: "This account is suspended.",
+        },
+        403
+      );
+    }
+
     // Check if token already exists
     const existingToken = await db
       .select()
