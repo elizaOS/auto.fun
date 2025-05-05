@@ -516,10 +516,11 @@ export default function Page() {
                 <div className="flex items-center justify-between pr-2">
                   <div className="flex">
                     <button
-                      className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${activeTab === "chart"
+                      className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                        activeTab === "chart"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                        }`}
+                      }`}
                       onClick={() => setActiveTab("chart")}
                       style={{ marginTop: "-2px", paddingTop: "14px" }}
                     >
@@ -530,16 +531,18 @@ export default function Page() {
                             ? "/token/charton.svg"
                             : "/token/chartoff.svg"
                         }
-                        className={`size-4 inline-block ml-1.5 ${activeTab === "chart" ? "text-black" : ""
-                          }`}
+                        className={`size-4 inline-block ml-1.5 ${
+                          activeTab === "chart" ? "text-black" : ""
+                        }`}
                         alt="chart icon"
                       />
                     </button>
                     <button
-                      className={`px-4 py-3 mx-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${activeTab === "ai"
+                      className={`px-4 py-3 mx-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                        activeTab === "ai"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                        }`}
+                      }`}
                       onClick={() => setActiveTab("ai")}
                       style={{ marginTop: "-2px", paddingTop: "14px" }}
                     >
@@ -550,16 +553,18 @@ export default function Page() {
                             ? "/token/createoff.svg"
                             : "/token/createon.svg"
                         }
-                        className={`size-4 inline-block ml-1.5 ${activeTab === "ai" ? "text-black" : "text-white"
-                          }`}
+                        className={`size-4 inline-block ml-1.5 ${
+                          activeTab === "ai" ? "text-black" : "text-white"
+                        }`}
                         alt="chart icon"
                       />
                     </button>
                     <button
-                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${activeTab === "chat"
+                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                        activeTab === "chat"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                        }`}
+                      }`}
                       onClick={() => setActiveTab("chat")}
                       style={{ marginTop: "-2px", paddingTop: "14px" }}
                     >
@@ -570,16 +575,18 @@ export default function Page() {
                             ? "/token/chatoff.svg"
                             : "/token/chaton.svg"
                         }
-                        className={`size-4 inline-block ml-1.5 ${activeTab === "chat" ? "text-black" : ""
-                          }`}
+                        className={`size-4 inline-block ml-1.5 ${
+                          activeTab === "chat" ? "text-black" : ""
+                        }`}
                         alt="chat icon"
                       />
                     </button>
                     <button
-                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${activeTab === "agents"
+                      className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
+                        activeTab === "agents"
                           ? "bg-autofun-background-highlight text-black"
                           : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                        }`}
+                      }`}
                       onClick={() => setActiveTab("agents")}
                       style={{ marginTop: "-2px", paddingTop: "14px" }}
                     >
@@ -590,8 +597,9 @@ export default function Page() {
                             ? "/token/agentson.svg"
                             : "/token/agentsoff.svg"
                         }
-                        className={`size-4 inline-block ml-1.5 ${activeTab === "agents" ? "text-black" : "text-white"
-                          }`}
+                        className={`size-4 inline-block ml-1.5 ${
+                          activeTab === "agents" ? "text-black" : "text-white"
+                        }`}
                         alt="agents icon"
                       />
                     </button>
@@ -721,14 +729,14 @@ export default function Page() {
                     </div>
                   </div>
                   {token?.status !== "migrated" &&
-                    token?.curveProgress !== 100 ? (
+                  token?.curveProgress !== 100 ? (
                     <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
                       {/* Graduate this coin at{" "}
                     {formatNumber(graduationMarketCap, true)} market cap.{"\n"} */}
                       There is{" "}
                       {formatNumber(
                         (token?.reserveLamport - token?.virtualReserves) /
-                        LAMPORTS_PER_SOL,
+                          LAMPORTS_PER_SOL,
                         true,
                         true,
                       )}{" "}
