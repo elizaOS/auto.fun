@@ -1382,8 +1382,8 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     if (
       !tokenResult ||
-      tokenResult.length === 0 ||
-      tokenResult?.[0]?.hidden === 1
+      tokenResult.length === 0
+      // || tokenResult?.[0]?.hidden === 1
     ) {
       // Don't cache 404s for the main token endpoint
       return c.json({ error: "Token not found", mint }, 404);
