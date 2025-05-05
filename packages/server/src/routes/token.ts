@@ -169,7 +169,7 @@ function buildTokensBaseQuery(
   const conditions: (SQL | undefined)[] = [];
 
   conditions.push(sql`${tokens.tokenSupplyUiAmount} = ${1000000000}`);
-  conditions.push(sql`${tokens.curveProgress} > ${0}`);
+  conditions.push(sql`${tokens.curveProgress} >= ${0}`);
 
   if (hideImported === 1) {
     conditions.push(sql`${tokens.imported} = 0`);
