@@ -158,7 +158,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                             className="size-2.5 rounded-full"
                           />
                           <span className="text-sm">
-                            {solana}
+                            {Number(solana).toFixed(3)}
                             {/* {formatNumber(solana, true, true)} */}
                           </span>
                           {usdValue ? (
