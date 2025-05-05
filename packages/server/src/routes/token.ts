@@ -1490,7 +1490,7 @@ tokenRouter.post("/create-token", async (c) => {
       .where(eq(users.address, user.publicKey))
       .limit(1);
 
-    const isSuspended = suspended[0]?.suspended === 1;
+    const isSuspended = suspended?.[0]?.suspended === 1;
     if (isSuspended) {
       return c.json(
         {
