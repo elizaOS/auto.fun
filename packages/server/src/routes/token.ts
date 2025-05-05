@@ -168,9 +168,6 @@ function buildTokensBaseQuery(
 
   const conditions: (SQL | undefined)[] = [];
 
-  conditions.push(sql`${tokens.tokenSupplyUiAmount} = ${1000000000}`);
-  conditions.push(sql`${tokens.curveProgress} >= ${0}`);
-
   if (hideImported === 1) {
     conditions.push(sql`${tokens.imported} = 0`);
     logger.log(`[Query Build] Adding condition: imported = 0`);
@@ -178,6 +175,7 @@ function buildTokensBaseQuery(
   let specificStatusApplied = false;
   if (status === "active") {
     conditions.push(sql`${tokens.status} = 'active'`);
+    conditions.push(sql`${tokens.curveProgress} >= ${0}`);
     logger.log(`[Query Build] Adding condition: status = 'active'`);
     specificStatusApplied = true;
   } else if (status === "locked") {
@@ -1262,7 +1260,7 @@ tokenRouter.get("/tokens", async (c) => {
     const priorityTokenAddresses: string[] = [
       "4iMXU48tGWmd8BuYrtAj3JRgs8emFgKX56egJyREUVSv",
       "CdZuiJEgdwQVZBWZrd6MvYwZshsT5HvB6tJYAjzuUTAP",
-      "3aU4AabWUwJyQdyFQrkhmmbj75ejrXaRPQxpiECEpump",
+      "HN8GGgzBFvuePPL3DGPg7uuq2dVgLApnNcW4pxY9a11o",
     ];
 
     const modifiedResults = await prioritizeFeaturedTokens(
