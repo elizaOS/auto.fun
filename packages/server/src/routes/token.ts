@@ -176,6 +176,7 @@ function buildTokensBaseQuery(
   if (status === "active") {
     conditions.push(sql`${tokens.status} = 'active'`);
     conditions.push(sql`${tokens.curveProgress} >= ${0}`);
+    conditions.push(sql`${tokens.tokenSupplyUiAmount} = ${1000000000}`);
     logger.log(`[Query Build] Adding condition: status = 'active'`);
     specificStatusApplied = true;
   } else if (status === "locked") {
