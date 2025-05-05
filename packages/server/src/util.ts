@@ -20,6 +20,10 @@ import { Token, tokens } from "./db";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig, getProgram } from "./solana";
 import { Autofun } from "@autodotfun/types/types/autofun";
+import {
+  shouldUpdateSupply,
+  updateTokenSupplyFromChain,
+} from "./tokenSupplyHelpers";
 
 export const SEED_BONDING_CURVE = "bonding_curve";
 export const SEED_CONFIG = "config";
@@ -241,7 +245,10 @@ export async function createNewTokenData(
     console.log("tokenPriceUSD", tokenPriceUSD);
 
     // Get TOKEN_SUPPLY from env if available, otherwise use default
-    const tokenSupply = Number(process.env.TOKEN_SUPPLY);
+    const supply = await updateTokenSupplyFromChain(tokenAddress);
+    const tokenSupply = supply?.tokenSupply
+      ? Number(supply?.tokenSupply)
+      : Number(process.env.TOKEN_SUPPLY);
     const marketCapUSD =
       (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
     console.log("marketCapUSD", marketCapUSD);

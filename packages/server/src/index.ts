@@ -8,7 +8,7 @@ import { cors } from "hono/cors";
 import type { WSContext } from "hono/ws"; // Import WSContext type for handlers
 
 import { allowedOrigins } from "./allowedOrigins";
-import { verifyAuth } from "./auth";
+import { verifyAuth } from "./auth/auth";
 import { runCronTasks } from "./cron"; // Import the cron task runner
 import { Env } from "./env"; // Assuming Env type is defined and includes Redis vars
 import { adminRouter, ownerRouter } from "./routes/admin";
