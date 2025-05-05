@@ -481,7 +481,7 @@ export default function Trade({ token }: { token: IToken }) {
                 isExecutingSwap ||
                 !sellAmount ||
                 sellAmount === 0
-                  ? "opacity-50 !cursor-not-allowed"
+                  ? "!cursor-not-allowed"
                   : "",
               ])}
             >
