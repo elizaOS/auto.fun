@@ -7,6 +7,7 @@ import { getDB, tokens } from "../db";
 import { getGlobalRedisCache } from "../redis";
 import { logger, useCodex } from "../util";
 import { Codex } from "@codex-data/sdk";
+import moment from "moment";
 import {
   EventType,
   RankingDirection,
@@ -44,7 +45,15 @@ router.get(
     try {
       const params = ChartParamsSchema.parse(c.req.param());
       const redisCache = await getGlobalRedisCache();
-      const cacheKey = `${params.start}:${params.end}:${params.range}:${params.token}`;
+
+      const from = moment()
+        .utc()
+        .subtract(30, "minutes")
+        .startOf("minute")
+        .unix();
+      const to = moment().utc().endOf("minute").unix();
+
+      const cacheKey = `${from}:${to}:1:${params.token}`;
 
       /** Check if cache is present */
       const cache = await redisCache.getCompressed(cacheKey);
@@ -53,17 +62,12 @@ router.get(
         return c.json(cache);
       }
 
-      const data = await fetchPriceChartData(
-        params.start * 1000,
-        params.end * 1000,
-        params.range,
-        params.token
-      );
+      const data = await fetchPriceChartData(from, to, 1, params.token);
 
       await redisCache.setCompressed(
         cacheKey,
         JSON.stringify({ table: data }),
-        25
+        8
       );
 
       return c.json({ table: data });
