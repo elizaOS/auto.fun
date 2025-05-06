@@ -167,6 +167,8 @@ function buildTokensBaseQuery(
     .$dynamic();
 
   const conditions: (SQL | undefined)[] = [];
+  const partnerLaunches = process.env.PARTNER_LAUNCHES?.split(",") || [];
+  const partnerCreators = process.env.PARTNER_CREATORS?.split(",") || [];
 
   if (hideImported === 1) {
     conditions.push(sql`${tokens.imported} = 0`);
@@ -178,6 +180,7 @@ function buildTokensBaseQuery(
     conditions.push(sql`${tokens.curveProgress} >= ${0}`);
     conditions.push(sql`${tokens.tokenSupplyUiAmount} = ${1000000000}`);
     logger.log(`[Query Build] Adding condition: status = 'active'`);
+
     specificStatusApplied = true;
   } else if (status === "locked") {
     conditions.push(sql`${tokens.status} = 'locked'`);
@@ -204,6 +207,31 @@ function buildTokensBaseQuery(
     );
     logger.log(`[Query Build] Adding condition: search LIKE ${search}`);
   }
+
+  if (partnerLaunches.length > 0 && partnerCreators.length > 0) {
+    conditions.push(
+      sql`(
+        lower(${tokens.ticker}) NOT IN (
+          ${sql.join(
+            partnerLaunches.map((t) => sql`${t.toLowerCase()}`),
+            sql`, `
+          )}
+        )
+        OR
+        lower(${tokens.creator}) IN (
+          ${sql.join(
+            partnerCreators.map((c) => sql`${c.toLowerCase()}`),
+            sql`, `
+          )}
+        )
+      )`
+    );
+    logger.log(
+      `[Query Build] Adding condition: restrict partner launch tickers to partnerCreators (case-insensitive)`
+    );
+  }
+
+  conditions.push(sql`${tokens.ticker} NOT LIKE ${sql`${"%✅"}`}`);
 
   if (conditions.length > 0) {
     query = query.where(and(...conditions.filter((c): c is SQL => !!c)));
@@ -1262,7 +1290,7 @@ tokenRouter.get("/tokens", async (c) => {
       "8btUuvx2Bu4zTd8g1tN5wCKMULyPgqiPaDiJbFbWkFUN",
       "CdZuiJEgdwQVZBWZrd6MvYwZshsT5HvB6tJYAjzuUTAP",
       "HN8GGgzBFvuePPL3DGPg7uuq2dVgLApnNcW4pxY9a11o",
-      "8R3W3H8gkkiGvSLM7X6ECy6UmBVt5daKFSCJzxiWCdog"
+      "8R3W3H8gkkiGvSLM7X6ECy6UmBVt5daKFSCJzxiWCdog",
     ];
 
     const modifiedResults = await prioritizeFeaturedTokens(
