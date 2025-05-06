@@ -490,42 +490,18 @@ async function handleCurveComplete(
     if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(mintAddress)) {
       throw new Error(`Invalid mint on curve completion: ${mintAddress}`);
     }
-
+    if (logs.some((l) => /Failed.*custom program error/i.test(l))) {
+      logger.warn(
+        `Curve complete aborted due to program failure: ${logs.join(" | ")}`
+      );
+      return null;
+    }
     await awardGraduationPoints(mintAddress);
     const token = await getToken(mintAddress);
     if (!token) {
       logger.error(`Token not found: ${mintAddress}`);
       return null;
     }
-
-    // const connection = new Connection(
-    //   process.env.NETWORK === "devnet"
-    //     ? process.env.DEVNET_SOLANA_RPC_URL!
-    //     : process.env.MAINNET_SOLANA_RPC_URL!,
-    // );
-    // const wallet = Keypair.fromSecretKey(
-    //   Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY!)),
-    // );
-    // const provider = new AnchorProvider(
-    //   connection,
-    //   new Wallet(wallet),
-    //   AnchorProvider.defaultOptions(),
-    // );
-    // const program = new Program<RaydiumVault>(
-    //   raydium_vault_IDL as any,
-    //   provider,
-    // );
-    // const autofunProgram = new Program<Autofun>(idl as any, provider);
-    const redisCache = await getGlobalRedisCache();
-
-    // const tokenMigrator = new TokenMigrator(
-    //   connection,
-    //   new Wallet(wallet),
-    //   program,
-    //   autofunProgram,
-    //   provider,
-    //   redisCache
-    // );
     const tokenData: Partial<TokenData> = {
       mint: mintAddress,
       status: "migrating",
@@ -536,15 +512,11 @@ async function handleCurveComplete(
       ...token,
       ...tokenData,
     });
-    // await tokenMigrator.resumeOneStep(token.mint, true);
     await wsClient.emit(
       `token-${mintAddress}`,
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token))
     );
-    // const ext = await ExternalToken.create(mintAddress, redisCache);
-
-    // ext.registerWebhook()
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
   } catch (err) {
