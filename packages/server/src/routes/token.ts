@@ -211,18 +211,22 @@ function buildTokensBaseQuery(
   if (partnerLaunches.length > 0 && partnerCreators.length > 0) {
     conditions.push(
       sql`(
-        lower(${tokens.ticker}) NOT IN (
-          ${sql.join(
-            partnerLaunches.map((t) => sql`${t.toLowerCase()}`),
-            sql`, `
-          )}
-        )
-        OR
-        lower(${tokens.creator}) IN (
-          ${sql.join(
-            partnerCreators.map((c) => sql`${c.toLowerCase()}`),
-            sql`, `
-          )}
+        NOT (
+          lower(${tokens.ticker}) ~ ANY(ARRAY[
+            ${sql.join(
+              partnerLaunches.map(
+                (t) => sql`${"^" + t.toLowerCase() + "([^A-Za-z0-9_]|$)"}`
+              ),
+              sql`, `
+            )}
+          ])
+          AND
+          lower(${tokens.creator}) NOT IN (
+            ${sql.join(
+              partnerCreators.map((c) => sql`${c.toLowerCase()}`),
+              sql`, `
+            )}
+          )
         )
       )`
     );
