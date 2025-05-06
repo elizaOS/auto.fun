@@ -43,12 +43,29 @@ router.get(
   async (c) => {
     try {
       const params = ChartParamsSchema.parse(c.req.param());
+      const redisCache = await getGlobalRedisCache();
+      const cacheKey = `${params.start}:${params.end}:${params.range}:${params.token}`;
+
+      /** Check if cache is present */
+      const cache = await redisCache.getCompressed(cacheKey);
+
+      if (cache) {
+        return c.json(cache);
+      }
+
       const data = await fetchPriceChartData(
         params.start * 1000,
         params.end * 1000,
         params.range,
         params.token
       );
+
+      await redisCache.setCompressed(
+        cacheKey,
+        JSON.stringify({ table: data }),
+        25
+      );
+
       return c.json({ table: data });
     } catch (error) {
       if (error instanceof z.ZodError) {
