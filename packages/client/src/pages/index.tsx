@@ -30,7 +30,7 @@ export default function Page() {
 
   const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
     "category",
-    "newest",
+    "all",
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
@@ -159,17 +159,17 @@ export default function Page() {
             <div className="flex items-center gap-1">
               {/* TODO: change to toggle button for newest/oldest */}
               <Button
-                variant={gridSortBy === "newest" ? "primary" : "outline"}
-                onClick={() => setGridSortBy("newest")}
-              >
-                New
-              </Button>
-              <Button
                 variant={gridSortBy === "all" ? "primary" : "outline"}
                 onClick={() => setGridSortBy("all")}
               >
                 {/* featured represents all */}
                 Featured
+              </Button>
+              <Button
+                variant={gridSortBy === "newest" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("newest")}
+              >
+                New
               </Button>
               <Button
                 variant={gridSortBy === "marketCap" ? "primary" : "outline"}
