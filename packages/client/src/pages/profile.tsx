@@ -65,7 +65,7 @@ const EditableProfileHeader = ({
   const { adminAddresses } = env;
   const { publicKey } = useWallet();
   const [userSuspended, setUserSuspended] = useState(
-    user.suspended == 1 ? true : false,
+    user?.suspended == 1 ? true : false,
   );
 
   const isModerator = publicKey
@@ -97,7 +97,7 @@ const EditableProfileHeader = ({
       );
     },
   });
-  
+
   if (!user) return null;
 
   return (
