@@ -696,6 +696,16 @@ app.post("/generate", async (c) => {
       throw new Error("Invalid response format");
     }
 
+    if (result.data?.has_nsfw_concepts[0] === true) {
+      return c.json(
+        {
+          success: false,
+          error: "NSFW content detected",
+        },
+        400
+      );
+    }
+
     let mediaUrl: string = ""; // Initialize with empty string
 
     if (validatedData.type === MediaType.VIDEO && result.video?.url) {
