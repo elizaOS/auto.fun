@@ -1296,7 +1296,7 @@ tokenRouter.get("/tokens", async (c) => {
       "8btUuvx2Bu4zTd8g1tN5wCKMULyPgqiPaDiJbFbWkFUN",
       "CdZuiJEgdwQVZBWZrd6MvYwZshsT5HvB6tJYAjzuUTAP",
       "HN8GGgzBFvuePPL3DGPg7uuq2dVgLApnNcW4pxY9a11o",
-      "8R3W3H8gkkiGvSLM7X6ECy6UmBVt5daKFSCJzxiWCdog",
+      "J3NrhzUeKBSA3tJQjNq77zqpWJNz3FS9TrX7H7SLKcom",
     ];
 
     const modifiedResults = await prioritizeFeaturedTokens(
