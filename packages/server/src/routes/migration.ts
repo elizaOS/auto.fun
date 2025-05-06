@@ -14,9 +14,9 @@ import { getWebSocketClient } from "../websocket-client";
 import { getGlobalRedisCache } from "../redis";
 import { claimFees } from "../claimFees";
 
-
-const raydium_vault_IDL: RaydiumVault = JSON.parse(JSON.stringify(raydium_vault_IDL_JSON));
-
+const raydium_vault_IDL: RaydiumVault = JSON.parse(
+  JSON.stringify(raydium_vault_IDL_JSON)
+);
 
 const migrationRouter = new Hono<{
   Variables: {
@@ -45,7 +45,7 @@ migrationRouter.post("/migration/resume", async (c) => {
     const connection = new Connection(
       process.env.NETWORK === "devnet"
         ? process.env.DEVNET_SOLANA_RPC_URL || ""
-        : process.env.MAINNET_SOLANA_RPC_URL || "",
+        : process.env.MAINNET_SOLANA_RPC_URL || ""
     );
 
     if (!process.env.EXECUTOR_PRIVATE_KEY) {
@@ -54,19 +54,19 @@ migrationRouter.post("/migration/resume", async (c) => {
 
     // Create a wallet using the secret from process.env.
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY))
     );
 
     // Build an Anchor provider.
     const provider = new AnchorProvider(
       connection,
       new Wallet(wallet),
-      AnchorProvider.defaultOptions(),
+      AnchorProvider.defaultOptions()
     );
 
     const program = new Program<RaydiumVault>(
       raydium_vault_IDL as any,
-      provider,
+      provider
     );
     const autofunProgram = new Program<Autofun>(IDL, provider);
     const redisCache = await getGlobalRedisCache();
@@ -79,7 +79,6 @@ migrationRouter.post("/migration/resume", async (c) => {
     //   provider,
     //   redisCache,
     // );
-
 
     // Return a success response.
     return c.json({
@@ -133,11 +132,11 @@ migrationRouter.post("/claimFees", async (c) => {
     }
     const nftMint = new PublicKey(token.nftMinted.split(",")[0]);
     const claimer = new PublicKey(token.creator);
-    const poolId = new PublicKey(token.marketId)
+    const poolId = new PublicKey(token.marketId);
     const connection = new Connection(
       process.env.NETWORK === "devnet"
         ? process.env.DEVNET_SOLANA_RPC_URL || ""
-        : process.env.MAINNET_SOLANA_RPC_URL || "",
+        : process.env.MAINNET_SOLANA_RPC_URL || ""
     );
     const websocket = getWebSocketClient();
     // async () => {
@@ -161,7 +160,7 @@ migrationRouter.post("/claimFees", async (c) => {
     logger.error("Error in claim fees endpoint:", error);
     return c.json(
       { error: `Failed to process claim invocation ${error.message}` },
-      500,
+      500
     );
   }
 });
@@ -216,21 +215,21 @@ migrationRouter.get("/checkBalance", async (c) => {
 
     // Create a wallet using the secret from process.env.
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.EXECUTOR_PRIVATE_KEY))
     );
 
     // Create connection based on the environment setting.
     const connection = new Connection(
       process.env.NETWORK === "devnet"
         ? process.env.DEVNET_SOLANA_RPC_URL || ""
-        : process.env.MAINNET_SOLANA_RPC_URL || "",
+        : process.env.MAINNET_SOLANA_RPC_URL || ""
     );
 
     const checkBalanceResult = await checkBalance(
       connection,
       wallet,
       new PublicKey(positionNft),
-      new PublicKey(user.publicKey),
+      new PublicKey(user.publicKey)
     );
 
     return c.json({ balance: checkBalanceResult });
@@ -239,7 +238,6 @@ migrationRouter.get("/checkBalance", async (c) => {
     return c.json({ error: "Failed to process checkBalance invocation" }, 500);
   }
 });
-
 
 // migration add missing tokens
 migrationRouter.post("/migration/addMissingTokens", async (c) => {
@@ -266,7 +264,7 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
     const newToken = await createNewTokenData(
       signature,
       rawTokenAddress,
-      rawCreatorAddress,
+      rawCreatorAddress
     );
     await getDB()
       .insert(tokens)
@@ -282,6 +280,5 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
     return c.json({ error: "Failed to process migration invocation" }, 500);
   }
 });
-
 
 export default migrationRouter;

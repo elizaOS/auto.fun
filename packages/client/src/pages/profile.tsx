@@ -1,6 +1,8 @@
 import Button from "@/components/button";
 import Loader from "@/components/loader";
+import { fetcher } from "@/utils/api";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useMutation } from "@tanstack/react-query";
 import {
   Check,
   Edit2,
@@ -62,6 +64,41 @@ const EditableProfileHeader = ({
   if (!user) return null;
 
   const displayImageUrl = editingProfilePictureUrl;
+  const { adminAddresses } = env;
+  const { publicKey } = useWallet();
+  const [userSuspended, setUserSuspended] = useState(
+    user.suspended == 1 ? true : false,
+  );
+
+  const isModerator = publicKey
+    ? adminAddresses.includes(publicKey.toString())
+    : false;
+
+  const toggleSuspendUser = useMutation({
+    mutationFn: async () => {
+      if (!user) return;
+      return await fetcher(
+        `/api/admin/users/${user.address}/suspended`,
+        "POST",
+        {
+          suspended: !userSuspended,
+        },
+      );
+    },
+    onSuccess: () => {
+      toast.success(
+        `User ${userSuspended ? "restored" : "suspended"} successfully!`,
+      );
+      setUserSuspended((prev) => !prev);
+    },
+    onError: (error) => {
+      toast.error(
+        `Failed to ${
+          userSuspended ? "restore" : "suspend"
+        } user: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    },
+  });
 
   return (
     <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 mx-auto mb-12">
@@ -202,6 +239,20 @@ const EditableProfileHeader = ({
           >
             <ExternalLink className="text-[#8C8C8C] size-5" />
           </Link>
+        </div>
+
+        <div>
+          {!isCurrentUser && isModerator && (
+            <button
+              onClick={() => toggleSuspendUser.mutate()}
+              className="p-2 rounded-lg bg-red-500 hover:bg-red-400"
+            >
+              {!toggleSuspendUser.isPending && (
+                <p>{userSuspended ? "Restore" : "Suspend"}</p>
+              )}
+              {toggleSuspendUser.isPending && <p>Pending...</p>}
+            </button>
+          )}
         </div>
 
         {isCurrentUser && editError && (
