@@ -61,13 +61,11 @@ const EditableProfileHeader = ({
   isSaving,
   editError,
 }: EditableProfileHeaderProps) => {
-  if (!user) return null;
-
   const displayImageUrl = editingProfilePictureUrl;
   const { adminAddresses } = env;
   const { publicKey } = useWallet();
   const [userSuspended, setUserSuspended] = useState(
-    user.suspended == 1 ? true : false,
+    user?.suspended == 1 ? true : false,
   );
 
   const isModerator = publicKey
@@ -99,6 +97,8 @@ const EditableProfileHeader = ({
       );
     },
   });
+
+  if (!user) return null;
 
   return (
     <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 mx-auto mb-12">
