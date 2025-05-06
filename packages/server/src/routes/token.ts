@@ -47,6 +47,7 @@ import {
   UpdateTokenBody,
 } from "./validators/tokenUpdateQuery";
 import { parseSearchTokenRequest } from "./validators/tokenSearchQuery";
+import { normalizeParams, makeCacheKey } from "../tools/normalizeParams";
 
 if (!process.env.CODEX_API_KEY) {
   logger.error("Missing CODEX_API_KEY from .env");
@@ -1187,8 +1188,9 @@ tokenRouter.get("/tokens", async (c) => {
     ? "marketCapUSD"
     : (queryParams.sortBy as string) || "createdAt";
   const sortOrder = (queryParams.sortOrder as string) || "desc";
-
-  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
+  const normalized = normalizeParams(queryParams);
+  const cacheKey = `tokens:${makeCacheKey(normalized)}`;
+  // const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
 
   const redisCache = await getGlobalRedisCache();
 
@@ -1320,10 +1322,11 @@ tokenRouter.get("/tokens", async (c) => {
 
   if (redisCache) {
     try {
+      const ttl = search ? 15 : page === 1 ? 15 : page <= 5 ? 30 : 60;
       await redisCache.setCompressed(
         cacheKey,
         JSON.stringify(responseData),
-        15
+        ttl
       );
       logger.log(`Cached data for ${cacheKey} with 15s TTL`);
     } catch (cacheError) {
