@@ -399,12 +399,14 @@ export default function Page() {
                     <CopyButton text={token?.mint} />
                   </div>
                 </div>
-                {token?.creator === normalizedWallet && !token?.imported && token?.status !== "active" && (
-                  <>
-                    <ClaimFees tokenMint={token?.mint} />
-                    <BalanceChecker tokenMint={token?.mint} />
-                  </>
-                )}
+                {token?.creator === normalizedWallet &&
+                  !token?.imported &&
+                  token?.status !== "active" && (
+                    <>
+                      <ClaimFees tokenMint={token?.mint} />
+                      <BalanceChecker tokenMint={token?.mint} />
+                    </>
+                  )}
               </div>
 
               {/* Creator Profile Section - at the bottom of the left column */}
