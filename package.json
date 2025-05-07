@@ -69,6 +69,7 @@
     "fetch-retry": "^6.0.0",
     "generic-pool": "^3.9.0",
     "hono": "^4.7.5",
+    "hono-rate-limiter": "^0.4.2",
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
