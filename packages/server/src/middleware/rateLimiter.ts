@@ -7,7 +7,7 @@ const WINDOW_SEC = 10;
 export function createRateLimiter(redisCache: RedisCacheService) {
   return rateLimiter({
     windowMs: WINDOW_SEC * 1000,
-    limit: 100,
+    limit: 250,
     standardHeaders: "draft-7",
     keyGenerator: (c: Context) =>
       c.req.header("x-forwarded-for") ??
