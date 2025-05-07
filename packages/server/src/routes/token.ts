@@ -1166,7 +1166,8 @@ tokenRouter.get("/tokens", async (c) => {
   const requestedLimit =
     parseInt(queryParams?.limit ? queryParams.limit : ("0" as string)) || 50;
 
-  const limit = isSearching ? 5 : Math.min(requestedLimit, MAX_LIMIT);
+  // const limit = isSearching ? 5 : Math.min(requestedLimit, MAX_LIMIT);
+  const limit = isSearching ? 5 : MAX_LIMIT; // we use 50
 
   const requestedPage =
     parseInt(queryParams?.page ? queryParams.page : ("1" as string)) || 1;
