@@ -2,12 +2,12 @@ import { rateLimiter } from "hono-rate-limiter";
 import type { Context } from "hono";
 import type { RedisCacheService } from "../redis";
 
-const WINDOW_SEC = 60;
+const WINDOW_SEC = 10;
 
 export function createRateLimiter(redisCache: RedisCacheService) {
   return rateLimiter({
     windowMs: WINDOW_SEC * 1000,
-    limit: 200,
+    limit: 100,
     standardHeaders: "draft-7",
     keyGenerator: (c: Context) =>
       c.req.header("x-forwarded-for") ??
