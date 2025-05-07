@@ -7,7 +7,7 @@ const WINDOW_SEC = 10;
 export function createRateLimiter(redisCache: RedisCacheService) {
   return rateLimiter({
     windowMs: WINDOW_SEC * 1000,
-    limit: 100,
+    limit: 250,
     standardHeaders: "draft-7",
     keyGenerator: (c: Context) =>
       c.req.header("x-forwarded-for") ??
@@ -19,7 +19,6 @@ export function createRateLimiter(redisCache: RedisCacheService) {
         const [[, count]] = (await redisCache.redisPool.useClient((client) =>
           client.multi().incr(full).expire(full, WINDOW_SEC).exec()
         )) as Array<[Error | null, number]>;
-        console.log("Rate limit count", count);
         return {
           totalHits: count,
           resetTime: new Date(Date.now() + WINDOW_SEC * 1000),
