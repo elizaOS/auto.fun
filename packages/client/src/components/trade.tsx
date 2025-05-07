@@ -334,7 +334,7 @@ export default function Trade({ token }: { token: IToken }) {
                   }}
                   placeholder="0"
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full justify-between">
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                   <Balance
                     token={token}
@@ -555,7 +555,7 @@ const TokenDisplay = ({
         alt={token?.name || "token"}
         className="size-4 mr-2"
       />
-      <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
+      <span className="text-lg uppercase font-dm-mono tracking-wider font-bold">
         {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
       </span>
     </div>
