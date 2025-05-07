@@ -28,16 +28,15 @@ import { logger } from "./util";
 import { webSocketManager } from "./websocket-manager";
 import { fork } from "node:child_process";
 import path from "node:path";
-import { getSOLPrice } from './mcap';
+import { getSOLPrice } from "./mcap";
 import { getGlobalRedisCache } from "./redis";
-
+import { createRateLimiter } from "./middleware/rateLimiter";
 
 interface AppVariables {
   user?: { publicKey: string } | null;
 }
 
 const app = new Hono<{ Variables: AppVariables }>();
-
 
 const env = process.env as unknown as Env;
 
@@ -77,48 +76,44 @@ app.use(
     maxAge: 60000,
   })
 );
-
-// --- API Routes ---
-
-// Create a sub-router for API endpoints
 const api = new Hono<{ Variables: AppVariables }>();
 
-// Apply CORS and Auth middleware to the API sub-router as well
-// (This might be redundant if already applied globally, but ensures consistency)
-// api.use("*", cors(...)); // Re-applying CORS here might not be necessary if applied globally with "*"
-api.use("*", verifyAuth); // Ensure auth applies to all /api routes
+(async () => {
+  const redisCache = await getGlobalRedisCache();
+  const limiter = createRateLimiter(redisCache);
+  app.use("*", limiter);
 
-// --- Mount existing routers ---
-// Ensure these routers don't rely on Cloudflare `process.env` bindings without adaptation
-api.route("/generation", generationRouter);
-api.route("/", tokenRouter);
+  api.use("*", verifyAuth);
+  api.route("/generation", generationRouter);
+  api.route("/", tokenRouter);
 
-api.route("/", fileRouter);
-api.route("/", authRouter);
-api.route("/", agentRouter);
-api.route("/", swapRouter);
-api.route("/", chatRouter);
-api.route("/share", shareRouter);
-api.route("/", webhookRouter);
-api.route("/", migrationRouter);
-api.route("/users", userRouter);
-api.route("/admin", adminRouter); // Note: Ensure admin/owner routes have appropriate checks
-api.route("/owner", ownerRouter);
-api.route("/admin/pregenerated", preGeneratedAdminRoutes); // Mount the new router
+  api.route("/", fileRouter);
+  api.route("/", authRouter);
+  api.route("/", agentRouter);
+  api.route("/", swapRouter);
+  api.route("/", chatRouter);
+  api.route("/share", shareRouter);
+  api.route("/", webhookRouter);
+  api.route("/", migrationRouter);
+  api.route("/users", userRouter);
+  api.route("/admin", adminRouter);
+  api.route("/owner", ownerRouter);
+  api.route("/admin/pregenerated", preGeneratedAdminRoutes); // Mount the new router
 
-api.get("/sol-price", async (c) => {
-  try {
-    const solPrice = await getSOLPrice(); // Use the global cache service
-    logger.info("(Placeholder) Would fetch SOL price");
-    return c.json({ price: solPrice });
-  } catch (error) {
-    logger.error("Error fetching SOL price:", error);
-    return c.json({ error: "Failed to fetch SOL price" }, 500);
-  }
-});
+  api.get("/sol-price", async (c) => {
+    try {
+      const solPrice = await getSOLPrice(); // Use the global cache service
+      logger.info("(Placeholder) Would fetch SOL price");
+      return c.json({ price: solPrice });
+    } catch (error) {
+      logger.error("Error fetching SOL price:", error);
+      return c.json({ error: "Failed to fetch SOL price" }, 500);
+    }
+  });
 
-// --- Mount the API sub-router ---
-app.route("/api", api);
+  // --- Mount the API sub-router ---
+  app.route("/api", api);
+})();
 
 // --- Special Cron Trigger Route ---
 // Use a non-standard path and require a secret header
@@ -182,7 +177,7 @@ app.onError((err, c) => {
   logger.info("Redis Cache Service Retrieved.");
   const isReady = await redisCache.isPoolReady();
 
-  console.log("isReady", isReady)
+  console.log("isReady", isReady);
 
   if (!redisCache) throw new Error("Redis Cache Service not found");
 
@@ -194,11 +189,10 @@ app.onError((err, c) => {
   if (!webSocketManager.redisCache) {
     throw new Error("WebSocket Manager not initialized");
   }
-
 })().catch((err) => {
   logger.error("Error during initialization:", err);
-
 });
+
 // --- Create Bun WebSocket handlers ---
 const { upgradeWebSocket, websocket } = createBunWebSocket();
 // --- Add WebSocket Upgrade Route ---
@@ -229,5 +223,3 @@ export default {
   fetch: app.fetch,
   websocket, // Add the websocket handler
 };
-
-
