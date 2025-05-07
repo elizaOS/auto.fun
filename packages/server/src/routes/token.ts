@@ -4,7 +4,16 @@ import {
   PutObjectCommand,
 } from "@aws-sdk/client-s3"; // S3 Import
 import { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
-import { and, count, eq, getTableColumns, or, sql, SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  or,
+  sql,
+  SQL,
+} from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
 import { Context, Hono } from "hono";
 import { Buffer } from "node:buffer"; // Buffer import
@@ -48,6 +57,7 @@ import {
 } from "./validators/tokenUpdateQuery";
 import { parseSearchTokenRequest } from "./validators/tokenSearchQuery";
 import { normalizeParams, makeCacheKey } from "../tools/normalizeParams";
+import { sortBy } from "lodash";
 
 if (!process.env.CODEX_API_KEY) {
   logger.error("Missing CODEX_API_KEY from .env");
@@ -188,6 +198,12 @@ function buildTokensBaseQuery(
     logger.log(`[Query Build] Adding condition: status = 'locked'`);
     specificStatusApplied = true;
   }
+
+  if (sortBy === "verified") {
+    conditions.push(sql`${tokens.verified} = 1`);
+    logger.log(`[Query Build] Adding condition: verified = 1`);
+  }
+
   if (!specificStatusApplied) {
     conditions.push(sql`${tokens.status} != 'pending'`);
     logger.log(`[Query Build] Adding condition: status != 'pending'`);
@@ -253,15 +269,21 @@ function buildTokensCountBaseQuery(
     status?: string;
     creator?: string;
     search?: string;
+    sortBy?: string;
   }
 ): PgSelect {
   let query = db.select({ count: count() }).from(tokens).$dynamic();
-  const { hideImported, status, creator, search } = params;
+  const { hideImported, status, creator, search, sortBy } = params;
   const conditions: (SQL | undefined)[] = [];
 
   if (hideImported === 1) {
     conditions.push(sql`${tokens.imported} = 0`);
   }
+
+  if (sortBy === "verified") {
+    conditions.push(sql`${tokens.verified} = 1`);
+  }
+
   let specificStatusApplied = false;
   if (status === "active") {
     conditions.push(sql`${tokens.status} = 'active'`);
@@ -1191,8 +1213,6 @@ tokenRouter.get("/tokens", async (c) => {
   const sortOrder = (queryParams.sortOrder as string) || "desc";
   const normalized = normalizeParams(queryParams);
   const cacheKey = `tokens:${makeCacheKey(normalized)}`;
-  // const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`;
-
   const redisCache = await getGlobalRedisCache();
 
   if (redisCache) {
@@ -1227,10 +1247,13 @@ tokenRouter.get("/tokens", async (c) => {
     volume24h: tokens.volume24h,
     holderCount: tokens.holderCount,
     curveProgress: tokens.curveProgress,
+    verified: tokens.verified,
   };
 
   if (sortBy === "featured") {
     baseQuery = applyFeaturedSort(baseQuery, maxVolume, maxHolders, sortOrder);
+  } else if (sortBy === "verified") {
+    baseQuery = baseQuery.orderBy(desc(tokens.createdAt));
   } else {
     const sortColumn =
       validSortColumns[sortBy as keyof typeof validSortColumns] ||
