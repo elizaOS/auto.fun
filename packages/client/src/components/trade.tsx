@@ -285,11 +285,14 @@ export default function Trade({ token }: { token: IToken }) {
                 error ? "border-autofun-text-error" : "",
               ])}
             >
-              <div className="flex justify-between gap-3 relative border-b-1 border-autofun-background-input hover:border-white focus:border-white ">
+              <div className="flex flex-col justify-between gap-3 border-b-1 border-autofun-background-input hover:border-white focus:border-white py-2">
                 <input
-                  className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
+                  className="text-6xl w-full p-2 overflow-clip font-dm-mono text-white outline-none"
                   min={0}
                   type="text"
+                  style={{
+                    fontSize: inputAmount.length > 6 ? "3rem" : "4rem",
+                  }}
                   onKeyDown={(e) => {
                     if (
                       e.key === "-" ||
@@ -331,7 +334,7 @@ export default function Trade({ token }: { token: IToken }) {
                   }}
                   placeholder="0"
                 />
-                <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
+                <div className="flex items-center gap-2 w-full justify-between">
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                   <Balance
                     token={token}
@@ -546,13 +549,13 @@ const TokenDisplay = ({
   isSolana?: boolean;
 }) => {
   return (
-    <div className="flex items-center justify-end mb-4">
+    <div className="flex items-center justify-end">
       <SkeletonImage
         src={isSolana ? "/solana.svg" : token?.image || "/placeholder.png"}
         alt={token?.name || "token"}
         className="size-4 mr-2"
       />
-      <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
+      <span className="text-lg uppercase font-dm-mono tracking-wider font-bold">
         {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
       </span>
     </div>
