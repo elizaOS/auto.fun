@@ -1140,6 +1140,7 @@ export default function Create() {
     }
   };
 
+  // this needs proper configuration
   const rekognitionClient = new RekognitionClient({
     region: process.env.NEED_VALUES || "us-east-1",
   });
