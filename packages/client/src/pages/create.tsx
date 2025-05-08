@@ -2845,7 +2845,7 @@ export default function Create() {
               className="w-48 h-24"
             />
           </div>
-          <div className="flex justify-between items-center text-lg w-full shrink">
+          <div className="flex justify-between space-x-4 items-center text-lg w-full shrink">
             {Object.values(FormTab).map((tab, _) => (
               <button
                 key={tab} // Added key
