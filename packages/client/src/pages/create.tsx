@@ -1841,7 +1841,8 @@ export default function Create() {
     } else if (suffix.length > 5) {
       currentError = "Suffix cannot be longer than 5 characters.";
     } else if (!BASE58_REGEX.test(suffix)) {
-      currentError = "Suffix contains invalid Base58 characters.";
+      currentError =
+        "Invalid suffix. Base58 must be used. This includes: numbers 1-9, letters A-H, J-N, P-Z, a-k, m-z.";
     }
 
     // 2. Warnings
