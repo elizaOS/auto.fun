@@ -10,6 +10,7 @@ import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
 import {
   formatNumber,
+  formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
   resizeImage,
@@ -161,7 +162,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                             className="size-2.5 rounded-full"
                           />
                           <span className="text-sm">
-                            {solana}
+                            {formatNumberSubscript(Number(solana), 2)}
                             {/* {formatNumber(solana, true, true)} */}
                           </span>
                           {usdValue ? (
