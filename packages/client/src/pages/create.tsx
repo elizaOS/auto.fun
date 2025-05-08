@@ -1201,9 +1201,6 @@ export default function Create() {
               `Inappropriate content detected for ${tokenMetadata.name}:`,
               moderationLabels,
             );
-            throw new Error(
-              `Inappropriate content detected. Token creation aborted.`,
-            );
           } else {
             console.log(
               `No inappropriate content detected for ${tokenMetadata.name}`,
