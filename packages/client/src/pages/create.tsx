@@ -15,6 +15,10 @@ import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
+import {
+  DetectModerationLabelsCommand,
+  RekognitionClient,
+} from "@aws-sdk/client-rekognition";
 
 const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -1136,6 +1140,33 @@ export default function Create() {
     }
   };
 
+
+  const rekognitionClient = new RekognitionClient({
+    region: process.env.NEED_VALUES || "us-east-1",
+  });
+
+  async function detectInappropriateContent(
+    imageBytes: Buffer,
+  ): Promise<string[]> {
+    try {
+      const command = new DetectModerationLabelsCommand({
+        Image: {
+          Bytes: imageBytes,
+        },
+        MinConfidence: 80, // I need to test this out still
+      });
+      const response = await rekognitionClient.send(command);
+      return (
+        response.ModerationLabels?.filter(
+          (label): label is { Name: string } => !!label?.Name,
+        ).map((label) => label.Name) || []
+      );
+    } catch (error) {
+      console.log("Error detecting moderation labels:", error);
+      return [];
+    }
+  }
+
   // Create token on-chain
   const createTokenOnChain = async (
     tokenMetadata: TokenMetadata,
@@ -1149,6 +1180,37 @@ export default function Create() {
 
       if (!signTransaction) {
         throw new Error("Wallet doesn't support signing");
+      }
+
+      // Check image for inappropriate content before proceeding
+      if (tokenMetadata.imageBase64) {
+        const base64Match = tokenMetadata.imageBase64.match(
+          /^data:([A-Za-z-+/]+);base64,(.+)$/,
+        );
+        const contentType = base64Match?.[1] || "";
+        const base64Data = base64Match?.[2];
+
+        if (base64Data && contentType.startsWith("image/")) {
+          const imageBuffer = Buffer.from(base64Data, "base64");
+          console.log(
+            `Performing moderation check before token creation for ${tokenMetadata.name}`,
+          );
+          const moderationLabels =
+            await detectInappropriateContent(imageBuffer);
+          if (moderationLabels.length) {
+            console.log(
+              `Inappropriate content detected for ${tokenMetadata.name}:`,
+              moderationLabels,
+            );
+            throw new Error(
+              `Inappropriate content detected. Token creation aborted.`,
+            );
+          } else {
+            console.log(
+              `No inappropriate content detected for ${tokenMetadata.name}`,
+            );
+          }
+        }
       }
 
       // Ensure we have a valid metadata URL
