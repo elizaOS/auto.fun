@@ -19,7 +19,8 @@ import { Helmet } from "react-helmet";
 import { Fragment } from "react/jsx-runtime";
 
 // Define types for state
-type GridSortByType = "newest" | "all" | "marketCap";
+type GridSortByType = "newest" | "all" | "marketCap" | "verified";
+type VerifiedType = 1 | 0;
 type TokenSourceType = "all" | "autofun";
 type BondingStatusType = "all" | "active" | "locked";
 type TableSortByType = keyof IToken | null;
@@ -32,6 +33,7 @@ export default function Page() {
     "category",
     "all",
   );
+
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
     "autofun",
@@ -42,6 +44,7 @@ export default function Page() {
     "sort",
     "marketCapUSD",
   );
+
   const [tableSortOrder, setTableSortOrder] = useState<SortOrderType>("desc");
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -71,7 +74,6 @@ export default function Page() {
 
   // Determine API parameters based on active view and state
   const apiParams = useMemo((): UseTokensParams => {
-    // Explicitly type params based on UseTokensParams from the hook
     const params: UseTokensParams = {
       hideImported: tokenSource === "autofun" ? 1 : 0,
       sortBy: "createdAt",
@@ -84,14 +86,23 @@ export default function Page() {
       params.sortBy = tableSortBy || "marketCapUSD";
       params.sortOrder = tableSortOrder;
     } else {
-      // Map grid sort options to API sort options
-      params.sortBy =
-        gridSortBy === "newest"
-          ? "createdAt"
-          : gridSortBy === "all" // "all" on frontend maps to "featured" on backend
-            ? "featured"
-            : "marketCapUSD";
-      params.sortOrder = "desc"; // Grid view always sorts desc for these options
+      switch (gridSortBy) {
+        case "newest":
+          params.sortBy = "createdAt";
+          break;
+        case "all":
+          params.sortBy = "featured";
+          break;
+        case "marketCap":
+          params.sortBy = "marketCapUSD";
+          break;
+        case "verified":
+          params.sortBy = "verified";
+          break;
+        default:
+          params.sortBy = "featured";
+      }
+      params.sortOrder = "desc";
     }
     return params;
   }, [
@@ -152,11 +163,11 @@ export default function Page() {
         <FeaturedSection />
         {/* Top Navigation */}
         <div
-          className={`flex gap-1 w-full md:flex-wrap ${activeTab === "grid" ? "justify-between" : "justify-end"}`}
+          className={`flex flex-col-reverse sm:flex-row gap-1 w-full md:flex-wrap ${activeTab === "grid" ? "justify-between" : "justify-end"}`}
         >
           {/* Grid Sort Buttons - Hide on Table View */}
           {activeTab === "grid" && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 justify-center sm:justify-start">
               {/* TODO: change to toggle button for newest/oldest */}
               <Button
                 variant={gridSortBy === "all" ? "primary" : "outline"}
@@ -178,9 +189,16 @@ export default function Page() {
                 <span className="hidden sm:inline">Market Cap</span>
                 <span className="sm:hidden">MCap</span>
               </Button>
+              <Button
+                variant={gridSortBy === "verified" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("verified")}
+              >
+                <span className="hidden sm:inline">Verified</span>
+                <span className="sm:hidden">Verified</span>
+              </Button>
             </div>
           )}
-          <div className="relative flex" ref={filterRef}>
+          <div className="relative flex justify-end" ref={filterRef}>
             <Button
               variant="outline"
               size="small"
