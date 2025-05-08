@@ -85,6 +85,8 @@ export default function Trade({ token }: { token: IToken }) {
     token?.status,
   );
 
+  const isMigrating = token?.status === "migrating";
+
   const isButtonDisabled = (amount: number | string) => {
     if (typeof amount === "string") {
       // For percentage buttons, check if balance is 0
@@ -493,35 +495,41 @@ export default function Trade({ token }: { token: IToken }) {
                 insufficientBalance ||
                 isExecutingSwap ||
                 !sellAmount ||
-                sellAmount === 0
+                sellAmount === 0 ||
+                isMigrating
                   ? "!cursor-not-allowed"
                   : "",
               ])}
+              disabled={isMigrating}
             >
               <img
                 src={
-                  isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
+                  isExecutingSwap
+                    ? "/token/swapdown.svg"
+                    : isMigrating
+                      ? "/token/launchup.svg"
+                      : "/token/swapup.svg"
                 }
                 alt="Generate"
                 className={twMerge([
-                  !isAuthenticated
+                  !isAuthenticated || isMigrating
                     ? "cursor-not-allowed grayscale select-none"
                     : "",
                   "w-full",
                 ])}
                 onMouseDown={(e) => {
-                  if (!isExecutingSwap) {
+                  if (!isExecutingSwap && !isMigrating) {
                     (e.target as HTMLImageElement).src = "/token/swapdown.svg";
                   }
                 }}
                 onMouseUp={(e) => {
-                  if (!isExecutingSwap) {
+                  if (!isExecutingSwap && !isMigrating) {
                     (e.target as HTMLImageElement).src = "/token/swapup.svg";
                   }
                 }}
                 onDragStart={(e) => e.preventDefault()}
                 onMouseOut={(e) => {
-                  if (!isExecutingSwap) {
+                  if (!isExecutingSwap && !isMigrating) {
                     (e.target as HTMLImageElement).src = "/token/swapup.svg";
                   }
                 }}
