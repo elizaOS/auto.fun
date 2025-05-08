@@ -43,19 +43,21 @@ export default function Layout() {
   return (
     <QueryClientProvider client={queryClient}>
       <Providers>
-        <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased">
-          {isTosAccepted ? <Header /> : null}
-          <main className="flex-grow px-2 md:px-4">
-            <Outlet />
-            <BreakpointIndicator />
-            <ToastContainer position="bottom-right" theme="dark" />
-          </main>
-          <div
-            className={`${isHomepage ? "fixed" : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
-          >
-            {!pathname.startsWith("/chat/") && <Footer />}
+        <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased items-center">
+          <div className="max-w-[1440px]">
+            {isTosAccepted ? <Header /> : null}
+            <main className="flex-grow px-2 md:px-4">
+              <Outlet />
+              <BreakpointIndicator />
+              <ToastContainer position="bottom-right" theme="dark" />
+            </main>
+            <div
+              className={`${isHomepage ? "fixed" : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
+            >
+              {!pathname.startsWith("/chat/") && <Footer />}
+            </div>
+            <WalletModal />
           </div>
-          <WalletModal />
         </div>
       </Providers>
     </QueryClientProvider>
