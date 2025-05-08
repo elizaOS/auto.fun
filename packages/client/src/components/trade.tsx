@@ -11,10 +11,10 @@ import { BN } from "bn.js";
 import { Info, Wallet } from "lucide-react";
 import numeral from "numeral";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
+import { toast } from "react-toastify";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
-import { toast } from "react-toastify";
-import { Link } from "react-router";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -202,21 +202,20 @@ export default function Trade({ token }: { token: IToken }) {
       };
     }, [displayhMinReceivedQuery?.data]);
 
-    const showTransactionToast = (signature: string) => {
-      const solscanUrl = `https://solscan.io/tx/${signature}`;
-      toast.info(
-        <div>
-          <Link
-            to={solscanUrl}
-            target="_blank"
-            className="text-blue-700 hover:underline"
-          >
-            {signature.slice(0, 8)}...
-          </Link>
-        </div>
-      );
-    };
-    
+  const showTransactionToast = (signature: string) => {
+    const solscanUrl = `https://solscan.io/tx/${signature}`;
+    toast.info(
+      <div>
+        <Link
+          to={solscanUrl}
+          target="_blank"
+          className="text-blue-700 hover:underline"
+        >
+          {signature.slice(0, 8)}...
+        </Link>
+      </div>,
+    );
+  };
 
   const onSwap = async () => {
     if (!sellAmount) return;
@@ -227,7 +226,7 @@ export default function Trade({ token }: { token: IToken }) {
       token,
     });
     if (result?.signature) {
-      showTransactionToast(result?.signature)
+      showTransactionToast(result?.signature);
     }
     queryClient.invalidateQueries({ queryKey: ["token", token.mint] });
     setSellAmount(0);
