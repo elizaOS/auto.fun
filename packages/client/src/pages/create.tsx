@@ -1153,7 +1153,7 @@ export default function Create() {
         Image: {
           Bytes: imageBytes,
         },
-        MinConfidence: 80, // I need to test this out still
+        MinConfidence: 80, // This value still needs testing
       });
       const response = await rekognitionClient.send(command);
       return (
