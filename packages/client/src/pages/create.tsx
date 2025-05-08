@@ -1191,20 +1191,10 @@ export default function Create() {
 
         if (base64Data && contentType.startsWith("image/")) {
           const imageBuffer = Buffer.from(base64Data, "base64");
-          console.log(
-            `Performing moderation check before token creation for ${tokenMetadata.name}`,
-          );
-          const moderationLabels =
-            await detectInappropriateContent(imageBuffer);
+          console.log("Performing moderation check");
+          const moderationLabels = await detectInappropriateContent(imageBuffer);
           if (moderationLabels.length) {
-            console.log(
-              `Inappropriate content detected for ${tokenMetadata.name}:`,
-              moderationLabels,
-            );
-          } else {
-            console.log(
-              `No inappropriate content detected for ${tokenMetadata.name}`,
-            );
+            console.log(`Inappropriate content detected`, moderationLabels);
           }
         }
       }
