@@ -12,7 +12,6 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { useState } from "react";
-import { toast } from "react-toastify";
 import { getConfigAccount } from "./use-config-account";
 import { useMevProtection } from "./use-mev-protection";
 import { useSlippage } from "./use-slippage";
@@ -67,7 +66,7 @@ export const useSwap = () => {
       token?.status === "migration_failed" ||
       !token?.status
     ) {
-      return;
+      return null;
     }
 
     try {
@@ -106,10 +105,10 @@ export const useSwap = () => {
             jupiterError instanceof Error
               ? jupiterError.message
               : String(jupiterError);
-          toast.error(
+
+          throw new Error(
             `Jupiter routing failed: ${errorMsg}. Unable to complete swap.`,
           );
-          throw new Error(`Jupiter swap failed: ${errorMsg}`);
         }
       } else {
         console.log(`Using internal bonding curve swap for ${token.mint}`);
@@ -209,10 +208,8 @@ export const useSwap = () => {
         console.log(`Standard transaction sent, signature: ${signature}`);
       }
 
-      if (signature) {
-        toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
-      } else {
-        toast.warning(
+      if (!signature) {
+        throw new Error(
           "Transaction potentially sent, but signature was not received.",
         );
       }
@@ -224,13 +221,15 @@ export const useSwap = () => {
         !errorMsg.includes("Jupiter swap failed") &&
         !errorMsg.includes("Token-2022")
       ) {
-        toast.error(`Swap failed: ${errorMsg}`);
+        throw new Error(
+          `Swap execution failed: ${errorMsg}. Please try again.`,
+        );
       }
     } finally {
       setIsExecuting(false);
     }
 
-    return { signature };
+    return signature;
   };
 
   return {

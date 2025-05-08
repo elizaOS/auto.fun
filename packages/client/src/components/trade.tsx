@@ -11,8 +11,10 @@ import { BN } from "bn.js";
 import { Info, Wallet } from "lucide-react";
 import numeral from "numeral";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
+import TxToast from "./swap/TxToast";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -203,12 +205,20 @@ export default function Trade({ token }: { token: IToken }) {
   const onSwap = async () => {
     if (!sellAmount) return;
 
-    await executeSwap({
-      amount: sellAmount,
-      style: isTokenSelling ? "sell" : "buy",
-      tokenAddress: token.mint,
-      token,
-    });
+    try {
+      const signature = await executeSwap({
+        amount: sellAmount,
+        style: isTokenSelling ? "sell" : "buy",
+        tokenAddress: token.mint,
+        token,
+      });
+
+      if (!signature) return;
+
+      toast.info(<TxToast signature={signature} />);
+    } catch (error: any) {
+      toast.error(error?.message || "Transaction failed");
+    }
 
     queryClient.invalidateQueries({ queryKey: ["token", token.mint] });
 
