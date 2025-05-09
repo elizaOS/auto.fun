@@ -51,13 +51,13 @@ export default function Layout() {
               <BreakpointIndicator />
               <ToastContainer position="bottom-right" theme="dark" />
             </main>
-            <div
-              className={`${isHomepage ? "fixed" : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
+            <WalletModal />
+          </div>
+          <div
+              className={`${isHomepage ? "fixed" : "static"} w-full bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
             >
               {!pathname.startsWith("/chat/") && <Footer />}
             </div>
-            <WalletModal />
-          </div>
         </div>
       </Providers>
     </QueryClientProvider>
