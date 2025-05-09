@@ -217,7 +217,9 @@ export default function SwapsTable({ token }: { token: IToken }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Button>View All Trades</Button>
+            <Button className="flex items-center gap-2">
+              View All Trades <ExternalLink className="size-5" />
+            </Button>
           </a>
         </div>
       ) : null}
