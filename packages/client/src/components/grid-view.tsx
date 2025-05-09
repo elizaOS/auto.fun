@@ -40,7 +40,7 @@ export const GridItem = ({ token }: { token: IToken }) => {
         </div>
         <div className="flex flex-col w-full min-w-0 z-10">
           <div className="absolute flex flex-col top-0 right-0 p-2 px-3 items-end min-w-0 gap-2">
-          <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-highlight text-base md:text-lg xl:text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+            <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-highlight text-base md:text-lg xl:text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
               MC {abbreviateNumber(token.marketCapUSD)}
             </div>
             <div className="bg-autofun-background-muted/65 px-1 text-autofun-text-primary text-base md:text-lg xl:text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
