@@ -203,7 +203,9 @@ export class RedisCacheService {
 
     await this.redisPool.useClient(async (client) => {
       if (ttlInSeconds) {
-        await client.set(this.getKey(key), comp, "EX", ttlInSeconds);
+        await client.setex(this.getKey(key), ttlInSeconds, comp);
+        const liveTtl = await client.ttl(this.getKey(key));
+        logger.log(`TTL for ${this.getKey(key)} is now ${liveTtl}s`);
       } else {
         await client.set(this.getKey(key), comp);
       }
