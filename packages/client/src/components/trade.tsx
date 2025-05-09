@@ -507,7 +507,7 @@ export default function Trade({ token }: { token: IToken }) {
                   isExecutingSwap
                     ? "/token/swapdown.svg"
                     : isMigrating
-                      ? "/token/launchup.svg"
+                      ? "/token/migrating.svg"
                       : "/token/swapup.svg"
                 }
                 alt="Generate"
