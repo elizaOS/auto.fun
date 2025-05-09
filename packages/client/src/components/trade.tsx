@@ -573,7 +573,7 @@ const TokenDisplay = ({
         alt={token?.name || "token"}
         className="size-4 mr-2"
       />
-      <span className="text-lg uppercase font-dm-mono tracking-wider font-bold">
+      <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
         {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
       </span>
     </div>
