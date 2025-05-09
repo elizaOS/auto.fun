@@ -29,8 +29,8 @@ export const LaunchButton = ({
             isSubmitting || isCreating
               ? "/create/launching.svg"
               : activeTab === FormTab.IMPORT
-              ? "/create/importup-thick.svg"
-              : "/create/launchup.svg"
+                ? "/create/importup-thick.svg"
+                : "/create/launchup.svg"
           }
           alt="Launch"
           className="h-32 mb-4 select-none pointer-events-none"
@@ -43,7 +43,8 @@ export const LaunchButton = ({
         </p>
       ) : !canLaunch && !isSubmitting && activeTab !== FormTab.IMPORT ? (
         <p className="text-red-500 text-center text-sm">
-          Please fill required fields, ensure sufficient SOL, and generate a vanity address.
+          Please fill required fields, ensure sufficient SOL, and generate a
+          vanity address.
         </p>
       ) : !canLaunch && !isSubmitting && activeTab === FormTab.IMPORT ? (
         <p className="text-red-500 text-center text-sm">
@@ -52,4 +53,4 @@ export const LaunchButton = ({
       ) : null}
     </div>
   );
-}; 
+};

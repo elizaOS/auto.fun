@@ -1,6 +1,6 @@
-import { FormTab } from "../types";
 import { Icons } from "../../icons";
 import { MAX_INITIAL_SOL, TOKEN_SUPPLY, VIRTUAL_RESERVES } from "../consts";
+import { FormTab } from "../types";
 
 interface BuySectionProps {
   activeTab: FormTab;
@@ -31,7 +31,8 @@ export const BuySection = ({
     const lamports = solAmount * 1e9;
     // Using constant product formula: (dx * y) / (x + dx)
     // where x is virtual reserves, y is token supply, dx is input SOL amount
-    const tokenAmount = (lamports * TOKEN_SUPPLY) / (VIRTUAL_RESERVES + lamports);
+    const tokenAmount =
+      (lamports * TOKEN_SUPPLY) / (VIRTUAL_RESERVES + lamports);
     return tokenAmount;
   };
 
@@ -62,7 +63,8 @@ export const BuySection = ({
                   Total token supply: {TOKEN_SUPPLY.toLocaleString()} tokens
                 </p>
                 <p className="text-neutral-400 text-xs mt-1">
-                  Pricing follows a bonding curve, your percentage increases with more SOL.
+                  Pricing follows a bonding curve, your percentage increases
+                  with more SOL.
                 </p>
               </div>
               <div className="border-t border-neutral-800 pt-2 mt-1">
@@ -90,8 +92,13 @@ export const BuySection = ({
                 let decimalPart = parts[1] || "";
 
                 // Limit whole part length (e.g., 2 digits for SOL up to 99)
-                if (wholePart.length > String(Math.floor(MAX_INITIAL_SOL)).length) {
-                  wholePart = wholePart.slice(0, String(Math.floor(MAX_INITIAL_SOL)).length);
+                if (
+                  wholePart.length > String(Math.floor(MAX_INITIAL_SOL)).length
+                ) {
+                  wholePart = wholePart.slice(
+                    0,
+                    String(Math.floor(MAX_INITIAL_SOL)).length,
+                  );
                 }
                 // Limit decimal part length
                 if (decimalPart.length > 2) {
@@ -105,7 +112,8 @@ export const BuySection = ({
                 const numValue = parseFloat(value);
                 if (!isNaN(numValue)) {
                   if (numValue < 0) value = "0";
-                  else if (numValue > maxInputSol) value = maxInputSol.toString();
+                  else if (numValue > maxInputSol)
+                    value = maxInputSol.toString();
                 } else if (value !== "") {
                   value = "0"; // Reset invalid non-empty strings
                 }
@@ -125,7 +133,11 @@ export const BuySection = ({
       </div>
       {parseFloat(buyValue) > 0 && (
         <div className="text-right text-xs text-neutral-400">
-          ≈ {calculatePercentage(calculateTokensFromSol(parseFloat(buyValue))).toFixed(2)} % of supply
+          ≈{" "}
+          {calculatePercentage(
+            calculateTokensFromSol(parseFloat(buyValue)),
+          ).toFixed(2)}{" "}
+          % of supply
         </div>
       )}
 
@@ -145,4 +157,4 @@ export const BuySection = ({
       </div>
     </div>
   );
-}; 
+};

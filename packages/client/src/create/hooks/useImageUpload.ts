@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { uploadImage } from "../utils/uploadImage";
 import { TokenMetadata } from "../types";
+import { uploadImage } from "../utils/uploadImage";
 
 interface UseImageUploadProps {
   onImageUploaded?: (url: string) => void;
@@ -21,7 +21,10 @@ export const useImageUpload = ({
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   const handleImageUpload = useCallback(
-    async (file: File, tokenMetadata: TokenMetadata): Promise<UploadResponse> => {
+    async (
+      file: File,
+      tokenMetadata: TokenMetadata,
+    ): Promise<UploadResponse> => {
       try {
         setIsUploading(true);
         setUploadProgress(0);
@@ -30,7 +33,7 @@ export const useImageUpload = ({
           throw new Error("Image data (base64) is required");
         }
 
-        console.log('Uploading with metadata:', tokenMetadata);
+        console.log("Uploading with metadata:", tokenMetadata);
 
         const result = await uploadImage(tokenMetadata);
 

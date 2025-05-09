@@ -129,10 +129,10 @@ const useCreateTokenMutation = () => {
         "confirmed",
       );
 
-      return { 
-        mintPublicKey: mintKeypair.publicKey, 
+      return {
+        mintPublicKey: mintKeypair.publicKey,
         userPublicKey,
-        signature: txId 
+        signature: txId,
       };
     },
   });

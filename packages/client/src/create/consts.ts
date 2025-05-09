@@ -1,4 +1,4 @@
-import { env, isDevnet } from "@/utils/env";
+import { env } from "@/utils/env";
 
 export const MAX_INITIAL_SOL = 1000;
 export const MAX_NAME_LENGTH = 32;

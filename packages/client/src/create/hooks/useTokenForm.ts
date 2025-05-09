@@ -1,13 +1,16 @@
-import { useState, useCallback } from "react";
-import { FormTab, FormState, FormErrors } from "../types";
+import { useCallback, useState } from "react";
 import { MAX_INITIAL_SOL } from "../consts";
+import { FormErrors, FormState } from "../types";
 
 interface UseTokenFormProps {
   initialForm?: Partial<FormState>;
   onFormChange?: (form: FormState) => void;
 }
 
-export const useTokenForm = ({ initialForm, onFormChange }: UseTokenFormProps = {}) => {
+export const useTokenForm = ({
+  initialForm,
+  onFormChange,
+}: UseTokenFormProps = {}) => {
   const [form, setForm] = useState<FormState>({
     name: initialForm?.name || "",
     symbol: initialForm?.symbol || "",
@@ -35,65 +38,68 @@ export const useTokenForm = ({ initialForm, onFormChange }: UseTokenFormProps = 
     percentage: "",
   });
 
-  const handleChange = useCallback((field: string, value: string) => {
-    setForm((prev) => {
-      let newForm;
-      if (field.includes(".")) {
-        const [parent, child] = field.split(".");
-        if (parent === "links") {
+  const handleChange = useCallback(
+    (field: string, value: string) => {
+      setForm((prev) => {
+        let newForm;
+        if (field.includes(".")) {
+          const [parent, child] = field.split(".");
+          if (parent === "links") {
+            newForm = {
+              ...prev,
+              links: {
+                ...prev.links,
+                [child]: value,
+              },
+            };
+          } else {
+            newForm = prev;
+          }
+        } else {
           newForm = {
             ...prev,
-            links: {
-              ...prev.links,
-              [child]: value,
-            },
+            [field]: value,
           };
-        } else {
-          newForm = prev;
         }
-      } else {
-        newForm = {
-          ...prev,
-          [field]: value,
-        };
+
+        if (onFormChange) {
+          onFormChange(newForm);
+        }
+
+        return newForm;
+      });
+
+      if (field === "name" || field === "symbol" || field === "description") {
+        if (value) {
+          setErrors((prev) => ({
+            ...prev,
+            [field]: "",
+          }));
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            [field]: `${field.charAt(0) + field.slice(1)} is required`,
+          }));
+        }
       }
 
-      if (onFormChange) {
-        onFormChange(newForm);
+      if (field === "initialSol" && value) {
+        const numValue = parseFloat(value);
+        if (numValue < 0 || numValue > MAX_INITIAL_SOL) {
+          setErrors((prev) => ({
+            ...prev,
+            initialSol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
+          }));
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            initialSol: "",
+          }));
+        }
       }
-
-      return newForm;
-    });
-
-    if (field === "name" || field === "symbol" || field === "description") {
-      if (value) {
-        setErrors((prev) => ({
-          ...prev,
-          [field]: "",
-        }));
-      } else {
-        setErrors((prev) => ({
-          ...prev,
-          [field]: `${field.charAt(0) + field.slice(1)} is required`,
-        }));
-      }
-    }
-
-    if (field === "initialSol" && value) {
-      const numValue = parseFloat(value);
-      if (numValue < 0 || numValue > MAX_INITIAL_SOL) {
-        setErrors((prev) => ({
-          ...prev,
-          initialSol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
-        }));
-      } else {
-        setErrors((prev) => ({
-          ...prev,
-          initialSol: "",
-        }));
-      }
-    }
-  }, [onFormChange]);
+    },
+    [onFormChange],
+  );
 
   const validateForm = useCallback(() => {
     const newErrors = { ...errors };
@@ -143,4 +149,4 @@ export const useTokenForm = ({ initialForm, onFormChange }: UseTokenFormProps = 
     setForm,
     setErrors,
   };
-}; 
+};

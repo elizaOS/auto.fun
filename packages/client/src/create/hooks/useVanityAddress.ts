@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import InlineVanityWorker from "@/workers/vanityWorker?worker&inline";
 import { Keypair } from "@solana/web3.js";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { BASE58_REGEX } from "../consts";
-import InlineVanityWorker from "@/workers/vanityWorker?worker&inline";
 import { VanityResult, WorkerMessage } from "../types";
 
 export const useVanityAddress = () => {
@@ -10,10 +10,10 @@ export const useVanityAddress = () => {
   const [isGeneratingVanity, setIsGeneratingVanity] = useState(false);
   const [vanityResult, setVanityResult] = useState<VanityResult | null>(null);
   const [displayedPublicKey, setDisplayedPublicKey] = useState<string>(
-    "--- Generate a vanity address ---"
+    "--- Generate a vanity address ---",
   );
   const [suffixError, setSuffixError] = useState<string | null>(null);
-  
+
   const workersRef = useRef<Worker[]>([]);
   const startTimeRef = useRef<number | null>(null);
   const displayUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -74,22 +74,32 @@ export const useVanityAddress = () => {
     }
 
     setSuffixError(currentError);
-    if (currentError && !currentError.startsWith("Warning") && !currentError.startsWith("Note")) {
+    if (
+      currentError &&
+      !currentError.startsWith("Warning") &&
+      !currentError.startsWith("Note")
+    ) {
       return;
     }
 
     stopVanityGeneration();
     setIsGeneratingVanity(true);
 
-    const numWorkers = navigator.hardwareConcurrency > 12 ? 8 : navigator.hardwareConcurrency || 4;
+    const numWorkers =
+      navigator.hardwareConcurrency > 12
+        ? 8
+        : navigator.hardwareConcurrency || 4;
     startTimeRef.current = Date.now();
     workersRef.current = [];
 
-    const base58Chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    const base58Chars =
+      "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
     const generateRandomString = (length: number) => {
       let result = "";
       for (let i = 0; i < length; i++) {
-        result += base58Chars.charAt(Math.floor(Math.random() * base58Chars.length));
+        result += base58Chars.charAt(
+          Math.floor(Math.random() * base58Chars.length),
+        );
       }
       return result;
     };
@@ -126,4 +136,4 @@ export const useVanityAddress = () => {
     startVanityGeneration,
     stopVanityGeneration,
   };
-}; 
+};
