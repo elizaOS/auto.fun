@@ -138,6 +138,43 @@ export const formatNumberSubscript = (
   }
 };
 
+export const formatNumberSubscriptSmart = (
+  num: number,
+  decimals: number = 4,
+): string => {
+  if (num === 0) return "0";
+  let sign = "";
+  if (num < 0) {
+    sign = "-";
+    num = Math.abs(num);
+  }
+
+  if (num >= 1) {
+    return sign + num.toFixed(decimals).toString();
+  }
+
+  const expStr = num.toExponential();
+  const [mantissa, exponentStr] = expStr.split("e");
+  const exponent = parseInt(exponentStr, 10);
+  let totalZeros = -exponent - 1;
+
+  if (totalZeros < 0) {
+    totalZeros = 0;
+  }
+
+  if (totalZeros >= decimals) {
+    const mantissaDigits = mantissa.replace(".", "").slice(0, decimals + 1);
+    return sign + "0." + toSubscript(totalZeros) + mantissaDigits;
+  } else {
+    const roundedMantissa =
+      Math.ceil(Number(mantissa) * 10 ** decimals) / 10 ** decimals;
+    const roundedString = roundedMantissa.toFixed(decimals);
+    const mantissaDigits = roundedString.replace(".", "").slice(0, decimals);
+
+    return sign + "0." + "0".repeat(totalZeros) + mantissaDigits;
+  }
+};
+
 export const isFromDomain = (url: string, domain: string): boolean => {
   // if url does not have http or https, add it
   if (!url.startsWith("http") && !url.startsWith("https")) {
