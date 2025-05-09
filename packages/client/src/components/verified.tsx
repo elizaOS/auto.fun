@@ -9,7 +9,11 @@ export default function Verified({ isVerified }: { isVerified?: boolean }) {
         <span>Verified</span>
       </Tooltip>
 
-      <img src="/verified.svg" id="verified" className="size-5 select-none" />
+      <img
+        src="/verified.svg"
+        id="verified"
+        className="size-4 lg:size-5 select-none"
+      />
     </Fragment>
   );
 }
