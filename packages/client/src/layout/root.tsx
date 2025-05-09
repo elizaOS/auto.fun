@@ -44,7 +44,7 @@ export default function Layout() {
     <QueryClientProvider client={queryClient}>
       <Providers>
         <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased items-center">
-          <div className="max-w-[1440px]">
+          <div className="mx-0 lg:mx-[6vh] xl:mx-[8vh] 2xl:mx-[12vh]">
             {isTosAccepted ? <Header /> : null}
             <main className="flex-grow px-2 md:px-4">
               <Outlet />
