@@ -57,6 +57,8 @@ import {
 } from "./validators/tokenUpdateQuery";
 import { parseSearchTokenRequest } from "./validators/tokenSearchQuery";
 import { normalizeParams, makeCacheKey } from "../tools/normalizeParams";
+import { parseTransactionAndCreateNewToken } from "../util";
+import { sign } from "node:crypto";
 import { sortBy } from "lodash";
 
 if (!process.env.CODEX_API_KEY) {
@@ -1534,6 +1536,7 @@ tokenRouter.post("/create-token", async (c) => {
       website,
       discord,
       imported,
+      signature,
     } = body;
     const mintAddress = tokenMint || mint;
     if (!mintAddress) {
@@ -1685,6 +1688,38 @@ tokenRouter.post("/create-token", async (c) => {
           imageUrl = "";
         }
       }
+      if (!imported) {
+        const newToken = await parseTransactionAndCreateNewToken(
+          signature,
+          mintAddress,
+          imageUrl,
+          tokenStats?.metadataUri || ""
+        );
+        if (newToken) {
+          const partialNewToken = {
+            id: newToken.id,
+            mint: newToken.mint,
+            name: newToken.name,
+            ticker: newToken.ticker,
+            url: newToken.url,
+            image: newToken.image,
+            description: newToken.description,
+            twitter: newToken.twitter,
+            telegram: newToken.telegram,
+            farcaster: newToken.farcaster,
+            website: newToken.website,
+            discord: newToken.discord,
+            creator: newToken.creator,
+            status: newToken.status,
+            imported: newToken.imported,
+            createdAt: newToken.createdAt,
+            isToken2022: false,
+          };
+
+          logger.log(`New token created successfully: ${newToken}`);
+          return c.json({ success: true, token: partialNewToken });
+        }
+      }
 
       // Create token data with all required fields from the token schema
       const now = new Date();
@@ -1757,11 +1792,9 @@ tokenRouter.post("/create-token", async (c) => {
         image: imageUrl || "",
         createdAt: now,
         imported: importedValue,
-        isToken2022: isToken2022Value, // <<< Include in response if needed
+        isToken2022: isToken2022Value,
       };
 
-      // Trigger immediate updates for price and holders in the background
-      // for both imported and newly created tokens
       logger.log(
         `Triggering immediate price and holder update for token: ${mintAddress}`
       );
@@ -1769,23 +1802,22 @@ tokenRouter.post("/create-token", async (c) => {
       if (imported) {
         try {
           const redisCache = await getGlobalRedisCache();
-          const importedToken = await ExternalToken.create(
-            mintAddress,
-            redisCache
-          );
-          const { marketData } = await importedToken.registerWebhook();
-          // Fetch historical data in the background
-          (async () => await importedToken.fetchHistoricalSwapData())();
-          // Merge any immediately available market data
-          if (marketData && marketData.newTokenData) {
-            Object.assign(tokenData, marketData.newTokenData);
-          }
+          // const importedToken = await ExternalToken.create(
+          //   mintAddress,
+          //   redisCache
+          // );
+          // const { marketData } = await importedToken.registerWebhook();
+          // // Fetch historical data in the background
+          // (async () => await importedToken.fetchHistoricalSwapData())();
+          // // Merge any immediately available market data
+          // if (marketData && marketData.newTokenData) {
+          //   Object.assign(tokenData, marketData.newTokenData);
+          // }
         } catch (webhookError) {
           logger.error(
             `Failed to register webhook for imported token ${mintAddress}:`,
             webhookError
           );
-          // Continue even if webhook registration fails, especially locally
         }
       }
 

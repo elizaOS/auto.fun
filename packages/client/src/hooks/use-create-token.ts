@@ -1,6 +1,8 @@
-import { TokenMetadata } from "@/types/form.type";
+import { TokenMetadata } from "@/create/types";
 import { env } from "@/utils/env";
-import { Autofun, SEED_CONFIG, useProgram } from "@/utils/program";
+import { SEED_CONFIG, useProgram } from "@/utils/program";
+import { Autofun } from "@autodotfun/types/types/autofun.ts";
+
 import { launchAndSwapTx } from "@/utils/swapUtils";
 import { BN, Program } from "@coral-xyz/anchor";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -127,7 +129,11 @@ const useCreateTokenMutation = () => {
         "confirmed",
       );
 
-      return { mintPublicKey: mintKeypair.publicKey, userPublicKey };
+      return { 
+        mintPublicKey: mintKeypair.publicKey, 
+        userPublicKey,
+        signature: txId 
+      };
     },
   });
 };
