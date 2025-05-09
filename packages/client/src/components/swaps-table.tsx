@@ -10,6 +10,7 @@ import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
 import {
   formatNumber,
+  formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
   resizeImage,
@@ -21,6 +22,7 @@ import { env } from "@/utils/env";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
+import Button from "./button";
 import Interval from "./interval";
 import Loader from "./loader";
 import PausedIndicator from "./paused-indicator";
@@ -42,6 +44,8 @@ export default function SwapsTable({ token }: { token: IToken }) {
   });
 
   const items = query?.data?.swaps;
+  const showMoreTrades =
+    token.status === "locked" || token.status === "migrated";
 
   const dataExtractor = (swap: any) => {
     if (isCodex) return swap;
@@ -158,7 +162,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                             className="size-2.5 rounded-full"
                           />
                           <span className="text-sm">
-                            {solana}
+                            {formatNumberSubscript(Number(solana), 2)}
                             {/* {formatNumber(solana, true, true)} */}
                           </span>
                           {usdValue ? (
@@ -206,6 +210,20 @@ export default function SwapsTable({ token }: { token: IToken }) {
             : null}
         </TableBody>
       </Table>
+      {showMoreTrades ? (
+        <div className="flex place-content-center">
+          <a
+            href={`https://dexscreener.com/solana/${token.mint}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button className="flex items-center gap-2">
+              View All Trades <ExternalLink className="size-5" />
+            </Button>
+          </a>
+        </div>
+      ) : null}
+
       {/* <div className="grid place-content-center">
         <Pagination
           pagination={{

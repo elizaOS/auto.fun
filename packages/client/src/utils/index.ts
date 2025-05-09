@@ -104,7 +104,10 @@ function toSubscript(num: number): string {
     .join("");
 }
 
-export const formatNumberSubscript = (num: number): string => {
+export const formatNumberSubscript = (
+  num: number,
+  decimals: number = 1,
+): string => {
   if (num === 0) return "0";
   let sign = "";
   if (num < 0) {
@@ -128,7 +131,7 @@ export const formatNumberSubscript = (num: number): string => {
     totalZeros = 0;
   }
 
-  if (totalZeros > 1) {
+  if (totalZeros > decimals) {
     return sign + "0.0" + toSubscript(totalZeros) + mantissaDigits;
   } else {
     return sign + "0." + "0".repeat(totalZeros) + mantissaDigits;

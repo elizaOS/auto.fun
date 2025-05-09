@@ -54,6 +54,22 @@ export default function SupportPage() {
                 />
                 @AutoDotFunBot
               </Link>
+              <Link
+                to="https://tally.so/r/mOr8DM"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-white hover:text-[#03FF24] transition-colors"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 5.5a.75.75 0 10-1.5 0v6a.75.75 0 001.5 0v-6zm0 9a.75.75 0 10-1.5 0 .75.75 0 001.5 0z" />
+                </svg>
+                Submit an issue
+              </Link>
             </div>
           </section>
 

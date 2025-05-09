@@ -11,8 +11,10 @@ import { BN } from "bn.js";
 import { Info, Wallet } from "lucide-react";
 import numeral from "numeral";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
+import TxToast from "./swap/TxToast";
 
 export default function Trade({ token }: { token: IToken }) {
   const queryClient = useQueryClient();
@@ -82,6 +84,8 @@ export default function Trade({ token }: { token: IToken }) {
   const isStatusDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status,
   );
+
+  const isMigrating = token?.status === "migrating";
 
   const isButtonDisabled = (amount: number | string) => {
     if (typeof amount === "string") {
@@ -203,12 +207,20 @@ export default function Trade({ token }: { token: IToken }) {
   const onSwap = async () => {
     if (!sellAmount) return;
 
-    await executeSwap({
-      amount: sellAmount,
-      style: isTokenSelling ? "sell" : "buy",
-      tokenAddress: token.mint,
-      token,
-    });
+    try {
+      const signature = await executeSwap({
+        amount: sellAmount,
+        style: isTokenSelling ? "sell" : "buy",
+        tokenAddress: token.mint,
+        token,
+      });
+
+      if (!signature) return;
+
+      toast.info(<TxToast signature={signature} />);
+    } catch (error: any) {
+      toast.error(error?.message || "Transaction failed");
+    }
 
     queryClient.invalidateQueries({ queryKey: ["token", token.mint] });
 
@@ -285,11 +297,14 @@ export default function Trade({ token }: { token: IToken }) {
                 error ? "border-autofun-text-error" : "",
               ])}
             >
-              <div className="flex justify-between gap-3 relative border-b-1 border-autofun-background-input hover:border-white focus:border-white ">
+              <div className="flex flex-col justify-between gap-3 border-b-1 border-autofun-background-input hover:border-white focus:border-white py-2">
                 <input
-                  className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
+                  className="text-6xl w-full p-2 overflow-clip font-dm-mono text-white outline-none"
                   min={0}
                   type="text"
+                  style={{
+                    fontSize: inputAmount.length > 6 ? "3rem" : "4rem",
+                  }}
                   onKeyDown={(e) => {
                     if (
                       e.key === "-" ||
@@ -331,7 +346,7 @@ export default function Trade({ token }: { token: IToken }) {
                   }}
                   placeholder="0"
                 />
-                <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
+                <div className="flex items-center gap-2 w-full justify-between">
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                   <Balance
                     token={token}
@@ -480,35 +495,41 @@ export default function Trade({ token }: { token: IToken }) {
                 insufficientBalance ||
                 isExecutingSwap ||
                 !sellAmount ||
-                sellAmount === 0
+                sellAmount === 0 ||
+                isMigrating
                   ? "!cursor-not-allowed"
                   : "",
               ])}
+              disabled={isMigrating}
             >
               <img
                 src={
-                  isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
+                  isExecutingSwap
+                    ? "/token/swapdown.svg"
+                    : isMigrating
+                      ? "/token/migrating.svg"
+                      : "/token/swapup.svg"
                 }
                 alt="Generate"
                 className={twMerge([
-                  !isAuthenticated
+                  !isAuthenticated || isMigrating
                     ? "cursor-not-allowed grayscale select-none"
                     : "",
                   "w-full",
                 ])}
                 onMouseDown={(e) => {
-                  if (!isExecutingSwap) {
+                  if (!isExecutingSwap && !isMigrating) {
                     (e.target as HTMLImageElement).src = "/token/swapdown.svg";
                   }
                 }}
                 onMouseUp={(e) => {
-                  if (!isExecutingSwap) {
+                  if (!isExecutingSwap && !isMigrating) {
                     (e.target as HTMLImageElement).src = "/token/swapup.svg";
                   }
                 }}
                 onDragStart={(e) => e.preventDefault()}
                 onMouseOut={(e) => {
-                  if (!isExecutingSwap) {
+                  if (!isExecutingSwap && !isMigrating) {
                     (e.target as HTMLImageElement).src = "/token/swapup.svg";
                   }
                 }}
@@ -546,13 +567,13 @@ const TokenDisplay = ({
   isSolana?: boolean;
 }) => {
   return (
-    <div className="flex items-center justify-end mb-4">
+    <div className="flex items-center justify-end">
       <SkeletonImage
         src={isSolana ? "/solana.svg" : token?.image || "/placeholder.png"}
         alt={token?.name || "token"}
         className="size-4 mr-2"
       />
-      <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
+      <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
         {isSolana ? "SOL" : sanitizeCheckmark(token?.ticker)}
       </span>
     </div>

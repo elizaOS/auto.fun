@@ -278,18 +278,10 @@ export default function Page() {
           <Link to="/">
             <Button>Back to Home</Button>
           </Link>
-          {/* <Link to={`https://solscan.io/token/${address}`} target="_blank">
-            <Button variant="secondary">View on Solscan</Button>
-          </Link> */}
         </div>
       </div>
     );
   }
-
-  // token?.reserveLamport - token?.virtualReserves) /
-  //                         LAMPORTS_PER_SOL,
-
-  // log for debug
 
   const queryLoading = isCodex
     ? tokenQuery?.isPending || codexQuery?.isPending
