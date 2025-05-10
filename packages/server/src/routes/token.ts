@@ -1212,7 +1212,8 @@ tokenRouter.get("/tokens", async (c) => {
     : (queryParams.sortBy as string) || "createdAt";
   const sortOrder = (queryParams.sortOrder as string) || "desc";
   const normalized = normalizeParams(queryParams);
-  const cacheKey = `tokens:${makeCacheKey(normalized)}`;
+  const key = makeCacheKey(normalized);
+  const cacheKey = `tokens:${key}`;
   const redisCache = await getGlobalRedisCache();
 
   if (redisCache) {
