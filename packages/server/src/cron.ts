@@ -219,7 +219,8 @@ async function handleNewToken(
 ): Promise<HandlerResult> {
   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
   if (!newTokenLog) return null;
-
+  const curveLog = logs.find((log) => log.includes("curve_limit:"));
+  const reserveLog = logs.find((log) => log.includes("reserve_lamport:"));
   try {
     const parts = newTokenLog.split(" ");
     if (parts.length < 2)
@@ -229,6 +230,38 @@ async function handleNewToken(
     const rawCreatorAddress = parts[parts.length - 1].replace(/[",)]/g, "");
     if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(rawTokenAddress)) {
       throw new Error(`Malformed token address: ${rawTokenAddress}`);
+    }
+
+    let curveLimit: number | null = null;
+    let reserveLamport: number | null = null;
+    if (curveLog) {
+      const curveValue = curveLog.split("curve_limit:")[1].trim();
+      curveLimit = parseInt(curveValue);
+      console.log("Parsed curve_limit:", curveLimit);
+    }
+
+    if (reserveLog) {
+      const reserveValue = reserveLog.split("reserve_lamport:")[1].trim();
+      reserveLamport = parseInt(reserveValue);
+      console.log("Parsed reserve_lamport:", reserveLamport);
+    }
+    if (curveLimit === null || reserveLamport === null) {
+      logger.error("Missing curve_limit or reserve_lamport in logs");
+      return null;
+    }
+
+    if (curveLimit < 113000000000) {
+      logger.error(
+        `Token curve_limit ${curveLimit} is below minimum required 113000000000`
+      );
+      return null;
+    }
+
+    if (reserveLamport < 28000000000) {
+      logger.error(
+        `Token reserve_lamport ${reserveLamport} is below minimum required 28000000000`
+      );
+      return null;
     }
 
     const newToken = await createNewTokenData(
