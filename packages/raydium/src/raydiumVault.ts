@@ -177,7 +177,7 @@ export async function claim(
     }
   }
 
-  if (!poolInfo || !poolInfo.lpMint) {
+  if (!poolInfo || !poolInfo.lpMint || !poolInfo.lpMint?.address || !poolInfo.mintA || !poolInfo.mintB ) {
     poolInfo = (await raydium.api.fetchPoolById({ ids: poolId.toString() }))[0];
     if (!poolInfo) {
       throw new Error("Pool info not found");
