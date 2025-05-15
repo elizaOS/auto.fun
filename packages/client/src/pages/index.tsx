@@ -120,6 +120,7 @@ export default function Page() {
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback(
     (node: HTMLDivElement) => {
+      console.log("Last element ref called");
       if (query.isLoading || query.isFetchingNextPage) return;
       // Disconnect previous observer if any
       if (observer.current) observer.current.disconnect();

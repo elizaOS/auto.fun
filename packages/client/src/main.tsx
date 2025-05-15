@@ -12,6 +12,7 @@ import Fees from "./pages/fees";
 import PageNotFound from "./pages/not-found";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Profile from "./pages/profile";
+import StatsPage from "./pages/stats";
 import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
 import Testing from "./pages/testing";
@@ -34,6 +35,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/testing" element={<Testing />} />
           <Route path="/callback" element={<CallbackPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/chat/:mint" element={<ChatPage />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<PageNotFound />} />
