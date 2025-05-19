@@ -139,13 +139,17 @@ migrationRouter.post("/claimFees", async (c) => {
         : process.env.MAINNET_SOLANA_RPC_URL || ""
     );
     const websocket = getWebSocketClient();
+    console.log(
+      `Claiming fees for token: ${tokenMint} - name ${token.name} by user: ${user.publicKey}`
+    );
     // async () => {
     const signature = await claimFees(
       nftMint,
       poolId,
       connection,
       claimer,
-      websocket
+      websocket,
+      token
     ).catch((err) => {
       logger.error("Error in claim fees:", err);
     });

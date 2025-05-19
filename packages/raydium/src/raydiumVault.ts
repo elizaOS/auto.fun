@@ -13,6 +13,9 @@ import {
 } from "./pdas";
 import { RaydiumVault } from "@autodotfun/types/types/raydium_vault";
 import { retryOperation } from "./utils";
+import { Token, tokens, getDB } from "@autodotfun/server/src/db";
+import { eq } from "drizzle-orm";
+import { ComputeBudgetProgram } from "@solana/web3.js";
 
 export async function depositToRaydiumVault(
   provider: anchor.AnchorProvider,
@@ -132,7 +135,8 @@ export async function claim(
   position_nft: anchor.web3.PublicKey,
   poolId: anchor.web3.PublicKey,
   connection: anchor.web3.Connection,
-  claimer: anchor.web3.PublicKey
+  claimer: anchor.web3.PublicKey,
+  token: Token
 ) {
   const vault_config = getVaultConfig(program.programId);
   const [locked_authority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -161,15 +165,46 @@ export async function claim(
     disableLoadToken: false,
     blockhashCommitment: "confirmed",
   });
-  const poolInfo = (
-    await raydium.api.fetchPoolById({ ids: poolId.toString() })
-  )[0];
-  console.log("poolInfo", poolInfo);
-  const poolInfoJson = JSON.parse(JSON.stringify(poolInfo));
-  console.log("poolInfoJson", poolInfoJson);
+  let poolInfo = token.poolInfo as any;
+
+  // Parse poolInfo if it's a string
+  if (typeof poolInfo === "string") {
+    try {
+      poolInfo = JSON.parse(poolInfo);
+    } catch (e) {
+      console.error("Failed to parse poolInfo string:", e);
+      throw new Error("Invalid poolInfo format");
+    }
+  }
+
+  if (!poolInfo || !poolInfo.lpMint || !poolInfo.lpMint?.address || !poolInfo.mintA || !poolInfo.mintB ) {
+    poolInfo = (await raydium.api.fetchPoolById({ ids: poolId.toString() }))[0];
+    if (!poolInfo) {
+      throw new Error("Pool info not found");
+    }
+    // update poolInfo in the database for the next time
+    const db = getDB();
+    await db
+      .update(tokens)
+      .set({ poolInfo: JSON.stringify(poolInfo) })
+      .where(eq(tokens.mint, token.mint));
+  }
+
   const pool_state = new anchor.web3.PublicKey(poolId.toString());
-  const lp_mint = new anchor.web3.PublicKey(poolInfoJson.lpMint.address);
+
+  // Safer access to lpMint address
+  if (!poolInfo.lpMint?.address) {
+    console.error("lpMint address not found in poolInfo:", poolInfo);
+    throw new Error("lpMint address not found in pool info");
+  }
+
+  const lp_mint = new anchor.web3.PublicKey(poolInfo.lpMint.address);
   console.log("lp_mint", lp_mint.toString());
+
+  // // Debug logging for other mints
+  // console.log("mintA:", poolInfo.mintA);
+  // console.log("mintB:", poolInfo.mintB);
+
   const vault0_mint = new anchor.web3.PublicKey(
     poolInfo.mintA.address.toString()
   );
@@ -245,25 +280,58 @@ export async function claim(
   };
   const call = program.methods.claim().accounts(accounts);
 
-  const txSignature = await call.rpc();
-  console.log("Transaction Signature", txSignature);
-  const latestBlockhash = await connection.getLatestBlockhash();
+  try {
+    // Set compute units before simulation
+    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+    const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
 
-  await retryOperation(
-    async () => {
-      await connection.confirmTransaction(
-        {
-          signature: txSignature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        },
-        "confirmed"
+    const callWithComputeBudget = call.preInstructions([
+      modifyComputeUnits,
+      addPriorityFee,
+    ]);
+
+    // Simulate the transaction with compute budget
+    await callWithComputeBudget.simulate();
+
+    console.log("Compute budget instructions:", {
+      modifyComputeUnits,
+      addPriorityFee,
+    });
+
+    const txSignature = await callWithComputeBudget.rpc();
+
+    console.log("Transaction Signature", txSignature);
+    const latestBlockhash = await connection.getLatestBlockhash();
+
+    await retryOperation(
+      async () => {
+        await connection.confirmTransaction(
+          {
+            signature: txSignature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          },
+          "confirmed"
+        );
+      },
+      3, // 3 attempts
+      10000 // 10 seconds delay
+    );
+    return txSignature;
+  } catch (error) {
+    if (error instanceof anchor.web3.SendTransactionError) {
+      console.error("Transaction failed with logs:", error.logs);
+      throw new Error(
+        `Transaction failed: ${error.message}\nLogs: ${JSON.stringify(error.logs, null, 2)}`
       );
-    },
-    3, // 3 attempts
-    2000 // 2 seconds delay
-  );
-  return txSignature;
+    }
+    console.error("Error in claim:", error);
+    throw error;
+  }
 }
 
 export async function checkBalance(
