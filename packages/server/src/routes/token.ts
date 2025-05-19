@@ -1319,7 +1319,7 @@ tokenRouter.get("/tokens", async (c) => {
     // Define the two token addresses to prioritize
     const priorityTokenAddresses: string[] = [
       "8btUuvx2Bu4zTd8g1tN5wCKMULyPgqiPaDiJbFbWkFUN",
-      "D7qqKEr7JFpAd82m9nvJL2psdPmU1oW54g1LHvDUYFAN",
+      "CdZuiJEgdwQVZBWZrd6MvYwZshsT5HvB6tJYAjzuUTAP",
       "HN8GGgzBFvuePPL3DGPg7uuq2dVgLApnNcW4pxY9a11o",
       "J3NrhzUeKBSA3tJQjNq77zqpWJNz3FS9TrX7H7SLKcom",
     ];
