@@ -16,7 +16,7 @@ import {
 } from "@solana/web3.js";
 import { desc, sql } from "drizzle-orm";
 import { CacheService } from "./cache";
-import { Token, tokens } from "./db";
+import { Token, tokens, getDB } from "./db";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig, getProgram } from "./solana";
 import { Autofun } from "@autodotfun/types/types/autofun";
@@ -166,9 +166,58 @@ export async function getTxIdAndCreatorFromTokenAddress(tokenAddress: string) {
   throw new Error(`No transaction found for token address: ${tokenAddress}`);
 }
 
-/**
- * Creates a new token record with all required data
- */
+export async function parseTransactionAndCreateNewToken(
+  txId: string,
+  tokenAddress: string,
+  imageUrl: string,
+  uri: string
+): Promise<Partial<Token> | undefined> {
+  const rpcUrl = getRpcUrl();
+  const connection = new Connection(rpcUrl, "confirmed");
+  const parsedTx = (await connection.getParsedTransaction(txId, {
+    maxSupportedTransactionVersion: 0,
+  })) as any;
+  if (!parsedTx) {
+    throw new Error(`Transaction ${txId} not found`);
+  }
+  if (!parsedTx?.meta?.logMessages) {
+    throw new Error(`Transaction ${txId} has no log messages`);
+  }
+  const newTokenLog = parsedTx.meta.logMessages.find((log: any) =>
+    log.includes("NewToken:")
+  );
+  const parts = newTokenLog.split(" ");
+  const rawTokenAddress = parts[parts.length - 2].replace(/[",)]/g, "");
+  const rawCreatorAddress = parts[parts.length - 1].replace(/[",)]/g, "");
+  if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(rawTokenAddress)) {
+    throw new Error(`Malformed token address: ${rawTokenAddress}`);
+  }
+  const creatorAddress = rawCreatorAddress;
+  tokenAddress = rawTokenAddress;
+
+  const newToken = await createNewTokenData(txId, tokenAddress, creatorAddress);
+  if (!newToken) {
+    logger.error(`Failed to create new token data for ${rawTokenAddress}`);
+    return undefined;
+  }
+  if (newToken.tokenSupplyUiAmount !== 1000000000) {
+    logger.error(
+      `Token supply is not 1 billion for ${rawTokenAddress}: ${newToken.tokenSupplyUiAmount}`
+    );
+    return undefined;
+  }
+  const createdToken = await getDB()
+    .insert(tokens)
+    .values([newToken as Token])
+    .onConflictDoNothing();
+  if (createdToken) {
+    logger.log(
+      `Created new token ${newToken.name} (${newToken.ticker}) with address ${tokenAddress}`
+    );
+    return newToken;
+  }
+}
+
 export async function createNewTokenData(
   txId: string,
   tokenAddress: string,
@@ -177,8 +226,6 @@ export async function createNewTokenData(
   try {
     // Get a Solana config with the right environment
     const solanaConfig = initSolanaConfig();
-
-    console.log("solanaConfig", solanaConfig);
 
     const metadata = await fetchMetadataWithBackoff(
       solanaConfig.umi,
@@ -222,10 +269,6 @@ export async function createNewTokenData(
         `Bonding curve account not found for token ${tokenAddress}`
       );
     }
-    console.log("bondingCurveAccount", bondingCurveAccount);
-    console.log("reserveToken", Number(bondingCurveAccount.reserveToken));
-    console.log("reserveLamport", Number(bondingCurveAccount.reserveLamport));
-    console.log("curveLimit", Number(bondingCurveAccount.curveLimit));
 
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
@@ -234,15 +277,12 @@ export async function createNewTokenData(
           (Number(bondingCurveAccount.reserveToken) /
             Math.pow(10, TOKEN_DECIMALS))
         : 0;
-    console.log("currentPrice", currentPrice);
 
     const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
-    console.log("tokenPriceInSol", tokenPriceInSol);
     const tokenPriceUSD =
       currentPrice > 0
         ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
         : 0;
-    console.log("tokenPriceUSD", tokenPriceUSD);
 
     // Get TOKEN_SUPPLY from env if available, otherwise use default
     const supply = await updateTokenSupplyFromChain(tokenAddress);
@@ -251,7 +291,7 @@ export async function createNewTokenData(
       : Number(process.env.TOKEN_SUPPLY);
     const marketCapUSD =
       (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
-    console.log("marketCapUSD", marketCapUSD);
+    // console.log("marketCapUSD", marketCapUSD);
 
     // Get virtual reserves from env if available, otherwise use default
     const virtualReserves = process.env.VIRTUAL_RESERVES

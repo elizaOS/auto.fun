@@ -1,4 +1,4 @@
-import { FormInput } from "@/pages/create";
+import { FormInput } from "@/create/forms/FormInput";
 import { isFromDomain } from "@/utils";
 import { fetcher } from "@/utils/api";
 import { env } from "@/utils/env";
