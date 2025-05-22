@@ -19,6 +19,7 @@
   "dependencies": {
     "@autodotfun/raydium": "workspace:*",
     "@autodotfun/types": "workspace:*",
+    "@aws-sdk/client-rekognition": "^3.804.0",
     "@aws-sdk/client-s3": "^3.787.0",
     "@codex-data/sdk": "^1.0.6",
     "@coral-xyz/anchor": "^0.31.0",
