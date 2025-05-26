@@ -14,7 +14,7 @@ mod utils;
 declare_id!("BB9hUaLkTzWhzdVzi8BxjVD1CQuYMpqP3SiwQ5saAQ2W");
 
 #[program]
-pub mod staking_rewards {
+pub mod staking {
     use super::*;
 
     pub fn init_pool(ctx: Context<InitPool>, duration: u64) -> Result<()> {
