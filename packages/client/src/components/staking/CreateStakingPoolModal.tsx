@@ -10,8 +10,8 @@ import { useProgramStaking } from "@/utils/programStaking";
 import DurationSelectSection from "./DurationSelectSelection";
 
 export default function CreateStakingPoolModal() {
-  let navigate = useNavigate();
-  let stakingProgram = useProgramStaking();
+  const navigate = useNavigate();
+  const stakingProgram = useProgramStaking();
 
   const { mutateAsync } = useCreateStakingPool();
   const programId = stakingProgram?.programId; // Placeholder for actual programId
@@ -27,13 +27,13 @@ export default function CreateStakingPoolModal() {
   async function initializePool() {
     // Throw error if mint is not a valid public key
     if (!programId) return;
-    let mintPubkey = new PublicKey(mint);
-    let rewardMintPubkey = new PublicKey(rewardMint);
+    const mintPubkey = new PublicKey(mint);
+    const rewardMintPubkey = new PublicKey(rewardMint);
 
     try {
       setIsInitializing(true);
 
-      let [poolId] = PublicKey.findProgramAddressSync(
+      const [poolId] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("pool"),
           mintPubkey.toBuffer(),

@@ -64,7 +64,7 @@ export async function getPools(isDevnet: boolean): Promise<StakingPool[]> {
     }[];
   };
 
-  let indexedPools = rawData.pools;
+  const indexedPools = rawData.pools;
 
   return indexedPools.map((pool) => ({
     id: pool.id,

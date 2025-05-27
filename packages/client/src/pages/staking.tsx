@@ -39,8 +39,8 @@ export type StakingPool = {
 export default function PoolsPage() {
   const { publicKey } = useWallet();
 
-  let [isLoadingStakingPools, setIsLoadingStakingPools] = useState(true);
-  let [stakingPools, setStakingPools] = useState<StakingPool[]>([]);
+  const [isLoadingStakingPools, setIsLoadingStakingPools] = useState(true);
+  const [stakingPools, setStakingPools] = useState<StakingPool[]>([]);
 
   useEffect(() => {
     getStakingPools();

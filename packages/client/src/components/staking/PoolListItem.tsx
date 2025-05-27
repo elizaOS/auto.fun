@@ -21,7 +21,7 @@ export default function PoolListItem({
   pool,
   isTop = false,
 }: PoolListItemProps) {
-  let [apy, setApy] = useState(Math.floor(Math.random() * 100) + 1);
+  const [apy, setApy] = useState(Math.floor(Math.random() * 100) + 1);
   useEffect(() => {
     console.log(pool);
   }, []);
