@@ -57,6 +57,13 @@
       "when": 1745798492597,
       "tag": "0007_bouncy_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1748321287499,
+      "tag": "0008_legal_annihilus",
+      "breakpoints": true
     }
   ]
 }

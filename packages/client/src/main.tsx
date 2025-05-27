@@ -12,6 +12,7 @@ import Fees from "./pages/fees";
 import PageNotFound from "./pages/not-found";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Profile from "./pages/profile";
+import Staking from "./pages/staking";
 import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
 import Testing from "./pages/testing";
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Homepage />} />
+          <Route path="/staking" element={<Staking />} />
           <Route path="/support" element={<Support />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/profile" element={<Profile />} />
