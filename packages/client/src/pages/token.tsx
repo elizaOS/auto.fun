@@ -507,7 +507,7 @@ export default function Page() {
                 <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
                 {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
-                <div className="flex items-center justify-between pr-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pr-2 space-y-2 sm:space-y-0">
                   <div className="flex">
                     <button
                       className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer transition-colors duration-200 ${
@@ -601,7 +601,7 @@ export default function Page() {
                   {activeTab === "chart" || activeTab === "agents" ? null : (
                     <div
                       id="media-selector-container"
-                      className="flex space-x-2 items-center"
+                      className="mt-2 ml-2 flex space-x-2 items-center"
                     >
                       {/* Media type buttons will be moved here by the generation component */}
                     </div>
