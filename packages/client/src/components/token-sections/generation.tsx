@@ -1727,7 +1727,7 @@ export default function CommunityTab() {
                         : "Enter a description for your video (optional)"
                       : "Optional: describe the musical style (e.g., 'upbeat electronic with retro synths')"
                 }
-                className="w-full border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white px-2 py-2 text-base resize-none leading-normal" // Use py-2, leading-normal for textarea
+                className="w-full min-h-[150px] resize-none border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white px-2 py-2 text-base leading-normal" // Use py-2, leading-normal for textarea
               />
             </div>
 
