@@ -212,7 +212,7 @@ You can deploy your own instance of Auto.fun using the Railway template:
 
 ## Documentation
 
-Further documentation can be found at [https://elizaos.github.io/auto.fun](https://elizaos.github.io/auto.fun) (Work in Progress).
+Further documentation can be found at [https://github.com/elizaOS/auto.fun](https://github.com/elizaOS/auto.fun) (Work in Progress).
 
 ## Contributing
 
