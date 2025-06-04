@@ -12,3 +12,7 @@ pub mod withdraw;
 pub use withdraw::*;
 pub mod launch_and_swap;
 pub use launch_and_swap::*;
+pub mod switch_instant_mode;
+pub use switch_instant_mode::*;
+pub mod set_max_amount;
+pub use set_max_amount::*;

@@ -2,7 +2,7 @@ use crate::constants::LAMPORT_DECIMALS;
 use crate::errors::*;
 use crate::events::CompleteEvent;
 use crate::utils::*;
-use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{ prelude::*, AnchorDeserialize, AnchorSerialize };
 use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use core::fmt::Debug;
@@ -14,24 +14,23 @@ pub struct Config {
     pub authority: Pubkey,
     //  use this for 2 step ownership transfer
     pub pending_authority: Pubkey,
-
     pub team_wallet: Pubkey,
-
-    pub init_bonding_curve: f64, // bonding curve init percentage. The remaining amount is sent to team wallet for distribution to agent
-
     pub platform_buy_fee: u128, //  platform fee percentage
     pub platform_sell_fee: u128,
-
-    pub curve_limit: u64, //  lamports to complete the bonding curve
-
     pub lamport_amount_config: AmountConfig<u64>,
     pub token_supply_config: AmountConfig<u64>,
     pub token_decimals_config: AmountConfig<u8>,
+    // if instant, users can trade right after curve created,
+    // if not instant, users should wait for 24 hrs to trade.
+    pub is_instant_trading: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum AmountConfig<T: PartialEq + PartialOrd + Debug> {
-    Range { min: Option<T>, max: Option<T> },
+    Range {
+        min: Option<T>,
+        max: Option<T>,
+    },
     Enum(Vec<T>),
 }
 
@@ -71,10 +70,15 @@ impl<T: PartialEq + PartialOrd + Debug> AmountConfig<T> {
 pub struct BondingCurve {
     pub token_mint: Pubkey,
     pub creator: Pubkey,
+    pub created_time: i64,
+    // bonding curve init percentage. The remaining amount is sent to team wallet for distribution to agent
+    pub init_bonding_curve: f64,
     pub init_lamport: u64,
     pub reserve_lamport: u64,
     pub reserve_token: u64,
-    pub curve_limit: u64,  // Store curve limit at launch time
+    pub max_buy_amount: u64,
+    pub max_sell_amount: u64,
+    pub curve_limit: u64, // Store curve limit at launch time
     pub is_completed: bool,
 }
 pub trait BondingCurveAccount<'info> {
@@ -83,7 +87,7 @@ pub trait BondingCurveAccount<'info> {
         &mut self,
         global_config: &Account<'info, Config>,
         reserve_one: u64,
-        reserve_two: u64,
+        reserve_two: u64
     ) -> Result<bool>;
     #[allow(clippy::too_many_arguments)]
     fn swap(
@@ -104,7 +108,7 @@ pub trait BondingCurveAccount<'info> {
         signer: &[&[&[u8]]],
 
         token_program: &Program<'info, Token>,
-        system_program: &Program<'info, System>,
+        system_program: &Program<'info, System>
     ) -> Result<u64>;
 
     // Calculate the output amount and the fee amount (in SOL) for a swap
@@ -113,7 +117,7 @@ pub trait BondingCurveAccount<'info> {
         amount: u64, // Input amount (tokens if selling, SOL if buying)
         direction: u8,
         platform_sell_fee: u128,
-        platform_buy_fee: u128,
+        platform_buy_fee: u128
     ) -> Result<(u64, u64)>; // Returns (output_amount, fee_amount_in_sol)
 }
 
@@ -122,17 +126,17 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         &mut self,
         _global_config: &Account<'info, Config>,
         reserve_token: u64,
-        reserve_lamport: u64,
+        reserve_lamport: u64
     ) -> Result<bool> {
         self.reserve_token = reserve_token;
         self.reserve_lamport = reserve_lamport;
-    
+
         if reserve_lamport >= self.curve_limit {
             msg!("curve is completed");
             self.is_completed = true;
             return Ok(true);
         }
-    
+
         Ok(false)
     }
 
@@ -157,20 +161,18 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         signer: &[&[&[u8]]],
 
         token_program: &Program<'info, Token>,
-        system_program: &Program<'info, System>,
+        system_program: &Program<'info, System>
     ) -> Result<u64> {
+        let _ = team_wallet_ata;
         if amount == 0 {
             return err!(PumpfunError::InvalidAmount);
         }
 
         // Deadline check
         let current_timestamp = Clock::get()?.unix_timestamp;
-        require!(
-            current_timestamp <= deadline,
-            PumpfunError::TransactionExpired
-        );
+        require!(current_timestamp <= deadline, PumpfunError::TransactionExpired);
 
-        msg!("curve_limit: {:?} ", global_config.curve_limit);
+        msg!("curve_limit: {:?} ", self.curve_limit);
         msg!("reserve_lamport: {:?} ", self.reserve_lamport);
 
         // if side = buy, amount to swap = min(amount, remaining reserve)
@@ -182,15 +184,17 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
         // if side = buy, amount to swap = min(amount, remaining reserve)
         // Calculate swap and refund amounts
-        let (amount_to_swap, refund_amount, adjusted_minimum_receive) = if direction == 1 {
+        let (amount_to_swap, _refund_amount, adjusted_minimum_receive) = if direction == 1 {
             (amount, 0, minimum_receive_amount)
         } else {
             let remaining = self.curve_limit.saturating_sub(self.reserve_lamport);
             if amount > remaining {
-                let adjustment_ratio = convert_to_float(remaining, LAMPORT_DECIMALS) / 
-                                    convert_to_float(amount, LAMPORT_DECIMALS);
+                let adjustment_ratio =
+                    convert_to_float(remaining, LAMPORT_DECIMALS) /
+                    convert_to_float(amount, LAMPORT_DECIMALS);
                 let adjusted_minimum = convert_from_float(
-                    convert_to_float(minimum_receive_amount, token_mint.decimals) * adjustment_ratio,
+                    convert_to_float(minimum_receive_amount, token_mint.decimals) *
+                        adjustment_ratio,
                     token_mint.decimals
                 );
                 (remaining, amount - remaining, adjusted_minimum)
@@ -208,7 +212,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             amount_to_swap,
             direction,
             global_config.platform_sell_fee,
-            global_config.platform_buy_fee,
+            global_config.platform_buy_fee
         )?;
 
         msg!("Amount Out: {:?}, SOL Fee: {:?}", amount_out, sol_fee);
@@ -217,7 +221,8 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             return Err(PumpfunError::ReturnAmountTooSmall.into());
         }
 
-        if direction == 1 { // Selling Tokens for SOL
+        if direction == 1 {
+            // Selling Tokens for SOL
             // amount_to_swap = input tokens
             // amount_out = net SOL output
             // sol_fee = fee in SOL
@@ -226,19 +231,17 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 .checked_add(sol_fee)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let new_reserve_token = self
-                .reserve_token
+            let new_reserve_token = self.reserve_token
                 .checked_add(amount_to_swap) // Add the full token amount received from user
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let new_reserve_lamport = self
-                .reserve_lamport
+            let new_reserve_lamport = self.reserve_lamport
                 .checked_sub(gross_sol_output) // Subtract the total SOL leaving the pool
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
             self.update_reserves(global_config, new_reserve_token, new_reserve_lamport)?;
 
-            msg! {"Reserves: {:?} {:?}", new_reserve_token, new_reserve_lamport};
+            msg!("Reserves: {:?} {:?}", new_reserve_token, new_reserve_lamport);
 
             // Transfer tokens from user to pool
             token_transfer_user(
@@ -246,7 +249,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 user,
                 global_ata.clone(),
                 token_program,
-                amount_to_swap, // Transfer the full input token amount
+                amount_to_swap // Transfer the full input token amount
             )?;
 
             // Transfer NET SOL from pool to user
@@ -255,7 +258,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 user.to_account_info(),
                 system_program,
                 signer,
-                amount_out, // Transfer net SOL amount
+                amount_out // Transfer net SOL amount
             )?;
 
             // Transfer SOL fee from pool to team wallet
@@ -265,11 +268,11 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                     team_wallet.clone(),
                     system_program,
                     signer,
-                    sol_fee,
+                    sol_fee
                 )?;
             }
-
-        } else { // Buying Tokens with SOL
+        } else {
+            // Buying Tokens with SOL
             // amount_to_swap = input SOL used in calculation (potentially capped)
             // amount_out = net token output
             // sol_fee = fee in SOL
@@ -278,28 +281,29 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 .checked_sub(sol_fee)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?; // SOL used for actual swap after fee
 
-            let new_reserve_token = self
-                .reserve_token
+            let new_reserve_token = self.reserve_token
                 .checked_sub(amount_out) // Subtract tokens leaving the pool
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let new_reserve_lamport = self
-                .reserve_lamport
+            let new_reserve_lamport = self.reserve_lamport
                 .checked_add(adjusted_sol_input) // Add SOL used for swap (amount_to_swap - fee)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let is_completed =
-                self.update_reserves(global_config, new_reserve_token, new_reserve_lamport)?;
+            let is_completed = self.update_reserves(
+                global_config,
+                new_reserve_token,
+                new_reserve_lamport
+            )?;
 
             if is_completed {
                 emit!(CompleteEvent {
                     user: user.key(),
                     mint: token_mint.key(),
-                    bonding_curve: self.key()
+                    bonding_curve: self.key(),
                 });
             }
 
-            msg! {"Reserves: {:?} {:?}", new_reserve_token, new_reserve_lamport};
+            msg!("Reserves: {:?} {:?}", new_reserve_token, new_reserve_lamport);
 
             // Transfer tokens from pool to user
             token_transfer_with_signer(
@@ -308,7 +312,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 user_ata.clone(),
                 token_program,
                 signer,
-                amount_out, // Transfer the calculated token amount
+                amount_out // Transfer the calculated token amount
             )?;
 
             // Transfer SOL from user to pool
@@ -323,7 +327,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                     team_wallet.clone(),
                     system_program,
                     signer,
-                    sol_fee,
+                    sol_fee
                 )?;
             }
 
@@ -344,7 +348,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         amount: u64, // Input amount (tokens if selling, SOL if buying)
         direction: u8,
         platform_sell_fee: u128,
-        platform_buy_fee: u128,
+        platform_buy_fee: u128
     ) -> Result<(u64, u64)> {
         let amount_u128 = amount as u128;
 
@@ -353,7 +357,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             // amount = dx (input tokens)
             // y = reserve_lamport, x = reserve_token
             if self.reserve_token == 0 || self.reserve_lamport == 0 {
-                 return Ok((0, 0)); // Avoid division by zero if pool is empty
+                return Ok((0, 0)); // Avoid division by zero if pool is empty
             }
 
             let numerator = (self.reserve_lamport as u128)
@@ -380,14 +384,13 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
             Ok((net_sol_output as u64, sol_fee as u64))
-
         } else {
             // Buying tokens with SOL: dx = (x * dy) / (y + dy)
             // amount = dy (input SOL)
             // x = reserve_token, y = reserve_lamport
-             if self.reserve_token == 0 || self.reserve_lamport == 0 {
-                 return Ok((0, 0)); // Avoid division by zero if pool is empty, fee is also 0
-             }
+            if self.reserve_token == 0 || self.reserve_lamport == 0 {
+                return Ok((0, 0)); // Avoid division by zero if pool is empty, fee is also 0
+            }
 
             // Calculate fee based on input SOL amount
             let sol_fee = amount_u128
@@ -404,11 +407,11 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             let numerator = (self.reserve_token as u128)
                 .checked_mul(adjusted_sol_input)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-                
+
             let denominator = (self.reserve_lamport as u128)
                 .checked_add(adjusted_sol_input)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-                
+
             let token_output = numerator
                 .checked_div(denominator)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
