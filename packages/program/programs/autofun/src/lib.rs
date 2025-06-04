@@ -39,6 +39,8 @@ pub mod autofun {
         decimals: u8,
         token_supply: u64,
         virtual_lamport_reserves: u64,
+        curve_limit: u64,
+        init_bonding_curve: f64,
 
         //  metadata
         name: String,
@@ -49,6 +51,8 @@ pub mod autofun {
             decimals,
             token_supply,
             virtual_lamport_reserves,
+            curve_limit,
+            init_bonding_curve,
             name,
             symbol,
             uri,
@@ -81,6 +85,8 @@ pub mod autofun {
         decimals: u8,
         token_supply: u64,
         virtual_lamport_reserves: u64,
+        curve_limit: u64,
+        init_bonding_curve: f64,
         // metadata
         name: String,
         symbol: String,
@@ -94,6 +100,8 @@ pub mod autofun {
             decimals,
             token_supply,
             virtual_lamport_reserves,
+            curve_limit,
+            init_bonding_curve,
             name,
             symbol,
             uri,
@@ -108,5 +116,21 @@ pub mod autofun {
     //  migration should be done on backend
     pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
         ctx.accounts.process(ctx.bumps.global_vault)
+    }
+
+    pub fn switch_to_instant_mode(ctx: Context<SwitchInstantMode>) -> Result<()> {
+        switch_instant_mode::process_switch_to_instant_mode(ctx)
+    }
+
+    pub fn switch_to_delay_mode(ctx: Context<SwitchInstantMode>) -> Result<()> {
+        switch_instant_mode::process_switch_to_delay_mode(ctx)
+    }
+
+    pub fn set_max_amounts(
+        ctx: Context<SetMaxAmounts>,
+        max_buy_amount: u64,
+        max_sell_amount: u64
+    ) -> Result<()> {
+        set_max_amount::process_set_max_amounts(ctx, max_buy_amount, max_sell_amount)
     }
 }

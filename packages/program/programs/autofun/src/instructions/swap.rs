@@ -1,22 +1,16 @@
-use anchor_lang::{system_program, prelude::*};
-use anchor_spl::{
-    associated_token::{self, AssociatedToken},
-    token::{self, Mint, Token},
-};
+use anchor_lang::{ system_program, prelude::* };
+use anchor_spl::{ associated_token::{ self, AssociatedToken }, token::{ self, Mint, Token } };
 use crate::{
-    constants::{BONDING_CURVE, CONFIG, GLOBAL}, 
-    errors::PumpfunError, 
-    state::{BondingCurve, Config, BondingCurveAccount}
+    constants::{ BONDING_CURVE, CONFIG, GLOBAL },
+    errors::PumpfunError,
+    state::{ BondingCurve, Config, BondingCurveAccount },
 };
 
 #[derive(Accounts)]
 pub struct Swap<'info> {
-    #[account(
-        seeds = [CONFIG.as_bytes()],
-        bump,
-    )]
+    #[account(seeds = [CONFIG.as_bytes()], bump)]
     global_config: Box<Account<'info, Config>>,
-    
+
     //  team wallet
     /// CHECK: should be same with the address in the global_config
     #[account(
@@ -37,7 +31,6 @@ pub struct Swap<'info> {
         seeds::program = anchor_spl::associated_token::ID
     )]
     team_wallet_ata: AccountInfo<'info>,
-
 
     #[account(
         mut,
@@ -95,89 +88,109 @@ pub struct Swap<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-impl<'info> Swap<'info> { 
-pub fn process(&mut self, amount: u64, direction: u8, minimum_receive_amount: u64, deadline: i64, global_vault_bump:u8) -> Result<u64> {
-    // Check deadline hasn't passed
-    let current_timestamp = Clock::get()?.unix_timestamp;
-    require!(
-        current_timestamp <= deadline,
-        PumpfunError::TransactionExpired
-    );
-    
-    let bonding_curve = &mut self.bonding_curve;
+impl<'info> Swap<'info> {
+    pub fn process(
+        &mut self,
+        amount: u64,
+        direction: u8,
+        minimum_receive_amount: u64,
+        deadline: i64,
+        global_vault_bump: u8
+    ) -> Result<u64> {
+        // Check deadline hasn't passed
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        let bonding_curve = &mut self.bonding_curve;
+        let hours_24 = 60i64 * 60i64 * 24i64;
+        require!(current_timestamp.clone() <= deadline, PumpfunError::TransactionExpired);
+        require!(
+            self.global_config.clone().is_instant_trading == true ||
+                current_timestamp.clone() - bonding_curve.clone().created_time >= hours_24,
+            PumpfunError::TradeTooEarly
+        );
 
-    //  check curve is not completed
-    require!(
-        !bonding_curve.is_completed,
-        PumpfunError::CurveAlreadyCompleted
-    );
+        //  check curve is not completed
+        require!(!bonding_curve.is_completed, PumpfunError::CurveAlreadyCompleted);
 
-    let source = &mut self.global_vault.to_account_info();
+        // 0: buy, 1: sell
+        if direction.clone() == 0 {
+            require!(
+                bonding_curve.clone().max_buy_amount == 0 ||
+                    bonding_curve.clone().max_buy_amount > amount,
+                PumpfunError::ExceedsMaxBuyAmount
+            );
+        } else {
+            require!(
+                bonding_curve.clone().max_sell_amount == 0 ||
+                    bonding_curve.clone().max_sell_amount > amount,
+                PumpfunError::ExceedsMaxSellAMount
+            );
+        }
 
-    let token = &mut self.token_mint;
-    let team_wallet = &mut self.team_wallet;
-    let team_wallet_ata = &mut self.team_wallet_ata;
-    let user_ata = &mut self.user_ata;
+        let source = &mut self.global_vault.to_account_info();
 
-    //  create user wallet ata, if it doean't exit
-    if user_ata.data_is_empty() {
-        anchor_spl::associated_token::create(CpiContext::new(
-            self.associated_token_program.to_account_info(),
-            anchor_spl::associated_token::Create {
-                payer: self.user.to_account_info(),
-                associated_token: user_ata.to_account_info(),
-                authority: self.user.to_account_info(),
+        let token = &mut self.token_mint;
+        let team_wallet = &mut self.team_wallet;
+        let team_wallet_ata = &mut self.team_wallet_ata;
+        let user_ata = &mut self.user_ata;
 
-                mint: token.to_account_info(),
-                system_program: self.system_program.to_account_info(),
-                token_program: self.token_program.to_account_info(),
-            }
-        ))?;
+        //  create user wallet ata, if it doean't exit
+        if user_ata.data_is_empty() {
+            anchor_spl::associated_token::create(
+                CpiContext::new(
+                    self.associated_token_program.to_account_info(),
+                    anchor_spl::associated_token::Create {
+                        payer: self.user.to_account_info(),
+                        associated_token: user_ata.to_account_info(),
+                        authority: self.user.to_account_info(),
+
+                        mint: token.to_account_info(),
+                        system_program: self.system_program.to_account_info(),
+                        token_program: self.token_program.to_account_info(),
+                    }
+                )
+            )?;
+        }
+
+        //  create team wallet ata, if it doesn't exist
+        if team_wallet_ata.data_is_empty() {
+            anchor_spl::associated_token::create(
+                CpiContext::new(
+                    self.associated_token_program.to_account_info(),
+                    anchor_spl::associated_token::Create {
+                        payer: self.user.to_account_info(),
+                        associated_token: team_wallet_ata.to_account_info(),
+                        authority: team_wallet.to_account_info(),
+
+                        mint: token.to_account_info(),
+                        system_program: self.system_program.to_account_info(),
+                        token_program: self.token_program.to_account_info(),
+                    }
+                )
+            )?;
+        }
+
+        let signer_seeds: &[&[&[u8]]] = &[&[GLOBAL.as_bytes(), &[global_vault_bump]]];
+
+        let amount_out = bonding_curve.swap(
+            &self.global_config,
+            token.as_ref(),
+            &mut self.global_ata,
+            user_ata,
+            source,
+            team_wallet,
+            team_wallet_ata,
+            amount,
+            direction,
+            minimum_receive_amount,
+            deadline,
+
+            &self.user,
+            signer_seeds,
+
+            &self.token_program,
+            &self.system_program
+        )?;
+
+        Ok(amount_out)
     }
-
-    //  create team wallet ata, if it doesn't exist
-    if team_wallet_ata.data_is_empty() {
-        anchor_spl::associated_token::create(CpiContext::new(
-            self.associated_token_program.to_account_info(),
-            anchor_spl::associated_token::Create {
-                payer: self.user.to_account_info(),
-                associated_token: team_wallet_ata.to_account_info(),
-                authority: team_wallet.to_account_info(),
-
-                mint: token.to_account_info(),
-                system_program: self.system_program.to_account_info(),
-                token_program: self.token_program.to_account_info(),
-            }
-        ))?;
-    }
-
-    let signer_seeds: &[&[&[u8]]] = &[&[
-        GLOBAL.as_bytes(),
-        &[global_vault_bump],
-    ]];
-
-    
-    let amount_out = bonding_curve.swap(
-        &self.global_config,
-        token.as_ref(),
-        &mut self.global_ata,
-        user_ata,
-        source,
-        team_wallet,
-        team_wallet_ata,
-        amount,
-        direction,
-        minimum_receive_amount,
-        deadline,
-
-        &self.user,
-        signer_seeds,
-
-        &self.token_program,
-        &self.system_program,
-    )?;
-    
-    Ok(amount_out)
-}
-
 }
